@@ -98,7 +98,16 @@
                             <TextBlock Text="Name" Style="{StaticResource FieldLabel}"/>
                             <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
 
-                            <TextBlock Text="Category" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Text="Show in" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding Panel}">
+                                <ComboBoxItem Content="Bars — countdown timers" Tag="bars"/>
+                                <ComboBoxItem Content="Self buffs — present/missing matrix" Tag="selfBuffs"/>
+                                <ComboBoxItem Content="Target debuffs — matrix (coming soon)" Tag="targetDebuffs"/>
+                            </ComboBox>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Bars = a depleting timer. Matrix = a red/green cell (present + seconds left)."/>
+
+                            <TextBlock Text="Category (bars grouping)" Style="{StaticResource FieldLabel}"/>
                             <ComboBox IsEditable="True" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}">
                                 <ComboBoxItem>Buffs</ComboBoxItem>
                                 <ComboBoxItem>HoTs</ComboBoxItem>
@@ -223,6 +232,8 @@
                         <TextBox x:Name="RemindBox" Width="120" HorizontalAlignment="Left"/>
                         <TextBlock Text="Opacity (0.1 – 1.0, lower = more see-through)" Style="{StaticResource FieldLabel}"/>
                         <TextBox x:Name="OpacityBox" Width="120" HorizontalAlignment="Left"/>
+                        <TextBlock Text="Matrix columns (self-buff / debuff panels)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="MatrixColumnsBox" Width="120" HorizontalAlignment="Left"/>
 
                         <CheckBox x:Name="ShowHeadersCheck" Content="Show category headers" Margin="0,10,0,0"/>
                         <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"

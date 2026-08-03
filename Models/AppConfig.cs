@@ -70,4 +70,7 @@ public sealed class OverlayConfig
 
     /// <summary>Whole-overlay opacity, 0.1–1.0 (lower = more see-through).</summary>
     public double Opacity { get; set; } = 1.0;
+
+    /// <summary>Number of columns in the present/missing matrix panels.</summary>
+    public int MatrixColumns { get; set; } = 4;
 }

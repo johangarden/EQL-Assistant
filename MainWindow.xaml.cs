@@ -23,6 +23,8 @@ public partial class MainWindow : Window
     private OverlayViewModel _vm = null!;
     private LogWatcher? _watcher;
     private TriggerManagerWindow? _manager;
+    private MatrixWindow? _selfMatrix;
+    private bool _hidden;
     private System.Windows.Forms.NotifyIcon? _tray;
 
     /// <summary>Set by self-tests so they never persist window position/lock.</summary>
@@ -89,6 +91,26 @@ public partial class MainWindow : Window
         ApplyClickThrough(); // safe now that _vm exists (also called in OnSourceInitialized)
         SetupTrayIcon();
         StartWatcher();
+        RebuildMatrixWindow();
+    }
+
+    // ---- matrix panels ------------------------------------------------------
+
+    private void RebuildMatrixWindow()
+    {
+        if (_selfMatrix is not null) { _selfMatrix.Close(); _selfMatrix = null; }
+        _selfMatrix = new MatrixWindow("selfMatrix", "Self Buffs", _engine.SelfCells,
+            _config.Overlay.MatrixColumns, _configService, _config.Overlay.Opacity);
+        _selfMatrix.Show();
+        _selfMatrix.SetLocked(_vm.Locked);
+        UpdateMatrixVisibility();
+    }
+
+    private void UpdateMatrixVisibility()
+    {
+        if (_selfMatrix is null) return;
+        bool show = !_hidden && _engine.SelfCells.Count > 0;
+        _selfMatrix.Visibility = show ? Visibility.Visible : Visibility.Hidden;
     }
 
     private void ApplyOpacity() =>
@@ -167,7 +189,7 @@ public partial class MainWindow : Window
             switch (wParam.ToInt32())
             {
                 case HK_LOCK:   ToggleLock();       handled = true; break;
-                case HK_TEST:   _engine.AddDemoTimer(); handled = true; break;
+                case HK_TEST:   _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); UpdateMatrixVisibility(); handled = true; break;
                 case HK_HIDE:   ToggleHide();       handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;
                 case HK_QUIT:   Close();            handled = true; break;
@@ -184,6 +206,7 @@ public partial class MainWindow : Window
         _config.Overlay.Locked = _vm.Locked;
         ApplyClickThrough();
         ApplyLockVisual();
+        _selfMatrix?.SetLocked(_vm.Locked);
         _configService.SaveWindowState(_config.Overlay);
     }
 
@@ -196,8 +219,12 @@ public partial class MainWindow : Window
     private void ApplyLockVisual() =>
         RootBorder.Background = _vm.Locked ? Brushes.Transparent : UnlockedBackdrop;
 
-    private void ToggleHide() =>
-        Visibility = Visibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
+    private void ToggleHide()
+    {
+        _hidden = !_hidden;
+        Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
+        UpdateMatrixVisibility();
+    }
 
     /// <summary>Bring the overlay back to the top-left of the primary monitor (tray recovery).</summary>
     private void ResetPosition()
@@ -208,9 +235,12 @@ public partial class MainWindow : Window
         _config.Overlay.Top = Top;
         _configService.SaveWindowState(_config.Overlay);
 
+        _hidden = false;
         Visibility = Visibility.Visible;
         Topmost = true;
         Activate();
+        _selfMatrix?.ResetPosition();
+        UpdateMatrixVisibility();
         _vm?.Flash("Position reset to primary screen.");
     }
 
@@ -302,8 +332,10 @@ public partial class MainWindow : Window
         ApplyOpacity();
         ApplyLockVisual();
         StartWatcher();
+        RebuildMatrixWindow();
         _vm.Flash("Settings applied.");
-        Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}");
+        Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
+                 $"selfCells={_engine.SelfCells.Count}");
     }
 
     private void ApplyLoadout(string name)
@@ -319,6 +351,7 @@ public partial class MainWindow : Window
 
         _engine.Reset();
         _engine.UpdateConfig(_config);
+        UpdateMatrixVisibility();
         _vm.LoadoutName = lo.Name;
         _vm.Flash($"Switched to: {lo.Name}");
         Log.Info($"Loadout switched to '{lo.Name}' ({lo.Triggers.Count} triggers)");
@@ -481,6 +514,7 @@ public partial class MainWindow : Window
         Log.Info("Shutting down");
         UnregisterHotKeys();
         _watcher?.Dispose();
+        try { _selfMatrix?.Close(); } catch { /* ignore */ }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }
 }

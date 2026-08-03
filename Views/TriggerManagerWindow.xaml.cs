@@ -307,6 +307,7 @@ public partial class TriggerManagerWindow : Window
         WarnBox.Text = _config.Overlay.WarnSeconds.ToString(CultureInfo.InvariantCulture);
         RemindBox.Text = _config.Overlay.RemindIntervalSeconds.ToString(CultureInfo.InvariantCulture);
         OpacityBox.Text = _config.Overlay.Opacity.ToString(CultureInfo.InvariantCulture);
+        MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
     }
@@ -375,6 +376,7 @@ public partial class TriggerManagerWindow : Window
                 WarnSeconds = ParseOr(WarnBox.Text, _config.Overlay.WarnSeconds),
                 RemindIntervalSeconds = ParseOr(RemindBox.Text, _config.Overlay.RemindIntervalSeconds),
                 Opacity = Math.Clamp(ParseOr(OpacityBox.Text, _config.Overlay.Opacity), 0.1, 1.0),
+                MatrixColumns = Math.Max(1, (int)ParseOr(MatrixColumnsBox.Text, _config.Overlay.MatrixColumns)),
                 ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
                 StartLocked = StartLockedCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,

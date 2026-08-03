@@ -26,7 +26,8 @@
     "remindIntervalSeconds": 20,
     "muted": false,
     "startLocked": false,
-    "opacity": 1.0
+    "opacity": 1.0,
+    "matrixColumns": 4
   },
 
   "characterName": "",

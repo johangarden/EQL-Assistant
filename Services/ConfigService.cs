@@ -215,6 +215,37 @@ public sealed class ConfigService
         catch { /* ignore a corrupt state file; defaults win */ }
     }
 
+    // ---- per-panel positions (matrix windows) -------------------------------
+
+    public (double Left, double Top)? LoadPanelPos(string name)
+    {
+        string path = System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json");
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var s = JsonSerializer.Deserialize<PanelPos>(File.ReadAllText(path), ReadOptions);
+            if (s?.Left is { } l && s.Top is { } t) return (l, t);
+        }
+        catch { /* ignore */ }
+        return null;
+    }
+
+    public void SavePanelPos(string name, double left, double top)
+    {
+        try
+        {
+            File.WriteAllText(System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json"),
+                JsonSerializer.Serialize(new PanelPos { Left = left, Top = top }, WriteOptions));
+        }
+        catch { /* best-effort */ }
+    }
+
+    private sealed class PanelPos
+    {
+        public double? Left { get; set; }
+        public double? Top { get; set; }
+    }
+
     public void SaveWindowState(OverlayConfig overlay)
     {
         var state = new WindowState
@@ -268,7 +299,8 @@ public sealed class ConfigService
         "remindIntervalSeconds": 20,
         "muted": false,
         "startLocked": false,
-        "opacity": 1.0
+        "opacity": 1.0,
+        "matrixColumns": 4
       },
 
       "characterName": "",

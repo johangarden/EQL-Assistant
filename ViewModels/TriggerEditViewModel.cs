@@ -15,6 +15,10 @@ public sealed class TriggerEditViewModel : ViewModelBase
     private string _category = "Buffs";
     public string Category { get => _category; set { if (SetField(ref _category, value)) OnPropertyChanged(nameof(Display)); } }
 
+    private string _panel = Panels.Bars;
+    /// <summary>"bars", "selfBuffs", or "targetDebuffs".</summary>
+    public string Panel { get => _panel; set => SetField(ref _panel, value); }
+
     private bool _enabled = true;
     public bool Enabled { get => _enabled; set { if (SetField(ref _enabled, value)) OnPropertyChanged(nameof(Display)); } }
 
@@ -71,6 +75,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
         Id = d.Id,
         Name = d.Name,
         Category = d.Category,
+        Panel = string.IsNullOrWhiteSpace(d.Panel) ? Panels.Bars : d.Panel,
         Enabled = d.Enabled,
         StartPattern = d.StartPattern,
         EndPattern = d.EndPattern ?? "",
@@ -96,6 +101,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
             Id = string.IsNullOrWhiteSpace(Id) ? MakeId(Name) : Id.Trim(),
             Name = Name.Trim(),
             Category = string.IsNullOrWhiteSpace(Category) ? "Buffs" : Category.Trim(),
+            Panel = string.IsNullOrWhiteSpace(Panel) ? Panels.Bars : Panel,
             Enabled = Enabled,
             StartPattern = StartPattern,
             EndPattern = string.IsNullOrWhiteSpace(EndPattern) ? null : EndPattern,
