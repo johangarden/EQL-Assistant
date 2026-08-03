@@ -1,0 +1,431 @@
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Text.RegularExpressions;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using Microsoft.Win32;
+using EQLOverlay.Models;
+using EQLOverlay.Services;
+using EQLOverlay.ViewModels;
+
+namespace EQLOverlay.Views;
+
+public partial class TriggerManagerWindow : Window
+{
+    private readonly ConfigService _configService;
+    private readonly LogBus _bus;
+    private readonly AlertService _alerts;
+    private readonly Action<string> _onApplied;
+
+    private AppConfig _config;
+
+    // All loadouts held in memory; persisted only on Save.
+    private readonly Dictionary<string, ObservableCollection<TriggerEditViewModel>> _byName = new();
+    private readonly ObservableCollection<string> _order = new();
+    private string _currentName = "Default";
+    private bool _initializing = true;
+
+    private readonly ObservableCollection<string> _recent = new();
+
+    private static readonly Regex TimestampPrefix = new(@"^\[.+?\]\s?", RegexOptions.Compiled);
+    private static readonly string[] PresetColors =
+    {
+        "#4FC3F7", "#BA68C8", "#81C784", "#FFB74D", "#E57373", "#F06292",
+        "#64B5F6", "#4DB6AC", "#FFD54F", "#A1887F", "#9575CD", "#E53935",
+    };
+
+    public TriggerManagerWindow(ConfigService configService, AppConfig config,
+        LogBus bus, AlertService alerts, Action<string> onApplied)
+    {
+        InitializeComponent();
+
+        _configService = configService;
+        _config = config;
+        _bus = bus;
+        _alerts = alerts;
+        _onApplied = onApplied;
+
+        // Load every loadout into memory.
+        _configService.EnsureDefaultLoadout();
+        foreach (var lo in _configService.ListLoadouts())
+        {
+            _byName[lo.Name] = new ObservableCollection<TriggerEditViewModel>(
+                lo.Triggers.Select(TriggerEditViewModel.FromDefinition));
+            _order.Add(lo.Name);
+        }
+        if (_order.Count == 0)
+        {
+            _byName["Default"] = new ObservableCollection<TriggerEditViewModel>();
+            _order.Add("Default");
+        }
+
+        LoadoutCombo.ItemsSource = _order;
+        _currentName = _order.Contains(config.ActiveLoadout) ? config.ActiveLoadout : _order[0];
+
+        // Log feed.
+        foreach (var line in bus.Snapshot().Reverse()) _recent.Add(line);
+        RecentList.ItemsSource = _recent;
+        _bus.LineReceived += OnLine;
+
+        BuildSwatches();
+        LoadSettingsFields();
+        MuteCheck.IsChecked = _alerts.Muted;
+        MuteCheck.Click += (_, _) => _alerts.Muted = MuteCheck.IsChecked == true;
+
+        _initializing = false;
+        LoadoutCombo.SelectedItem = _currentName; // triggers ShowLoadout via SelectionChanged
+
+        Closed += (_, _) => _bus.LineReceived -= OnLine;
+    }
+
+    private ObservableCollection<TriggerEditViewModel> CurrentList => _byName[_currentName];
+    private TriggerEditViewModel? Selected => TriggerList.SelectedItem as TriggerEditViewModel;
+
+    // ---- loadouts -----------------------------------------------------------
+
+    private void LoadoutCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_initializing) return;
+        if (LoadoutCombo.SelectedItem is not string name || !_byName.ContainsKey(name)) return;
+        ShowLoadout(name);
+    }
+
+    private void ShowLoadout(string name)
+    {
+        _currentName = name;
+        TriggerList.ItemsSource = CurrentList;
+        if (CurrentList.Count > 0) TriggerList.SelectedIndex = 0;
+        else { DetailsScroller.DataContext = null; DetailsScroller.IsEnabled = false; }
+    }
+
+    private void NewLoadout_Click(object sender, RoutedEventArgs e)
+    {
+        string? name = PromptDialog.Show(this, "New loadout", "Loadout name:", "New Loadout");
+        if (name is null) return;
+        if (Exists(name)) { WarnExists(name); return; }
+        _byName[name] = new ObservableCollection<TriggerEditViewModel>();
+        _order.Add(name);
+        LoadoutCombo.SelectedItem = name;
+        Status($"Created loadout '{name}'.");
+    }
+
+    private void RenameLoadout_Click(object sender, RoutedEventArgs e)
+    {
+        string? name = PromptDialog.Show(this, "Rename loadout", "New name:", _currentName);
+        if (name is null || name == _currentName) return;
+        if (Exists(name)) { WarnExists(name); return; }
+
+        var list = _byName[_currentName];
+        _byName.Remove(_currentName);
+        _byName[name] = list;
+        int i = _order.IndexOf(_currentName);
+        _order[i] = name;
+        _currentName = name;
+        LoadoutCombo.SelectedItem = name;
+        Status($"Renamed to '{name}' (applies on Save).");
+    }
+
+    private void DuplicateLoadout_Click(object sender, RoutedEventArgs e)
+    {
+        string? name = PromptDialog.Show(this, "Duplicate loadout", "New name:", _currentName + " copy");
+        if (name is null) return;
+        if (Exists(name)) { WarnExists(name); return; }
+
+        var copy = new ObservableCollection<TriggerEditViewModel>(
+            CurrentList.Select(vm => TriggerEditViewModel.FromDefinition(vm.ToDefinition())));
+        _byName[name] = copy;
+        _order.Add(name);
+        LoadoutCombo.SelectedItem = name;
+        Status($"Duplicated to '{name}'.");
+    }
+
+    private void DeleteLoadout_Click(object sender, RoutedEventArgs e)
+    {
+        if (_order.Count <= 1)
+        {
+            MessageBox.Show("Keep at least one loadout.", "EQL Overlay",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (MessageBox.Show($"Delete loadout '{_currentName}'?", "EQL Overlay",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        _byName.Remove(_currentName);
+        int i = _order.IndexOf(_currentName);
+        _order.RemoveAt(i);
+        LoadoutCombo.SelectedItem = _order[Math.Min(i, _order.Count - 1)];
+        Status("Loadout deleted (applies on Save).");
+    }
+
+    private bool Exists(string name) =>
+        _order.Any(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
+
+    private void WarnExists(string name) =>
+        MessageBox.Show($"A loadout named '{name}' already exists.", "EQL Overlay",
+            MessageBoxButton.OK, MessageBoxImage.Warning);
+
+    // ---- live feed ----------------------------------------------------------
+
+    private void OnLine(string line) => Dispatcher.BeginInvoke(() =>
+    {
+        if (PauseFeedCheck.IsChecked == true) return;
+        _recent.Insert(0, line);
+        while (_recent.Count > 300) _recent.RemoveAt(_recent.Count - 1);
+    });
+
+    // ---- selection ----------------------------------------------------------
+
+    private void TriggerList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        DetailsScroller.DataContext = Selected;
+        DetailsScroller.IsEnabled = Selected != null;
+    }
+
+    // ---- trigger list buttons ----------------------------------------------
+
+    private void Add_Click(object sender, RoutedEventArgs e)
+    {
+        var t = new TriggerEditViewModel { Name = "New Trigger", Category = "Buffs", Color = "#4FC3F7", DurationSeconds = 60 };
+        CurrentList.Add(t);
+        TriggerList.SelectedItem = t;
+        TriggerList.ScrollIntoView(t);
+    }
+
+    private void Duplicate_Click(object sender, RoutedEventArgs e)
+    {
+        if (Selected is null) return;
+        var copy = TriggerEditViewModel.FromDefinition(Selected.ToDefinition());
+        copy.Id = "";
+        copy.Name += " copy";
+        int i = CurrentList.IndexOf(Selected);
+        CurrentList.Insert(i + 1, copy);
+        TriggerList.SelectedItem = copy;
+    }
+
+    private void Delete_Click(object sender, RoutedEventArgs e)
+    {
+        if (Selected is null) return;
+        int i = CurrentList.IndexOf(Selected);
+        CurrentList.Remove(Selected);
+        if (CurrentList.Count > 0)
+            TriggerList.SelectedIndex = Math.Min(i, CurrentList.Count - 1);
+    }
+
+    private void MoveUp_Click(object sender, RoutedEventArgs e)
+    {
+        int i = TriggerList.SelectedIndex;
+        if (i > 0) { CurrentList.Move(i, i - 1); TriggerList.SelectedIndex = i - 1; }
+    }
+
+    private void MoveDown_Click(object sender, RoutedEventArgs e)
+    {
+        int i = TriggerList.SelectedIndex;
+        if (i >= 0 && i < CurrentList.Count - 1) { CurrentList.Move(i, i + 1); TriggerList.SelectedIndex = i + 1; }
+    }
+
+    // ---- pattern capture / test --------------------------------------------
+
+    private void UseAsStart_Click(object sender, RoutedEventArgs e) => CaptureInto(isStart: true);
+    private void UseAsEnd_Click(object sender, RoutedEventArgs e) => CaptureInto(isStart: false);
+
+    private void CaptureInto(bool isStart)
+    {
+        if (Selected is null) { Status("Select a trigger first."); return; }
+        if (RecentList.SelectedItem is not string line) { Status("Select a log line first."); return; }
+
+        string body = TimestampPrefix.Replace(line, "");
+        string pattern = Regex.Escape(body);
+        if (isStart) Selected.StartPattern = pattern; else Selected.EndPattern = pattern;
+        Status(isStart ? "Filled start pattern." : "Filled end pattern.");
+    }
+
+    private void ClearFeed_Click(object sender, RoutedEventArgs e) => _recent.Clear();
+
+    private void Test_Click(object sender, RoutedEventArgs e)
+    {
+        string line = string.IsNullOrWhiteSpace(TestLineBox.Text)
+            ? RecentList.SelectedItem as string ?? ""
+            : TestLineBox.Text;
+        if (string.IsNullOrWhiteSpace(line)) { TestResult.Text = "Enter or select a line to test."; return; }
+
+        string body = TimestampPrefix.Replace(line, "");
+        var hits = new List<string>();
+        foreach (var t in CurrentList)
+        {
+            if (TryMatch(t.StartPattern, body)) hits.Add($"{t.Name} (start)");
+            if (!string.IsNullOrWhiteSpace(t.EndPattern) && TryMatch(t.EndPattern, body))
+                hits.Add($"{t.Name} (end)");
+        }
+        TestResult.Text = hits.Count == 0
+            ? "No triggers in this loadout match the line."
+            : "Matches: " + string.Join(", ", hits);
+    }
+
+    private static bool TryMatch(string pattern, string input)
+    {
+        if (string.IsNullOrWhiteSpace(pattern)) return false;
+        try { return Regex.IsMatch(input, pattern); } catch { return false; }
+    }
+
+    // ---- alert previews -----------------------------------------------------
+
+    private void Speak_Click(object sender, RoutedEventArgs e)
+    {
+        if (Selected is null) return;
+        if (_alerts.Muted) { Status("Unmute to preview."); return; }
+        _alerts.Speak(Selected.AlertSpeak);
+    }
+
+    private void PlaySound_Click(object sender, RoutedEventArgs e)
+    {
+        if (Selected is null) return;
+        if (_alerts.Muted) { Status("Unmute to preview."); return; }
+        _alerts.Fire(null, Selected.AlertSound);
+    }
+
+    private void BrowseSound_Click(object sender, RoutedEventArgs e)
+    {
+        if (Selected is null) return;
+        var dlg = new OpenFileDialog { Filter = "WAV files (*.wav)|*.wav|All files (*.*)|*.*" };
+        if (dlg.ShowDialog(this) == true) Selected.AlertSound = dlg.FileName;
+    }
+
+    // ---- settings tab -------------------------------------------------------
+
+    private void LoadSettingsFields()
+    {
+        LogDirBox.Text = _config.Log.Directory;
+        FilePatternBox.Text = _config.Log.FilePattern;
+        ExplicitFileBox.Text = _config.Log.ExplicitFile;
+        StartAtEndCheck.IsChecked = _config.Log.StartAtEndOfFile;
+
+        WidthBox.Text = _config.Overlay.Width.ToString(CultureInfo.InvariantCulture);
+        BarHeightBox.Text = _config.Overlay.BarHeight.ToString(CultureInfo.InvariantCulture);
+        FontSizeBox.Text = _config.Overlay.FontSize.ToString(CultureInfo.InvariantCulture);
+        WarnBox.Text = _config.Overlay.WarnSeconds.ToString(CultureInfo.InvariantCulture);
+        RemindBox.Text = _config.Overlay.RemindIntervalSeconds.ToString(CultureInfo.InvariantCulture);
+        OpacityBox.Text = _config.Overlay.Opacity.ToString(CultureInfo.InvariantCulture);
+        ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
+        StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
+    }
+
+    private void BrowseLogDir_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFolderDialog { Title = "Select your log folder" };
+        if (!string.IsNullOrWhiteSpace(LogDirBox.Text)) dlg.InitialDirectory = LogDirBox.Text;
+        if (dlg.ShowDialog(this) == true) LogDirBox.Text = dlg.FolderName;
+    }
+
+    private void BrowseFile_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog { Filter = "Log files (*.txt)|*.txt|All files (*.*)|*.*" };
+        if (dlg.ShowDialog(this) == true) ExplicitFileBox.Text = dlg.FileName;
+    }
+
+    // ---- save ---------------------------------------------------------------
+
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        // Validate every trigger in every loadout.
+        var loadouts = new List<Loadout>();
+        var errors = new List<string>();
+        foreach (var name in _order)
+        {
+            var defs = new List<TriggerDefinition>();
+            foreach (var vm in _byName[name])
+            {
+                var d = vm.ToDefinition();
+                try { ConfigService.CompileOne(d); }
+                catch (ArgumentException ex) { errors.Add($"  • [{name}] {d.Name}: {ex.Message}"); }
+                defs.Add(d);
+            }
+            loadouts.Add(new Loadout { Name = name, Triggers = defs });
+        }
+
+        if (errors.Count > 0)
+        {
+            MessageBox.Show("Fix these invalid regex patterns before saving:\n\n" +
+                string.Join("\n", errors), "Invalid pattern",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var cfg = new AppConfig
+        {
+            CharacterName = _config.CharacterName,
+            ActiveLoadout = _currentName,
+            Log =
+            {
+                Directory = LogDirBox.Text.Trim(),
+                FilePattern = string.IsNullOrWhiteSpace(FilePatternBox.Text) ? "eqlog_*.txt" : FilePatternBox.Text.Trim(),
+                ExplicitFile = ExplicitFileBox.Text.Trim(),
+                StartAtEndOfFile = StartAtEndCheck.IsChecked == true,
+                PollIntervalMs = _config.Log.PollIntervalMs,
+            },
+            Overlay =
+            {
+                Left = _config.Overlay.Left,
+                Top = _config.Overlay.Top,
+                Locked = _config.Overlay.Locked,
+                Width = ParseOr(WidthBox.Text, _config.Overlay.Width),
+                BarHeight = ParseOr(BarHeightBox.Text, _config.Overlay.BarHeight),
+                FontSize = ParseOr(FontSizeBox.Text, _config.Overlay.FontSize),
+                WarnSeconds = ParseOr(WarnBox.Text, _config.Overlay.WarnSeconds),
+                RemindIntervalSeconds = ParseOr(RemindBox.Text, _config.Overlay.RemindIntervalSeconds),
+                Opacity = Math.Clamp(ParseOr(OpacityBox.Text, _config.Overlay.Opacity), 0.1, 1.0),
+                ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
+                StartLocked = StartLockedCheck.IsChecked == true,
+                Muted = MuteCheck.IsChecked == true,
+            },
+        };
+
+        try
+        {
+            foreach (var lo in loadouts) _configService.SaveLoadout(lo);
+            _configService.SyncDeleteLoadouts(_order);
+            _configService.SaveSettings(cfg);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Couldn't write files:\n" + ex.Message, "Save failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        _config = cfg;
+        _onApplied(_currentName);
+        Status($"Saved {loadouts.Count} loadout(s). Active: {_currentName}.");
+    }
+
+    private static double ParseOr(string text, double fallback) =>
+        double.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : fallback;
+
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void Status(string msg) => StatusText.Text = msg;
+
+    // ---- color swatches -----------------------------------------------------
+
+    private void BuildSwatches()
+    {
+        foreach (var hex in PresetColors)
+        {
+            var btn = new Button
+            {
+                Width = 18,
+                Height = 18,
+                Margin = new Thickness(0, 0, 3, 3),
+                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)),
+                Tag = hex,
+                ToolTip = hex,
+                BorderBrush = Brushes.Gray,
+                BorderThickness = new Thickness(1),
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            btn.Click += (_, _) => { if (Selected != null) Selected.Color = hex; };
+            SwatchPanel.Children.Add(btn);
+        }
+    }
+}

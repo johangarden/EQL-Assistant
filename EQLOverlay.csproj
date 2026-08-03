@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- For the system-tray NotifyIcon (System.Windows.Forms). WPF types are used
+         fully-qualified to avoid clashes with WinForms' Application/MessageBox. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>EQLOverlay</AssemblyName>
+    <RootNamespace>EQLOverlay</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>assets\eqloverlay.ico</ApplicationIcon>
+    <!-- Bump this for each standalone build; it stamps the exe and shows in the toolbar. -->
+    <Version>1.0.0</Version>
+    <!-- WFO0003: WinForms wants DPI set via API, but this is a WPF app whose DPI is
+         correctly declared in app.manifest (PerMonitorV2). Safe to ignore. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WinForms is enabled only for the tray NotifyIcon (referenced fully-qualified).
+         Drop its implicit global usings so they don't clash with WPF's Brush/Application. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Also expose the icon as a WPF resource so windows can use it via pack URI. -->
+    <Resource Include="assets\eqloverlay.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ship a reference copy of the default config next to the exe.
+         The app actually reads/writes config in %APPDATA%\EQLOverlay. -->
+    <None Update="config\config.default.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

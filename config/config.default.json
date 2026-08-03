@@ -1,0 +1,34 @@
+{
+  // ==========================================================================
+  //  REFERENCE COPY of the default settings file.
+  //  The overlay actually reads/writes:  %APPDATA%\EQLOverlay\config.json
+  //
+  //  Triggers are NOT stored here anymore — each loadout is its own file under
+  //  %APPDATA%\EQLOverlay\loadouts\<name>.json, managed from the in-app
+  //  Trigger Manager (Ctrl+Alt+M). Press Ctrl+Alt+O to open the folder.
+  // ==========================================================================
+
+  "log": {
+    "directory": "",
+    "filePattern": "eqlog_*.txt",
+    "explicitFile": "",
+    "startAtEndOfFile": true,
+    "pollIntervalMs": 200
+  },
+
+  "overlay": {
+    "width": 320,
+    "barHeight": 24,
+    "spacing": 4,
+    "fontSize": 13,
+    "showCategoryHeaders": true,
+    "warnSeconds": 6,
+    "remindIntervalSeconds": 20,
+    "muted": false,
+    "startLocked": false,
+    "opacity": 1.0
+  },
+
+  "characterName": "",
+  "activeLoadout": "Default"
+}
