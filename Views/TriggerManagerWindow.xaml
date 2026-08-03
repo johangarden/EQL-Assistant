@@ -102,7 +102,7 @@
                             <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding Panel}">
                                 <ComboBoxItem Content="Bars — countdown timers" Tag="bars"/>
                                 <ComboBoxItem Content="Self buffs — present/missing matrix" Tag="selfBuffs"/>
-                                <ComboBoxItem Content="Target debuffs — matrix (coming soon)" Tag="targetDebuffs"/>
+                                <ComboBoxItem Content="Target debuffs — present/missing matrix" Tag="targetDebuffs"/>
                             </ComboBox>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="Bars = a depleting timer. Matrix = a red/green cell (present + seconds left)."/>

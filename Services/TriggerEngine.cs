@@ -36,6 +36,10 @@ public sealed class TriggerEngine
     public ObservableCollection<MatrixCellViewModel> SelfCells { get; } = new();
     private readonly Dictionary<string, MatrixCellViewModel> _selfById = new();
 
+    /// <summary>Persistent present/missing cells for the Target-Debuffs matrix panel.</summary>
+    public ObservableCollection<MatrixCellViewModel> TargetCells { get; } = new();
+    private readonly Dictionary<string, MatrixCellViewModel> _targetById = new();
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -90,20 +94,30 @@ public sealed class TriggerEngine
         _seen.Clear();
         Bars.Clear();
         foreach (var c in SelfCells) c.Deactivate();
+        foreach (var c in TargetCells) c.Deactivate();
     }
 
     /// <summary>(Re)build the matrix cells from the current trigger set (all start missing).</summary>
     private void BuildMatrices()
     {
-        SelfCells.Clear();
-        _selfById.Clear();
+        SelfCells.Clear(); _selfById.Clear();
+        TargetCells.Clear(); _targetById.Clear();
+
         foreach (var t in _triggers)
         {
-            if (!t.Enabled || t.Panel != Panels.SelfBuffs) continue;
+            if (!t.Enabled) continue;
+            var (cells, byId) = t.Panel switch
+            {
+                Panels.SelfBuffs => (SelfCells, _selfById),
+                Panels.TargetDebuffs => (TargetCells, _targetById),
+                _ => (null, null),
+            };
+            if (cells is null || byId is null) continue;
+
             var cell = new MatrixCellViewModel(t.Id, t.Name, t.DurationSeconds,
                 t.Alert?.AtSeconds ?? 0, t.Alert?.OnExpire ?? false, t.Alert?.Speak, t.Alert?.Sound);
-            _selfById[t.Id] = cell;
-            SelfCells.Add(cell);
+            byId[t.Id] = cell;
+            cells.Add(cell);
         }
     }
 
@@ -117,12 +131,17 @@ public sealed class TriggerEngine
 
             if (trigger.Panel == Panels.SelfBuffs)
             {
-                ProcessMatrixLine(trigger, body, eventTime);
+                ProcessMatrixLine(_selfById, trigger, body, eventTime);
+                continue;
+            }
+            if (trigger.Panel == Panels.TargetDebuffs)
+            {
+                ProcessMatrixLine(_targetById, trigger, body, eventTime);
                 continue;
             }
 
-            // Panels not yet implemented (e.g. targetDebuffs, Phase 2) are skipped
-            // rather than falling through to the bars logic.
+            // Anything else that isn't "bars" is skipped rather than falling
+            // through to the bars logic.
             if (trigger.Panel != Panels.Bars) continue;
 
             // Default: countdown bars (Area 1).
@@ -140,9 +159,10 @@ public sealed class TriggerEngine
         }
     }
 
-    private void ProcessMatrixLine(TriggerDefinition trigger, string body, DateTime eventTime)
+    private static void ProcessMatrixLine(Dictionary<string, MatrixCellViewModel> byId,
+        TriggerDefinition trigger, string body, DateTime eventTime)
     {
-        if (!_selfById.TryGetValue(trigger.Id, out var cell)) return;
+        if (!byId.TryGetValue(trigger.Id, out var cell)) return;
 
         if (trigger.EndRegex is { } endRx && endRx.IsMatch(body))
             cell.Deactivate();
@@ -206,23 +226,30 @@ public sealed class TriggerEngine
     {
         var now = DateTime.Now;
         UpdateBars(now);
-        UpdateMatrix(now);
+        UpdateMatrix(SelfCells, now);
+        UpdateMatrix(TargetCells, now);
     }
 
     /// <summary>Test hook: drop a demo cell into the Self matrix (present ~15s, then missing).</summary>
-    public void AddDemoMatrixCell()
+    public void AddDemoMatrixCell() => AddDemoCell(SelfCells, _selfById, "Buff");
+
+    /// <summary>Test hook: drop a demo cell into the Target-Debuffs matrix.</summary>
+    public void AddDemoTargetCell() => AddDemoCell(TargetCells, _targetById, "Debuff");
+
+    private static void AddDemoCell(ObservableCollection<MatrixCellViewModel> cells,
+        Dictionary<string, MatrixCellViewModel> byId, string label)
     {
-        int n = _selfById.Keys.Count(k => k.StartsWith("__demoCell", StringComparison.Ordinal)) + 1;
+        int n = byId.Keys.Count(k => k.StartsWith("__demoCell", StringComparison.Ordinal)) + 1;
         string key = "__demoCell" + n;
-        var cell = new MatrixCellViewModel(key, "Demo " + n, 15, 0, false, null, null);
+        var cell = new MatrixCellViewModel(key, $"Demo {label} {n}", 15, 0, false, null, null);
         cell.Activate(DateTime.Now.AddSeconds(15));
-        _selfById[key] = cell;
-        SelfCells.Add(cell);
+        byId[key] = cell;
+        cells.Add(cell);
     }
 
-    private void UpdateMatrix(DateTime now)
+    private void UpdateMatrix(ObservableCollection<MatrixCellViewModel> cells, DateTime now)
     {
-        foreach (var cell in SelfCells)
+        foreach (var cell in cells)
         {
             if (!cell.IsActive) continue;
 

@@ -18,6 +18,8 @@ public partial class MatrixWindow : Window
 {
     private readonly string _panelKey;
     private readonly ConfigService _configService;
+    private readonly double _defaultLeft;
+    private readonly double _defaultTop;
     private nint _hwnd;
     private bool _locked;
 
@@ -29,13 +31,16 @@ public partial class MatrixWindow : Window
 
     public MatrixWindow(string panelKey, string title,
         ObservableCollection<MatrixCellViewModel> cells, int columns,
-        ConfigService configService, double opacity)
+        ConfigService configService, double opacity,
+        double defaultLeft, double defaultTop)
     {
         Columns = columns < 1 ? 1 : columns;
         InitializeComponent();
 
         _panelKey = panelKey;
         _configService = configService;
+        _defaultLeft = defaultLeft;
+        _defaultTop = defaultTop;
         Title = "EQL Overlay — " + title;
         HeaderText.Text = title;
         CellsControl.ItemsSource = cells;
@@ -50,7 +55,7 @@ public partial class MatrixWindow : Window
     {
         var pos = _configService.LoadPanelPos(_panelKey);
         if (pos is { } p) { Left = p.Left; Top = p.Top; }
-        else { Left = 60; Top = 420; } // default: below the main overlay
+        else { Left = _defaultLeft; Top = _defaultTop; }
         EnsureOnScreen();
         ApplyLockVisual();
     }
@@ -94,8 +99,9 @@ public partial class MatrixWindow : Window
     /// <summary>Snap back onto the primary monitor (tray recovery).</summary>
     public void ResetPosition()
     {
-        Left = SystemParameters.WorkArea.Left + 40;
-        Top = SystemParameters.WorkArea.Top + 220;
+        Left = SystemParameters.WorkArea.Left + _defaultLeft;
+        Top = SystemParameters.WorkArea.Top + _defaultTop;
+        EnsureOnScreen();
         _configService.SavePanelPos(_panelKey, Left, Top);
     }
 

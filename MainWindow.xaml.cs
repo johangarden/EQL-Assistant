@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private LogWatcher? _watcher;
     private TriggerManagerWindow? _manager;
     private MatrixWindow? _selfMatrix;
+    private MatrixWindow? _targetMatrix;
     private bool _hidden;
     private System.Windows.Forms.NotifyIcon? _tray;
 
@@ -91,26 +92,42 @@ public partial class MainWindow : Window
         ApplyClickThrough(); // safe now that _vm exists (also called in OnSourceInitialized)
         SetupTrayIcon();
         StartWatcher();
-        RebuildMatrixWindow();
+        RebuildMatrixWindows();
     }
 
     // ---- matrix panels ------------------------------------------------------
 
-    private void RebuildMatrixWindow()
+    private void RebuildMatrixWindows()
     {
-        if (_selfMatrix is not null) { _selfMatrix.Close(); _selfMatrix = null; }
-        _selfMatrix = new MatrixWindow("selfMatrix", "Self Buffs", _engine.SelfCells,
-            _config.Overlay.MatrixColumns, _configService, _config.Overlay.Opacity);
-        _selfMatrix.Show();
-        _selfMatrix.SetLocked(_vm.Locked);
+        _selfMatrix = RebuildPanel(_selfMatrix, "selfMatrix", "Self Buffs",
+            _engine.SelfCells, defaultLeft: 60, defaultTop: 420);
+        _targetMatrix = RebuildPanel(_targetMatrix, "targetDebuffs", "Target Debuffs",
+            _engine.TargetCells, defaultLeft: 420, defaultTop: 420);
         UpdateMatrixVisibility();
+    }
+
+    private MatrixWindow RebuildPanel(MatrixWindow? existing, string key, string title,
+        System.Collections.ObjectModel.ObservableCollection<ViewModels.MatrixCellViewModel> cells,
+        double defaultLeft, double defaultTop)
+    {
+        if (existing is not null) { try { existing.Close(); } catch { /* ignore */ } }
+        var w = new MatrixWindow(key, title, cells, _config.Overlay.MatrixColumns,
+            _configService, _config.Overlay.Opacity, defaultLeft, defaultTop);
+        w.Show();
+        w.SetLocked(_vm.Locked);
+        return w;
     }
 
     private void UpdateMatrixVisibility()
     {
-        if (_selfMatrix is null) return;
-        bool show = !_hidden && _engine.SelfCells.Count > 0;
-        _selfMatrix.Visibility = show ? Visibility.Visible : Visibility.Hidden;
+        SetPanelVisible(_selfMatrix, _engine.SelfCells.Count);
+        SetPanelVisible(_targetMatrix, _engine.TargetCells.Count);
+    }
+
+    private void SetPanelVisible(MatrixWindow? w, int cellCount)
+    {
+        if (w is null) return;
+        w.Visibility = (!_hidden && cellCount > 0) ? Visibility.Visible : Visibility.Hidden;
     }
 
     private void ApplyOpacity() =>
@@ -189,7 +206,7 @@ public partial class MainWindow : Window
             switch (wParam.ToInt32())
             {
                 case HK_LOCK:   ToggleLock();       handled = true; break;
-                case HK_TEST:   _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); UpdateMatrixVisibility(); handled = true; break;
+                case HK_TEST:   _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell(); UpdateMatrixVisibility(); handled = true; break;
                 case HK_HIDE:   ToggleHide();       handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;
                 case HK_QUIT:   Close();            handled = true; break;
@@ -207,6 +224,7 @@ public partial class MainWindow : Window
         ApplyClickThrough();
         ApplyLockVisual();
         _selfMatrix?.SetLocked(_vm.Locked);
+        _targetMatrix?.SetLocked(_vm.Locked);
         _configService.SaveWindowState(_config.Overlay);
     }
 
@@ -240,6 +258,7 @@ public partial class MainWindow : Window
         Topmost = true;
         Activate();
         _selfMatrix?.ResetPosition();
+        _targetMatrix?.ResetPosition();
         UpdateMatrixVisibility();
         _vm?.Flash("Position reset to primary screen.");
     }
@@ -332,7 +351,7 @@ public partial class MainWindow : Window
         ApplyOpacity();
         ApplyLockVisual();
         StartWatcher();
-        RebuildMatrixWindow();
+        RebuildMatrixWindows();
         _vm.Flash("Settings applied.");
         Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
                  $"selfCells={_engine.SelfCells.Count}");
@@ -515,6 +534,7 @@ public partial class MainWindow : Window
         UnregisterHotKeys();
         _watcher?.Dispose();
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
+        try { _targetMatrix?.Close(); } catch { /* ignore */ }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }
 }
