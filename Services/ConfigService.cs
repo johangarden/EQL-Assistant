@@ -246,6 +246,53 @@ public sealed class ConfigService
         public double? Top { get; set; }
     }
 
+    // ---- per-panel anchored placement (Phase 3) -----------------------------
+
+    public sealed record Placement(Models.Anchor Anchor, double OffX, double OffY);
+
+    public Placement? LoadPlacement(string name)
+    {
+        string path = System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json");
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var dto = JsonSerializer.Deserialize<PlacementDto>(File.ReadAllText(path), ReadOptions);
+            if (dto?.Anchor is { } a && Enum.TryParse<Models.Anchor>(a, ignoreCase: true, out var anchor))
+                return new Placement(anchor, dto.OffX ?? 0, dto.OffY ?? 0);
+        }
+        catch { /* ignore */ }
+        return null;
+    }
+
+    public void SavePlacement(string name, Models.Anchor anchor, double offX, double offY)
+    {
+        try
+        {
+            File.WriteAllText(System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json"),
+                JsonSerializer.Serialize(new PlacementDto
+                {
+                    Anchor = anchor.ToString(),
+                    OffX = Math.Round(offX, 1),
+                    OffY = Math.Round(offY, 1),
+                }, WriteOptions));
+        }
+        catch { /* best-effort */ }
+    }
+
+    /// <summary>Change just the anchor for a panel, preserving its offsets (defaults if none).</summary>
+    public void SetPanelAnchor(string name, Models.Anchor anchor)
+    {
+        var p = LoadPlacement(name);
+        SavePlacement(name, anchor, p?.OffX ?? 40, p?.OffY ?? 40);
+    }
+
+    private sealed class PlacementDto
+    {
+        public string? Anchor { get; set; }
+        public double? OffX { get; set; }
+        public double? OffY { get; set; }
+    }
+
     public void SaveWindowState(OverlayConfig overlay)
     {
         var state = new WindowState

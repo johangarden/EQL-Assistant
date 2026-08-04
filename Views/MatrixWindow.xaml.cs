@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using EQLOverlay.Interop;
+using EQLOverlay.Models;
 using EQLOverlay.Services;
 using EQLOverlay.ViewModels;
 
@@ -11,15 +12,12 @@ namespace EQLOverlay.Views;
 
 /// <summary>
 /// A movable, transparent overlay panel that renders a present/missing matrix of
-/// cells. Locking (click-through) and hiding are driven by the main overlay; this
-/// window only manages its own position.
+/// cells. Locking (click-through) and hiding are driven by the main overlay; a
+/// <see cref="PanelPlacement"/> keeps it anchored to its chosen screen corner.
 /// </summary>
 public partial class MatrixWindow : Window
 {
-    private readonly string _panelKey;
-    private readonly ConfigService _configService;
-    private readonly double _defaultLeft;
-    private readonly double _defaultTop;
+    private readonly PanelPlacement _placement;
     private nint _hwnd;
     private bool _locked;
 
@@ -37,26 +35,21 @@ public partial class MatrixWindow : Window
         Columns = columns < 1 ? 1 : columns;
         InitializeComponent();
 
-        _panelKey = panelKey;
-        _configService = configService;
-        _defaultLeft = defaultLeft;
-        _defaultTop = defaultTop;
         Title = "EQL Overlay — " + title;
         HeaderText.Text = title;
         CellsControl.ItemsSource = cells;
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
 
+        _placement = new PanelPlacement(this, configService, panelKey,
+            Anchor.TopLeft, defaultLeft, defaultTop);
+
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
-        LocationChanged += OnLocationChanged;
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        var pos = _configService.LoadPanelPos(_panelKey);
-        if (pos is { } p) { Left = p.Left; Top = p.Top; }
-        else { Left = _defaultLeft; Top = _defaultTop; }
-        EnsureOnScreen();
+        _placement.Attach();
         ApplyLockVisual();
     }
 
@@ -72,6 +65,12 @@ public partial class MatrixWindow : Window
         ApplyClickThrough();
         ApplyLockVisual();
     }
+
+    /// <summary>Re-read the persisted anchor/offset (after Settings changed it).</summary>
+    public void ReloadPlacement() => _placement.Reload();
+
+    /// <summary>Home the panel back to its default corner (tray recovery).</summary>
+    public void ResetPosition() => _placement.ResetToDefault();
 
     private void ApplyClickThrough()
     {
@@ -89,33 +88,5 @@ public partial class MatrixWindow : Window
     {
         if (e.ButtonState == MouseButtonState.Pressed && !_locked)
             DragMove();
-    }
-
-    private void OnLocationChanged(object? sender, EventArgs e)
-    {
-        if (IsLoaded) _configService.SavePanelPos(_panelKey, Left, Top);
-    }
-
-    /// <summary>Snap back onto the primary monitor (tray recovery).</summary>
-    public void ResetPosition()
-    {
-        Left = SystemParameters.WorkArea.Left + _defaultLeft;
-        Top = SystemParameters.WorkArea.Top + _defaultTop;
-        EnsureOnScreen();
-        _configService.SavePanelPos(_panelKey, Left, Top);
-    }
-
-    private void EnsureOnScreen()
-    {
-        double vL = SystemParameters.VirtualScreenLeft;
-        double vT = SystemParameters.VirtualScreenTop;
-        double vR = vL + SystemParameters.VirtualScreenWidth;
-        double vB = vT + SystemParameters.VirtualScreenHeight;
-        const double keep = 60;
-        if (Left < vL || Left > vR - keep || Top < vT || Top > vB - keep)
-        {
-            Left = Math.Clamp(Left, vL, Math.Max(vL, vR - keep));
-            Top = Math.Clamp(Top, vT, Math.Max(vT, vB - keep));
-        }
     }
 }

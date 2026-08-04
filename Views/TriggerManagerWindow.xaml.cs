@@ -310,6 +310,16 @@ public partial class TriggerManagerWindow : Window
         MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
+
+        BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
+        SelfAnchorBox.SelectedValue = (_configService.LoadPlacement("selfMatrix")?.Anchor ?? Anchor.TopLeft).ToString();
+        TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
+    }
+
+    private void ApplyAnchor(string panel, System.Windows.Controls.ComboBox combo)
+    {
+        if (combo.SelectedValue is string s && Enum.TryParse<Anchor>(s, out var a))
+            _configService.SetPanelAnchor(panel, a);
     }
 
     private void BrowseLogDir_Click(object sender, RoutedEventArgs e)
@@ -395,6 +405,11 @@ public partial class TriggerManagerWindow : Window
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return;
         }
+
+        // Persist panel anchors (offsets are preserved) before the overlay re-applies.
+        ApplyAnchor("main", BarsAnchorBox);
+        ApplyAnchor("selfMatrix", SelfAnchorBox);
+        ApplyAnchor("targetDebuffs", TargetAnchorBox);
 
         _config = cfg;
         _onApplied(_currentName);

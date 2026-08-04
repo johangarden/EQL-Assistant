@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private TriggerManagerWindow? _manager;
     private MatrixWindow? _selfMatrix;
     private MatrixWindow? _targetMatrix;
+    private PanelPlacement? _mainPlacement;
     private bool _hidden;
     private System.Windows.Forms.NotifyIcon? _tray;
 
@@ -49,7 +50,6 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
         Closing += OnClosing;
-        LocationChanged += OnLocationChanged;
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -76,9 +76,8 @@ public partial class MainWindow : Window
         DataContext = _vm;
 
         SizerHost.Width = _config.Overlay.Width;
-        Left = _config.Overlay.Left;
-        Top = _config.Overlay.Top;
-        EnsureOnScreen();
+        _mainPlacement = new PanelPlacement(this, _configService, "main", Anchor.TopLeft, 60, 140);
+        _mainPlacement.Attach();
 
         // Start locked (game-ready) if configured — overrides the remembered state.
         if (_config.Overlay.StartLocked)
@@ -132,28 +131,6 @@ public partial class MainWindow : Window
 
     private void ApplyOpacity() =>
         Opacity = Math.Clamp(_config.Overlay.Opacity <= 0 ? 1.0 : _config.Overlay.Opacity, 0.1, 1.0);
-
-    /// <summary>
-    /// Keep the window on a visible monitor. A stale/off-screen saved position
-    /// (e.g. after a monitor change) would otherwise make the overlay invisible.
-    /// </summary>
-    private void EnsureOnScreen()
-    {
-        double vL = SystemParameters.VirtualScreenLeft;
-        double vT = SystemParameters.VirtualScreenTop;
-        double vR = vL + SystemParameters.VirtualScreenWidth;
-        double vB = vT + SystemParameters.VirtualScreenHeight;
-
-        const double keepVisible = 80; // px that must stay on-screen
-
-        if (Left < vL || Left > vR - keepVisible || Top < vT || Top > vB - keepVisible)
-        {
-            Left = Math.Clamp(Left, vL, Math.Max(vL, vR - keepVisible));
-            Top = Math.Clamp(Top, vT, Math.Max(vT, vB - keepVisible));
-            _config.Overlay.Left = Left;
-            _config.Overlay.Top = Top;
-        }
-    }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
@@ -244,23 +221,19 @@ public partial class MainWindow : Window
         UpdateMatrixVisibility();
     }
 
-    /// <summary>Bring the overlay back to the top-left of the primary monitor (tray recovery).</summary>
+    /// <summary>Home every panel to its default corner (tray recovery).</summary>
     private void ResetPosition()
     {
-        Left = SystemParameters.WorkArea.Left + 40;
-        Top = SystemParameters.WorkArea.Top + 40;
-        _config.Overlay.Left = Left;
-        _config.Overlay.Top = Top;
-        _configService.SaveWindowState(_config.Overlay);
-
         _hidden = false;
         Visibility = Visibility.Visible;
         Topmost = true;
         Activate();
+
+        _mainPlacement?.ResetToDefault();
         _selfMatrix?.ResetPosition();
         _targetMatrix?.ResetPosition();
         UpdateMatrixVisibility();
-        _vm?.Flash("Position reset to primary screen.");
+        _vm?.Flash("Panels reset to their corners.");
     }
 
     // ---- config -------------------------------------------------------------
@@ -351,6 +324,7 @@ public partial class MainWindow : Window
         ApplyOpacity();
         ApplyLockVisual();
         StartWatcher();
+        _mainPlacement?.Reload();   // pick up any anchor change from Settings
         RebuildMatrixWindows();
         _vm.Flash("Settings applied.");
         Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
@@ -510,12 +484,6 @@ public partial class MainWindow : Window
 
     // ---- persistence / teardown ---------------------------------------------
 
-    private void OnLocationChanged(object? sender, EventArgs e)
-    {
-        if (_vm is null) return;
-        _config.Overlay.Left = Left;
-        _config.Overlay.Top = Top;
-    }
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
