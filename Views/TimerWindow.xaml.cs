@@ -73,7 +73,7 @@ public partial class TimerWindow : Window
         if (sec is not > 0) return;
 
         _lastText = input.Trim();
-        SetDuration(sec.Value, start: true);
+        SetDuration(sec.Value, start: false); // set, but don't auto-start — press Play
         _onDurationSet?.Invoke(sec.Value);
     }
 
@@ -84,14 +84,19 @@ public partial class TimerWindow : Window
 
     private void OnSet(object sender, RoutedEventArgs e) => PromptSet();
 
-    private void OnPlay(object sender, RoutedEventArgs e)
+    private void OnPlayPause(object sender, RoutedEventArgs e)
     {
-        if (_remaining <= 0) return;
-        _running = true;
-        _endTime = DateTime.Now.AddSeconds(_remaining);
+        if (_running)
+        {
+            _running = false;               // pause
+        }
+        else if (_remaining > 0)
+        {
+            _running = true;                // start / resume
+            _endTime = DateTime.Now.AddSeconds(_remaining);
+        }
+        UpdateVisual();
     }
-
-    private void OnPause(object sender, RoutedEventArgs e) => _running = false;
 
     private void OnRestart(object sender, RoutedEventArgs e)
     {
@@ -135,7 +140,12 @@ public partial class TimerWindow : Window
     {
         double frac = _total > 0 ? Math.Clamp(_remaining / _total, 0, 1) : 0;
         BuildWedge(frac);
+        Wedge.Fill = new SolidColorBrush(ColorFor(frac)); // green -> amber -> red as it runs down
         TimeText.Text = Format(_remaining);
+
+        // Toggle button reflects state: ▶ when stopped, ⏸ when running.
+        PlayPauseBtn.Content = _running ? "" : "";
+        PlayPauseBtn.ToolTip = _running ? "Pause" : "Start / resume";
 
         bool warn = _running && _remaining > 0 && _remaining <= 10;
         if (warn)
@@ -147,8 +157,28 @@ public partial class TimerWindow : Window
         else
         {
             TimeText.Foreground = Brushes.White;
-            Wedge.Opacity = 1.0;
+            Wedge.Opacity = _running ? 1.0 : 0.82; // dim while paused/idle
         }
+    }
+
+    /// <summary>Countdown color ramp: green (full) → amber (half) → red (empty).</summary>
+    private static Color ColorFor(double f)
+    {
+        Color green = Color.FromRgb(0x4C, 0xAF, 0x50);
+        Color amber = Color.FromRgb(0xFF, 0xA7, 0x26);
+        Color red = Color.FromRgb(0xE5, 0x39, 0x35);
+        return f >= 0.5
+            ? Lerp(amber, green, (f - 0.5) / 0.5)
+            : Lerp(red, amber, f / 0.5);
+    }
+
+    private static Color Lerp(Color a, Color b, double t)
+    {
+        t = Math.Clamp(t, 0, 1);
+        return Color.FromRgb(
+            (byte)(a.R + (b.R - a.R) * t),
+            (byte)(a.G + (b.G - a.G) * t),
+            (byte)(a.B + (b.B - a.B) * t));
     }
 
     private void BuildWedge(double frac)

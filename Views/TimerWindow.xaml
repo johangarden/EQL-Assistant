@@ -34,12 +34,10 @@
             </Grid>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
-                <Button Style="{StaticResource IconBtn}" Click="OnSet" Margin="0,0,4,0"
+                <Button Style="{StaticResource IconBtn}" Click="OnSet" Margin="0,0,6,0"
                         FontFamily="Segoe MDL2 Assets" Content="&#xE70F;" ToolTip="Set duration"/>
-                <Button Style="{StaticResource IconBtn}" Click="OnPlay" Margin="0,0,4,0"
+                <Button x:Name="PlayPauseBtn" Style="{StaticResource IconBtn}" Click="OnPlayPause" Margin="0,0,6,0"
                         FontFamily="Segoe MDL2 Assets" Content="&#xE768;" ToolTip="Start / resume"/>
-                <Button Style="{StaticResource IconBtn}" Click="OnPause" Margin="0,0,4,0"
-                        FontFamily="Segoe MDL2 Assets" Content="&#xE769;" ToolTip="Pause"/>
                 <Button Style="{StaticResource IconBtn}" Click="OnRestart"
                         FontFamily="Segoe MDL2 Assets" Content="&#xE72C;" ToolTip="Restart"/>
             </StackPanel>
