@@ -103,9 +103,10 @@
                                 <ComboBoxItem Content="Bars — countdown timers" Tag="bars"/>
                                 <ComboBoxItem Content="Self buffs — present/missing matrix" Tag="selfBuffs"/>
                                 <ComboBoxItem Content="Target debuffs — present/missing matrix" Tag="targetDebuffs"/>
+                                <ComboBoxItem Content="Repop timer — auto-start on match" Tag="timerAuto"/>
                             </ComboBox>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="Bars = a depleting timer. Matrix = a red/green cell (present + seconds left)."/>
+                                       Text="Bars = a depleting timer. Matrix = a red/green cell (present + seconds left). Repop timer = when the start pattern matches (e.g. a named mob death), the circular watch starts with this trigger's Duration."/>
 
                             <TextBlock Text="Category (bars grouping)" Style="{StaticResource FieldLabel}"/>
                             <ComboBox IsEditable="True" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}">

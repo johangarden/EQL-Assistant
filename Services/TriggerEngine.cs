@@ -40,6 +40,9 @@ public sealed class TriggerEngine
     public ObservableCollection<MatrixCellViewModel> TargetCells { get; } = new();
     private readonly Dictionary<string, MatrixCellViewModel> _targetById = new();
 
+    /// <summary>Raised when a "timerAuto" trigger matches: (durationSeconds, triggerName).</summary>
+    public event Action<double, string>? TimerRequested;
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -137,6 +140,13 @@ public sealed class TriggerEngine
             if (trigger.Panel == Panels.TargetDebuffs)
             {
                 ProcessMatrixLine(_targetById, trigger, body, eventTime);
+                continue;
+            }
+
+            if (trigger.Panel == Panels.TimerAuto)
+            {
+                if (trigger.StartRegex is { } tr && tr.IsMatch(body))
+                    TimerRequested?.Invoke(trigger.DurationSeconds, trigger.Name);
                 continue;
             }
 

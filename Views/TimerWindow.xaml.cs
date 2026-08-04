@@ -80,6 +80,13 @@ public partial class TimerWindow : Window
     public void ResetPosition() => _placement.ResetToDefault();
     public void ReloadPlacement() => _placement.Reload();
 
+    /// <summary>Start (or restart) the timer at the given duration — used by auto-start triggers.</summary>
+    public void StartWith(double seconds)
+    {
+        if (seconds <= 0) return;
+        SetDuration(seconds, start: true);
+    }
+
     // ---- controls -----------------------------------------------------------
 
     private void OnSet(object sender, RoutedEventArgs e) => PromptSet();

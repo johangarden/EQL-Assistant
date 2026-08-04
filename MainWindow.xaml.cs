@@ -76,6 +76,7 @@ public partial class MainWindow : Window
         _alerts.Muted = _config.Overlay.Muted;
         _timerHidden = !_config.Overlay.TimerVisible;
         _engine = new TriggerEngine(_config, _alerts);
+        _engine.TimerRequested += OnTimerRequested;
         _vm = new OverlayViewModel(_engine, _config) { LoadoutName = _config.ActiveLoadout };
         DataContext = _vm;
 
@@ -393,6 +394,22 @@ public partial class MainWindow : Window
     // ---- repop / respawn timer ----------------------------------------------
 
     private void OnRepop(object sender, RoutedEventArgs e) => ToggleTimer();
+
+    /// <summary>A "timerAuto" trigger matched (e.g. a named mob death) — start the watch.</summary>
+    private void OnTimerRequested(double seconds, string name)
+    {
+        if (_timerHidden)
+        {
+            _timerHidden = false;
+            _config.Overlay.TimerVisible = true;
+            _configService.SaveSettings(_config);
+        }
+        if (_hidden) ToggleHide();
+        UpdateTimerVisibility();
+        _timer?.StartWith(seconds);
+        _vm.Flash($"{name} down — repop timer started.");
+        Log.Info($"Auto-started repop timer ({seconds:0}s) from trigger '{name}'.");
+    }
 
     private void ToggleMute()
     {
