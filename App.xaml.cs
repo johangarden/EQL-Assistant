@@ -121,6 +121,14 @@ public partial class App : Application
 
             engine.ProcessLine("a line matching nothing at all");
             Check("non-matching line ignored", engine.Bars.Count == 1);
+
+            // Manual repop stopwatch
+            engine.AddManualTimer("Repop", 12);
+            var mt = engine.Bars.FirstOrDefault(b => b.Category == "Timers");
+            Check("manual repop bar added", mt is not null);
+            Check("repop warns at 10s", mt?.WarnOverride == 10);
+            Check("repop beeps on expire", mt is { BeepOnExpire: true });
+            Check("repop remaining ~12s", mt is not null && mt.RemainingSeconds > 10 && mt.RemainingSeconds <= 12);
         }
         catch (Exception ex)
         {

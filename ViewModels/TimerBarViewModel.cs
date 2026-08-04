@@ -37,6 +37,20 @@ public sealed class TimerBarViewModel : ViewModelBase
         return vm;
     }
 
+    /// <summary>A manual repop/respawn countdown: warns at 10s and beeps on expire.</summary>
+    public static TimerBarViewModel CreateManual(string key, string name, double totalSeconds, Brush fill)
+    {
+        var vm = new TimerBarViewModel(key, name, "Timers", fill)
+        {
+            TotalSeconds = totalSeconds <= 0 ? 1 : totalSeconds,
+            EndTimeLocal = DateTime.Now.AddSeconds(totalSeconds <= 0 ? 1 : totalSeconds),
+            WarnOverride = 10,
+            BeepOnExpire = true,
+        };
+        vm.Refresh(DateTime.Now, double.MaxValue);
+        return vm;
+    }
+
     /// <summary>A static red "REBUFF" indicator for a missing buff.</summary>
     public static TimerBarViewModel CreateMissing(string key, string name, string category, Brush fill)
     {
@@ -65,6 +79,12 @@ public sealed class TimerBarViewModel : ViewModelBase
     public bool AlertOnExpire { get; private init; }
     public string? AlertSpeak { get; private init; }
     public string? AlertSound { get; private init; }
+
+    /// <summary>Warn threshold that overrides the global one (repop timers use 10s).</summary>
+    public double? WarnOverride { get; private init; }
+
+    /// <summary>Play a short bip when this bar expires (repop timers).</summary>
+    public bool BeepOnExpire { get; private init; }
 
     /// <summary>Engine flag so a "fading" alert only fires once per fill.</summary>
     public bool FadeAlertFired { get; set; }
@@ -123,7 +143,7 @@ public sealed class TimerBarViewModel : ViewModelBase
         RemainingSeconds = remaining;
         Fraction = Math.Clamp(remaining / TotalSeconds, 0, 1);
         RemainingText = Format(remaining);
-        IsWarning = remaining > 0 && remaining <= warnSeconds;
+        IsWarning = remaining > 0 && remaining <= (WarnOverride ?? warnSeconds);
     }
 
     private static string Format(double seconds)

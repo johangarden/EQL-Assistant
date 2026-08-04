@@ -206,6 +206,16 @@ public sealed class TriggerEngine
             Bars.Remove(vm);
     }
 
+    /// <summary>Start a manual repop/respawn countdown bar (amber, warns at 10s, beeps at 0).</summary>
+    public void AddManualTimer(string name, double seconds)
+    {
+        string key = "__manual" + (_active.Count(k => k.Key.StartsWith("__manual", StringComparison.Ordinal)) + 1)
+                     + "-" + name;
+        var vm = TimerBarViewModel.CreateManual(key, name, seconds, MakeBrush("#FFA726"));
+        _active[key] = vm;
+        InsertSorted(vm);
+    }
+
     public void AddDemoTimer()
     {
         int n = _active.Count(k => k.Key.StartsWith("__demo", StringComparison.Ordinal)) + 1;
@@ -289,6 +299,7 @@ public sealed class TriggerEngine
         {
             foreach (var bar in expired)
             {
+                if (bar.BeepOnExpire) _alerts.Beep();
                 if (bar.AlertOnExpire)
                     _alerts.Fire(bar.AlertSpeak, bar.AlertSound);
                 _active.Remove(bar.Key);

@@ -54,6 +54,30 @@ internal static class NativeMethods
             ? SetWindowLongPtr(hWnd, nIndex, dwNewLong)
             : SetWindowLong(hWnd, nIndex, (int)dwNewLong);
 
+    [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(nint hWnd, out uint pid);
+    [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
+    [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(nint hWnd);
+
+    /// <summary>
+    /// Force a window to the foreground even when spawned from a background /
+    /// no-activate app (uses the AttachThreadInput trick to bypass the foreground lock).
+    /// </summary>
+    public static void ForceForeground(nint hWnd)
+    {
+        try
+        {
+            nint fg = GetForegroundWindow();
+            uint fgThread = GetWindowThreadProcessId(fg, out _);
+            uint cur = GetCurrentThreadId();
+            bool attached = fgThread != cur && AttachThreadInput(cur, fgThread, true);
+            SetForegroundWindow(hWnd);
+            if (attached) AttachThreadInput(cur, fgThread, false);
+        }
+        catch { /* best-effort */ }
+    }
+
     /// <summary>Turn mouse click-through on or off for the given window.</summary>
     public static void SetClickThrough(nint hWnd, bool enabled)
     {

@@ -125,6 +125,10 @@
                                 Style="{StaticResource AccentBtn}" Margin="6,0,0,0"
                                 ToolTip="Open Trigger Manager"/>
 
+                        <Button DockPanel.Dock="Right" Click="OnRepop" Style="{StaticResource IconBtn}"
+                                Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE916;"
+                                ToolTip="Start a repop / respawn timer (Ctrl+Alt+R)"/>
+
                         <!-- fill: loadout dropdown, truncates to fit -->
                         <Button Click="OnLoadoutMenu" Style="{StaticResource ToolBtn}"
                                 Margin="8,0,0,0" HorizontalContentAlignment="Left" ToolTip="Switch loadout">
@@ -134,7 +138,7 @@
                     </DockPanel>
                     <TextBlock Text="{Binding Status}" Foreground="#7F93AD"
                                FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap"/>
-                    <TextBlock Text="Ctrl+Alt+ L lock · T test · H hide · S mute · Q quit"
+                    <TextBlock Text="Ctrl+Alt+ L lock · R repop · T test · H hide · S mute · Q quit"
                                Foreground="#5C6B82" FontSize="10" Margin="0,3,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>

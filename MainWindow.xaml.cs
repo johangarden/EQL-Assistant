@@ -40,6 +40,9 @@ public partial class MainWindow : Window
     private const int HK_HIDE    = 5;
     private const int HK_MUTE    = 7;
     private const int HK_QUIT    = 9;
+    private const int HK_REPOP   = 10;
+
+    private string _lastRepop = "6:40"; // remembered repop duration (classic EQ default)
 
     private static readonly Brush UnlockedBackdrop =
         new SolidColorBrush(Color.FromArgb(0x30, 0x0A, 0x0E, 0x14));
@@ -168,11 +171,12 @@ public partial class MainWindow : Window
         NativeMethods.RegisterHotKey(_hwnd, HK_HIDE,   mods, 0x48); // H
         NativeMethods.RegisterHotKey(_hwnd, HK_MUTE,   mods, 0x53); // S
         NativeMethods.RegisterHotKey(_hwnd, HK_QUIT,   mods, 0x51); // Q
+        NativeMethods.RegisterHotKey(_hwnd, HK_REPOP,  mods, 0x52); // R
     }
 
     private void UnregisterHotKeys()
     {
-        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT })
+        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT, HK_REPOP })
             NativeMethods.UnregisterHotKey(_hwnd, id);
     }
 
@@ -187,6 +191,7 @@ public partial class MainWindow : Window
                 case HK_HIDE:   ToggleHide();       handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;
                 case HK_QUIT:   Close();            handled = true; break;
+                case HK_REPOP:  OpenRepopDialog();  handled = true; break;
             }
         }
         return nint.Zero;
@@ -350,6 +355,61 @@ public partial class MainWindow : Window
         Log.Info($"Loadout switched to '{lo.Name}' ({lo.Triggers.Count} triggers)");
     }
 
+    // ---- repop / respawn stopwatch ------------------------------------------
+
+    private void OpenRepopDialog()
+    {
+        string? input = Views.PromptDialog.Show(this, "Repop timer",
+            "Duration — m:ss, or 90s, or 6m:", _lastRepop);
+        if (input is null) return;
+
+        double? seconds = ParseDuration(input);
+        if (seconds is not > 0)
+        {
+            _vm.Flash($"Couldn't read '{input}' — try 6:40 or 400");
+            return;
+        }
+
+        _lastRepop = input.Trim();
+        if (_hidden) ToggleHide();               // make sure it's visible
+        _engine.AddManualTimer("Repop", seconds.Value);
+        _vm.Flash($"Repop timer started ({FormatMs(seconds.Value)}).");
+        Log.Info($"Repop timer started: {seconds.Value:0}s");
+    }
+
+    /// <summary>Parse "m:ss", "90s", "6m", or a plain number (seconds).</summary>
+    private static double? ParseDuration(string text)
+    {
+        text = text.Trim().ToLowerInvariant();
+        if (text.Length == 0) return null;
+
+        if (text.Contains(':'))
+        {
+            var parts = text.Split(':');
+            if (parts.Length == 2
+                && int.TryParse(parts[0], out int m) && m >= 0
+                && int.TryParse(parts[1], out int s) && s is >= 0 and < 60)
+                return m * 60 + s;
+            return null;
+        }
+
+        double mult = 1;
+        if (text.EndsWith('m')) { mult = 60; text = text[..^1]; }
+        else if (text.EndsWith('s')) { text = text[..^1]; }
+
+        return double.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out double n) && n > 0
+            ? n * mult
+            : null;
+    }
+
+    private static string FormatMs(double seconds)
+    {
+        var ts = TimeSpan.FromSeconds(Math.Round(seconds));
+        return ts.TotalHours >= 1 ? $"{(int)ts.TotalHours}:{ts.Minutes:00}:{ts.Seconds:00}" : $"{ts.Minutes}:{ts.Seconds:00}";
+    }
+
+    private void OnRepop(object sender, RoutedEventArgs e) => OpenRepopDialog();
+
     private void ToggleMute()
     {
         _alerts.Muted = !_alerts.Muted;
@@ -441,6 +501,7 @@ public partial class MainWindow : Window
         };
         menu.Items.Add(loadoutItem);
 
+        menu.Items.Add("Repop timer…", null, (_, _) => OpenRepopDialog());
         menu.Items.Add("Manage…", null, (_, _) => OpenManager());
         menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
