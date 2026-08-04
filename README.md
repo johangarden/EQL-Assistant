@@ -105,6 +105,23 @@ relative to the corner, so they survive resolution changes. (Anchors are
 relative to your primary monitor.) Drag to fine-tune while unlocked; **tray →
 Reset position** homes every panel.
 
+## Repop / respawn timer
+
+A circular **Time-Timer-style** watch (its own panel + anchor) for spawn timers:
+- A red pie shrinks clockwise (ramps **green → amber → red**), big `m:ss` centre,
+  pulses red in the last 10s and **beeps at 0**.
+- Controls: **☰** mode/preset menu · **✏** set duration · **▶/⏸** play/pause ·
+  **↻** restart. Show/hide the watch with **⏱** on the toolbar, the tray, or
+  **Ctrl+Alt+R**. Set = manual ("Normal") mode.
+- **Auto-start on death:** make a trigger, capture the mob's death line (e.g.
+  `Lord Nagafen has been slain`) from the live feed, set its Duration to the
+  repop, and choose **"Repop timer — auto-start on match"**. When that line
+  appears, the watch starts automatically.
+- **☰ menu** switches between *Normal (manual)* and your named-mob presets.
+- **Multiple at once:** the big watch shows the most-recent kill; other running
+  named repops appear as small secondary rows so none are lost, each dropping
+  off (with a beep) when it expires.
+
 ## Loadouts (class combos)
 
 EQL is one character but many class combinations, so triggers are organised into
