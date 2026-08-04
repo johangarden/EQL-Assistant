@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -7,6 +8,7 @@ using System.Windows.Threading;
 using EQLOverlay.Interop;
 using EQLOverlay.Models;
 using EQLOverlay.Services;
+using EQLOverlay.ViewModels;
 
 namespace EQLOverlay.Views;
 
@@ -33,6 +35,17 @@ public partial class TimerWindow : Window
     /// <summary>Supplies the named-mob presets (from timerAuto triggers) for the menu.</summary>
     public Func<IReadOnlyList<(string Name, double Seconds)>>? PresetProvider { get; set; }
 
+    // Secondary named repops still running (the big watch shows the most recent).
+    private sealed class RepopEntry
+    {
+        public required string Name;
+        public double Total;
+        public DateTime EndTime;
+        public required SecondaryTimerViewModel Vm;
+    }
+    private readonly List<RepopEntry> _repops = new();
+    private readonly ObservableCollection<SecondaryTimerViewModel> _secondaries = new();
+
     private static readonly Brush WarnRed = Freeze(Color.FromRgb(0xFF, 0x52, 0x52));
 
     public TimerWindow(ConfigService config, AlertService alerts,
@@ -48,6 +61,8 @@ public partial class TimerWindow : Window
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
 
         _placement = new PanelPlacement(this, config, "timer", Anchor.TopRight, 40, 40);
+
+        SecondariesControl.ItemsSource = _secondaries;
 
         _tick = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(66) };
         _tick.Tick += (_, _) => OnTick();
@@ -91,8 +106,36 @@ public partial class TimerWindow : Window
     public void StartWith(double seconds, string? name = null)
     {
         if (seconds <= 0) return;
-        if (name is not null) SetMode(name);
+
+        if (name is not null)
+        {
+            // The big watch shows the most recent kill; if it's currently running a
+            // *different* named repop, move that one to the secondary list so it isn't lost.
+            if (_modeName is not null && _running && _remaining > 0
+                && !string.Equals(_modeName, name, StringComparison.OrdinalIgnoreCase))
+                AddSecondary(_modeName, _total, _endTime);
+
+            RemoveSecondary(name); // re-kill of a mob that was a secondary -> it becomes the big watch
+            SetMode(name);
+        }
+
         SetDuration(seconds, start: true);
+    }
+
+    private void AddSecondary(string name, double total, DateTime endTime)
+    {
+        RemoveSecondary(name);
+        var vm = new SecondaryTimerViewModel(name);
+        _repops.Add(new RepopEntry { Name = name, Total = total, EndTime = endTime, Vm = vm });
+        _secondaries.Add(vm);
+    }
+
+    private void RemoveSecondary(string name)
+    {
+        var e = _repops.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (e is null) return;
+        _repops.Remove(e);
+        _secondaries.Remove(e.Vm);
     }
 
     // ---- mode / preset menu -------------------------------------------------
@@ -188,6 +231,26 @@ public partial class TimerWindow : Window
             }
         }
         UpdateVisual();
+        UpdateSecondaries();
+    }
+
+    private void UpdateSecondaries()
+    {
+        var now = DateTime.Now;
+        for (int i = _repops.Count - 1; i >= 0; i--)
+        {
+            var e = _repops[i];
+            double rem = (e.EndTime - now).TotalSeconds;
+            if (rem <= 0)
+            {
+                _alerts.Beep();
+                _secondaries.Remove(e.Vm);
+                _repops.RemoveAt(i);
+                continue;
+            }
+            e.Vm.RemainingText = Format(rem);
+            e.Vm.Foreground = new SolidColorBrush(ColorFor(e.Total > 0 ? rem / e.Total : 0));
+        }
     }
 
     private void UpdateVisual()

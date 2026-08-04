@@ -50,6 +50,21 @@
                 <Button Style="{StaticResource IconBtn}" Click="OnRestart"
                         FontFamily="Segoe MDL2 Assets" Content="&#xE72C;" ToolTip="Restart"/>
             </StackPanel>
+
+            <!-- Other named repops still running (the big watch shows the most recent). -->
+            <ItemsControl x:Name="SecondariesControl" Margin="0,8,0,0" MaxWidth="150">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="2,1">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding RemainingText}"
+                                       Foreground="{Binding Foreground}" FontWeight="Bold" FontSize="12"
+                                       Margin="8,0,0,0"/>
+                            <TextBlock Text="{Binding Name}" Foreground="{Binding Foreground}" FontSize="12"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </DockPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
     </Border>
 </Window>
