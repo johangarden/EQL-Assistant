@@ -83,6 +83,28 @@ shows when muted. Opening the config folder now lives in the tray menu.
 Move it by dragging the toolbar while unlocked. Position and lock state are
 remembered.
 
+## Display panels
+
+Tracking is split across three independent, movable overlay panels:
+
+1. **Bars** — countdown timers for your (and pet/other players') HoTs & short
+   buffs. Unique log names make per-target timers reliable here.
+2. **Self Buffs** — a present/missing **matrix**: each buff is a cell, green +
+   seconds-left when up, red when missing. Great "do I have everything?" check.
+3. **Target Debuffs** — same matrix, for debuffs on your target. It's
+   **single-target, spell-keyed** (a debuff is "up" while its timer runs), which
+   is how it copes with EQ's non-unique mob names — accurate on bosses,
+   approximate on duplicate trash.
+
+Assign each trigger to a panel with the **"Show in"** dropdown in the Manager.
+
+**Anchors:** in Manage → Settings, pin each panel to a screen corner. A panel
+grows *away* from its anchor, so a **Bottom-Left** bars panel keeps its bottom
+edge fixed and grows upward — ideal above your hotbar. Positions are stored
+relative to the corner, so they survive resolution changes. (Anchors are
+relative to your primary monitor.) Drag to fine-tune while unlocked; **tray →
+Reset position** homes every panel.
+
 ## Loadouts (class combos)
 
 EQL is one character but many class combinations, so triggers are organised into
