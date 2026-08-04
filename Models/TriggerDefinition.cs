@@ -3,6 +3,14 @@ using System.Text.RegularExpressions;
 
 namespace EQLOverlay.Models;
 
+/// <summary>Where a trigger is displayed.</summary>
+public static class Panels
+{
+    public const string Bars = "bars";                   // Area 1: countdown bars
+    public const string SelfBuffs = "selfBuffs";         // Area 3: self-buff present/missing matrix
+    public const string TargetDebuffs = "targetDebuffs"; // Area 2: target-debuff matrix
+}
+
 /// <summary>
 /// One user-defined rule: when a log line matches <see cref="StartPattern"/>,
 /// start (or refresh) a countdown bar of <see cref="DurationSeconds"/>. An
@@ -18,6 +26,9 @@ public sealed class TriggerDefinition
 
     /// <summary>Free-form grouping label, e.g. "Buffs", "HoTs", "DoTs", "Cooldowns".</summary>
     public string Category { get; set; } = "Buffs";
+
+    /// <summary>Which panel renders this: "bars" (default), "selfBuffs", "targetDebuffs".</summary>
+    public string Panel { get; set; } = Panels.Bars;
 
     /// <summary>Master on/off switch for this trigger.</summary>
     public bool Enabled { get; set; } = true;

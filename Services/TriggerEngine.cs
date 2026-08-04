@@ -32,6 +32,14 @@ public sealed class TriggerEngine
     /// <summary>Bound directly by the overlay's ItemsControl.</summary>
     public ObservableCollection<TimerBarViewModel> Bars { get; } = new();
 
+    /// <summary>Persistent present/missing cells for the Self-Buffs matrix panel.</summary>
+    public ObservableCollection<MatrixCellViewModel> SelfCells { get; } = new();
+    private readonly Dictionary<string, MatrixCellViewModel> _selfById = new();
+
+    /// <summary>Persistent present/missing cells for the Target-Debuffs matrix panel.</summary>
+    public ObservableCollection<MatrixCellViewModel> TargetCells { get; } = new();
+    private readonly Dictionary<string, MatrixCellViewModel> _targetById = new();
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -52,8 +60,10 @@ public sealed class TriggerEngine
         {
             Interval = TimeSpan.FromMilliseconds(66) // ~15 fps
         };
-        _tick.Tick += (_, _) => UpdateBars();
+        _tick.Tick += (_, _) => Tick();
         _tick.Start();
+
+        BuildMatrices();
     }
 
     public void UpdateConfig(AppConfig config)
@@ -61,6 +71,7 @@ public sealed class TriggerEngine
         _triggers = config.Triggers;
         _warnSeconds = config.Overlay.WarnSeconds;
         _remindInterval = config.Overlay.RemindIntervalSeconds;
+        BuildMatrices();
 
         // Drop missing indicators whose trigger no longer wants them.
         foreach (var id in _missing.Keys.ToList())
@@ -82,6 +93,32 @@ public sealed class TriggerEngine
         _lastRemind.Clear();
         _seen.Clear();
         Bars.Clear();
+        foreach (var c in SelfCells) c.Deactivate();
+        foreach (var c in TargetCells) c.Deactivate();
+    }
+
+    /// <summary>(Re)build the matrix cells from the current trigger set (all start missing).</summary>
+    private void BuildMatrices()
+    {
+        SelfCells.Clear(); _selfById.Clear();
+        TargetCells.Clear(); _targetById.Clear();
+
+        foreach (var t in _triggers)
+        {
+            if (!t.Enabled) continue;
+            var (cells, byId) = t.Panel switch
+            {
+                Panels.SelfBuffs => (SelfCells, _selfById),
+                Panels.TargetDebuffs => (TargetCells, _targetById),
+                _ => (null, null),
+            };
+            if (cells is null || byId is null) continue;
+
+            var cell = new MatrixCellViewModel(t.Id, t.Name, t.DurationSeconds,
+                t.Alert?.AtSeconds ?? 0, t.Alert?.OnExpire ?? false, t.Alert?.Speak, t.Alert?.Sound);
+            byId[t.Id] = cell;
+            cells.Add(cell);
+        }
     }
 
     public void ProcessLine(string rawLine)
@@ -92,6 +129,22 @@ public sealed class TriggerEngine
         {
             if (!trigger.Enabled) continue;
 
+            if (trigger.Panel == Panels.SelfBuffs)
+            {
+                ProcessMatrixLine(_selfById, trigger, body, eventTime);
+                continue;
+            }
+            if (trigger.Panel == Panels.TargetDebuffs)
+            {
+                ProcessMatrixLine(_targetById, trigger, body, eventTime);
+                continue;
+            }
+
+            // Anything else that isn't "bars" is skipped rather than falling
+            // through to the bars logic.
+            if (trigger.Panel != Panels.Bars) continue;
+
+            // Default: countdown bars (Area 1).
             if (trigger.EndRegex is { } endRx)
             {
                 var m = endRx.Match(body);
@@ -104,6 +157,18 @@ public sealed class TriggerEngine
                 if (m.Success) StartOrRefresh(trigger, m, eventTime);
             }
         }
+    }
+
+    private static void ProcessMatrixLine(Dictionary<string, MatrixCellViewModel> byId,
+        TriggerDefinition trigger, string body, DateTime eventTime)
+    {
+        if (!byId.TryGetValue(trigger.Id, out var cell)) return;
+
+        if (trigger.EndRegex is { } endRx && endRx.IsMatch(body))
+            cell.Deactivate();
+
+        if (trigger.StartRegex is { } startRx && startRx.IsMatch(body))
+            cell.Activate(eventTime.AddSeconds(trigger.DurationSeconds));
     }
 
     private void StartOrRefresh(TriggerDefinition trigger, Match match, DateTime eventTime)
@@ -157,10 +222,53 @@ public sealed class TriggerEngine
         InsertSorted(vm);
     }
 
-    private void UpdateBars()
+    private void Tick()
     {
         var now = DateTime.Now;
+        UpdateBars(now);
+        UpdateMatrix(SelfCells, now);
+        UpdateMatrix(TargetCells, now);
+    }
 
+    /// <summary>Test hook: drop a demo cell into the Self matrix (present ~15s, then missing).</summary>
+    public void AddDemoMatrixCell() => AddDemoCell(SelfCells, _selfById, "Buff");
+
+    /// <summary>Test hook: drop a demo cell into the Target-Debuffs matrix.</summary>
+    public void AddDemoTargetCell() => AddDemoCell(TargetCells, _targetById, "Debuff");
+
+    private static void AddDemoCell(ObservableCollection<MatrixCellViewModel> cells,
+        Dictionary<string, MatrixCellViewModel> byId, string label)
+    {
+        int n = byId.Keys.Count(k => k.StartsWith("__demoCell", StringComparison.Ordinal)) + 1;
+        string key = "__demoCell" + n;
+        var cell = new MatrixCellViewModel(key, $"Demo {label} {n}", 15, 0, false, null, null);
+        cell.Activate(DateTime.Now.AddSeconds(15));
+        byId[key] = cell;
+        cells.Add(cell);
+    }
+
+    private void UpdateMatrix(ObservableCollection<MatrixCellViewModel> cells, DateTime now)
+    {
+        foreach (var cell in cells)
+        {
+            if (!cell.IsActive) continue;
+
+            bool expired = cell.Refresh(now, _warnSeconds);
+            if (expired)
+            {
+                if (cell.AlertOnExpire) _alerts.Fire(cell.AlertSpeak, cell.AlertSound);
+            }
+            else if (cell.AlertAtSeconds > 0 && !cell.FadeAlertFired &&
+                     cell.RemainingSeconds > 0 && cell.RemainingSeconds <= cell.AlertAtSeconds)
+            {
+                cell.FadeAlertFired = true;
+                _alerts.Fire(cell.AlertSpeak, cell.AlertSound);
+            }
+        }
+    }
+
+    private void UpdateBars(DateTime now)
+    {
         List<TimerBarViewModel>? expired = null;
         foreach (var bar in Bars)
         {

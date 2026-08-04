@@ -23,6 +23,10 @@ public partial class MainWindow : Window
     private OverlayViewModel _vm = null!;
     private LogWatcher? _watcher;
     private TriggerManagerWindow? _manager;
+    private MatrixWindow? _selfMatrix;
+    private MatrixWindow? _targetMatrix;
+    private PanelPlacement? _mainPlacement;
+    private bool _hidden;
     private System.Windows.Forms.NotifyIcon? _tray;
 
     /// <summary>Set by self-tests so they never persist window position/lock.</summary>
@@ -46,7 +50,6 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
         Closing += OnClosing;
-        LocationChanged += OnLocationChanged;
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -73,9 +76,8 @@ public partial class MainWindow : Window
         DataContext = _vm;
 
         SizerHost.Width = _config.Overlay.Width;
-        Left = _config.Overlay.Left;
-        Top = _config.Overlay.Top;
-        EnsureOnScreen();
+        _mainPlacement = new PanelPlacement(this, _configService, "main", Anchor.TopLeft, 60, 140);
+        _mainPlacement.Attach();
 
         // Start locked (game-ready) if configured — overrides the remembered state.
         if (_config.Overlay.StartLocked)
@@ -89,32 +91,46 @@ public partial class MainWindow : Window
         ApplyClickThrough(); // safe now that _vm exists (also called in OnSourceInitialized)
         SetupTrayIcon();
         StartWatcher();
+        RebuildMatrixWindows();
+    }
+
+    // ---- matrix panels ------------------------------------------------------
+
+    private void RebuildMatrixWindows()
+    {
+        _selfMatrix = RebuildPanel(_selfMatrix, "selfMatrix", "Self Buffs",
+            _engine.SelfCells, defaultLeft: 60, defaultTop: 420);
+        _targetMatrix = RebuildPanel(_targetMatrix, "targetDebuffs", "Target Debuffs",
+            _engine.TargetCells, defaultLeft: 420, defaultTop: 420);
+        UpdateMatrixVisibility();
+    }
+
+    private MatrixWindow RebuildPanel(MatrixWindow? existing, string key, string title,
+        System.Collections.ObjectModel.ObservableCollection<ViewModels.MatrixCellViewModel> cells,
+        double defaultLeft, double defaultTop)
+    {
+        if (existing is not null) { try { existing.Close(); } catch { /* ignore */ } }
+        var w = new MatrixWindow(key, title, cells, _config.Overlay.MatrixColumns,
+            _configService, _config.Overlay.Opacity, defaultLeft, defaultTop);
+        w.Show();
+        w.SetLocked(_vm.Locked);
+        return w;
+    }
+
+    private void UpdateMatrixVisibility()
+    {
+        SetPanelVisible(_selfMatrix, _engine.SelfCells.Count);
+        SetPanelVisible(_targetMatrix, _engine.TargetCells.Count);
+    }
+
+    private void SetPanelVisible(MatrixWindow? w, int cellCount)
+    {
+        if (w is null) return;
+        w.Visibility = (!_hidden && cellCount > 0) ? Visibility.Visible : Visibility.Hidden;
     }
 
     private void ApplyOpacity() =>
         Opacity = Math.Clamp(_config.Overlay.Opacity <= 0 ? 1.0 : _config.Overlay.Opacity, 0.1, 1.0);
-
-    /// <summary>
-    /// Keep the window on a visible monitor. A stale/off-screen saved position
-    /// (e.g. after a monitor change) would otherwise make the overlay invisible.
-    /// </summary>
-    private void EnsureOnScreen()
-    {
-        double vL = SystemParameters.VirtualScreenLeft;
-        double vT = SystemParameters.VirtualScreenTop;
-        double vR = vL + SystemParameters.VirtualScreenWidth;
-        double vB = vT + SystemParameters.VirtualScreenHeight;
-
-        const double keepVisible = 80; // px that must stay on-screen
-
-        if (Left < vL || Left > vR - keepVisible || Top < vT || Top > vB - keepVisible)
-        {
-            Left = Math.Clamp(Left, vL, Math.Max(vL, vR - keepVisible));
-            Top = Math.Clamp(Top, vT, Math.Max(vT, vB - keepVisible));
-            _config.Overlay.Left = Left;
-            _config.Overlay.Top = Top;
-        }
-    }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
@@ -167,7 +183,7 @@ public partial class MainWindow : Window
             switch (wParam.ToInt32())
             {
                 case HK_LOCK:   ToggleLock();       handled = true; break;
-                case HK_TEST:   _engine.AddDemoTimer(); handled = true; break;
+                case HK_TEST:   _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell(); UpdateMatrixVisibility(); handled = true; break;
                 case HK_HIDE:   ToggleHide();       handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;
                 case HK_QUIT:   Close();            handled = true; break;
@@ -184,6 +200,8 @@ public partial class MainWindow : Window
         _config.Overlay.Locked = _vm.Locked;
         ApplyClickThrough();
         ApplyLockVisual();
+        _selfMatrix?.SetLocked(_vm.Locked);
+        _targetMatrix?.SetLocked(_vm.Locked);
         _configService.SaveWindowState(_config.Overlay);
     }
 
@@ -196,22 +214,26 @@ public partial class MainWindow : Window
     private void ApplyLockVisual() =>
         RootBorder.Background = _vm.Locked ? Brushes.Transparent : UnlockedBackdrop;
 
-    private void ToggleHide() =>
-        Visibility = Visibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
+    private void ToggleHide()
+    {
+        _hidden = !_hidden;
+        Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
+        UpdateMatrixVisibility();
+    }
 
-    /// <summary>Bring the overlay back to the top-left of the primary monitor (tray recovery).</summary>
+    /// <summary>Home every panel to its default corner (tray recovery).</summary>
     private void ResetPosition()
     {
-        Left = SystemParameters.WorkArea.Left + 40;
-        Top = SystemParameters.WorkArea.Top + 40;
-        _config.Overlay.Left = Left;
-        _config.Overlay.Top = Top;
-        _configService.SaveWindowState(_config.Overlay);
-
+        _hidden = false;
         Visibility = Visibility.Visible;
         Topmost = true;
         Activate();
-        _vm?.Flash("Position reset to primary screen.");
+
+        _mainPlacement?.ResetToDefault();
+        _selfMatrix?.ResetPosition();
+        _targetMatrix?.ResetPosition();
+        UpdateMatrixVisibility();
+        _vm?.Flash("Panels reset to their corners.");
     }
 
     // ---- config -------------------------------------------------------------
@@ -302,8 +324,11 @@ public partial class MainWindow : Window
         ApplyOpacity();
         ApplyLockVisual();
         StartWatcher();
+        _mainPlacement?.Reload();   // pick up any anchor change from Settings
+        RebuildMatrixWindows();
         _vm.Flash("Settings applied.");
-        Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}");
+        Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
+                 $"selfCells={_engine.SelfCells.Count}");
     }
 
     private void ApplyLoadout(string name)
@@ -319,6 +344,7 @@ public partial class MainWindow : Window
 
         _engine.Reset();
         _engine.UpdateConfig(_config);
+        UpdateMatrixVisibility();
         _vm.LoadoutName = lo.Name;
         _vm.Flash($"Switched to: {lo.Name}");
         Log.Info($"Loadout switched to '{lo.Name}' ({lo.Triggers.Count} triggers)");
@@ -458,12 +484,6 @@ public partial class MainWindow : Window
 
     // ---- persistence / teardown ---------------------------------------------
 
-    private void OnLocationChanged(object? sender, EventArgs e)
-    {
-        if (_vm is null) return;
-        _config.Overlay.Left = Left;
-        _config.Overlay.Top = Top;
-    }
 
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
@@ -481,6 +501,8 @@ public partial class MainWindow : Window
         Log.Info("Shutting down");
         UnregisterHotKeys();
         _watcher?.Dispose();
+        try { _selfMatrix?.Close(); } catch { /* ignore */ }
+        try { _targetMatrix?.Close(); } catch { /* ignore */ }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }
 }

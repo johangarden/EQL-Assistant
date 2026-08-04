@@ -215,6 +215,84 @@ public sealed class ConfigService
         catch { /* ignore a corrupt state file; defaults win */ }
     }
 
+    // ---- per-panel positions (matrix windows) -------------------------------
+
+    public (double Left, double Top)? LoadPanelPos(string name)
+    {
+        string path = System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json");
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var s = JsonSerializer.Deserialize<PanelPos>(File.ReadAllText(path), ReadOptions);
+            if (s?.Left is { } l && s.Top is { } t) return (l, t);
+        }
+        catch { /* ignore */ }
+        return null;
+    }
+
+    public void SavePanelPos(string name, double left, double top)
+    {
+        try
+        {
+            File.WriteAllText(System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json"),
+                JsonSerializer.Serialize(new PanelPos { Left = left, Top = top }, WriteOptions));
+        }
+        catch { /* best-effort */ }
+    }
+
+    private sealed class PanelPos
+    {
+        public double? Left { get; set; }
+        public double? Top { get; set; }
+    }
+
+    // ---- per-panel anchored placement (Phase 3) -----------------------------
+
+    public sealed record Placement(Models.Anchor Anchor, double OffX, double OffY);
+
+    public Placement? LoadPlacement(string name)
+    {
+        string path = System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json");
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var dto = JsonSerializer.Deserialize<PlacementDto>(File.ReadAllText(path), ReadOptions);
+            if (dto?.Anchor is { } a && Enum.TryParse<Models.Anchor>(a, ignoreCase: true, out var anchor))
+                return new Placement(anchor, dto.OffX ?? 0, dto.OffY ?? 0);
+        }
+        catch { /* ignore */ }
+        return null;
+    }
+
+    public void SavePlacement(string name, Models.Anchor anchor, double offX, double offY)
+    {
+        try
+        {
+            File.WriteAllText(System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json"),
+                JsonSerializer.Serialize(new PlacementDto
+                {
+                    Anchor = anchor.ToString(),
+                    OffX = Math.Round(offX, 1),
+                    OffY = Math.Round(offY, 1),
+                }, WriteOptions));
+        }
+        catch { /* best-effort */ }
+    }
+
+    /// <summary>Change just the anchor for a panel, preserving its offsets (defaults if none).</summary>
+    public void SetPanelAnchor(string name, Models.Anchor anchor)
+    {
+        var p = LoadPlacement(name);
+        SavePlacement(name, anchor, p?.OffX ?? 40, p?.OffY ?? 40);
+    }
+
+    private sealed class PlacementDto
+    {
+        public string? Anchor { get; set; }
+        public double? OffX { get; set; }
+        public double? OffY { get; set; }
+    }
+
     public void SaveWindowState(OverlayConfig overlay)
     {
         var state = new WindowState
@@ -268,7 +346,8 @@ public sealed class ConfigService
         "remindIntervalSeconds": 20,
         "muted": false,
         "startLocked": false,
-        "opacity": 1.0
+        "opacity": 1.0,
+        "matrixColumns": 4
       },
 
       "characterName": "",
