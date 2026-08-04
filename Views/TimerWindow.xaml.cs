@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -26,6 +27,11 @@ public partial class TimerWindow : Window
     private bool _running;
     private DateTime _endTime;
     private string _lastText;
+    private double _manualSeconds;   // duration used by "Normal (manual)" mode
+    private string? _modeName;       // null = Normal; otherwise the selected preset/mob name
+
+    /// <summary>Supplies the named-mob presets (from timerAuto triggers) for the menu.</summary>
+    public Func<IReadOnlyList<(string Name, double Seconds)>>? PresetProvider { get; set; }
 
     private static readonly Brush WarnRed = Freeze(Color.FromRgb(0xFF, 0x52, 0x52));
 
@@ -37,6 +43,7 @@ public partial class TimerWindow : Window
         _alerts = alerts;
         _onDurationSet = onDurationSet;
         _total = _remaining = initialSeconds <= 0 ? 1 : initialSeconds;
+        _manualSeconds = _total;
         _lastText = Format(_total);
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
 
@@ -74,17 +81,57 @@ public partial class TimerWindow : Window
 
         _lastText = input.Trim();
         SetDuration(sec.Value, start: false); // set, but don't auto-start — press Play
-        _onDurationSet?.Invoke(sec.Value);
+        if (_modeName is null) { _manualSeconds = sec.Value; _onDurationSet?.Invoke(sec.Value); }
     }
 
     public void ResetPosition() => _placement.ResetToDefault();
     public void ReloadPlacement() => _placement.Reload();
 
     /// <summary>Start (or restart) the timer at the given duration — used by auto-start triggers.</summary>
-    public void StartWith(double seconds)
+    public void StartWith(double seconds, string? name = null)
     {
         if (seconds <= 0) return;
+        if (name is not null) SetMode(name);
         SetDuration(seconds, start: true);
+    }
+
+    // ---- mode / preset menu -------------------------------------------------
+
+    private void OnMenu(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu();
+
+        var normal = new MenuItem { Header = "Normal mode (manual)", IsChecked = _modeName is null };
+        normal.Click += (_, _) => { SetMode(null); SetDuration(_manualSeconds, start: false); };
+        menu.Items.Add(normal);
+
+        var presets = PresetProvider?.Invoke();
+        if (presets is { Count: > 0 })
+        {
+            menu.Items.Add(new Separator());
+            foreach (var (name, seconds) in presets)
+            {
+                string cn = name;
+                double cs = seconds;
+                var mi = new MenuItem
+                {
+                    Header = $"{name}  ({Format(seconds)})",
+                    IsChecked = string.Equals(name, _modeName, StringComparison.OrdinalIgnoreCase),
+                };
+                mi.Click += (_, _) => { SetMode(cn); SetDuration(cs, start: false); };
+                menu.Items.Add(mi);
+            }
+        }
+
+        menu.PlacementTarget = (UIElement)sender;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    private void SetMode(string? name)
+    {
+        _modeName = name;
+        ModeLabel.Text = name ?? "Timer";
     }
 
     // ---- controls -----------------------------------------------------------

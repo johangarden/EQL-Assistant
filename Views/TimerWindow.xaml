@@ -17,6 +17,14 @@
             Background="#D6141A24" BorderBrush="#3A4560" BorderThickness="1"
             MouseLeftButtonDown="Card_DragMove">
         <StackPanel>
+            <DockPanel Margin="0,0,0,6">
+                <Button DockPanel.Dock="Left" Style="{StaticResource IconBtn}" Click="OnMenu"
+                        FontFamily="Segoe MDL2 Assets" Content="&#xE700;" ToolTip="Timer mode / named-mob presets"/>
+                <TextBlock x:Name="ModeLabel" Text="Timer" Foreground="#C9D4E3" FontWeight="SemiBold"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="6,0,4,0"/>
+            </DockPanel>
+
             <Grid Width="132" Height="132">
                 <!-- face -->
                 <Ellipse Fill="#66101722" Stroke="#46567A" StrokeThickness="2"/>
