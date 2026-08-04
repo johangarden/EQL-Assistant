@@ -76,4 +76,7 @@ public sealed class OverlayConfig
 
     /// <summary>Last-used repop/respawn timer duration, in seconds (default 6:40).</summary>
     public double TimerSeconds { get; set; } = 400;
+
+    /// <summary>Whether the repop timer watch is shown (toggled from ⏱ / tray / Ctrl+Alt+R).</summary>
+    public bool TimerVisible { get; set; } = true;
 }

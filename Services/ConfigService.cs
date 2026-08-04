@@ -348,7 +348,8 @@ public sealed class ConfigService
         "startLocked": false,
         "opacity": 1.0,
         "matrixColumns": 4,
-        "timerSeconds": 400
+        "timerSeconds": 400,
+        "timerVisible": true
       },
 
       "characterName": "",
