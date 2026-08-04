@@ -310,11 +310,14 @@ public partial class TriggerManagerWindow : Window
         MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
+        CharNameBox.Text = _config.CharacterName;
+        PetNameBox.Text = _config.Overlay.PetName;
 
         BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
         SelfAnchorBox.SelectedValue = (_configService.LoadPlacement("selfMatrix")?.Anchor ?? Anchor.TopLeft).ToString();
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
         TimerAnchorBox.SelectedValue = (_configService.LoadPlacement("timer")?.Anchor ?? Anchor.TopRight).ToString();
+        MeterAnchorBox.SelectedValue = (_configService.LoadPlacement("meter")?.Anchor ?? Anchor.TopRight).ToString();
     }
 
     private void ApplyAnchor(string panel, System.Windows.Controls.ComboBox combo)
@@ -366,7 +369,7 @@ public partial class TriggerManagerWindow : Window
 
         var cfg = new AppConfig
         {
-            CharacterName = _config.CharacterName,
+            CharacterName = CharNameBox.Text.Trim(),
             ActiveLoadout = _currentName,
             Log =
             {
@@ -391,6 +394,12 @@ public partial class TriggerManagerWindow : Window
                 ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
                 StartLocked = StartLockedCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
+                // Not edited here — carry the live values through so saving
+                // settings never resets them.
+                TimerSeconds = _config.Overlay.TimerSeconds,
+                TimerVisible = _config.Overlay.TimerVisible,
+                MeterVisible = _config.Overlay.MeterVisible,
+                PetName = PetNameBox.Text.Trim(),
             },
         };
 
@@ -412,6 +421,7 @@ public partial class TriggerManagerWindow : Window
         ApplyAnchor("selfMatrix", SelfAnchorBox);
         ApplyAnchor("targetDebuffs", TargetAnchorBox);
         ApplyAnchor("timer", TimerAnchorBox);
+        ApplyAnchor("meter", MeterAnchorBox);
 
         _config = cfg;
         _onApplied(_currentName);

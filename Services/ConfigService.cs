@@ -349,7 +349,10 @@ public sealed class ConfigService
         "opacity": 1.0,
         "matrixColumns": 4,
         "timerSeconds": 400,
-        "timerVisible": true
+        "timerVisible": true,
+        "meterVisible": true,
+        // Your pet's name — enables the pet line in the DPS meter's incoming footer.
+        "petName": ""
       },
 
       "characterName": "",

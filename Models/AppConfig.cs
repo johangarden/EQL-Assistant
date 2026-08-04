@@ -79,4 +79,10 @@ public sealed class OverlayConfig
 
     /// <summary>Whether the repop timer watch is shown (toggled from ⏱ / tray / Ctrl+Alt+R).</summary>
     public bool TimerVisible { get; set; } = true;
+
+    /// <summary>Whether the DPS meter panel is shown (toggled from toolbar / tray / Ctrl+Alt+D).</summary>
+    public bool MeterVisible { get; set; } = true;
+
+    /// <summary>Your pet's name — enables the pet line in the DPS meter's incoming footer.</summary>
+    public string PetName { get; set; } = "";
 }

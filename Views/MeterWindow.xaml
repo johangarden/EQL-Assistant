@@ -1,0 +1,89 @@
+<Window x:Class="EQLOverlay.Views.MeterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:EQLOverlay.ViewModels"
+        Title="EQL Overlay — DPS Meter"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <!-- Drag anywhere on the card (buttons handle their own clicks). -->
+    <Border x:Name="RootBorder" CornerRadius="10" Padding="10"
+            Background="#D6141A24" BorderBrush="#3A4560" BorderThickness="1"
+            MouseLeftButtonDown="Card_DragMove">
+        <StackPanel Width="236">
+
+            <DockPanel Margin="0,0,0,2">
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Click="OnClear"
+                        Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE894;"
+                        AutomationProperties.AutomationId="MeterClearBtn"
+                        ToolTip="Clear the current fight"/>
+                <Button x:Name="ModeBtn" DockPanel.Dock="Right" Style="{StaticResource ToolBtn}"
+                        Click="OnToggleMetric" Margin="6,0,0,0" Padding="7,1" Content="DPS"
+                        AutomationProperties.AutomationId="MeterModeBtn"
+                        ToolTip="Toggle between damage (DPS) and healing (HPS)"/>
+                <TextBlock x:Name="TitleText" Text="DPS meter" Foreground="#C9D4E3" FontWeight="SemiBold"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+
+            <TextBlock x:Name="SummaryText" Text="waiting for combat…" Foreground="#7F93AD"
+                       FontSize="11" Margin="0,0,0,6"/>
+
+            <!-- Ranked sources: name + proportional bar + dps (total, %). -->
+            <ItemsControl x:Name="RowsControl">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:MeterRowViewModel}">
+                        <Grid Height="17" Margin="0,0,0,3">
+                            <Border CornerRadius="3" Background="#C8101318"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="{Binding Fraction, Converter={StaticResource FillStar}}"/>
+                                    <ColumnDefinition Width="{Binding Fraction, Converter={StaticResource RestStar}}"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" CornerRadius="3" Background="{Binding Fill}" Opacity="0.8"/>
+                            </Grid>
+                            <Border CornerRadius="3" BorderBrush="#30FFFFFF" BorderThickness="1"/>
+                            <Grid Margin="6,0">
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                           Foreground="White" FontSize="11" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" Margin="0,0,80,0">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.9" Color="Black"/>
+                                    </TextBlock.Effect>
+                                </TextBlock>
+                                <TextBlock Text="{Binding ValueText}" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                           Foreground="White" FontSize="11" FontWeight="Bold">
+                                    <TextBlock.Effect>
+                                        <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.9" Color="Black"/>
+                                    </TextBlock.Effect>
+                                </TextBlock>
+                            </Grid>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Incoming damage taken by you (and your pet, when a pet name is set). -->
+            <Border BorderBrush="#3A4560" BorderThickness="0,1,0,0" Margin="0,4,0,5"/>
+            <TextBlock Text="INCOMING" Foreground="#5C6B82" FontSize="9" FontWeight="Bold" Margin="1,0,0,2"/>
+            <DockPanel>
+                <TextBlock x:Name="IncomingSelfValue" DockPanel.Dock="Right" Text="—"
+                           Foreground="#FF8A80" FontSize="11" FontWeight="Bold"/>
+                <TextBlock x:Name="IncomingSelfLabel" Text="You" Foreground="#C9D4E3" FontSize="11"
+                           TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+            <DockPanel x:Name="IncomingPetRow" Margin="0,2,0,0" Visibility="Collapsed">
+                <TextBlock x:Name="IncomingPetValue" DockPanel.Dock="Right" Text="—"
+                           Foreground="#FF8A80" FontSize="11" FontWeight="Bold"/>
+                <TextBlock x:Name="IncomingPetLabel" Text="Pet" Foreground="#C9D4E3" FontSize="11"
+                           TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+        </StackPanel>
+    </Border>
+</Window>
