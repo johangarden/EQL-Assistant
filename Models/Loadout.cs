@@ -5,7 +5,7 @@ namespace EQLOverlay.Models;
 
 /// <summary>
 /// A named set of triggers for one class combo. Persisted as its own file in
-/// %APPDATA%\EQLOverlay\loadouts\&lt;name&gt;.json.
+/// %APPDATA%\EQL_Assistant\loadouts\&lt;name&gt;.json.
 /// </summary>
 public sealed class Loadout
 {

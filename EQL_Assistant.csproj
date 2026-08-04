@@ -9,8 +9,12 @@
     <!-- For the system-tray NotifyIcon (System.Windows.Forms). WPF types are used
          fully-qualified to avoid clashes with WinForms' Application/MessageBox. -->
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>EQLOverlay</AssemblyName>
+    <!-- Product name is "EQL Assistant" (exe: EQL_Assistant.exe). Code namespaces
+         stay EQLOverlay — internal only, renaming them buys nothing. -->
+    <AssemblyName>EQL_Assistant</AssemblyName>
     <RootNamespace>EQLOverlay</RootNamespace>
+    <Product>EQL Assistant</Product>
+    <AssemblyTitle>EQL Assistant</AssemblyTitle>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>assets\eqloverlay.ico</ApplicationIcon>
     <!-- Bump this for each standalone build; it stamps the exe and shows in the toolbar. -->
@@ -34,7 +38,7 @@
 
   <ItemGroup>
     <!-- Ship a reference copy of the default config next to the exe.
-         The app actually reads/writes config in %APPDATA%\EQLOverlay. -->
+         The app actually reads/writes config in %APPDATA%\EQL_Assistant. -->
     <None Update="config\config.default.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

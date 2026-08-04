@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:EQLOverlay.ViewModels"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
-        Title="EQL Overlay"
+        Title="EQL Assistant"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -104,7 +104,7 @@
                          and can never push ✕/Manage/version/mute/lock off. -->
                     <DockPanel LastChildFill="True">
                         <Button DockPanel.Dock="Left" Content="✕" Click="OnQuit" Style="{StaticResource CloseBtn}"
-                                ToolTip="Quit EQL Overlay"/>
+                                ToolTip="Quit EQL Assistant"/>
 
                         <Button DockPanel.Dock="Right" Click="OnLock" Style="{StaticResource IconBtn}" Margin="6,0,0,0"
                                 FontFamily="Segoe MDL2 Assets" Content="&#xE72E;"

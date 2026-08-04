@@ -144,11 +144,11 @@ public partial class TriggerManagerWindow : Window
     {
         if (_order.Count <= 1)
         {
-            MessageBox.Show("Keep at least one loadout.", "EQL Overlay",
+            MessageBox.Show("Keep at least one loadout.", "EQL Assistant",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        if (MessageBox.Show($"Delete loadout '{_currentName}'?", "EQL Overlay",
+        if (MessageBox.Show($"Delete loadout '{_currentName}'?", "EQL Assistant",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
 
@@ -163,7 +163,7 @@ public partial class TriggerManagerWindow : Window
         _order.Any(n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase));
 
     private void WarnExists(string name) =>
-        MessageBox.Show($"A loadout named '{name}' already exists.", "EQL Overlay",
+        MessageBox.Show($"A loadout named '{name}' already exists.", "EQL Assistant",
             MessageBoxButton.OK, MessageBoxImage.Warning);
 
     // ---- live feed ----------------------------------------------------------

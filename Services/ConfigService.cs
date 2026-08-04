@@ -33,9 +33,19 @@ public sealed class ConfigService
 
     public ConfigService()
     {
-        ConfigDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "EQLOverlay");
+        string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string newDir = Path.Combine(appData, "EQL_Assistant");
+        string oldDir = Path.Combine(appData, "EQLOverlay");
+
+        // One-time migration from the app's old name: move the whole folder
+        // (config, loadouts, panel positions, kept fights) to EQL_Assistant.
+        if (!Directory.Exists(newDir) && Directory.Exists(oldDir))
+        {
+            try { Directory.Move(oldDir, newDir); }
+            catch { newDir = oldDir; /* couldn't move — keep using the old folder */ }
+        }
+
+        ConfigDirectory = newDir;
         Directory.CreateDirectory(ConfigDirectory);
         LoadoutsDirectory = Path.Combine(ConfigDirectory, "loadouts");
         Directory.CreateDirectory(LoadoutsDirectory);
@@ -347,7 +357,7 @@ public sealed class ConfigService
     private const string DefaultConfigJson = """
     {
       // ==========================================================================
-      //  EQL Overlay settings.  Triggers live in the loadouts\ folder next to
+      //  EQL Assistant settings.  Triggers live in the loadouts\ folder next to
       //  this file (one .json per loadout) and are managed from the in-app
       //  Trigger Manager (Ctrl+Alt+M).
       // ==========================================================================

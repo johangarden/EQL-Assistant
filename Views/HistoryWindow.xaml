@@ -1,7 +1,7 @@
 <Window x:Class="EQLOverlay.Views.HistoryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="EQL Overlay — Fight History"
+        Title="EQL Assistant — Fight History"
         Width="820" Height="520"
         MinWidth="560" MinHeight="360"
         WindowStartupLocation="CenterScreen"
@@ -29,7 +29,7 @@
 
     <DockPanel Margin="12">
         <TextBlock DockPanel.Dock="Top" Foreground="#7F93AD" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"
-                   Text="A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 20). Select one for details — Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's."/>
+                   Text="A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 50). Select one for details — Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's."/>
 
         <Grid>
             <Grid.ColumnDefinitions>

@@ -45,7 +45,7 @@ public partial class App : Application
 
         Log.Init();
         var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        Log.Info($"===== EQL Overlay v{ver} starting =====");
+        Log.Info($"===== EQL Assistant v{ver} starting =====");
         Log.Info($"exe: {Environment.ProcessPath}");
         Log.Info($"log: {Log.Path}");
 
@@ -352,9 +352,9 @@ public partial class App : Application
     {
         Log.Error("Unhandled dispatcher exception", e.Exception);
         MessageBox.Show(
-            "EQL Overlay hit an unexpected error:\n\n" + e.Exception.Message +
+            "EQL Assistant hit an unexpected error:\n\n" + e.Exception.Message +
             "\n\n(The overlay will keep running. Check your config.json if this repeats.)",
-            "EQL Overlay",
+            "EQL Assistant",
             MessageBoxButton.OK,
             MessageBoxImage.Warning);
         e.Handled = true;

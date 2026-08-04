@@ -73,7 +73,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log.Error("Config load failed", ex);
-            MessageBox.Show(ex.Message, "EQL Overlay — config problem",
+            MessageBox.Show(ex.Message, "EQL Assistant — config problem",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             _config = new AppConfig(); // run empty rather than crash
         }
@@ -372,7 +372,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show($"Loadout '{cfg.ActiveLoadout}' has an invalid pattern:\n{ex.Message}",
-                "EQL Overlay", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "EQL Assistant", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         if (lo is null)
@@ -543,7 +543,7 @@ public partial class MainWindow : Window
 
         _tray = new System.Windows.Forms.NotifyIcon
         {
-            Text = "EQL Overlay",
+            Text = "EQL Assistant",
             Visible = true,
             Icon = LoadAppIcon(),
         };

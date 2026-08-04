@@ -21,8 +21,9 @@ public sealed class CombatParser
     /// <summary>Optional pet name — enables the pet line in the incoming footer.</summary>
     public string PetName { get; set; } = "";
 
-    /// <summary>How many finished fights are kept for the history window.</summary>
-    public const int MaxHistory = 20;
+    /// <summary>How many finished fights the session keeps for the history window
+    /// (★-kept fights are stored separately and never expire).</summary>
+    public const int MaxHistory = 50;
 
     public readonly record struct Row(string Name, double Total, double Dps, double Percent, bool Enemy);
 

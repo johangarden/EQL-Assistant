@@ -1,4 +1,4 @@
-# EQL Overlay
+# EQL Assistant
 
 A local, log-file-based buff / heal-over-time (HoT) / DoT **timer overlay** for
 EQ Legends — in the spirit of GINA/GamParse for classic EverQuest. It reads the
@@ -27,14 +27,14 @@ dotnet run
 Or launch the built exe directly:
 
 ```bash
-bin\Debug\net9.0-windows\EQLOverlay.exe
+bin\Debug\net9.0-windows\EQL_Assistant.exe
 ```
 
 On first launch the overlay starts **unlocked** (you'll see a small toolbar and a
 status line) and creates its config at:
 
 ```
-%APPDATA%\EQLOverlay\config.json
+%APPDATA%\EQL_Assistant\config.json
 ```
 
 ## Standalone build (portable exe)
@@ -45,10 +45,10 @@ To produce a single, self-contained exe that runs without .NET installed:
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o dist
 ```
 
-Result: `dist\EQLOverlay.exe` (~70 MB). The build **version** (shown as `v1.0` in
+Result: `dist\EQL_Assistant.exe` (~70 MB). The build **version** (shown as `v1.0` in
 the toolbar and stamped into the exe) comes from `<Version>` in
-[EQLOverlay.csproj](EQLOverlay.csproj) — **bump it before each standalone build**
-to keep track, e.g. `1.1.0`, then rename the output like `EQLOverlay-v1.1.exe`.
+[EQL_Assistant.csproj](EQL_Assistant.csproj) — **bump it before each standalone build**
+to keep track, e.g. `1.1.0`, then rename the output like `EQL_Assistant-v1.1.exe`.
 
 ## First-time setup
 
@@ -126,7 +126,7 @@ A circular **Time-Timer-style** watch (its own panel + anchor) for spawn timers:
 
 EQL is one character but many class combinations, so triggers are organised into
 **loadouts** — named sets you switch between. Each loadout is its own file in
-`%APPDATA%\EQLOverlay\loadouts\<name>.json` (easy to back up or share).
+`%APPDATA%\EQL_Assistant\loadouts\<name>.json` (easy to back up or share).
 
 - Switch in-game with **Ctrl+Alt+P** or the **⇄** button on the toolbar — the
   active loadout name is shown on the overlay. Switching clears the previous
