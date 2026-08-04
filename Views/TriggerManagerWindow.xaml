@@ -249,6 +249,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Bars" VerticalAlignment="Center" Margin="0,3"/>
@@ -269,6 +270,14 @@
 
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Target debuffs" VerticalAlignment="Center" Margin="0,3"/>
                             <ComboBox  Grid.Row="2" Grid.Column="1" x:Name="TargetAnchorBox" Margin="0,3" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
+                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
+                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
+                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Repop timer" VerticalAlignment="Center" Margin="0,3"/>
+                            <ComboBox  Grid.Row="3" Grid.Column="1" x:Name="TimerAnchorBox" Margin="0,3" SelectedValuePath="Tag">
                                 <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
                                 <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>

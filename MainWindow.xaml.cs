@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private TriggerManagerWindow? _manager;
     private MatrixWindow? _selfMatrix;
     private MatrixWindow? _targetMatrix;
+    private TimerWindow? _timer;
     private PanelPlacement? _mainPlacement;
     private bool _hidden;
     private System.Windows.Forms.NotifyIcon? _tray;
@@ -41,8 +42,6 @@ public partial class MainWindow : Window
     private const int HK_MUTE    = 7;
     private const int HK_QUIT    = 9;
     private const int HK_REPOP   = 10;
-
-    private string _lastRepop = "6:40"; // remembered repop duration (classic EQ default)
 
     private static readonly Brush UnlockedBackdrop =
         new SolidColorBrush(Color.FromArgb(0x30, 0x0A, 0x0E, 0x14));
@@ -95,6 +94,24 @@ public partial class MainWindow : Window
         SetupTrayIcon();
         StartWatcher();
         RebuildMatrixWindows();
+        RebuildTimerWindow();
+    }
+
+    // ---- timer panel --------------------------------------------------------
+
+    private void RebuildTimerWindow()
+    {
+        if (_timer is not null) { try { _timer.Close(); } catch { /* ignore */ } }
+        _timer = new TimerWindow(_configService, _alerts, _config.Overlay.TimerSeconds, _config.Overlay.Opacity,
+            onDurationSet: s => { _config.Overlay.TimerSeconds = s; _configService.SaveSettings(_config); });
+        _timer.Show();
+        UpdateTimerVisibility();
+    }
+
+    private void UpdateTimerVisibility()
+    {
+        if (_timer is not null)
+            _timer.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
     }
 
     // ---- matrix panels ------------------------------------------------------
@@ -224,6 +241,7 @@ public partial class MainWindow : Window
         _hidden = !_hidden;
         Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
         UpdateMatrixVisibility();
+        UpdateTimerVisibility();
     }
 
     /// <summary>Home every panel to its default corner (tray recovery).</summary>
@@ -237,7 +255,9 @@ public partial class MainWindow : Window
         _mainPlacement?.ResetToDefault();
         _selfMatrix?.ResetPosition();
         _targetMatrix?.ResetPosition();
+        _timer?.ResetPosition();
         UpdateMatrixVisibility();
+        UpdateTimerVisibility();
         _vm?.Flash("Panels reset to their corners.");
     }
 
@@ -331,6 +351,7 @@ public partial class MainWindow : Window
         StartWatcher();
         _mainPlacement?.Reload();   // pick up any anchor change from Settings
         RebuildMatrixWindows();
+        RebuildTimerWindow();
         _vm.Flash("Settings applied.");
         Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
                  $"selfCells={_engine.SelfCells.Count}");
@@ -355,57 +376,12 @@ public partial class MainWindow : Window
         Log.Info($"Loadout switched to '{lo.Name}' ({lo.Triggers.Count} triggers)");
     }
 
-    // ---- repop / respawn stopwatch ------------------------------------------
+    // ---- repop / respawn timer ----------------------------------------------
 
     private void OpenRepopDialog()
     {
-        string? input = Views.PromptDialog.Show(this, "Repop timer",
-            "Duration — m:ss, or 90s, or 6m:", _lastRepop);
-        if (input is null) return;
-
-        double? seconds = ParseDuration(input);
-        if (seconds is not > 0)
-        {
-            _vm.Flash($"Couldn't read '{input}' — try 6:40 or 400");
-            return;
-        }
-
-        _lastRepop = input.Trim();
-        if (_hidden) ToggleHide();               // make sure it's visible
-        _engine.AddManualTimer("Repop", seconds.Value);
-        _vm.Flash($"Repop timer started ({FormatMs(seconds.Value)}).");
-        Log.Info($"Repop timer started: {seconds.Value:0}s");
-    }
-
-    /// <summary>Parse "m:ss", "90s", "6m", or a plain number (seconds).</summary>
-    private static double? ParseDuration(string text)
-    {
-        text = text.Trim().ToLowerInvariant();
-        if (text.Length == 0) return null;
-
-        if (text.Contains(':'))
-        {
-            var parts = text.Split(':');
-            if (parts.Length == 2
-                && int.TryParse(parts[0], out int m) && m >= 0
-                && int.TryParse(parts[1], out int s) && s is >= 0 and < 60)
-                return m * 60 + s;
-            return null;
-        }
-
-        double mult = 1;
-        if (text.EndsWith('m')) { mult = 60; text = text[..^1]; }
-        else if (text.EndsWith('s')) { text = text[..^1]; }
-
-        return double.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out double n) && n > 0
-            ? n * mult
-            : null;
-    }
-
-    private static string FormatMs(double seconds)
-    {
-        var ts = TimeSpan.FromSeconds(Math.Round(seconds));
-        return ts.TotalHours >= 1 ? $"{(int)ts.TotalHours}:{ts.Minutes:00}:{ts.Seconds:00}" : $"{ts.Minutes}:{ts.Seconds:00}";
+        if (_hidden) ToggleHide();   // make sure the timer is visible
+        _timer?.PromptSet();
     }
 
     private void OnRepop(object sender, RoutedEventArgs e) => OpenRepopDialog();
@@ -564,6 +540,7 @@ public partial class MainWindow : Window
         _watcher?.Dispose();
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
+        try { _timer?.Close(); } catch { /* ignore */ }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }
 }

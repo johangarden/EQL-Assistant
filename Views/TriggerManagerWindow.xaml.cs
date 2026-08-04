@@ -314,6 +314,7 @@ public partial class TriggerManagerWindow : Window
         BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
         SelfAnchorBox.SelectedValue = (_configService.LoadPlacement("selfMatrix")?.Anchor ?? Anchor.TopLeft).ToString();
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
+        TimerAnchorBox.SelectedValue = (_configService.LoadPlacement("timer")?.Anchor ?? Anchor.TopRight).ToString();
     }
 
     private void ApplyAnchor(string panel, System.Windows.Controls.ComboBox combo)
@@ -410,6 +411,7 @@ public partial class TriggerManagerWindow : Window
         ApplyAnchor("main", BarsAnchorBox);
         ApplyAnchor("selfMatrix", SelfAnchorBox);
         ApplyAnchor("targetDebuffs", TargetAnchorBox);
+        ApplyAnchor("timer", TimerAnchorBox);
 
         _config = cfg;
         _onApplied(_currentName);
