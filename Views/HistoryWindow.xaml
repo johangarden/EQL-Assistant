@@ -29,7 +29,7 @@
 
     <DockPanel Margin="12">
         <TextBlock DockPanel.Dock="Top" Foreground="#7F93AD" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"
-                   Text="A fight lands here ~10 seconds after combat goes quiet (last 20 kept, this session). Select one for details — Ctrl-click more to compare them side by side."/>
+                   Text="A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 20). Select one for details — Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's."/>
 
         <Grid>
             <Grid.ColumnDefinitions>
@@ -38,11 +38,20 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <ListBox x:Name="FightsList" Grid.Column="0"
-                     Background="#1B2130" Foreground="#DCE6F5" BorderBrush="#3A4560" BorderThickness="1"
-                     SelectionMode="Extended" FontSize="12"
-                     HorizontalContentAlignment="Stretch"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+            <DockPanel Grid.Column="0">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                    <Button Content="★ Keep" Click="Keep_Click" Style="{StaticResource ToolBtn}"
+                            AutomationProperties.AutomationId="HistoryKeepBtn"
+                            ToolTip="Save the selected fight(s) permanently (survives restarts)"/>
+                    <Button Content="Remove kept" Click="Remove_Click" Style="{StaticResource ToolBtn}"
+                            ToolTip="Stop keeping the selected saved fight(s)"/>
+                </StackPanel>
+                <ListBox x:Name="FightsList"
+                         Background="#1B2130" Foreground="#DCE6F5" BorderBrush="#3A4560" BorderThickness="1"
+                         SelectionMode="Extended" FontSize="12"
+                         HorizontalContentAlignment="Stretch"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+            </DockPanel>
 
             <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Auto"
                           VerticalScrollBarVisibility="Auto">

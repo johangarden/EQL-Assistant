@@ -21,6 +21,7 @@ public partial class MeterWindow : Window
     private const int MaxRows = 8;
 
     private readonly CombatParser _parser;
+    private readonly ConfigService _config;
     private readonly PanelPlacement _placement;
     private readonly DispatcherTimer _tick;
     private readonly ObservableCollection<MeterRowViewModel> _rows = new();
@@ -48,6 +49,7 @@ public partial class MeterWindow : Window
         InitializeComponent();
 
         _parser = parser;
+        _config = config;
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
         _placement = new PanelPlacement(this, config, "meter", Anchor.TopRight, 40, 300);
 
@@ -103,7 +105,7 @@ public partial class MeterWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_parser);
+            _historyWindow = new HistoryWindow(_parser, _config);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

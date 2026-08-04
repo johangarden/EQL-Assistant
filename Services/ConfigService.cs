@@ -317,6 +317,31 @@ public sealed class ConfigService
         public bool? Locked { get; set; }
     }
 
+    // ---- kept fights (DPS meter history) -------------------------------------
+
+    public string SavedFightsPath => Path.Combine(ConfigDirectory, "fights.json");
+
+    /// <summary>Fights the user chose to keep ("★ Keep" in the history window).</summary>
+    public List<CombatParser.FightRecord> LoadSavedFights()
+    {
+        if (!File.Exists(SavedFightsPath)) return new();
+        try
+        {
+            return JsonSerializer.Deserialize<List<CombatParser.FightRecord>>(
+                File.ReadAllText(SavedFightsPath), ReadOptions) ?? new();
+        }
+        catch { return new(); /* corrupt file — start over rather than crash */ }
+    }
+
+    public void SaveSavedFights(List<CombatParser.FightRecord> fights)
+    {
+        try
+        {
+            File.WriteAllText(SavedFightsPath, JsonSerializer.Serialize(fights, WriteOptions));
+        }
+        catch { /* best-effort */ }
+    }
+
     // ---- default files ------------------------------------------------------
 
     private const string DefaultConfigJson = """

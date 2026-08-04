@@ -17,8 +17,12 @@ public partial class HistoryWindow : Window
     private const int MaxHealingRows = 4;
 
     private readonly CombatParser _parser;
+    private readonly ConfigService _config;
     private readonly DispatcherTimer _tick;
-    private List<CombatParser.FightRecord> _shown = new();
+    private readonly List<CombatParser.FightRecord> _saved;
+    private List<Entry> _shown = new();
+
+    private sealed record Entry(CombatParser.FightRecord Rec, bool Saved);
 
     private static readonly Brush NameFg = Freeze(Color.FromRgb(0xC9, 0xD4, 0xE3));
     private static readonly Brush SelfFg = Freeze(Color.FromRgb(0xFF, 0xC1, 0x2E));
@@ -28,7 +32,7 @@ public partial class HistoryWindow : Window
     public sealed record StatRow(string Name, string Value, Brush NameBrush);
 
     /// <summary>List item wrapper — reference-unique even when two fights render identically.</summary>
-    private sealed record FightItem(CombatParser.FightRecord Rec, string Text)
+    private sealed record FightItem(Entry Entry, string Text)
     {
         public override string ToString() => Text;
     }
@@ -36,10 +40,12 @@ public partial class HistoryWindow : Window
     public sealed record FightColumn(string Title, string Subtitle,
         List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> IncomingRows);
 
-    public HistoryWindow(CombatParser parser)
+    public HistoryWindow(CombatParser parser, ConfigService config)
     {
         InitializeComponent();
         _parser = parser;
+        _config = config;
+        _saved = config.LoadSavedFights();
 
         FightsList.SelectionChanged += (_, _) => BuildColumns();
 
@@ -56,33 +62,83 @@ public partial class HistoryWindow : Window
         Closed += (_, _) => _tick.Stop();
     }
 
-    /// <summary>Rebuild the fight list when history changed, preserving the selection.</summary>
-    private void Sync()
+    /// <summary>Rebuild the fight list when anything changed, preserving the selection.</summary>
+    private void Sync(bool force = false)
     {
-        var hist = _parser.History.ToList();
-        if (hist.Count == _shown.Count && (_shown.Count == 0 || ReferenceEquals(hist[0], _shown[0])))
-            return; // unchanged (records are immutable and only ever inserted at the front)
+        // Kept fights first-class alongside the session's; a session fight that
+        // was kept appears once (as its kept copy).
+        var entries = _saved.Select(r => new Entry(r, true))
+            .Concat(_parser.History
+                .Where(r => !_saved.Any(s => SameFight(s, r)))
+                .Select(r => new Entry(r, false)))
+            .OrderByDescending(e => e.Rec.EndedAt)
+            .ToList();
 
-        var selected = FightsList.SelectedItems.Cast<FightItem>().Select(x => x.Rec).ToHashSet();
+        if (!force && entries.SequenceEqual(_shown))
+            return;
 
-        _shown = hist;
-        FightsList.ItemsSource = hist.Select(r => new FightItem(r, Display(r))).ToList();
+        var selected = FightsList.SelectedItems.Cast<FightItem>().Select(x => x.Entry.Rec).ToHashSet();
+
+        _shown = entries;
+        FightsList.ItemsSource = entries.Select(e => new FightItem(e, Display(e))).ToList();
 
         foreach (FightItem item in FightsList.Items)
-            if (selected.Contains(item.Rec))
+            if (selected.Contains(item.Entry.Rec))
                 FightsList.SelectedItems.Add(item);
     }
 
-    private static string Display(CombatParser.FightRecord r) =>
-        $"{r.EndedAt:HH:mm}  {r.Label}   ·   {FormatDuration(r.DurationSeconds)}   ·   {FormatDps(r.TotalDps)} dps";
+    private static bool SameFight(CombatParser.FightRecord a, CombatParser.FightRecord b) =>
+        ReferenceEquals(a, b) || (a.EndedAt == b.EndedAt && a.Label == b.Label);
+
+    private static string Display(Entry e)
+    {
+        var r = e.Rec;
+        string star = e.Saved ? "★ " : "";
+        string when = r.EndedAt.Date == DateTime.Today
+            ? r.EndedAt.ToString("HH:mm")
+            : r.EndedAt.ToString("dd MMM HH:mm");
+        return $"{star}{when}  {r.Label}   ·   {FormatDuration(r.DurationSeconds)}   ·   {FormatDps(r.TotalDps)} dps";
+    }
 
     private void BuildColumns()
     {
         var records = FightsList.SelectedItems.Cast<FightItem>()
-            .Select(x => x.Rec)
-            .OrderBy(r => _shown.IndexOf(r))
-            .Take(MaxCompare);
+            .Select(x => x.Entry)
+            .OrderBy(e => _shown.IndexOf(e))
+            .Take(MaxCompare)
+            .Select(e => e.Rec);
         ColumnsControl.ItemsSource = records.Select(BuildColumn).ToList();
+    }
+
+    // ---- keep / remove --------------------------------------------------------
+
+    private void Keep_Click(object sender, RoutedEventArgs e)
+    {
+        bool changed = false;
+        foreach (var item in FightsList.SelectedItems.Cast<FightItem>().ToList())
+        {
+            if (item.Entry.Saved || _saved.Any(s => SameFight(s, item.Entry.Rec))) continue;
+            _saved.Add(item.Entry.Rec);
+            changed = true;
+        }
+        if (!changed) return;
+        _saved.Sort((a, b) => b.EndedAt.CompareTo(a.EndedAt));
+        _config.SaveSavedFights(_saved);
+        Sync(force: true);
+    }
+
+    private void Remove_Click(object sender, RoutedEventArgs e)
+    {
+        bool changed = false;
+        foreach (var item in FightsList.SelectedItems.Cast<FightItem>().ToList())
+        {
+            if (!item.Entry.Saved) continue;
+            _saved.RemoveAll(s => SameFight(s, item.Entry.Rec));
+            changed = true;
+        }
+        if (!changed) return;
+        _config.SaveSavedFights(_saved);
+        Sync(force: true);
     }
 
     private FightColumn BuildColumn(CombatParser.FightRecord r)

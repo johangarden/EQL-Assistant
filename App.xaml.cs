@@ -320,6 +320,21 @@ public partial class App : Application
             // Multi-mob pull label: "biggest +N".
             p.ProcessLine($"[{Ts(42)}] You slash a royal guard for 9 points of damage.");
             Check("multi-pull label gets +N", p.TargetLabel is "a rat +1" or "a royal guard +1");
+
+            // Kept-fights persistence: FightRecord must survive a JSON round trip.
+            var jsonOpts = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true,
+            };
+            string json = System.Text.Json.JsonSerializer.Serialize(p.History.ToList(), jsonOpts);
+            var back = System.Text.Json.JsonSerializer
+                .Deserialize<List<CombatParser.FightRecord>>(json, jsonOpts);
+            Check("fight record JSON round trip", back is { Count: 1 }
+                && back[0].Label == "a gnoll pup"
+                && back[0].IncomingSelfTotal == 20
+                && back[0].Damage.Any(r => r.Name == "Johan" && Math.Abs(r.Total - 52) < 0.01 && !r.Enemy)
+                && back[0].Damage.Any(r => r.Enemy));
         }
         catch (Exception ex)
         {
