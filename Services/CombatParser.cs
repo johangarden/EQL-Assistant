@@ -21,7 +21,29 @@ public sealed class CombatParser
     /// <summary>Optional pet name — enables the pet line in the incoming footer.</summary>
     public string PetName { get; set; } = "";
 
-    public readonly record struct Row(string Name, double Total, double Dps, double Percent);
+    /// <summary>How many finished fights are kept for the history window.</summary>
+    public const int MaxHistory = 20;
+
+    public readonly record struct Row(string Name, double Total, double Dps, double Percent, bool Enemy);
+
+    /// <summary>A finished fight, frozen for the history/compare window.</summary>
+    public sealed class FightRecord
+    {
+        public required string Label { get; init; }
+        public DateTime EndedAt { get; init; }
+        public double DurationSeconds { get; init; }
+        public List<Row> Damage { get; init; } = new();
+        public List<Row> Healing { get; init; } = new();
+        public double IncomingSelfTotal { get; init; }
+        public double IncomingPetTotal { get; init; }
+        public double TotalDps { get; init; }
+        public double TotalHps { get; init; }
+    }
+
+    private readonly List<FightRecord> _history = new();
+
+    /// <summary>Finished fights, newest first.</summary>
+    public IReadOnlyList<FightRecord> History => _history;
 
     private readonly Dictionary<string, double> _damage = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, double> _healing = new(StringComparer.OrdinalIgnoreCase);
@@ -44,19 +66,46 @@ public sealed class CombatParser
     public double IncomingSelfDps => HasData ? _incomingSelf / DurationSeconds : 0;
     public double IncomingPetDps => HasData ? _incomingPet / DurationSeconds : 0;
 
-    /// <summary>The enemy label for the fight: whoever (other than you/pet) took the most damage.</summary>
+    /// <summary>
+    /// The fight label: the enemy that took the most damage, with "+N" when the
+    /// pull contained more enemies (e.g. "a royal guard +3").
+    /// </summary>
     public string TargetLabel
     {
         get
         {
-            string best = ""; double most = -1;
+            string best = ""; double most = -1; int enemies = 0;
             foreach (var (name, dmg) in _taken)
             {
-                if (IsSelf(name) || IsPet(name)) continue;
+                if (!IsEnemyName(name)) continue;
+                enemies++;
                 if (dmg > most) { most = dmg; best = name; }
             }
-            return best;
+            if (enemies == 0)
+            {
+                // Fallback (e.g. a duel): most-damaged non-self target.
+                foreach (var (name, dmg) in _taken)
+                {
+                    if (IsSelf(name) || IsPet(name)) continue;
+                    if (dmg > most) { most = dmg; best = name; }
+                }
+                return best;
+            }
+            return enemies > 1 ? $"{best} +{enemies - 1}" : best;
         }
+    }
+
+    /// <summary>
+    /// Log lines can't tell two mobs named "a royal guard" apart, so same-named
+    /// enemies merge into one bucket. To keep the rankings honest, anything
+    /// enemy-shaped is split out of them: player (and pet) names in EQ are
+    /// always a single word, while mobs are "a/an/the ..." or multi-word names.
+    /// Rare single-word named mobs will slip through as "players".
+    /// </summary>
+    public bool IsEnemyName(string name)
+    {
+        if (IsSelf(name) || IsPet(name)) return false;
+        return name.Trim().Contains(' '); // "a royal guard", "Lady Vox", …
     }
 
     // ---- line formats (confirmed from the real EQ Legends log) ---------------
@@ -111,7 +160,29 @@ public sealed class CombatParser
     public void Tick(DateTime now)
     {
         if (_active && (now - _last).TotalSeconds >= IdleSeconds)
+        {
             _active = false;
+            Archive();
+        }
+    }
+
+    /// <summary>Snapshot the finished fight into the history list (newest first).</summary>
+    private void Archive()
+    {
+        if (!HasData) return;
+        _history.Insert(0, new FightRecord
+        {
+            Label = string.IsNullOrEmpty(TargetLabel) ? "fight" : TargetLabel,
+            EndedAt = _last,
+            DurationSeconds = DurationSeconds,
+            Damage = GetRows(healing: false),
+            Healing = GetRows(healing: true),
+            IncomingSelfTotal = _incomingSelf,
+            IncomingPetTotal = _incomingPet,
+            TotalDps = TotalPerSecond(healing: false),
+            TotalHps = TotalPerSecond(healing: true),
+        });
+        while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
     }
 
     /// <summary>Clear everything (manual reset button).</summary>
@@ -125,27 +196,44 @@ public sealed class CombatParser
         _active = false;
     }
 
-    /// <summary>Ranked sources for the given metric, highest first.</summary>
+    /// <summary>
+    /// Ranked sources for the given metric, highest first. Percentages are
+    /// within each group (players share of player total, enemies of enemy total).
+    /// </summary>
     public List<Row> GetRows(bool healing)
     {
         var src = healing ? _healing : _damage;
         double duration = DurationSeconds;
-        double grand = src.Values.Sum();
+
+        double friendlyGrand = 0, enemyGrand = 0;
+        foreach (var (name, total) in src)
+        {
+            if (IsEnemyName(name)) enemyGrand += total; else friendlyGrand += total;
+        }
+
         var rows = new List<Row>(src.Count);
         foreach (var (name, total) in src)
+        {
+            bool enemy = IsEnemyName(name);
+            double grand = enemy ? enemyGrand : friendlyGrand;
             rows.Add(new Row(name, total,
                 duration > 0 ? total / duration : 0,
-                grand > 0 ? total / grand * 100 : 0));
+                grand > 0 ? total / grand * 100 : 0,
+                enemy));
+        }
         rows.Sort((a, b) => b.Total.CompareTo(a.Total));
         return rows;
     }
 
-    /// <summary>Total of the given metric across all sources, per second.</summary>
+    /// <summary>Players' combined metric per second (enemies excluded — that's the "raid" total).</summary>
     public double TotalPerSecond(bool healing)
     {
         double duration = DurationSeconds;
         if (duration <= 0) return 0;
-        return (healing ? _healing : _damage).Values.Sum() / duration;
+        double sum = 0;
+        foreach (var (name, total) in healing ? _healing : _damage)
+            if (!IsEnemyName(name)) sum += total;
+        return sum / duration;
     }
 
     // ---- accumulation ---------------------------------------------------------
@@ -252,12 +340,55 @@ public sealed class CombatParser
         Bump(_damage, pet, 2950);
         Bump(_damage, "Bonkfist", 2310);
         Bump(_damage, "Lady Vox", 1900);
+        Bump(_damage, "a royal guard", 640);   // same-named adds merge into one enemy bucket
         Bump(_healing, "Kindheart", 3620);
         Bump(_healing, Self(), 640);
         Bump(_taken, "Lady Vox", 14950);
+        Bump(_taken, "a royal guard", 1210);
         Bump(_taken, Self(), 1350);
         Bump(_taken, pet, 550);
         _incomingSelf = 1350;
         _incomingPet = 550;
+
+        // Give the history window something to compare against.
+        if (_history.Count == 0)
+        {
+            _history.Insert(0, new FightRecord
+            {
+                Label = "a royal guard +3",
+                EndedAt = now.AddMinutes(-4),
+                DurationSeconds = 44,
+                Damage = new List<Row>
+                {
+                    new(Self(), 3980, 3980 / 44.0, 47, false),
+                    new("Sneakstab", 2900, 2900 / 44.0, 34, false),
+                    new(pet, 1600, 1600 / 44.0, 19, false),
+                    new("a royal guard", 2200, 2200 / 44.0, 100, true),
+                },
+                Healing = new List<Row> { new("Kindheart", 1750, 1750 / 44.0, 100, false) },
+                IncomingSelfTotal = 980,
+                IncomingPetTotal = 240,
+                TotalDps = (3980 + 2900 + 1600) / 44.0,
+                TotalHps = 1750 / 44.0,
+            });
+            _history.Insert(0, new FightRecord
+            {
+                Label = "Lady Vox",
+                EndedAt = now.AddMinutes(-2),
+                DurationSeconds = 92,
+                Damage = new List<Row>
+                {
+                    new(Self(), 11200, 11200 / 92.0, 44, false),
+                    new("Sneakstab", 9100, 9100 / 92.0, 36, false),
+                    new(pet, 5300, 5300 / 92.0, 20, false),
+                    new("Lady Vox", 20100, 20100 / 92.0, 100, true),
+                },
+                Healing = new List<Row> { new("Kindheart", 8800, 8800 / 92.0, 100, false) },
+                IncomingSelfTotal = 4100,
+                IncomingPetTotal = 900,
+                TotalDps = (11200 + 9100 + 5300) / 92.0,
+                TotalHps = 8800 / 92.0,
+            });
+        }
     }
 }

@@ -24,6 +24,10 @@
                         Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE894;"
                         AutomationProperties.AutomationId="MeterClearBtn"
                         ToolTip="Clear the current fight"/>
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Click="OnHistory"
+                        Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE81C;"
+                        AutomationProperties.AutomationId="MeterHistoryBtn"
+                        ToolTip="Fight history — compare past fights"/>
                 <Button x:Name="ModeBtn" DockPanel.Dock="Right" Style="{StaticResource ToolBtn}"
                         Click="OnToggleMetric" Margin="6,0,0,0" Padding="7,1" Content="DPS"
                         AutomationProperties.AutomationId="MeterModeBtn"
@@ -68,6 +72,15 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+
+            <!-- All enemy-shaped sources combined (same-named mobs can't be told
+                 apart in the log, so they never pollute the player rankings). -->
+            <DockPanel x:Name="EnemiesRow" Margin="2,1,2,0" Visibility="Collapsed">
+                <TextBlock x:Name="EnemiesValue" DockPanel.Dock="Right" Text=""
+                           Foreground="#8FA6C4" FontSize="11"/>
+                <TextBlock x:Name="EnemiesLabel" Text="Enemies" Foreground="#8FA6C4" FontSize="11"
+                           FontStyle="Italic" TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
 
             <!-- Incoming damage taken by you (and your pet, when a pet name is set). -->
             <Border BorderBrush="#3A4560" BorderThickness="0,1,0,0" Margin="0,4,0,5"/>

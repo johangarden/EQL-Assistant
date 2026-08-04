@@ -297,12 +297,29 @@ public partial class App : Application
             CheckNear("heal: himself -> healer", heal.FirstOrDefault(r => r.Name == "Snik").Total, 6);
             CheckNear("Johan dps = 52/12", dmg.FirstOrDefault(r => r.Name == "Johan").Dps, 52.0 / 12);
 
-            // Idle finalize + new fight resets.
+            // Enemy classification (single word = player-like; spaces = mob).
+            Check("mob classified as enemy", p.IsEnemyName("a gnoll pup") && p.IsEnemyName("Lady Vox"));
+            Check("players/pet classified friendly",
+                !p.IsEnemyName("Johan") && !p.IsEnemyName("Snik") && !p.IsEnemyName("Jabber"));
+            Check("enemy flagged in rows", dmg.First(r => r.Name == "A gnoll pup").Enemy
+                && !dmg.First(r => r.Name == "Johan").Enemy);
+            CheckNear("raid total excludes enemies", p.TotalPerSecond(false) * p.DurationSeconds, 60);
+
+            // Idle finalize archives the fight; a new line starts fresh.
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
             Check("fight ends after 10s idle", !p.InCombat);
+            Check("ended fight archived to history", p.History.Count == 1
+                && p.History[0].Label == "a gnoll pup"
+                && Math.Abs(p.History[0].DurationSeconds - 12) < 0.01
+                && p.History[0].IncomingSelfTotal == 20);
             p.ProcessLine($"[{Ts(40)}] You slash a rat for 5 points of damage.");
             Check("next combat line starts a fresh fight",
                 p.InCombat && p.GetRows(false).Count == 1 && p.IncomingSelfTotal == 0);
+            Check("history survives the reset", p.History.Count == 1);
+
+            // Multi-mob pull label: "biggest +N".
+            p.ProcessLine($"[{Ts(42)}] You slash a royal guard for 9 points of damage.");
+            Check("multi-pull label gets +N", p.TargetLabel is "a rat +1" or "a royal guard +1");
         }
         catch (Exception ex)
         {

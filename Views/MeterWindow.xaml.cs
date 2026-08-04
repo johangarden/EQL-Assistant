@@ -76,6 +76,12 @@ public partial class MeterWindow : Window
 
     public void ResetPosition() => _placement.ResetToDefault();
 
+    protected override void OnClosed(EventArgs e)
+    {
+        try { _historyWindow?.Close(); } catch { /* ignore */ }
+        base.OnClosed(e);
+    }
+
     // ---- controls -------------------------------------------------------------
 
     private void OnToggleMetric(object sender, RoutedEventArgs e)
@@ -89,6 +95,28 @@ public partial class MeterWindow : Window
     {
         _parser.Reset();
         Refresh();
+    }
+
+    private HistoryWindow? _historyWindow;
+
+    private void OnHistory(object sender, RoutedEventArgs e)
+    {
+        if (_historyWindow is null)
+        {
+            _historyWindow = new HistoryWindow(_parser);
+            _historyWindow.Closed += (_, _) => _historyWindow = null;
+            _historyWindow.Show();
+        }
+
+        // This panel is no-activate, so its child won't come to front on its
+        // own — the brief Topmost toggle bumps it above everything.
+        var w = _historyWindow;
+        if (w.WindowState == WindowState.Minimized) w.WindowState = WindowState.Normal;
+        w.Show();
+        w.Activate();
+        w.Topmost = true;
+        w.Topmost = false;
+        w.Focus();
     }
 
     private void Card_DragMove(object sender, MouseButtonEventArgs e)
@@ -108,6 +136,7 @@ public partial class MeterWindow : Window
             TitleText.Text = $"{metric} meter";
             SummaryText.Text = "waiting for combat…";
             _rows.Clear();
+            EnemiesRow.Visibility = Visibility.Collapsed;
             UpdateIncoming();
             return;
         }
@@ -119,21 +148,39 @@ public partial class MeterWindow : Window
         SummaryText.Text =
             $"{FormatDuration(_parser.DurationSeconds)} · total {FormatDps(_parser.TotalPerSecond(_showHealing))} {metric.ToLowerInvariant()}{state}";
 
+        // Rank players/pets only; enemy-shaped sources collapse into one dim row
+        // below (same-named mobs are indistinguishable in the log anyway).
         var ranked = _parser.GetRows(_showHealing);
-        int count = Math.Min(MaxRows, ranked.Count);
-        double top = count > 0 ? ranked[0].Total : 0;
+        var friendly = ranked.Where(r => !r.Enemy).ToList();
+        int count = Math.Min(MaxRows, friendly.Count);
+        double top = count > 0 ? friendly[0].Total : 0;
 
         while (_rows.Count > count) _rows.RemoveAt(_rows.Count - 1);
         while (_rows.Count < count) _rows.Add(new MeterRowViewModel());
 
         for (int i = 0; i < count; i++)
         {
-            var r = ranked[i];
+            var r = friendly[i];
             var row = _rows[i];
             row.Name = r.Name;
             row.Fraction = top > 0 ? r.Total / top : 0;
             row.ValueText = $"{FormatDps(r.Dps)}  ({FormatNum(r.Total)}, {r.Percent:0}%)";
             row.Fill = FillFor(r.Name);
+        }
+
+        int enemyCount = 0; double enemyTotal = 0, enemyDps = 0;
+        foreach (var r in ranked)
+        {
+            if (!r.Enemy) continue;
+            enemyCount++;
+            enemyTotal += r.Total;
+            enemyDps += r.Dps;
+        }
+        EnemiesRow.Visibility = enemyCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (enemyCount > 0)
+        {
+            EnemiesLabel.Text = enemyCount == 1 ? "Enemies (1 name)" : $"Enemies ({enemyCount} names)";
+            EnemiesValue.Text = $"{FormatDps(enemyDps)}  ({FormatNum(enemyTotal)})";
         }
 
         UpdateIncoming();
