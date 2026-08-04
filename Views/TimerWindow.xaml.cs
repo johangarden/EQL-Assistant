@@ -95,8 +95,12 @@ public partial class TimerWindow : Window
         if (sec is not > 0) return;
 
         _lastText = input.Trim();
+        // The pen is a manual override, so drop back to Normal (manual) mode — the
+        // preset's own duration lives in the Manager and still drives auto-start.
+        SetMode(null);
+        _manualSeconds = sec.Value;
+        _onDurationSet?.Invoke(sec.Value);
         SetDuration(sec.Value, start: false); // set, but don't auto-start — press Play
-        if (_modeName is null) { _manualSeconds = sec.Value; _onDurationSet?.Invoke(sec.Value); }
     }
 
     public void ResetPosition() => _placement.ResetToDefault();
