@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     private MatrixWindow? _selfMatrix;
     private MatrixWindow? _targetMatrix;
     private TimerWindow? _timer;
+    private FlashWindow? _flash;
     private PanelPlacement? _mainPlacement;
     private bool _hidden;
     private bool _timerHidden;
@@ -77,6 +78,7 @@ public partial class MainWindow : Window
         _timerHidden = !_config.Overlay.TimerVisible;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.TimerRequested += OnTimerRequested;
+        _engine.FlashRequested += OnFlashRequested;
         _vm = new OverlayViewModel(_engine, _config) { LoadoutName = _config.ActiveLoadout };
         DataContext = _vm;
 
@@ -98,6 +100,20 @@ public partial class MainWindow : Window
         StartWatcher();
         RebuildMatrixWindows();
         RebuildTimerWindow();
+        _flash = new FlashWindow();
+        _flash.Show();
+    }
+
+    private void OnFlashRequested(string text, string color)
+    {
+        if (_hidden) return;
+        _flash?.Flash(text, BrushFromColor(color));
+    }
+
+    private static Brush BrushFromColor(string color)
+    {
+        try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)); }
+        catch { return new SolidColorBrush(Color.FromRgb(0xFF, 0xCC, 0x33)); }
     }
 
     // ---- timer panel --------------------------------------------------------
@@ -570,6 +586,7 @@ public partial class MainWindow : Window
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
         try { _timer?.Close(); } catch { /* ignore */ }
+        try { _flash?.Close(); } catch { /* ignore */ }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }
 }

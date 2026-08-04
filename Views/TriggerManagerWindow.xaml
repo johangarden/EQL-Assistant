@@ -104,6 +104,7 @@
                                 <ComboBoxItem Content="Self buffs — present/missing matrix" Tag="selfBuffs"/>
                                 <ComboBoxItem Content="Target debuffs — present/missing matrix" Tag="targetDebuffs"/>
                                 <ComboBoxItem Content="Repop timer — auto-start on match" Tag="timerAuto"/>
+                                <ComboBoxItem Content="Flash — screen-center alert" Tag="flash"/>
                             </ComboBox>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="Bars = a depleting timer. Matrix = a red/green cell (present + seconds left). Repop timer = when the start pattern matches (e.g. a named mob death), the circular watch starts with this trigger's Duration."/>
@@ -152,6 +153,11 @@
 
                             <CheckBox Content="Alert when it reaches 0 (use for cooldown 'ready')"
                                       IsChecked="{Binding AlertOnExpire}" Margin="0,8,0,0"/>
+
+                            <TextBlock Text="Flash this text on screen when it matches" Style="{StaticResource FieldLabel}"/>
+                            <TextBox Text="{Binding FlashText, UpdateSourceTrigger=PropertyChanged}" Width="320" HorizontalAlignment="Left"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Big centred text in the trigger's colour that fades out. Works on any trigger, or use the 'Flash' panel for a flash-only trigger."/>
 
                             <TextBlock Text="Speak this phrase (Windows text-to-speech)" Style="{StaticResource FieldLabel}"/>
                             <StackPanel Orientation="Horizontal">

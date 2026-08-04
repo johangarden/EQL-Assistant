@@ -54,6 +54,9 @@ public sealed class TriggerEditViewModel : ViewModelBase
     private bool _alertOnExpire;
     public bool AlertOnExpire { get => _alertOnExpire; set => SetField(ref _alertOnExpire, value); }
 
+    private string _flashText = "";
+    public string FlashText { get => _flashText; set => SetField(ref _flashText, value); }
+
     private bool _remindWhenMissing;
     public bool RemindWhenMissing { get => _remindWhenMissing; set => SetField(ref _remindWhenMissing, value); }
 
@@ -86,6 +89,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
         AlertSound = d.Alert?.Sound ?? "",
         AlertAtSeconds = d.Alert?.AtSeconds ?? 0,
         AlertOnExpire = d.Alert?.OnExpire ?? false,
+        FlashText = d.Alert?.FlashText ?? "",
         RemindWhenMissing = d.RemindWhenMissing,
     };
 
@@ -93,6 +97,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
     {
         bool hasAlert = !string.IsNullOrWhiteSpace(AlertSpeak)
                         || !string.IsNullOrWhiteSpace(AlertSound)
+                        || !string.IsNullOrWhiteSpace(FlashText)
                         || AlertAtSeconds > 0
                         || AlertOnExpire;
 
@@ -115,6 +120,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
                 Sound = string.IsNullOrWhiteSpace(AlertSound) ? null : AlertSound,
                 AtSeconds = AlertAtSeconds,
                 OnExpire = AlertOnExpire,
+                FlashText = string.IsNullOrWhiteSpace(FlashText) ? null : FlashText,
             } : null,
         };
     }
