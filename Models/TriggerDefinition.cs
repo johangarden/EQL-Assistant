@@ -9,6 +9,7 @@ public static class Panels
     public const string Bars = "bars";                   // Area 1: countdown bars
     public const string SelfBuffs = "selfBuffs";         // Area 3: self-buff present/missing matrix
     public const string TargetDebuffs = "targetDebuffs"; // Area 2: target-debuff matrix
+    public const string TimerAuto = "timerAuto";         // start the repop timer when the pattern matches
 }
 
 /// <summary>

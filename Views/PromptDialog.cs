@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
+using EQLOverlay.Interop;
 
 namespace EQLOverlay.Views;
 
@@ -17,6 +19,7 @@ public static class PromptDialog
             Owner = owner,
             ResizeMode = ResizeMode.NoResize,
             WindowStyle = WindowStyle.ToolWindow,
+            Topmost = true, // the overlay is topmost; make sure the prompt is above it
         };
 
         var panel = new StackPanel { Margin = new Thickness(14) };
@@ -42,7 +45,13 @@ public static class PromptDialog
         string? result = null;
         ok.Click += (_, _) => { result = box.Text?.Trim(); win.DialogResult = true; };
 
-        win.Loaded += (_, _) => { box.Focus(); box.SelectAll(); };
+        win.Loaded += (_, _) =>
+        {
+            NativeMethods.ForceForeground(new WindowInteropHelper(win).Handle);
+            win.Activate();
+            box.Focus();
+            box.SelectAll();
+        };
 
         return win.ShowDialog() == true && !string.IsNullOrWhiteSpace(result) ? result : null;
     }

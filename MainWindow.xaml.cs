@@ -25,8 +25,10 @@ public partial class MainWindow : Window
     private TriggerManagerWindow? _manager;
     private MatrixWindow? _selfMatrix;
     private MatrixWindow? _targetMatrix;
+    private TimerWindow? _timer;
     private PanelPlacement? _mainPlacement;
     private bool _hidden;
+    private bool _timerHidden;
     private System.Windows.Forms.NotifyIcon? _tray;
 
     /// <summary>Set by self-tests so they never persist window position/lock.</summary>
@@ -40,6 +42,7 @@ public partial class MainWindow : Window
     private const int HK_HIDE    = 5;
     private const int HK_MUTE    = 7;
     private const int HK_QUIT    = 9;
+    private const int HK_REPOP   = 10;
 
     private static readonly Brush UnlockedBackdrop =
         new SolidColorBrush(Color.FromArgb(0x30, 0x0A, 0x0E, 0x14));
@@ -71,7 +74,9 @@ public partial class MainWindow : Window
         }
 
         _alerts.Muted = _config.Overlay.Muted;
+        _timerHidden = !_config.Overlay.TimerVisible;
         _engine = new TriggerEngine(_config, _alerts);
+        _engine.TimerRequested += OnTimerRequested;
         _vm = new OverlayViewModel(_engine, _config) { LoadoutName = _config.ActiveLoadout };
         DataContext = _vm;
 
@@ -92,6 +97,39 @@ public partial class MainWindow : Window
         SetupTrayIcon();
         StartWatcher();
         RebuildMatrixWindows();
+        RebuildTimerWindow();
+    }
+
+    // ---- timer panel --------------------------------------------------------
+
+    private void RebuildTimerWindow()
+    {
+        if (_timer is not null) { try { _timer.Close(); } catch { /* ignore */ } }
+        _timer = new TimerWindow(_configService, _alerts, _config.Overlay.TimerSeconds, _config.Overlay.Opacity,
+            onDurationSet: s => { _config.Overlay.TimerSeconds = s; _configService.SaveSettings(_config); });
+        _timer.PresetProvider = () => _config.Triggers
+            .Where(t => t.Panel == Panels.TimerAuto && t.Enabled)
+            .Select(t => (t.Name, t.DurationSeconds))
+            .ToList();
+        _timer.Show();
+        UpdateTimerVisibility();
+    }
+
+    private void UpdateTimerVisibility()
+    {
+        if (_timer is not null)
+            _timer.Visibility = (_hidden || _timerHidden) ? Visibility.Hidden : Visibility.Visible;
+    }
+
+    /// <summary>Show/hide the repop timer watch (⏱ button / tray / Ctrl+Alt+R), and remember it.</summary>
+    private void ToggleTimer()
+    {
+        _timerHidden = !_timerHidden;
+        _config.Overlay.TimerVisible = !_timerHidden;
+        _configService.SaveSettings(_config);
+        if (_hidden && !_timerHidden) ToggleHide(); // unhide everything if it was globally hidden
+        UpdateTimerVisibility();
+        _vm.Flash(_timerHidden ? "Repop timer hidden." : "Repop timer shown.");
     }
 
     // ---- matrix panels ------------------------------------------------------
@@ -168,11 +206,12 @@ public partial class MainWindow : Window
         NativeMethods.RegisterHotKey(_hwnd, HK_HIDE,   mods, 0x48); // H
         NativeMethods.RegisterHotKey(_hwnd, HK_MUTE,   mods, 0x53); // S
         NativeMethods.RegisterHotKey(_hwnd, HK_QUIT,   mods, 0x51); // Q
+        NativeMethods.RegisterHotKey(_hwnd, HK_REPOP,  mods, 0x52); // R
     }
 
     private void UnregisterHotKeys()
     {
-        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT })
+        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT, HK_REPOP })
             NativeMethods.UnregisterHotKey(_hwnd, id);
     }
 
@@ -187,6 +226,7 @@ public partial class MainWindow : Window
                 case HK_HIDE:   ToggleHide();       handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;
                 case HK_QUIT:   Close();            handled = true; break;
+                case HK_REPOP:  ToggleTimer();      handled = true; break;
             }
         }
         return nint.Zero;
@@ -219,6 +259,7 @@ public partial class MainWindow : Window
         _hidden = !_hidden;
         Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
         UpdateMatrixVisibility();
+        UpdateTimerVisibility();
     }
 
     /// <summary>Home every panel to its default corner (tray recovery).</summary>
@@ -232,7 +273,9 @@ public partial class MainWindow : Window
         _mainPlacement?.ResetToDefault();
         _selfMatrix?.ResetPosition();
         _targetMatrix?.ResetPosition();
+        _timer?.ResetPosition();
         UpdateMatrixVisibility();
+        UpdateTimerVisibility();
         _vm?.Flash("Panels reset to their corners.");
     }
 
@@ -307,6 +350,7 @@ public partial class MainWindow : Window
 
         _config = cfg;
         _alerts.Muted = cfg.Overlay.Muted;
+        _timerHidden = !cfg.Overlay.TimerVisible;
 
         bool wasLocked = _vm.Locked;
         _engine.Reset();
@@ -326,6 +370,7 @@ public partial class MainWindow : Window
         StartWatcher();
         _mainPlacement?.Reload();   // pick up any anchor change from Settings
         RebuildMatrixWindows();
+        RebuildTimerWindow();
         _vm.Flash("Settings applied.");
         Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
                  $"selfCells={_engine.SelfCells.Count}");
@@ -348,6 +393,26 @@ public partial class MainWindow : Window
         _vm.LoadoutName = lo.Name;
         _vm.Flash($"Switched to: {lo.Name}");
         Log.Info($"Loadout switched to '{lo.Name}' ({lo.Triggers.Count} triggers)");
+    }
+
+    // ---- repop / respawn timer ----------------------------------------------
+
+    private void OnRepop(object sender, RoutedEventArgs e) => ToggleTimer();
+
+    /// <summary>A "timerAuto" trigger matched (e.g. a named mob death) — start the watch.</summary>
+    private void OnTimerRequested(double seconds, string name)
+    {
+        if (_timerHidden)
+        {
+            _timerHidden = false;
+            _config.Overlay.TimerVisible = true;
+            _configService.SaveSettings(_config);
+        }
+        if (_hidden) ToggleHide();
+        UpdateTimerVisibility();
+        _timer?.StartWith(seconds, name);
+        _vm.Flash($"{name} down — repop timer started.");
+        Log.Info($"Auto-started repop timer ({seconds:0}s) from trigger '{name}'.");
     }
 
     private void ToggleMute()
@@ -441,6 +506,7 @@ public partial class MainWindow : Window
         };
         menu.Items.Add(loadoutItem);
 
+        menu.Items.Add("Show / hide repop timer", null, (_, _) => ToggleTimer());
         menu.Items.Add("Manage…", null, (_, _) => OpenManager());
         menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
@@ -503,6 +569,7 @@ public partial class MainWindow : Window
         _watcher?.Dispose();
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
+        try { _timer?.Close(); } catch { /* ignore */ }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }
 }

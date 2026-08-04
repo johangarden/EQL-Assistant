@@ -103,9 +103,10 @@
                                 <ComboBoxItem Content="Bars — countdown timers" Tag="bars"/>
                                 <ComboBoxItem Content="Self buffs — present/missing matrix" Tag="selfBuffs"/>
                                 <ComboBoxItem Content="Target debuffs — present/missing matrix" Tag="targetDebuffs"/>
+                                <ComboBoxItem Content="Repop timer — auto-start on match" Tag="timerAuto"/>
                             </ComboBox>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="Bars = a depleting timer. Matrix = a red/green cell (present + seconds left)."/>
+                                       Text="Bars = a depleting timer. Matrix = a red/green cell (present + seconds left). Repop timer = when the start pattern matches (e.g. a named mob death), the circular watch starts with this trigger's Duration."/>
 
                             <TextBlock Text="Category (bars grouping)" Style="{StaticResource FieldLabel}"/>
                             <ComboBox IsEditable="True" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}">
@@ -249,6 +250,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Bars" VerticalAlignment="Center" Margin="0,3"/>
@@ -269,6 +271,14 @@
 
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Target debuffs" VerticalAlignment="Center" Margin="0,3"/>
                             <ComboBox  Grid.Row="2" Grid.Column="1" x:Name="TargetAnchorBox" Margin="0,3" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
+                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
+                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
+                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Repop timer" VerticalAlignment="Center" Margin="0,3"/>
+                            <ComboBox  Grid.Row="3" Grid.Column="1" x:Name="TimerAnchorBox" Margin="0,3" SelectedValuePath="Tag">
                                 <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
                                 <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>

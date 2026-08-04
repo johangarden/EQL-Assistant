@@ -347,7 +347,9 @@ public sealed class ConfigService
         "muted": false,
         "startLocked": false,
         "opacity": 1.0,
-        "matrixColumns": 4
+        "matrixColumns": 4,
+        "timerSeconds": 400,
+        "timerVisible": true
       },
 
       "characterName": "",
