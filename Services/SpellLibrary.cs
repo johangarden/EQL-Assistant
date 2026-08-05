@@ -85,9 +85,26 @@ public sealed class SpellLibrary
     {
         try
         {
+            // A data\spell-library.json next to the exe wins (user-tweakable);
+            // otherwise fall back to the copy embedded in the assembly, so a
+            // lone copied exe still has the full library.
             string path = Path.Combine(AppContext.BaseDirectory, "data", "spell-library.json");
-            if (!File.Exists(path)) return new();
-            var file = JsonSerializer.Deserialize<LibraryFile>(File.ReadAllText(path), JsonOpts);
+            string json;
+            if (File.Exists(path))
+            {
+                json = File.ReadAllText(path);
+            }
+            else
+            {
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                string? resName = asm.GetManifestResourceNames()
+                    .FirstOrDefault(n => n.EndsWith("spell-library.json", StringComparison.OrdinalIgnoreCase));
+                if (resName is null) return new();
+                using var stream = asm.GetManifestResourceStream(resName)!;
+                using var reader = new StreamReader(stream);
+                json = reader.ReadToEnd();
+            }
+            var file = JsonSerializer.Deserialize<LibraryFile>(json, JsonOpts);
             return file?.Spells ?? new();
         }
         catch (Exception ex)

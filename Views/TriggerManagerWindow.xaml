@@ -517,6 +517,14 @@
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
                             <CheckBox x:Name="MuteCheck" Content="Mute all alerts" Margin="0,6,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Session" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="So a forgotten start never costs you data: launch with Windows, and/or rebuild today's fight history, raid kills and seen spells from the log when the app starts late (also on demand: tray → 'Catch up from today's log')."/>
+
+                            <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows (this exe)" Margin="0,10,0,0"/>
+                            <CheckBox x:Name="CatchUpCheck" Content="Catch up from today's log on startup" Margin="0,6,0,0"/>
                         </StackPanel>
                     </ScrollViewer>
 

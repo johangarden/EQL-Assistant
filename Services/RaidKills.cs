@@ -79,26 +79,30 @@ public sealed class RaidKills
     public int TotalTargets => _tiers.Sum(t => t.Targets.Count);
     public int TotalKilled => _tiers.Sum(t => t.Targets.Count(x => _kills.ContainsKey(x)));
 
-    public void ProcessLine(string rawLine)
+    /// <summary><paramref name="when"/> lets catch-up replay use the LINE's time
+    /// (with a dedupe window so re-running a catch-up never double-records).</summary>
+    public void ProcessLine(string rawLine, DateTime? when = null)
     {
         string body = TimestampPrefix.Replace(rawLine, "", 1);
         if (!TryParseKill(body, out string mob)) return;
 
+        DateTime t = when ?? DateTime.Now;
+
         // Every death lands in the recent list (latest kill of a name wins).
         _recentDeaths.RemoveAll(d => d.Name.Equals(mob, StringComparison.OrdinalIgnoreCase));
-        _recentDeaths.Insert(0, new RecentDeath(mob, DateTime.Now));
+        _recentDeaths.Insert(0, new RecentDeath(mob, t));
         if (_recentDeaths.Count > MaxRecentDeaths)
             _recentDeaths.RemoveAt(MaxRecentDeaths);
 
         if (!_targetSet.TryGetValue(mob, out string? canonical)) return;
 
-        var when = DateTime.Now;
         if (!_kills.TryGetValue(canonical, out var list))
             _kills[canonical] = list = new List<DateTime>();
-        list.Add(when);
+        if (list.Any(k => Math.Abs((k - t).TotalMinutes) < 10)) return; // replayed line
+        list.Add(t);
         SaveKills();
         Log.Info($"Raid target down: {canonical}");
-        KillRecorded?.Invoke(canonical, when);
+        KillRecorded?.Invoke(canonical, t);
     }
 
     /// <summary>Extract the victim from a death line ("(17)" level suffixes stripped).</summary>

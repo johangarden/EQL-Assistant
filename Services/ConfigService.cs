@@ -484,7 +484,10 @@ public sealed class ConfigService
       },
 
       "characterName": "",
-      "activeLoadout": "Default"
+      "activeLoadout": "Default",
+      // Replay today's log lines on startup (fight history, raid kills, seen
+      // spells) — useful when the app is started mid-session.
+      "catchUpOnStart": false
     }
     """;
 
