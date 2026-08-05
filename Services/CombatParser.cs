@@ -233,8 +233,10 @@ public sealed class CombatParser
         @"^(?<tgt>.+?) resisted your (?<spell>.+?)[!.]",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // "You resist ice boned skeleton's Ice Bone Frost Burst!" — the attacker's
+    // possessive is stripped in the handler (split on the first "'s ").
     private static readonly Regex ResistYouRx = new(
-        @"^You resist(?:ed)? (?:the )?(?<spell>.+?)(?: spell)?[!.]",
+        @"^You resist(?:ed)? (?:the )?(?<rest>.+?)(?: spell)?[!.]",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex TimestampPrefix =
@@ -308,7 +310,13 @@ public sealed class CombatParser
         if (m.Success) { AddOutgoingResist(m.Groups["spell"].Value, time); return; }
 
         m = ResistYouRx.Match(body);
-        if (m.Success) { AddIncomingResist(m.Groups["spell"].Value, time); return; }
+        if (m.Success)
+        {
+            string rest = m.Groups["rest"].Value;
+            int poss = rest.IndexOf("'s ", StringComparison.Ordinal);
+            AddIncomingResist(poss > 0 ? rest[(poss + 3)..] : rest, time);
+            return;
+        }
 
         m = ResistOtherRx.Match(body);
         if (m.Success) AddOutgoingResist(m.Groups["spell"].Value, time);

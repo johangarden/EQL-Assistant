@@ -391,6 +391,7 @@ public partial class App : Application
             p.ProcessLine($"[{Ts(13)}] A gnoll pup tries to bite Johan, but Johan dodges!");
             p.ProcessLine($"[{Ts(14)}] Your target resisted the Burst of Flame spell.");
             p.ProcessLine($"[{Ts(14)}] You resisted the Frost Breath spell!");
+            p.ProcessLine($"[{Ts(14)}] You resist ice boned skeleton's Ice Bone Frost Burst!");
 
             var ab2 = p.GetAbilityRows("Johan");
             var slash = ab2.First(r => r.Name == "slash");
@@ -405,6 +406,8 @@ public partial class App : Application
                 inc2.First(r => r.Name == "bite") is { Hits: 0, Misses: 2, Total: 0 });
             Check("incoming: your spell resist tracked",
                 inc2.First(r => r.Name == "Frost Breath") is { Resists: 1, Total: 0 });
+            Check("incoming: possessive resist form strips the attacker",
+                inc2.First(r => r.Name == "Ice Bone Frost Burst") is { Resists: 1 });
 
             Check("melee ability classification for proc rates",
                 CombatParser.IsMeleeAbility("backstab") && CombatParser.IsMeleeAbility("slash")
@@ -531,7 +534,7 @@ public partial class App : Application
                 sctCounts.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}")));
 
             var dmg = new Dictionary<string, double>();
-            var abil = new Dictionary<string, (double Total, int Hits, int Misses, int Crits)>();
+            var abil = new Dictionary<string, (double Total, int Hits, int Misses, int Resists, int Crits)>();
             foreach (var f in p.History)
             {
                 foreach (var r in f.Damage.Where(r => !r.Enemy))
@@ -539,15 +542,16 @@ public partial class App : Application
                 foreach (var a in f.SelfAbilities)
                 {
                     var cur = abil.GetValueOrDefault(a.Name);
-                    abil[a.Name] = (cur.Total + a.Total, cur.Hits + a.Hits, cur.Misses + a.Misses, cur.Crits + a.Crits);
+                    abil[a.Name] = (cur.Total + a.Total, cur.Hits + a.Hits, cur.Misses + a.Misses,
+                        cur.Resists + a.Resists, cur.Crits + a.Crits);
                 }
             }
             report.AppendLine("--- player damage across all fights ---");
             foreach (var kv in dmg.OrderByDescending(kv => kv.Value).Take(8))
                 report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
-            report.AppendLine("--- your abilities (total / hits / misses / crits) ---");
+            report.AppendLine("--- your abilities (total / hits / misses / resists / crits) ---");
             foreach (var kv in abil.OrderByDescending(kv => kv.Value.Total).Take(14))
-                report.AppendLine($"  {kv.Key}: {kv.Value.Total:N0} / {kv.Value.Hits} / {kv.Value.Misses} / {kv.Value.Crits}");
+                report.AppendLine($"  {kv.Key}: {kv.Value.Total:N0} / {kv.Value.Hits} / {kv.Value.Misses} / {kv.Value.Resists} / {kv.Value.Crits}");
             double incoming = p.History.Sum(f => f.IncomingSelfTotal);
             report.AppendLine($"--- incoming on you across all fights: {incoming:N0} ---");
             var incAb = new Dictionary<string, double>();
