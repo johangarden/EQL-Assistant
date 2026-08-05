@@ -126,14 +126,22 @@ public partial class MainWindow : Window
 
     // ---- scrolling combat text ------------------------------------------------
 
-    private static readonly (CombatParser.SctKind Kind, string Key, string Title, Color Color, double OffsetFromCenter)[]
-        SctLaneDefs =
+    // Per-lane colors: melee / spell / proc (heals use one green).
+    private static readonly (CombatParser.SctKind Kind, string Key, string Title,
+        Color Melee, Color Spell, Color Proc, double OffsetFromCenter)[] SctLaneDefs =
     {
-        (CombatParser.SctKind.IncomingSelf,  "sctIncoming",  "Incoming",     Color.FromRgb(0xFF, 0x8A, 0x80), -280),
-        (CombatParser.SctKind.OutgoingSelf,  "sctOutgoing",  "Outgoing",     Color.FromRgb(0xFF, 0xD5, 0x4F),  110),
-        (CombatParser.SctKind.HealOut,       "sctHeals",     "Heals",        Color.FromRgb(0x81, 0xC7, 0x84),  300),
-        (CombatParser.SctKind.IncomingPet,   "sctPetIn",     "Pet incoming", Color.FromRgb(0xF0, 0x62, 0x92), -470),
-        (CombatParser.SctKind.OutgoingPet,   "sctPetOut",    "Pet outgoing", Color.FromRgb(0xFF, 0xB7, 0x4D),  490),
+        (CombatParser.SctKind.IncomingSelf,  "sctIncoming",  "Incoming",
+            Color.FromRgb(0xFF, 0x8A, 0x80), Color.FromRgb(0xFF, 0xAB, 0x40), Color.FromRgb(0xCE, 0x93, 0xD8), -280),
+        (CombatParser.SctKind.OutgoingSelf,  "sctOutgoing",  "Outgoing",
+            Color.FromRgb(0xF5, 0xF5, 0xF5), Color.FromRgb(0xFF, 0xD5, 0x4F), Color.FromRgb(0xBA, 0x68, 0xC8),  110),
+        (CombatParser.SctKind.HealOut,       "sctHeals",     "Your heals",
+            Color.FromRgb(0x81, 0xC7, 0x84), Color.FromRgb(0x81, 0xC7, 0x84), Color.FromRgb(0x81, 0xC7, 0x84),  300),
+        (CombatParser.SctKind.HealIn,        "sctHealsIn",   "Heals on you",
+            Color.FromRgb(0xA5, 0xD6, 0xA7), Color.FromRgb(0xA5, 0xD6, 0xA7), Color.FromRgb(0xA5, 0xD6, 0xA7),  -85),
+        (CombatParser.SctKind.IncomingPet,   "sctPetIn",     "Pet incoming",
+            Color.FromRgb(0xF0, 0x62, 0x92), Color.FromRgb(0xF4, 0x8F, 0xB1), Color.FromRgb(0xCE, 0x93, 0xD8), -470),
+        (CombatParser.SctKind.OutgoingPet,   "sctPetOut",    "Pet outgoing",
+            Color.FromRgb(0xFF, 0xB7, 0x4D), Color.FromRgb(0xFF, 0xE0, 0x82), Color.FromRgb(0xB3, 0x9D, 0xDB),  490),
     };
 
     private bool SctLaneEnabled(CombatParser.SctKind kind) => kind switch
@@ -141,6 +149,7 @@ public partial class MainWindow : Window
         CombatParser.SctKind.IncomingSelf => _config.Overlay.SctIncoming,
         CombatParser.SctKind.OutgoingSelf => _config.Overlay.SctOutgoing,
         CombatParser.SctKind.HealOut => _config.Overlay.SctHeals,
+        CombatParser.SctKind.HealIn => _config.Overlay.SctHealsIn,
         CombatParser.SctKind.IncomingPet => _config.Overlay.SctPetIncoming,
         CombatParser.SctKind.OutgoingPet => _config.Overlay.SctPetOutgoing,
         _ => false,
@@ -158,7 +167,8 @@ public partial class MainWindow : Window
         {
             if (!SctLaneEnabled(def.Kind)) continue;
             var lane = new SctLaneWindow(_configService, def.Key, def.Title,
-                new SolidColorBrush(def.Color), o.Opacity, o.SctFontSize, o.SctBigHit,
+                new SolidColorBrush(def.Melee), new SolidColorBrush(def.Spell), new SolidColorBrush(def.Proc),
+                o.Opacity, o.SctFontSize, o.SctBigHit,
                 o.SctLaneWidth, o.SctLaneHeight,
                 centerX + def.OffsetFromCenter - o.SctLaneWidth / 2, topY);
             lane.Show();
@@ -168,11 +178,13 @@ public partial class MainWindow : Window
         UpdateSctVisibility();
     }
 
-    private void OnSctEvent(CombatParser.SctKind kind, string ability, double amount)
+    private void OnSctEvent(CombatParser.SctHit hit)
     {
         if (_hidden || _sctHidden) return;
-        if (_sctLanes.TryGetValue(kind, out var lane))
-            lane.Post(ability, amount, plus: kind == CombatParser.SctKind.HealOut);
+        if (_sctLanes.TryGetValue(hit.Kind, out var lane))
+            lane.Post(hit.Ability, hit.Amount,
+                plus: hit.Kind is CombatParser.SctKind.HealOut or CombatParser.SctKind.HealIn,
+                flavor: hit.Flavor, crit: hit.Crit);
     }
 
     private void UpdateSctVisibility()

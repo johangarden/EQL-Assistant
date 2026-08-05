@@ -49,6 +49,15 @@ public partial class App : Application
             return;
         }
 
+        // Gated: replay a whole log file through the combat parser and dump a
+        // coverage report — used to validate parsing against real gameplay.
+        int replayIdx = Array.IndexOf(e.Args, "--replay");
+        if (replayIdx >= 0 && replayIdx + 1 < e.Args.Length)
+        {
+            RunReplay(e.Args[replayIdx + 1]);
+            return;
+        }
+
         Log.Init();
         var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         Log.Info($"===== EQL Assistant v{ver} starting =====");
@@ -274,8 +283,8 @@ public partial class App : Application
         try
         {
             var p = new CombatParser { SelfName = "Johan", PetName = "Jabber" };
-            var sct = new List<(CombatParser.SctKind Kind, string Ability, double Amount)>();
-            p.SctEvent += (k, a, v) => sct.Add((k, a, v));
+            var sct = new List<CombatParser.SctHit>();
+            p.SctEvent += hit => sct.Add(hit);
             string Ts(int sec) => new DateTime(2026, 8, 3, 12, 0, sec)
                 .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -329,13 +338,50 @@ public partial class App : Application
             // SCT events: one per own/pet-relevant combat line, routed by kind.
             Check("SCT: 4 outgoing-self events (incl. the 0 hit)",
                 sct.Count(e => e.Kind == CombatParser.SctKind.OutgoingSelf) == 4);
-            Check("SCT: incoming-self (hit, 20)",
+            Check("SCT: incoming-self (hit, 20, melee flavor)",
                 sct.Count(e => e.Kind == CombatParser.SctKind.IncomingSelf) == 1
-                && sct.Any(e => e is { Kind: CombatParser.SctKind.IncomingSelf, Ability: "hit", Amount: 20 }));
+                && sct.Any(e => e is { Kind: CombatParser.SctKind.IncomingSelf, Ability: "hit", Amount: 20, Flavor: CombatParser.SctFlavor.Melee }));
             Check("SCT: incoming-pet (bite, 15)",
                 sct.Any(e => e is { Kind: CombatParser.SctKind.IncomingPet, Ability: "bite", Amount: 15 }));
             Check("SCT: no heal-out events (others healed)",
                 sct.All(e => e.Kind != CombatParser.SctKind.HealOut));
+
+            // ---- formats confirmed from the real Thorrak log --------------------
+            p.ProcessLine($"[{Ts(15)}] Orc legionnaire is pierced by YOUR thorns for 8 points of non-melee damage.");
+            p.ProcessLine($"[{Ts(15)}] Ice boned skeleton is pierced by YOUR thorns for 1 point of non-melee damage.");
+            p.ProcessLine($"[{Ts(15)}] YOU are pierced by a Teir`Dal ranger's thorns for 6 points of non-melee damage!");
+            p.ProcessLine($"[{Ts(16)}] Orc legionnaire has taken 12 damage from your Tainted Breath.");
+            p.ProcessLine($"[{Ts(16)}] You healed Johan for 25 hit points.");
+            p.ProcessLine($"[{Ts(16)}] You healed Johan over time for 30 hit points by Sprouting Heal.");
+            p.ProcessLine($"[{Ts(17)}] Malahoja healed Johan for 40 hit points by Light Healing.");
+            p.ProcessLine($"[{Ts(17)}] You bash a willowisp for 1 point of damage.");
+            p.ProcessLine($"[{Ts(17)}] You crush a gnoll pup for 44 points of damage. (Critical)");
+            p.ProcessLine($"[{Ts(18)}] You were hit by non-melee for 100 damage.");
+
+            var ab3 = p.GetAbilityRows("Johan");
+            Check("thorns DS out tracked (8 + singular-point 1)",
+                ab3.First(r => r.Name == "thorns") is { Total: 9, Hits: 2 });
+            Check("your-DoT form tracked (Tainted Breath 12)",
+                ab3.First(r => r.Name == "Tainted Breath") is { Total: 12 });
+            Check("singular-point melee tracked (bash 1)",
+                ab3.First(r => r.Name == "bash") is { Total: 1 });
+            Check("crit flagged on crush",
+                ab3.First(r => r.Name == "crush") is { Crits: 1 });
+            var inc3 = p.GetIncomingAbilityRows(pet: false);
+            Check("thorns DS in tracked (6)",
+                inc3.First(r => r.Name == "thorns") is { Total: 6 });
+            Check("unattributed non-melee incoming (100)",
+                inc3.First(r => r.Name == "non-melee") is { Total: 100 });
+            Check("SCT: bare heal fires HealOut with 'heal' label",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.HealOut, Ability: "heal", Amount: 25 }));
+            Check("SCT: HoT tick fires HealOut with spell label",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.HealOut, Ability: "Sprouting Heal", Amount: 30 }));
+            Check("SCT: heal from another fires HealIn",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.HealIn, Ability: "Light Healing", Amount: 40 }));
+            Check("SCT: thorns events carry Proc flavor",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.OutgoingSelf, Ability: "thorns", Flavor: CombatParser.SctFlavor.Proc }));
+            Check("SCT: crit flag carried",
+                sct.Any(e => e is { Ability: "crush", Amount: 44, Crit: true }));
 
             // Misses, resists, hit% and damage ranges.
             p.ProcessLine($"[{Ts(13)}] You try to slash a gnoll pup, but miss!");
@@ -415,9 +461,9 @@ public partial class App : Application
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
             Check("fight ends after 10s idle", !p.InCombat);
             Check("ended fight archived to history", p.History.Count == 1
-                && p.History[0].Label == "a gnoll pup"
-                && Math.Abs(p.History[0].DurationSeconds - 14) < 0.01 // miss/resist lines extend activity
-                && p.History[0].IncomingSelfTotal == 20);
+                && p.History[0].Label.StartsWith("a gnoll pup") // multi-enemy pull -> "+N" suffix
+                && Math.Abs(p.History[0].DurationSeconds - 18) < 0.01 // last activity = the Ts(18) line
+                && p.History[0].IncomingSelfTotal == 126); // 20 melee + 6 thorns + 100 non-melee
             p.ProcessLine($"[{Ts(40)}] You slash a rat for 5 points of damage.");
             Check("next combat line starts a fresh fight",
                 p.InCombat && p.GetRows(false).Count == 1 && p.IncomingSelfTotal == 0);
@@ -437,11 +483,12 @@ public partial class App : Application
             var back = System.Text.Json.JsonSerializer
                 .Deserialize<List<CombatParser.FightRecord>>(json, jsonOpts);
             Check("fight record JSON round trip", back is { Count: 1 }
-                && back[0].Label == "a gnoll pup"
-                && back[0].IncomingSelfTotal == 20
-                && back[0].Damage.Any(r => r.Name == "Johan" && Math.Abs(r.Total - 52) < 0.01 && !r.Enemy)
+                && back[0].Label.StartsWith("a gnoll pup")
+                && back[0].IncomingSelfTotal == 126
+                && back[0].Damage.Any(r => r.Name == "Johan" && Math.Abs(r.Total - 118) < 0.01 && !r.Enemy)
                 && back[0].Damage.Any(r => r.Enemy)
                 && back[0].SelfAbilities.Any(r => r.Name == "Burst of Flame" && r.Total == 30)
+                && back[0].SelfAbilities.Any(r => r.Name == "crush" && r.Crits == 1)
                 && back[0].IncomingSelfAbilities.Any(r => r.Name == "hit" && r.Total == 20));
         }
         catch (Exception ex)
@@ -453,6 +500,62 @@ public partial class App : Application
         string result = (failures == 0 ? "ALL PASS\n" : $"{failures} FAILURE(S)\n") + report;
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest_meter.txt"), result);
         Environment.ExitCode = failures == 0 ? 0 : 1;
+        Shutdown();
+    }
+
+    private void RunReplay(string path)
+    {
+        var report = new System.Text.StringBuilder();
+        try
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(
+                Path.GetFileName(path), @"^eqlog_(?<name>[A-Za-z]+)[_.]");
+            var p = new CombatParser { SelfName = m.Success ? m.Groups["name"].Value : "You" };
+            var sctCounts = new Dictionary<CombatParser.SctKind, int>();
+            p.SctEvent += hit => sctCounts[hit.Kind] = 1 + sctCounts.GetValueOrDefault(hit.Kind);
+
+            int lines = 0;
+            foreach (var line in File.ReadLines(path)) { p.Replay(line); lines++; }
+            p.Tick(DateTime.MaxValue);
+
+            report.AppendLine($"lines: {lines}   fights: {p.History.Count}   self: {p.SelfName}");
+            report.AppendLine("SCT events: " + string.Join("  ",
+                sctCounts.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}")));
+
+            var dmg = new Dictionary<string, double>();
+            var abil = new Dictionary<string, (double Total, int Hits, int Misses, int Crits)>();
+            foreach (var f in p.History)
+            {
+                foreach (var r in f.Damage.Where(r => !r.Enemy))
+                    dmg[r.Name] = dmg.GetValueOrDefault(r.Name) + r.Total;
+                foreach (var a in f.SelfAbilities)
+                {
+                    var cur = abil.GetValueOrDefault(a.Name);
+                    abil[a.Name] = (cur.Total + a.Total, cur.Hits + a.Hits, cur.Misses + a.Misses, cur.Crits + a.Crits);
+                }
+            }
+            report.AppendLine("--- player damage across all fights ---");
+            foreach (var kv in dmg.OrderByDescending(kv => kv.Value).Take(8))
+                report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
+            report.AppendLine("--- your abilities (total / hits / misses / crits) ---");
+            foreach (var kv in abil.OrderByDescending(kv => kv.Value.Total).Take(14))
+                report.AppendLine($"  {kv.Key}: {kv.Value.Total:N0} / {kv.Value.Hits} / {kv.Value.Misses} / {kv.Value.Crits}");
+            double incoming = p.History.Sum(f => f.IncomingSelfTotal);
+            report.AppendLine($"--- incoming on you across all fights: {incoming:N0} ---");
+            var incAb = new Dictionary<string, double>();
+            foreach (var f in p.History)
+                foreach (var a in f.IncomingSelfAbilities)
+                    incAb[a.Name] = incAb.GetValueOrDefault(a.Name) + a.Total;
+            foreach (var kv in incAb.OrderByDescending(kv => kv.Value).Take(8))
+                report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
+            Environment.ExitCode = 0;
+        }
+        catch (Exception ex)
+        {
+            report.AppendLine("EXCEPTION: " + ex);
+            Environment.ExitCode = 1;
+        }
+        File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_replay.txt"), report.ToString());
         Shutdown();
     }
 

@@ -498,6 +498,7 @@ public partial class TriggerManagerWindow : Window
         SctIncomingCheck.IsChecked = _config.Overlay.SctIncoming;
         SctOutgoingCheck.IsChecked = _config.Overlay.SctOutgoing;
         SctHealsCheck.IsChecked = _config.Overlay.SctHeals;
+        SctHealsInCheck.IsChecked = _config.Overlay.SctHealsIn;
         SctPetInCheck.IsChecked = _config.Overlay.SctPetIncoming;
         SctPetOutCheck.IsChecked = _config.Overlay.SctPetOutgoing;
         SctFontBox.Text = _config.Overlay.SctFontSize.ToString(CultureInfo.InvariantCulture);
@@ -597,6 +598,7 @@ public partial class TriggerManagerWindow : Window
                 SctIncoming = SctIncomingCheck.IsChecked == true,
                 SctOutgoing = SctOutgoingCheck.IsChecked == true,
                 SctHeals = SctHealsCheck.IsChecked == true,
+                SctHealsIn = SctHealsInCheck.IsChecked == true,
                 SctPetIncoming = SctPetInCheck.IsChecked == true,
                 SctPetOutgoing = SctPetOutCheck.IsChecked == true,
                 SctFontSize = Math.Clamp(ParseOr(SctFontBox.Text, _config.Overlay.SctFontSize), 10, 72),

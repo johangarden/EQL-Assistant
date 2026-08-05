@@ -474,6 +474,7 @@ public sealed class ConfigService
         "sctIncoming": true,
         "sctOutgoing": true,
         "sctHeals": true,
+        "sctHealsIn": true,
         "sctPetIncoming": false,
         "sctPetOutgoing": false,
         "sctFontSize": 18,

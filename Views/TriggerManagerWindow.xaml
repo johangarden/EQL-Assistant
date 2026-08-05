@@ -686,6 +686,7 @@
                             <CheckBox x:Name="SctIncomingCheck" Content="Incoming damage (you)" Margin="0,10,0,0"/>
                             <CheckBox x:Name="SctOutgoingCheck" Content="Outgoing damage (you)" Margin="0,6,0,0"/>
                             <CheckBox x:Name="SctHealsCheck" Content="Your heals" Margin="0,6,0,0"/>
+                            <CheckBox x:Name="SctHealsInCheck" Content="Heals on you (from others)" Margin="0,6,0,0"/>
                             <CheckBox x:Name="SctPetInCheck" Content="Pet incoming damage" Margin="0,6,0,0"/>
                             <CheckBox x:Name="SctPetOutCheck" Content="Pet outgoing damage" Margin="0,6,0,0"/>
 

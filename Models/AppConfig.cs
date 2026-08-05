@@ -101,6 +101,7 @@ public sealed class OverlayConfig
     public bool SctIncoming { get; set; } = true;
     public bool SctOutgoing { get; set; } = true;
     public bool SctHeals { get; set; } = true;
+    public bool SctHealsIn { get; set; } = true;
     public bool SctPetIncoming { get; set; } = false;
     public bool SctPetOutgoing { get; set; } = false;
 
