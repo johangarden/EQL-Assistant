@@ -80,8 +80,16 @@ public partial class MeterWindow : Window
 
     public void ResetPosition() => _placement.ResetToDefault();
 
+    /// <summary>Apply changed settings live — the fight and any open history window survive.</summary>
+    public void ApplySettings(double opacity)
+    {
+        Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
+        _placement.Reload();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
+        _tick.Stop();
         try { _historyWindow?.Close(); } catch { /* ignore */ }
         base.OnClosed(e);
     }

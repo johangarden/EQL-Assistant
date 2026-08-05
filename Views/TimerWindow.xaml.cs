@@ -73,6 +73,9 @@ public partial class TimerWindow : Window
 
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
+        // Without this, a closed watch keeps ticking invisibly and beeps
+        // when its repops hit zero (the "ghost spawn alert" bug).
+        Closed += (_, _) => _tick.Stop();
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -80,6 +83,13 @@ public partial class TimerWindow : Window
         _placement.Attach();
         UpdateVisual();
         _tick.Start();
+    }
+
+    /// <summary>Apply changed settings live — running repop timers survive.</summary>
+    public void ApplySettings(double opacity)
+    {
+        Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
+        _placement.Reload();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)

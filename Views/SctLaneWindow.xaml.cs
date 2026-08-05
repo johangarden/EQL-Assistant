@@ -61,6 +61,7 @@ public partial class SctLaneWindow : Window
 
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
+        Closed += (_, _) => _pump.Stop();
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)

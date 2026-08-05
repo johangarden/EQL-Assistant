@@ -577,8 +577,14 @@ public partial class MainWindow : Window
         StartWatcher();
         _mainPlacement?.Reload();   // pick up any anchor change from Settings
         RebuildMatrixWindows();
-        RebuildTimerWindow();
-        RebuildMeterWindow();
+
+        // The watch and meter are updated IN PLACE: rebuilding them would wipe
+        // running repop timers (and close an open fight-history window).
+        if (_timer is null) RebuildTimerWindow();
+        else { _timer.ApplySettings(cfg.Overlay.Opacity); UpdateTimerVisibility(); }
+        if (_meter is null) RebuildMeterWindow();
+        else { _meter.ApplySettings(cfg.Overlay.Opacity); UpdateMeterVisibility(); }
+
         RebuildFlashWindow();
         RebuildSctLanes();
         _vm.Flash("Settings applied.");
