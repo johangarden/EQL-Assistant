@@ -29,10 +29,12 @@ public partial class MainWindow : Window
     private FlashWindow? _flash;
     private MeterWindow? _meter;
     private readonly CombatParser _combat = new();
+    private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
     private PanelPlacement? _mainPlacement;
     private bool _hidden;
     private bool _timerHidden;
     private bool _meterHidden;
+    private bool _sctHidden;
     private System.Windows.Forms.NotifyIcon? _tray;
 
     /// <summary>Set by self-tests so they never persist window position/lock.</summary>
@@ -48,6 +50,7 @@ public partial class MainWindow : Window
     private const int HK_QUIT    = 9;
     private const int HK_REPOP   = 10;
     private const int HK_METER   = 11;
+    private const int HK_SCT     = 12;
 
     private static readonly Brush UnlockedBackdrop =
         new SolidColorBrush(Color.FromArgb(0x30, 0x0A, 0x0E, 0x14));
@@ -81,8 +84,10 @@ public partial class MainWindow : Window
         _alerts.Muted = _config.Overlay.Muted;
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
+        _sctHidden = !_config.Overlay.SctVisible;
         _combat.SelfName = _config.CharacterName;
         _combat.PetName = _config.Overlay.PetName;
+        _combat.SctEvent += OnSctEvent;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
@@ -109,6 +114,75 @@ public partial class MainWindow : Window
         RebuildTimerWindow();
         RebuildMeterWindow();
         RebuildFlashWindow();
+        RebuildSctLanes();
+    }
+
+    // ---- scrolling combat text ------------------------------------------------
+
+    private static readonly (CombatParser.SctKind Kind, string Key, string Title, Color Color, double OffsetFromCenter)[]
+        SctLaneDefs =
+    {
+        (CombatParser.SctKind.IncomingSelf,  "sctIncoming",  "Incoming",     Color.FromRgb(0xFF, 0x8A, 0x80), -280),
+        (CombatParser.SctKind.OutgoingSelf,  "sctOutgoing",  "Outgoing",     Color.FromRgb(0xFF, 0xD5, 0x4F),  110),
+        (CombatParser.SctKind.HealOut,       "sctHeals",     "Heals",        Color.FromRgb(0x81, 0xC7, 0x84),  300),
+        (CombatParser.SctKind.IncomingPet,   "sctPetIn",     "Pet incoming", Color.FromRgb(0xF0, 0x62, 0x92), -470),
+        (CombatParser.SctKind.OutgoingPet,   "sctPetOut",    "Pet outgoing", Color.FromRgb(0xFF, 0xB7, 0x4D),  490),
+    };
+
+    private bool SctLaneEnabled(CombatParser.SctKind kind) => kind switch
+    {
+        CombatParser.SctKind.IncomingSelf => _config.Overlay.SctIncoming,
+        CombatParser.SctKind.OutgoingSelf => _config.Overlay.SctOutgoing,
+        CombatParser.SctKind.HealOut => _config.Overlay.SctHeals,
+        CombatParser.SctKind.IncomingPet => _config.Overlay.SctPetIncoming,
+        CombatParser.SctKind.OutgoingPet => _config.Overlay.SctPetOutgoing,
+        _ => false,
+    };
+
+    private void RebuildSctLanes()
+    {
+        foreach (var lane in _sctLanes.Values) { try { lane.Close(); } catch { /* ignore */ } }
+        _sctLanes.Clear();
+
+        double centerX = SystemParameters.WorkArea.Width / 2;
+        double topY = SystemParameters.WorkArea.Height * 0.32;
+        var o = _config.Overlay;
+        foreach (var def in SctLaneDefs)
+        {
+            if (!SctLaneEnabled(def.Kind)) continue;
+            var lane = new SctLaneWindow(_configService, def.Key, def.Title,
+                new SolidColorBrush(def.Color), o.Opacity, o.SctFontSize, o.SctBigHit,
+                o.SctLaneWidth, o.SctLaneHeight,
+                centerX + def.OffsetFromCenter - o.SctLaneWidth / 2, topY);
+            lane.Show();
+            lane.SetLocked(_vm.Locked);
+            _sctLanes[def.Kind] = lane;
+        }
+        UpdateSctVisibility();
+    }
+
+    private void OnSctEvent(CombatParser.SctKind kind, string ability, double amount)
+    {
+        if (_hidden || _sctHidden) return;
+        if (_sctLanes.TryGetValue(kind, out var lane))
+            lane.Post(ability, amount, plus: kind == CombatParser.SctKind.HealOut);
+    }
+
+    private void UpdateSctVisibility()
+    {
+        foreach (var lane in _sctLanes.Values)
+            lane.Visibility = (_hidden || _sctHidden) ? Visibility.Hidden : Visibility.Visible;
+    }
+
+    /// <summary>Master SCT toggle (toolbar ⚡ / tray / Ctrl+Alt+C), remembered.</summary>
+    private void ToggleSct()
+    {
+        _sctHidden = !_sctHidden;
+        _config.Overlay.SctVisible = !_sctHidden;
+        _configService.SaveSettings(_config);
+        if (_hidden && !_sctHidden) ToggleHide();
+        UpdateSctVisibility();
+        _vm.Flash(_sctHidden ? "Combat text hidden." : "Combat text shown.");
     }
 
     private void RebuildFlashWindow()
@@ -269,11 +343,12 @@ public partial class MainWindow : Window
         NativeMethods.RegisterHotKey(_hwnd, HK_QUIT,   mods, 0x51); // Q
         NativeMethods.RegisterHotKey(_hwnd, HK_REPOP,  mods, 0x52); // R
         NativeMethods.RegisterHotKey(_hwnd, HK_METER,  mods, 0x44); // D
+        NativeMethods.RegisterHotKey(_hwnd, HK_SCT,    mods, 0x43); // C
     }
 
     private void UnregisterHotKeys()
     {
-        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT, HK_REPOP, HK_METER })
+        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT, HK_REPOP, HK_METER, HK_SCT })
             NativeMethods.UnregisterHotKey(_hwnd, id);
     }
 
@@ -288,12 +363,15 @@ public partial class MainWindow : Window
                     _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell();
                     _combat.AddDemoFight(); UpdateMatrixVisibility();
                     OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
+                    if (!_hidden && !_sctHidden)
+                        foreach (var lane in _sctLanes.Values) lane.SpawnDemo();
                     handled = true; break;
                 case HK_HIDE:   ToggleHide();       handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;
                 case HK_QUIT:   Close();            handled = true; break;
                 case HK_REPOP:  ToggleTimer();      handled = true; break;
                 case HK_METER:  ToggleMeter();      handled = true; break;
+                case HK_SCT:    ToggleSct();        handled = true; break;
             }
         }
         return nint.Zero;
@@ -310,6 +388,7 @@ public partial class MainWindow : Window
         _selfMatrix?.SetLocked(_vm.Locked);
         _targetMatrix?.SetLocked(_vm.Locked);
         _flash?.SetLocked(_vm.Locked);
+        foreach (var lane in _sctLanes.Values) lane.SetLocked(_vm.Locked);
         _configService.SaveWindowState(_config.Overlay);
     }
 
@@ -329,6 +408,7 @@ public partial class MainWindow : Window
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
         UpdateMeterVisibility();
+        UpdateSctVisibility();
         if (_flash is not null)
             _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
     }
@@ -347,9 +427,11 @@ public partial class MainWindow : Window
         _timer?.ResetPosition();
         _meter?.ResetPosition();
         _flash?.ResetPosition();
+        foreach (var lane in _sctLanes.Values) lane.ResetPosition();
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
         UpdateMeterVisibility();
+        UpdateSctVisibility();
         _vm?.Flash("Panels reset to their corners.");
     }
 
@@ -426,6 +508,7 @@ public partial class MainWindow : Window
         _alerts.Muted = cfg.Overlay.Muted;
         _timerHidden = !cfg.Overlay.TimerVisible;
         _meterHidden = !cfg.Overlay.MeterVisible;
+        _sctHidden = !cfg.Overlay.SctVisible;
         _combat.SelfName = cfg.CharacterName;
         _combat.PetName = cfg.Overlay.PetName;
 
@@ -450,6 +533,7 @@ public partial class MainWindow : Window
         RebuildTimerWindow();
         RebuildMeterWindow();
         RebuildFlashWindow();
+        RebuildSctLanes();
         _vm.Flash("Settings applied.");
         Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
                  $"selfCells={_engine.SelfCells.Count}");
@@ -479,6 +563,8 @@ public partial class MainWindow : Window
     private void OnRepop(object sender, RoutedEventArgs e) => ToggleTimer();
 
     private void OnMeter(object sender, RoutedEventArgs e) => ToggleMeter();
+
+    private void OnSct(object sender, RoutedEventArgs e) => ToggleSct();
 
     /// <summary>A "timerAuto" trigger matched (e.g. a named mob death) — start the watch.</summary>
     private void OnTimerRequested(double seconds, string name)
@@ -589,6 +675,7 @@ public partial class MainWindow : Window
 
         menu.Items.Add("Show / hide repop timer", null, (_, _) => ToggleTimer());
         menu.Items.Add("Show / hide DPS meter", null, (_, _) => ToggleMeter());
+        menu.Items.Add("Show / hide combat text", null, (_, _) => ToggleSct());
         menu.Items.Add("Manage…", null, (_, _) => OpenManager());
         menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
@@ -654,6 +741,7 @@ public partial class MainWindow : Window
         try { _timer?.Close(); } catch { /* ignore */ }
         try { _meter?.Close(); } catch { /* ignore */ }
         try { _flash?.Close(); } catch { /* ignore */ }
+        foreach (var lane in _sctLanes.Values) { try { lane.Close(); } catch { /* ignore */ } }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }
 }

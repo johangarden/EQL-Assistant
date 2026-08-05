@@ -25,6 +25,12 @@ public sealed class CombatParser
     /// (★-kept fights are stored separately and never expire).</summary>
     public const int MaxHistory = 50;
 
+    /// <summary>Which scrolling-combat-text lane an event belongs to.</summary>
+    public enum SctKind { IncomingSelf, IncomingPet, OutgoingSelf, OutgoingPet, HealOut }
+
+    /// <summary>Raised per parsed combat event, for scrolling combat text: (kind, ability, amount).</summary>
+    public event Action<SctKind, string, double>? SctEvent;
+
     public readonly record struct Row(string Name, double Total, double Dps, double Percent, bool Enemy);
 
     /// <summary>A finished fight, frozen for the history/compare window.</summary>
@@ -169,7 +175,7 @@ public sealed class CombatParser
         if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time); return; }
 
         m = HealRx.Match(body);
-        if (m.Success) { AddHealing(m.Groups["att"].Value, m.Groups["tgt"].Value, Amount(m, "amt"), time); return; }
+        if (m.Success) { AddHealing(m.Groups["att"].Value, m.Groups["spell"].Value, Amount(m, "amt"), time); return; }
 
         m = MeleeRx.Match(body);
         if (m.Success)
@@ -314,19 +320,25 @@ public sealed class CombatParser
         {
             _incomingSelf += amount;
             Bump(_incomingSelfAbility, ability, amount);
+            SctEvent?.Invoke(SctKind.IncomingSelf, ability, amount);
         }
         else if (IsPet(target))
         {
             _incomingPet += amount;
             Bump(_incomingPetAbility, ability, amount);
+            SctEvent?.Invoke(SctKind.IncomingPet, ability, amount);
         }
+
+        if (IsSelf(attacker)) SctEvent?.Invoke(SctKind.OutgoingSelf, ability, amount);
+        else if (IsPet(attacker)) SctEvent?.Invoke(SctKind.OutgoingPet, ability, amount);
     }
 
-    private void AddHealing(string healer, string target, double amount, DateTime time)
+    private void AddHealing(string healer, string spell, double amount, DateTime time)
     {
         healer = Normalize(healer);
         Touch(time);
         Bump(_healing, healer, amount);
+        if (IsSelf(healer)) SctEvent?.Invoke(SctKind.HealOut, spell, amount);
     }
 
     /// <summary>First combat line after an idle fight wipes it and starts fresh.</summary>

@@ -315,6 +315,16 @@ public partial class TriggerManagerWindow : Window
         FlashFontBox.Text = _config.Overlay.FlashFontSize.ToString(CultureInfo.InvariantCulture);
         FlashWidthBox.Text = _config.Overlay.FlashWidth.ToString(CultureInfo.InvariantCulture);
 
+        SctIncomingCheck.IsChecked = _config.Overlay.SctIncoming;
+        SctOutgoingCheck.IsChecked = _config.Overlay.SctOutgoing;
+        SctHealsCheck.IsChecked = _config.Overlay.SctHeals;
+        SctPetInCheck.IsChecked = _config.Overlay.SctPetIncoming;
+        SctPetOutCheck.IsChecked = _config.Overlay.SctPetOutgoing;
+        SctFontBox.Text = _config.Overlay.SctFontSize.ToString(CultureInfo.InvariantCulture);
+        SctBigHitBox.Text = _config.Overlay.SctBigHit.ToString(CultureInfo.InvariantCulture);
+        SctLaneWidthBox.Text = _config.Overlay.SctLaneWidth.ToString(CultureInfo.InvariantCulture);
+        SctLaneHeightBox.Text = _config.Overlay.SctLaneHeight.ToString(CultureInfo.InvariantCulture);
+
         BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
         SelfAnchorBox.SelectedValue = (_configService.LoadPlacement("selfMatrix")?.Anchor ?? Anchor.TopLeft).ToString();
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
@@ -405,6 +415,16 @@ public partial class TriggerManagerWindow : Window
                 PetName = PetNameBox.Text.Trim(),
                 FlashFontSize = Math.Clamp(ParseOr(FlashFontBox.Text, _config.Overlay.FlashFontSize), 10, 200),
                 FlashWidth = Math.Clamp(ParseOr(FlashWidthBox.Text, _config.Overlay.FlashWidth), 200, 3000),
+                SctVisible = _config.Overlay.SctVisible,
+                SctIncoming = SctIncomingCheck.IsChecked == true,
+                SctOutgoing = SctOutgoingCheck.IsChecked == true,
+                SctHeals = SctHealsCheck.IsChecked == true,
+                SctPetIncoming = SctPetInCheck.IsChecked == true,
+                SctPetOutgoing = SctPetOutCheck.IsChecked == true,
+                SctFontSize = Math.Clamp(ParseOr(SctFontBox.Text, _config.Overlay.SctFontSize), 10, 72),
+                SctBigHit = Math.Max(0, ParseOr(SctBigHitBox.Text, _config.Overlay.SctBigHit)),
+                SctLaneWidth = Math.Clamp(ParseOr(SctLaneWidthBox.Text, _config.Overlay.SctLaneWidth), 80, 800),
+                SctLaneHeight = Math.Clamp(ParseOr(SctLaneHeightBox.Text, _config.Overlay.SctLaneHeight), 100, 1500),
             },
         };
 
