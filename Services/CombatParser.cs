@@ -66,6 +66,7 @@ public sealed class CombatParser
     public sealed class FightRecord
     {
         public required string Label { get; init; }
+        public string Zone { get; init; } = "";
         public DateTime EndedAt { get; init; }
         public double DurationSeconds { get; init; }
         public List<Row> Damage { get; init; } = new();
@@ -98,6 +99,10 @@ public sealed class CombatParser
     private DateTime _start;
     private DateTime _last;
     private bool _active;
+    private string _fightZone = "";
+
+    /// <summary>The zone we're in, from "You have entered <zone>." lines.</summary>
+    public string CurrentZone { get; private set; } = "";
 
     public bool InCombat => _active;
     public bool HasData => _damage.Count > 0 || _healing.Count > 0;
@@ -234,9 +239,18 @@ public sealed class CombatParser
         "ddd MMM dd HH:mm:ss yyyy",
     };
 
+    private const string ZonePrefix = "You have entered ";
+
     public void ProcessLine(string rawLine)
     {
         DateTime time = ExtractTimestamp(rawLine, out string body);
+
+        if (body.StartsWith(ZonePrefix, StringComparison.Ordinal) && body.EndsWith('.'))
+        {
+            CurrentZone = body[ZonePrefix.Length..^1];
+            return;
+        }
+
         bool crit = body.Contains("(Critical)", StringComparison.Ordinal);
 
         Match m = NonMeleeRx.Match(body);
@@ -318,6 +332,7 @@ public sealed class CombatParser
         _history.Insert(0, new FightRecord
         {
             Label = string.IsNullOrEmpty(TargetLabel) ? "fight" : TargetLabel,
+            Zone = _fightZone,
             EndedAt = _last,
             DurationSeconds = DurationSeconds,
             Damage = GetRows(healing: false),
@@ -518,6 +533,7 @@ public sealed class CombatParser
             Reset();
             _start = time;
             _active = true;
+            _fightZone = CurrentZone; // the zone where the fight began
         }
         if (time > _last) _last = time;
         if (time < _start) _start = time;
@@ -585,6 +601,8 @@ public sealed class CombatParser
         _start = now.AddSeconds(-30);
         _last = now;
         _active = true;
+        if (CurrentZone.Length == 0) CurrentZone = "Permafrost Keep";
+        _fightZone = CurrentZone;
 
         string pet = string.IsNullOrWhiteSpace(PetName) ? "Gobaner" : PetName.Trim();
         Bump(_damage, Self(), 5210);
@@ -634,6 +652,7 @@ public sealed class CombatParser
             _history.Insert(0, new FightRecord
             {
                 Label = "a royal guard +3",
+                Zone = "Clan Crushbone",
                 EndedAt = now.AddMinutes(-4),
                 DurationSeconds = 44,
                 Damage = new List<Row>
@@ -652,6 +671,7 @@ public sealed class CombatParser
             _history.Insert(0, new FightRecord
             {
                 Label = "Lady Vox",
+                Zone = "Permafrost Keep",
                 EndedAt = now.AddMinutes(-2),
                 DurationSeconds = 92,
                 Damage = new List<Row>

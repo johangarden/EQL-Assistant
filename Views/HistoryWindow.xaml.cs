@@ -44,12 +44,12 @@ public partial class HistoryWindow : Window
     }
 
     public sealed record FightColumn(string Title, string Subtitle,
-        List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> IncomingRows,
-        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> IncomingAbilityRows)
+        List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> TakenRows,
+        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows)
     {
         public Visibility SelfSectionVisibility => SelfAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility PetSectionVisibility => PetAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility IncomingSectionVisibility => IncomingAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids)
@@ -110,7 +110,8 @@ public partial class HistoryWindow : Window
         string when = r.EndedAt.Date == DateTime.Today
             ? r.EndedAt.ToString("HH:mm")
             : r.EndedAt.ToString("dd MMM HH:mm");
-        return $"{star}{when}  {r.Label}   ·   {FormatDuration(r.DurationSeconds)}   ·   {FormatDps(r.TotalDps)} dps";
+        string zone = r.Zone.Length > 0 ? $"  ·  {r.Zone}" : "";
+        return $"{star}{when}  {r.Label}   ·   {FormatDuration(r.DurationSeconds)}   ·   {FormatDps(r.TotalDps)} dps{zone}";
     }
 
     private void BuildColumns()
@@ -186,18 +187,19 @@ public partial class HistoryWindow : Window
         if (healing.Count == 0) healing.Add(new StatRow("—", "", NameFg));
 
         double dur = Math.Max(1, r.DurationSeconds);
-        var incoming = new List<StatRow>
+        var taken = new List<StatRow>
         {
             new("You", $"{FormatDps(r.IncomingSelfTotal / dur)} dps · {FormatNum(r.IncomingSelfTotal)}", IncomingFg),
         };
         if (r.IncomingPetTotal > 0)
-            incoming.Add(new StatRow("Pet",
+            taken.Add(new StatRow("Pet",
                 $"{FormatDps(r.IncomingPetTotal / dur)} dps · {FormatNum(r.IncomingPetTotal)}", IncomingFg));
 
+        string zone = r.Zone.Length > 0 ? $" · {r.Zone}" : "";
         return new FightColumn(
             r.Label,
-            $"{r.EndedAt:HH:mm:ss} · {FormatDuration(r.DurationSeconds)} · total {FormatDps(r.TotalDps)} dps",
-            damage, healing, incoming,
+            $"{r.EndedAt:HH:mm:ss} · {FormatDuration(r.DurationSeconds)} · total {FormatDps(r.TotalDps)} dps{zone}",
+            damage, healing, taken,
             AbilityRows(r.SelfAbilities, NameFg),
             AbilityRows(r.PetAbilities, NameFg),
             AbilityRows(r.IncomingSelfAbilities, IncomingFg));

@@ -285,6 +285,9 @@ public partial class App : Application
             var p = new CombatParser { SelfName = "Johan", PetName = "Jabber" };
             var sct = new List<CombatParser.SctHit>();
             p.SctEvent += hit => sct.Add(hit);
+
+            p.ProcessLine($"[{Ts(0)}] You have entered Clan Crushbone.");
+            Check("zone tracked from entry line", p.CurrentZone == "Clan Crushbone");
             string Ts(int sec) => new DateTime(2026, 8, 3, 12, 0, sec)
                 .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -463,7 +466,8 @@ public partial class App : Application
             Check("ended fight archived to history", p.History.Count == 1
                 && p.History[0].Label.StartsWith("a gnoll pup") // multi-enemy pull -> "+N" suffix
                 && Math.Abs(p.History[0].DurationSeconds - 18) < 0.01 // last activity = the Ts(18) line
-                && p.History[0].IncomingSelfTotal == 126); // 20 melee + 6 thorns + 100 non-melee
+                && p.History[0].IncomingSelfTotal == 126 // 20 melee + 6 thorns + 100 non-melee
+                && p.History[0].Zone == "Clan Crushbone");
             p.ProcessLine($"[{Ts(40)}] You slash a rat for 5 points of damage.");
             Check("next combat line starts a fresh fight",
                 p.InCombat && p.GetRows(false).Count == 1 && p.IncomingSelfTotal == 0);
