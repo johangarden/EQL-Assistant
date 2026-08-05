@@ -43,6 +43,12 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Contains("--selftest-repop"))
+        {
+            RunRepopSelfTest();
+            return;
+        }
+
         Log.Init();
         var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         Log.Info($"===== EQL Assistant v{ver} starting =====");
@@ -400,6 +406,51 @@ public partial class App : Application
 
         string result = (failures == 0 ? "ALL PASS\n" : $"{failures} FAILURE(S)\n") + report;
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest_meter.txt"), result);
+        Environment.ExitCode = failures == 0 ? 0 : 1;
+        Shutdown();
+    }
+
+    private void RunRepopSelfTest()
+    {
+        var report = new System.Text.StringBuilder();
+        int failures = 0;
+        void Check(string label, bool ok)
+        {
+            report.AppendLine($"{(ok ? "PASS" : "FAIL")}  {label}");
+            if (!ok) failures++;
+        }
+
+        try
+        {
+            var tw = new TimerWindow(new ConfigService(), new AlertService(), 400, 1.0, null);
+
+            tw.StartWith(200, "Kurven");
+            Check("first kill takes the pie",
+                tw.BigState is { Mode: "Kurven", Running: true } && tw.SecondaryNames.Count == 0);
+
+            tw.StartWith(400, "Baron"); // longer respawn -> must NOT displace the sooner one
+            Check("longer repop stays secondary",
+                tw.BigState.Mode == "Kurven" && tw.SecondaryNames is ["Baron"]);
+
+            tw.StartWith(50, "Vox"); // soonest -> takes the pie
+            Check("soonest repop claims the pie",
+                tw.BigState is { Mode: "Vox", Remaining: <= 50 and > 45 }
+                && tw.SecondaryNames is ["Kurven", "Baron"]);
+
+            tw.StartWith(30, "Kurven"); // re-kill of a secondary, now soonest
+            Check("re-killed secondary promotes when soonest",
+                tw.BigState.Mode == "Kurven" && tw.SecondaryNames is ["Vox", "Baron"]);
+
+            tw.Close();
+        }
+        catch (Exception ex)
+        {
+            report.AppendLine("EXCEPTION: " + ex);
+            failures++;
+        }
+
+        string result = (failures == 0 ? "ALL PASS\n" : $"{failures} FAILURE(S)\n") + report;
+        File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest_repop.txt"), result);
         Environment.ExitCode = failures == 0 ? 0 : 1;
         Shutdown();
     }
