@@ -26,9 +26,13 @@ public partial class MainWindow : Window
     private MatrixWindow? _selfMatrix;
     private MatrixWindow? _targetMatrix;
     private TimerWindow? _timer;
+    private FlashWindow? _flash;
+    private MeterWindow? _meter;
+    private readonly CombatParser _combat = new();
     private PanelPlacement? _mainPlacement;
     private bool _hidden;
     private bool _timerHidden;
+    private bool _meterHidden;
     private System.Windows.Forms.NotifyIcon? _tray;
 
     /// <summary>Set by self-tests so they never persist window position/lock.</summary>
@@ -43,6 +47,7 @@ public partial class MainWindow : Window
     private const int HK_MUTE    = 7;
     private const int HK_QUIT    = 9;
     private const int HK_REPOP   = 10;
+    private const int HK_METER   = 11;
 
     private static readonly Brush UnlockedBackdrop =
         new SolidColorBrush(Color.FromArgb(0x30, 0x0A, 0x0E, 0x14));
@@ -68,15 +73,19 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log.Error("Config load failed", ex);
-            MessageBox.Show(ex.Message, "EQL Overlay — config problem",
+            MessageBox.Show(ex.Message, "EQL Assistant — config problem",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             _config = new AppConfig(); // run empty rather than crash
         }
 
         _alerts.Muted = _config.Overlay.Muted;
         _timerHidden = !_config.Overlay.TimerVisible;
+        _meterHidden = !_config.Overlay.MeterVisible;
+        _combat.SelfName = _config.CharacterName;
+        _combat.PetName = _config.Overlay.PetName;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.TimerRequested += OnTimerRequested;
+        _engine.FlashRequested += OnFlashRequested;
         _vm = new OverlayViewModel(_engine, _config) { LoadoutName = _config.ActiveLoadout };
         DataContext = _vm;
 
@@ -98,6 +107,30 @@ public partial class MainWindow : Window
         StartWatcher();
         RebuildMatrixWindows();
         RebuildTimerWindow();
+        RebuildMeterWindow();
+        RebuildFlashWindow();
+    }
+
+    private void RebuildFlashWindow()
+    {
+        if (_flash is not null) { try { _flash.Close(); } catch { /* ignore */ } }
+        _flash = new FlashWindow(_configService, _config.Overlay.Opacity,
+            _config.Overlay.FlashFontSize, _config.Overlay.FlashWidth);
+        _flash.Show();
+        _flash.SetLocked(_vm.Locked);
+        _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
+    }
+
+    private void OnFlashRequested(string text, string color)
+    {
+        if (_hidden) return;
+        _flash?.Flash(text, BrushFromColor(color));
+    }
+
+    private static Brush BrushFromColor(string color)
+    {
+        try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)); }
+        catch { return new SolidColorBrush(Color.FromRgb(0xFF, 0xCC, 0x33)); }
     }
 
     // ---- timer panel --------------------------------------------------------
@@ -130,6 +163,33 @@ public partial class MainWindow : Window
         if (_hidden && !_timerHidden) ToggleHide(); // unhide everything if it was globally hidden
         UpdateTimerVisibility();
         _vm.Flash(_timerHidden ? "Repop timer hidden." : "Repop timer shown.");
+    }
+
+    // ---- DPS meter panel ----------------------------------------------------
+
+    private void RebuildMeterWindow()
+    {
+        if (_meter is not null) { try { _meter.Close(); } catch { /* ignore */ } }
+        _meter = new MeterWindow(_configService, _combat, _config.Overlay.Opacity);
+        _meter.Show();
+        UpdateMeterVisibility();
+    }
+
+    private void UpdateMeterVisibility()
+    {
+        if (_meter is not null)
+            _meter.Visibility = (_hidden || _meterHidden) ? Visibility.Hidden : Visibility.Visible;
+    }
+
+    /// <summary>Show/hide the DPS meter (toolbar button / tray / Ctrl+Alt+D), and remember it.</summary>
+    private void ToggleMeter()
+    {
+        _meterHidden = !_meterHidden;
+        _config.Overlay.MeterVisible = !_meterHidden;
+        _configService.SaveSettings(_config);
+        if (_hidden && !_meterHidden) ToggleHide(); // unhide everything if it was globally hidden
+        UpdateMeterVisibility();
+        _vm.Flash(_meterHidden ? "DPS meter hidden." : "DPS meter shown.");
     }
 
     // ---- matrix panels ------------------------------------------------------
@@ -190,6 +250,7 @@ public partial class MainWindow : Window
             onLine: line => Dispatcher.BeginInvoke(() =>
             {
                 _engine.ProcessLine(line);
+                _combat.ProcessLine(line);
                 _logBus.Publish(line);
             }),
             onStatus: msg => Dispatcher.BeginInvoke(() => _vm.LogStatus = msg));
@@ -207,11 +268,12 @@ public partial class MainWindow : Window
         NativeMethods.RegisterHotKey(_hwnd, HK_MUTE,   mods, 0x53); // S
         NativeMethods.RegisterHotKey(_hwnd, HK_QUIT,   mods, 0x51); // Q
         NativeMethods.RegisterHotKey(_hwnd, HK_REPOP,  mods, 0x52); // R
+        NativeMethods.RegisterHotKey(_hwnd, HK_METER,  mods, 0x44); // D
     }
 
     private void UnregisterHotKeys()
     {
-        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT, HK_REPOP })
+        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT, HK_REPOP, HK_METER })
             NativeMethods.UnregisterHotKey(_hwnd, id);
     }
 
@@ -222,11 +284,16 @@ public partial class MainWindow : Window
             switch (wParam.ToInt32())
             {
                 case HK_LOCK:   ToggleLock();       handled = true; break;
-                case HK_TEST:   _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell(); UpdateMatrixVisibility(); handled = true; break;
+                case HK_TEST:
+                    _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell();
+                    _combat.AddDemoFight(); UpdateMatrixVisibility();
+                    OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
+                    handled = true; break;
                 case HK_HIDE:   ToggleHide();       handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;
                 case HK_QUIT:   Close();            handled = true; break;
                 case HK_REPOP:  ToggleTimer();      handled = true; break;
+                case HK_METER:  ToggleMeter();      handled = true; break;
             }
         }
         return nint.Zero;
@@ -242,6 +309,7 @@ public partial class MainWindow : Window
         ApplyLockVisual();
         _selfMatrix?.SetLocked(_vm.Locked);
         _targetMatrix?.SetLocked(_vm.Locked);
+        _flash?.SetLocked(_vm.Locked);
         _configService.SaveWindowState(_config.Overlay);
     }
 
@@ -260,6 +328,9 @@ public partial class MainWindow : Window
         Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
+        UpdateMeterVisibility();
+        if (_flash is not null)
+            _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
     }
 
     /// <summary>Home every panel to its default corner (tray recovery).</summary>
@@ -274,8 +345,11 @@ public partial class MainWindow : Window
         _selfMatrix?.ResetPosition();
         _targetMatrix?.ResetPosition();
         _timer?.ResetPosition();
+        _meter?.ResetPosition();
+        _flash?.ResetPosition();
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
+        UpdateMeterVisibility();
         _vm?.Flash("Panels reset to their corners.");
     }
 
@@ -315,7 +389,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show($"Loadout '{cfg.ActiveLoadout}' has an invalid pattern:\n{ex.Message}",
-                "EQL Overlay", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "EQL Assistant", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         if (lo is null)
@@ -351,6 +425,9 @@ public partial class MainWindow : Window
         _config = cfg;
         _alerts.Muted = cfg.Overlay.Muted;
         _timerHidden = !cfg.Overlay.TimerVisible;
+        _meterHidden = !cfg.Overlay.MeterVisible;
+        _combat.SelfName = cfg.CharacterName;
+        _combat.PetName = cfg.Overlay.PetName;
 
         bool wasLocked = _vm.Locked;
         _engine.Reset();
@@ -371,6 +448,8 @@ public partial class MainWindow : Window
         _mainPlacement?.Reload();   // pick up any anchor change from Settings
         RebuildMatrixWindows();
         RebuildTimerWindow();
+        RebuildMeterWindow();
+        RebuildFlashWindow();
         _vm.Flash("Settings applied.");
         Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
                  $"selfCells={_engine.SelfCells.Count}");
@@ -398,6 +477,8 @@ public partial class MainWindow : Window
     // ---- repop / respawn timer ----------------------------------------------
 
     private void OnRepop(object sender, RoutedEventArgs e) => ToggleTimer();
+
+    private void OnMeter(object sender, RoutedEventArgs e) => ToggleMeter();
 
     /// <summary>A "timerAuto" trigger matched (e.g. a named mob death) — start the watch.</summary>
     private void OnTimerRequested(double seconds, string name)
@@ -480,7 +561,7 @@ public partial class MainWindow : Window
 
         _tray = new System.Windows.Forms.NotifyIcon
         {
-            Text = "EQL Overlay",
+            Text = "EQL Assistant",
             Visible = true,
             Icon = LoadAppIcon(),
         };
@@ -507,6 +588,7 @@ public partial class MainWindow : Window
         menu.Items.Add(loadoutItem);
 
         menu.Items.Add("Show / hide repop timer", null, (_, _) => ToggleTimer());
+        menu.Items.Add("Show / hide DPS meter", null, (_, _) => ToggleMeter());
         menu.Items.Add("Manage…", null, (_, _) => OpenManager());
         menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
@@ -570,6 +652,8 @@ public partial class MainWindow : Window
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
         try { _timer?.Close(); } catch { /* ignore */ }
+        try { _meter?.Close(); } catch { /* ignore */ }
+        try { _flash?.Close(); } catch { /* ignore */ }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }
 }

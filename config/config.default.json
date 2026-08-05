@@ -1,10 +1,10 @@
 {
   // ==========================================================================
   //  REFERENCE COPY of the default settings file.
-  //  The overlay actually reads/writes:  %APPDATA%\EQLOverlay\config.json
+  //  The overlay actually reads/writes:  %APPDATA%\EQL_Assistant\config.json
   //
   //  Triggers are NOT stored here anymore — each loadout is its own file under
-  //  %APPDATA%\EQLOverlay\loadouts\<name>.json, managed from the in-app
+  //  %APPDATA%\EQL_Assistant\loadouts\<name>.json, managed from the in-app
   //  Trigger Manager (Ctrl+Alt+M). Press Ctrl+Alt+O to open the folder.
   // ==========================================================================
 

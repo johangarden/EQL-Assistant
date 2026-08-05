@@ -3,8 +3,8 @@ using System.IO;
 namespace EQLOverlay.Services;
 
 /// <summary>
-/// Minimal thread-safe flat-file logger. Writes <c>eqloverlay.log</c> next to
-/// the running exe (falls back to %APPDATA%\EQLOverlay if that isn't writable).
+/// Minimal thread-safe flat-file logger. Writes <c>eql_assistant.log</c> next to
+/// the running exe (falls back to %APPDATA%\EQL_Assistant if that isn't writable).
 /// </summary>
 public static class Log
 {
@@ -24,7 +24,7 @@ public static class Log
         // Fallback: the config folder, if the exe folder isn't writable
         // (e.g. installed under Program Files).
         string appData = System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "EQLOverlay");
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "EQL_Assistant");
         TrySetTarget(appData);
     }
 
@@ -34,7 +34,7 @@ public static class Log
         try
         {
             Directory.CreateDirectory(dir);
-            string candidate = System.IO.Path.Combine(dir, "eqloverlay.log");
+            string candidate = System.IO.Path.Combine(dir, "eql_assistant.log");
             RotateIfLarge(candidate);
             // Prove we can write before committing to this path.
             File.AppendAllText(candidate, "");
@@ -64,7 +64,7 @@ public static class Log
         }
     }
 
-    /// <summary>Roll the log over to eqloverlay.prev.log once it passes ~2 MB.</summary>
+    /// <summary>Roll the log over to eql_assistant.prev.log once it passes ~2 MB.</summary>
     private static void RotateIfLarge(string path)
     {
         try

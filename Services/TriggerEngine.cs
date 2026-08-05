@@ -43,6 +43,9 @@ public sealed class TriggerEngine
     /// <summary>Raised when a "timerAuto" trigger matches: (durationSeconds, triggerName).</summary>
     public event Action<double, string>? TimerRequested;
 
+    /// <summary>Raised when a trigger with flash text matches: (text, colorString).</summary>
+    public event Action<string, string>? FlashRequested;
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -131,6 +134,23 @@ public sealed class TriggerEngine
         foreach (var trigger in _triggers)
         {
             if (!trigger.Enabled) continue;
+
+            // Flash-only panel: screen-center text on match, nothing else.
+            if (trigger.Panel == Panels.Flash)
+            {
+                if (trigger.StartRegex is { } fr && fr.IsMatch(body))
+                {
+                    string text = string.IsNullOrWhiteSpace(trigger.Alert?.FlashText)
+                        ? trigger.Name : trigger.Alert!.FlashText!;
+                    FlashRequested?.Invoke(text, trigger.Color);
+                }
+                continue;
+            }
+
+            // Any other trigger may also carry an optional flash on its start match.
+            if (!string.IsNullOrWhiteSpace(trigger.Alert?.FlashText)
+                && trigger.StartRegex is { } sr && sr.IsMatch(body))
+                FlashRequested?.Invoke(trigger.Alert!.FlashText!, trigger.Color);
 
             if (trigger.Panel == Panels.SelfBuffs)
             {

@@ -35,7 +35,7 @@ public partial class MatrixWindow : Window
         Columns = columns < 1 ? 1 : columns;
         InitializeComponent();
 
-        Title = "EQL Overlay — " + title;
+        Title = "EQL Assistant — " + title;
         HeaderText.Text = title;
         CellsControl.ItemsSource = cells;
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);

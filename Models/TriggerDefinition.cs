@@ -10,6 +10,7 @@ public static class Panels
     public const string SelfBuffs = "selfBuffs";         // Area 3: self-buff present/missing matrix
     public const string TargetDebuffs = "targetDebuffs"; // Area 2: target-debuff matrix
     public const string TimerAuto = "timerAuto";         // start the repop timer when the pattern matches
+    public const string Flash = "flash";                 // screen-center flash text on match (no bar)
 }
 
 /// <summary>
@@ -77,4 +78,7 @@ public sealed class AlertConfig
 
     /// <summary>Fire when the bar reaches 0 (use for "cooldown ready").</summary>
     public bool OnExpire { get; set; }
+
+    /// <summary>Text to flash big in the screen centre when the trigger matches (optional).</summary>
+    public string? FlashText { get; set; }
 }

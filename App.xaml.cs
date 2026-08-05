@@ -37,9 +37,15 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Contains("--selftest-meter"))
+        {
+            RunMeterSelfTest();
+            return;
+        }
+
         Log.Init();
         var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-        Log.Info($"===== EQL Overlay v{ver} starting =====");
+        Log.Info($"===== EQL Assistant v{ver} starting =====");
         Log.Info($"exe: {Environment.ProcessPath}");
         Log.Info($"log: {Log.Path}");
 
@@ -242,13 +248,127 @@ public partial class App : Application
         Shutdown();
     }
 
+    private void RunMeterSelfTest()
+    {
+        var report = new System.Text.StringBuilder();
+        int failures = 0;
+        void Check(string label, bool ok)
+        {
+            report.AppendLine($"{(ok ? "PASS" : "FAIL")}  {label}");
+            if (!ok) failures++;
+        }
+        void CheckNear(string label, double actual, double expected)
+        {
+            bool ok = Math.Abs(actual - expected) < 0.01;
+            report.AppendLine($"{(ok ? "PASS" : "FAIL")}  {label} (got {actual}, want {expected})");
+            if (!ok) failures++;
+        }
+
+        try
+        {
+            var p = new CombatParser { SelfName = "Johan", PetName = "Jabber" };
+            string Ts(int sec) => new DateTime(2026, 8, 3, 12, 0, sec)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+
+            p.ProcessLine($"[{Ts(0)}] You slash a gnoll pup for 12 points of damage.");
+            p.ProcessLine($"[{Ts(2)}] Johan hit a gnoll pup for 30 points of fire damage by Burst of Flame.");
+            p.ProcessLine($"[{Ts(4)}] A gnoll pup has taken 10 damage from Flame Lick by Johan.");
+            p.ProcessLine($"[{Ts(6)}] Snik kicks a gnoll pup for 8 points of damage.");
+            p.ProcessLine($"[{Ts(8)}] A gnoll pup hits YOU for 20 points of damage.");
+            p.ProcessLine($"[{Ts(8)}] A gnoll pup bites Jabber for 15 points of damage.");
+            p.ProcessLine($"[{Ts(10)}] Malahoja healed Snik for 65 hit points by Light Healing.");
+            p.ProcessLine($"[{Ts(10)}] Snik healed himself for 6 hit points by Lifetap.");
+            p.ProcessLine($"[{Ts(12)}] You crush a gnoll pup for 0 (65) points of damage.");
+            p.ProcessLine($"[{Ts(12)}] A gnoll pup tries to bite YOU, but misses!");
+
+            var dmg = p.GetRows(healing: false);
+            var heal = p.GetRows(healing: true);
+            double Total(string name) => dmg.FirstOrDefault(r => r.Name == name).Total;
+
+            Check("in combat", p.InCombat);
+            CheckNear("duration = activity window", p.DurationSeconds, 12);
+            CheckNear("Johan dmg (You+named+DoT, '0 (65)' counts 0)", Total("Johan"), 52);
+            CheckNear("Snik melee dmg", Total("Snik"), 8);
+            CheckNear("mob's own dmg ranked too", Total("A gnoll pup"), 35);
+            Check("target label is the mob", p.TargetLabel == "a gnoll pup");
+            CheckNear("incoming self (YOU) total", p.IncomingSelfTotal, 20);
+            CheckNear("incoming pet total", p.IncomingPetTotal, 15);
+            CheckNear("heal: Malahoja", heal.FirstOrDefault(r => r.Name == "Malahoja").Total, 65);
+            CheckNear("heal: himself -> healer", heal.FirstOrDefault(r => r.Name == "Snik").Total, 6);
+            CheckNear("Johan dps = 52/12", dmg.FirstOrDefault(r => r.Name == "Johan").Dps, 52.0 / 12);
+
+            // Enemy classification (single word = player-like; spaces = mob).
+            Check("mob classified as enemy", p.IsEnemyName("a gnoll pup") && p.IsEnemyName("Lady Vox"));
+            Check("players/pet classified friendly",
+                !p.IsEnemyName("Johan") && !p.IsEnemyName("Snik") && !p.IsEnemyName("Jabber"));
+            Check("enemy flagged in rows", dmg.First(r => r.Name == "A gnoll pup").Enemy
+                && !dmg.First(r => r.Name == "Johan").Enemy);
+            CheckNear("raid total excludes enemies", p.TotalPerSecond(false) * p.DurationSeconds, 60);
+
+            // Ability drill-down: per-source split + incoming-by-ability
+            // (checked before the idle finalize wipes the live fight).
+            var selfAb = p.GetAbilityRows("Johan");
+            double Ab(string name) => selfAb.FirstOrDefault(r => r.Name == name).Total;
+            Check("self abilities: slash 12 / spell 30 / DoT 10 / crush 0",
+                Ab("slash") == 12 && Ab("Burst of Flame") == 30 && Ab("Flame Lick") == 10
+                && selfAb.Any(r => r.Name == "crush"));
+            Check("melee verb normalized (hits -> hit)",
+                p.GetIncomingAbilityRows(pet: false) is [{ Name: "hit", Total: 20 }]);
+            Check("pet incoming ability (bites -> bite)",
+                p.GetIncomingAbilityRows(pet: true) is [{ Name: "bite", Total: 15 }]);
+
+            // Idle finalize archives the fight; a new line starts fresh.
+            p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
+            Check("fight ends after 10s idle", !p.InCombat);
+            Check("ended fight archived to history", p.History.Count == 1
+                && p.History[0].Label == "a gnoll pup"
+                && Math.Abs(p.History[0].DurationSeconds - 12) < 0.01
+                && p.History[0].IncomingSelfTotal == 20);
+            p.ProcessLine($"[{Ts(40)}] You slash a rat for 5 points of damage.");
+            Check("next combat line starts a fresh fight",
+                p.InCombat && p.GetRows(false).Count == 1 && p.IncomingSelfTotal == 0);
+            Check("history survives the reset", p.History.Count == 1);
+
+            // Multi-mob pull label: "biggest +N".
+            p.ProcessLine($"[{Ts(42)}] You slash a royal guard for 9 points of damage.");
+            Check("multi-pull label gets +N", p.TargetLabel is "a rat +1" or "a royal guard +1");
+
+            // Kept-fights persistence: FightRecord must survive a JSON round trip.
+            var jsonOpts = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                PropertyNameCaseInsensitive = true,
+            };
+            string json = System.Text.Json.JsonSerializer.Serialize(p.History.ToList(), jsonOpts);
+            var back = System.Text.Json.JsonSerializer
+                .Deserialize<List<CombatParser.FightRecord>>(json, jsonOpts);
+            Check("fight record JSON round trip", back is { Count: 1 }
+                && back[0].Label == "a gnoll pup"
+                && back[0].IncomingSelfTotal == 20
+                && back[0].Damage.Any(r => r.Name == "Johan" && Math.Abs(r.Total - 52) < 0.01 && !r.Enemy)
+                && back[0].Damage.Any(r => r.Enemy)
+                && back[0].SelfAbilities.Any(r => r.Name == "Burst of Flame" && r.Total == 30)
+                && back[0].IncomingSelfAbilities.Any(r => r.Name == "hit" && r.Total == 20));
+        }
+        catch (Exception ex)
+        {
+            report.AppendLine("EXCEPTION: " + ex);
+            failures++;
+        }
+
+        string result = (failures == 0 ? "ALL PASS\n" : $"{failures} FAILURE(S)\n") + report;
+        File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest_meter.txt"), result);
+        Environment.ExitCode = failures == 0 ? 0 : 1;
+        Shutdown();
+    }
+
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         Log.Error("Unhandled dispatcher exception", e.Exception);
         MessageBox.Show(
-            "EQL Overlay hit an unexpected error:\n\n" + e.Exception.Message +
+            "EQL Assistant hit an unexpected error:\n\n" + e.Exception.Message +
             "\n\n(The overlay will keep running. Check your config.json if this repeats.)",
-            "EQL Overlay",
+            "EQL Assistant",
             MessageBoxButton.OK,
             MessageBoxImage.Warning);
         e.Handled = true;
