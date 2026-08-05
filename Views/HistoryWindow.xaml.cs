@@ -38,7 +38,13 @@ public partial class HistoryWindow : Window
     }
 
     public sealed record FightColumn(string Title, string Subtitle,
-        List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> IncomingRows);
+        List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> IncomingRows,
+        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> IncomingAbilityRows)
+    {
+        public Visibility SelfSectionVisibility => SelfAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility PetSectionVisibility => PetAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility IncomingSectionVisibility => IncomingAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     public HistoryWindow(CombatParser parser, ConfigService config)
     {
@@ -172,8 +178,16 @@ public partial class HistoryWindow : Window
         return new FightColumn(
             r.Label,
             $"{r.EndedAt:HH:mm:ss} · {FormatDuration(r.DurationSeconds)} · total {FormatDps(r.TotalDps)} dps",
-            damage, healing, incoming);
+            damage, healing, incoming,
+            AbilityRows(r.SelfAbilities, NameFg),
+            AbilityRows(r.PetAbilities, NameFg),
+            AbilityRows(r.IncomingSelfAbilities, IncomingFg));
     }
+
+    /// <summary>Format ability drill-down rows ("backstab  12,3 (1.100, 46%)").</summary>
+    private static List<StatRow> AbilityRows(List<CombatParser.Row> rows, Brush fg) =>
+        rows.Select(a => new StatRow(a.Name,
+            $"{FormatDps(a.Dps)} ({FormatNum(a.Total)}, {a.Percent:0}%)", fg)).ToList();
 
     private Brush FgFor(string name) =>
         name.Equals(_parser.SelfName, StringComparison.OrdinalIgnoreCase)

@@ -76,6 +76,18 @@
                                     <ItemsControl ItemsSource="{Binding DamageRows}"
                                                   ItemTemplate="{StaticResource StatRowTemplate}"/>
 
+                                    <StackPanel Visibility="{Binding SelfSectionVisibility}">
+                                        <TextBlock Text="YOUR DAMAGE — BY ABILITY" Style="{StaticResource SectionLabel}"/>
+                                        <ItemsControl ItemsSource="{Binding SelfAbilityRows}"
+                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Visibility="{Binding PetSectionVisibility}">
+                                        <TextBlock Text="PET — BY ABILITY" Style="{StaticResource SectionLabel}"/>
+                                        <ItemsControl ItemsSource="{Binding PetAbilityRows}"
+                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                    </StackPanel>
+
                                     <TextBlock Text="HEALING" Style="{StaticResource SectionLabel}"/>
                                     <ItemsControl ItemsSource="{Binding HealingRows}"
                                                   ItemTemplate="{StaticResource StatRowTemplate}"/>
@@ -83,6 +95,12 @@
                                     <TextBlock Text="INCOMING" Style="{StaticResource SectionLabel}"/>
                                     <ItemsControl ItemsSource="{Binding IncomingRows}"
                                                   ItemTemplate="{StaticResource StatRowTemplate}"/>
+
+                                    <StackPanel Visibility="{Binding IncomingSectionVisibility}">
+                                        <TextBlock Text="INCOMING ON YOU — BY ABILITY" Style="{StaticResource SectionLabel}"/>
+                                        <ItemsControl ItemsSource="{Binding IncomingAbilityRows}"
+                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>

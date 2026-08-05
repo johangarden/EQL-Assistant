@@ -39,6 +39,12 @@ public sealed class CombatParser
         public double IncomingPetTotal { get; init; }
         public double TotalDps { get; init; }
         public double TotalHps { get; init; }
+
+        // Drill-down (added later — older kept fights just have these empty).
+        public List<Row> SelfAbilities { get; init; } = new();
+        public List<Row> PetAbilities { get; init; } = new();
+        public List<Row> IncomingSelfAbilities { get; init; } = new();
+        public List<Row> IncomingPetAbilities { get; init; } = new();
     }
 
     private readonly List<FightRecord> _history = new();
@@ -49,6 +55,9 @@ public sealed class CombatParser
     private readonly Dictionary<string, double> _damage = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, double> _healing = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, double> _taken = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Dictionary<string, double>> _abilities = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, double> _incomingSelfAbility = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, double> _incomingPetAbility = new(StringComparer.OrdinalIgnoreCase);
     private double _incomingSelf;
     private double _incomingPet;
     private DateTime _start;
@@ -125,8 +134,17 @@ public sealed class CombatParser
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex MeleeRx = new(
-        @"^(?<att>.+?) (?:slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?|gores?|mauls?|stings?|rends?|slams?) (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points of damage\.",
+        @"^(?<att>.+?) (?<verb>slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?|gores?|mauls?|stings?|rends?|slams?) (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points of damage\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>Third-person melee verbs → the base form used as the ability label.</summary>
+    private static readonly Dictionary<string, string> VerbBase = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["slashes"] = "slash", ["bashes"] = "bash", ["crushes"] = "crush", ["punches"] = "punch",
+        ["pierces"] = "pierce", ["kicks"] = "kick", ["hits"] = "hit", ["bites"] = "bite",
+        ["claws"] = "claw", ["backstabs"] = "backstab", ["cleaves"] = "cleave", ["gores"] = "gore",
+        ["mauls"] = "maul", ["stings"] = "sting", ["rends"] = "rend", ["slams"] = "slam",
+    };
 
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
@@ -145,16 +163,21 @@ public sealed class CombatParser
         // (the melee alternation is the widest net). Misses/"tries to" lines
         // match none of these.
         Match m = NonMeleeRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, Amount(m, "dmg"), time); return; }
+        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time); return; }
 
         m = DotRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, Amount(m, "dmg"), time); return; }
+        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time); return; }
 
         m = HealRx.Match(body);
         if (m.Success) { AddHealing(m.Groups["att"].Value, m.Groups["tgt"].Value, Amount(m, "amt"), time); return; }
 
         m = MeleeRx.Match(body);
-        if (m.Success) AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, Amount(m, "dmg"), time);
+        if (m.Success)
+        {
+            string verb = m.Groups["verb"].Value;
+            string ability = VerbBase.TryGetValue(verb, out var baseForm) ? baseForm : verb.ToLowerInvariant();
+            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, ability, Amount(m, "dmg"), time);
+        }
     }
 
     /// <summary>Freeze the fight once it has been idle long enough (call periodically).</summary>
@@ -182,6 +205,10 @@ public sealed class CombatParser
             IncomingPetTotal = _incomingPet,
             TotalDps = TotalPerSecond(healing: false),
             TotalHps = TotalPerSecond(healing: true),
+            SelfAbilities = GetAbilityRows(Self()),
+            PetAbilities = GetAbilityRows(PetName),
+            IncomingSelfAbilities = GetIncomingAbilityRows(pet: false),
+            IncomingPetAbilities = GetIncomingAbilityRows(pet: true),
         });
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
     }
@@ -192,6 +219,9 @@ public sealed class CombatParser
         _damage.Clear();
         _healing.Clear();
         _taken.Clear();
+        _abilities.Clear();
+        _incomingSelfAbility.Clear();
+        _incomingPetAbility.Clear();
         _incomingSelf = 0;
         _incomingPet = 0;
         _active = false;
@@ -226,6 +256,33 @@ public sealed class CombatParser
         return rows;
     }
 
+    /// <summary>Damage split by ability for one source (backstab / slash / spell …), highest first.</summary>
+    public List<Row> GetAbilityRows(string sourceName)
+    {
+        if (string.IsNullOrWhiteSpace(sourceName)
+            || !_abilities.TryGetValue(sourceName.Trim(), out var byAbility))
+            return new();
+        return AbilityRows(byAbility);
+    }
+
+    /// <summary>Incoming damage on you (or your pet) split by the ability that dealt it.</summary>
+    public List<Row> GetIncomingAbilityRows(bool pet) =>
+        AbilityRows(pet ? _incomingPetAbility : _incomingSelfAbility);
+
+    private List<Row> AbilityRows(Dictionary<string, double> byAbility)
+    {
+        double duration = DurationSeconds;
+        double grand = byAbility.Values.Sum();
+        var rows = new List<Row>(byAbility.Count);
+        foreach (var (ability, total) in byAbility)
+            rows.Add(new Row(ability, total,
+                duration > 0 ? total / duration : 0,
+                grand > 0 ? total / grand * 100 : 0,
+                false));
+        rows.Sort((a, b) => b.Total.CompareTo(a.Total));
+        return rows;
+    }
+
     /// <summary>Players' combined metric per second (enemies excluded — that's the "raid" total).</summary>
     public double TotalPerSecond(bool healing)
     {
@@ -239,7 +296,7 @@ public sealed class CombatParser
 
     // ---- accumulation ---------------------------------------------------------
 
-    private void AddDamage(string attacker, string target, double amount, DateTime time)
+    private void AddDamage(string attacker, string target, string ability, double amount, DateTime time)
     {
         attacker = Normalize(attacker);
         target = Normalize(target);
@@ -248,8 +305,21 @@ public sealed class CombatParser
 
         Bump(_damage, attacker, amount);
         Bump(_taken, target, amount);
-        if (IsSelf(target)) _incomingSelf += amount;
-        else if (IsPet(target)) _incomingPet += amount;
+
+        if (!_abilities.TryGetValue(attacker, out var byAbility))
+            _abilities[attacker] = byAbility = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        Bump(byAbility, ability, amount);
+
+        if (IsSelf(target))
+        {
+            _incomingSelf += amount;
+            Bump(_incomingSelfAbility, ability, amount);
+        }
+        else if (IsPet(target))
+        {
+            _incomingPet += amount;
+            Bump(_incomingPetAbility, ability, amount);
+        }
     }
 
     private void AddHealing(string healer, string target, double amount, DateTime time)
@@ -351,6 +421,19 @@ public sealed class CombatParser
         _incomingSelf = 1350;
         _incomingPet = 550;
 
+        // Ability drill-down (a rog/war/nec-style split for the demo).
+        _abilities[Self()] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["backstab"] = 2300, ["slash"] = 1450, ["Lifetap"] = 860, ["Poison Bolt"] = 600,
+        };
+        _abilities[pet] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["bite"] = 1800, ["claw"] = 1150,
+        };
+        _incomingSelfAbility["hit"] = 780;
+        _incomingSelfAbility["Frost Breath"] = 570;
+        _incomingPetAbility["claw"] = 550;
+
         // Give the history window something to compare against.
         if (_history.Count == 0)
         {
@@ -389,6 +472,18 @@ public sealed class CombatParser
                 IncomingPetTotal = 900,
                 TotalDps = (11200 + 9100 + 5300) / 92.0,
                 TotalHps = 8800 / 92.0,
+                SelfAbilities = new List<Row>
+                {
+                    new("backstab", 5100, 5100 / 92.0, 46, false),
+                    new("slash", 3300, 3300 / 92.0, 29, false),
+                    new("Lifetap", 1700, 1700 / 92.0, 15, false),
+                    new("Poison Bolt", 1100, 1100 / 92.0, 10, false),
+                },
+                IncomingSelfAbilities = new List<Row>
+                {
+                    new("Frost Breath", 2500, 2500 / 92.0, 61, false),
+                    new("hit", 1600, 1600 / 92.0, 39, false),
+                },
             });
         }
     }

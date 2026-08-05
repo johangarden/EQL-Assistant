@@ -305,6 +305,18 @@ public partial class App : Application
                 && !dmg.First(r => r.Name == "Johan").Enemy);
             CheckNear("raid total excludes enemies", p.TotalPerSecond(false) * p.DurationSeconds, 60);
 
+            // Ability drill-down: per-source split + incoming-by-ability
+            // (checked before the idle finalize wipes the live fight).
+            var selfAb = p.GetAbilityRows("Johan");
+            double Ab(string name) => selfAb.FirstOrDefault(r => r.Name == name).Total;
+            Check("self abilities: slash 12 / spell 30 / DoT 10 / crush 0",
+                Ab("slash") == 12 && Ab("Burst of Flame") == 30 && Ab("Flame Lick") == 10
+                && selfAb.Any(r => r.Name == "crush"));
+            Check("melee verb normalized (hits -> hit)",
+                p.GetIncomingAbilityRows(pet: false) is [{ Name: "hit", Total: 20 }]);
+            Check("pet incoming ability (bites -> bite)",
+                p.GetIncomingAbilityRows(pet: true) is [{ Name: "bite", Total: 15 }]);
+
             // Idle finalize archives the fight; a new line starts fresh.
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
             Check("fight ends after 10s idle", !p.InCombat);
@@ -334,7 +346,9 @@ public partial class App : Application
                 && back[0].Label == "a gnoll pup"
                 && back[0].IncomingSelfTotal == 20
                 && back[0].Damage.Any(r => r.Name == "Johan" && Math.Abs(r.Total - 52) < 0.01 && !r.Enemy)
-                && back[0].Damage.Any(r => r.Enemy));
+                && back[0].Damage.Any(r => r.Enemy)
+                && back[0].SelfAbilities.Any(r => r.Name == "Burst of Flame" && r.Total == 30)
+                && back[0].IncomingSelfAbilities.Any(r => r.Name == "hit" && r.Total == 20));
         }
         catch (Exception ex)
         {
