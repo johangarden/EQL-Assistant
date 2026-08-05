@@ -210,6 +210,13 @@ public sealed class CombatParser
         ["mauls"] = "maul", ["stings"] = "sting", ["rends"] = "rend", ["slams"] = "slam",
     };
 
+    private static readonly HashSet<string> MeleeAbilities =
+        new(VerbBase.Values, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>True for plain weapon-swing abilities (slash, backstab, …) —
+    /// everything else is a spell, DoT or proc for rate purposes.</summary>
+    public static bool IsMeleeAbility(string ability) => MeleeAbilities.Contains(ability);
+
     // Avoided melee: "You try to slash a rat, but miss!" / "A rat tries to bite
     // YOU, but misses!" / "..., but a rat dodges!" (dodge/parry/riposte/block all
     // count as a miss for hit-rate purposes).

@@ -167,6 +167,10 @@ public partial class HistoryWindow : Window
         Sync(force: true);
     }
 
+    /// <summary>Melee swing attempts (hits + misses) — the denominator for proc rates.</summary>
+    private static int Swings(List<CombatParser.Row> abilities) =>
+        abilities.Where(a => CombatParser.IsMeleeAbility(a.Name)).Sum(a => a.Hits + a.Misses);
+
     private FightColumn BuildColumn(CombatParser.FightRecord r)
     {
         var damage = new List<StatRow>();
@@ -200,18 +204,20 @@ public partial class HistoryWindow : Window
             r.Label,
             $"{r.EndedAt:HH:mm:ss} · {FormatDuration(r.DurationSeconds)} · total {FormatDps(r.TotalDps)} dps{zone}",
             damage, healing, taken,
-            AbilityRows(r.SelfAbilities, NameFg),
-            AbilityRows(r.PetAbilities, NameFg),
-            AbilityRows(r.IncomingSelfAbilities, IncomingFg));
+            AbilityRows(r.SelfAbilities, NameFg, dur, Swings(r.SelfAbilities)),
+            AbilityRows(r.PetAbilities, NameFg, dur, Swings(r.PetAbilities)),
+            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0));
     }
 
     /// <summary>Format ability drill-down rows ("backstab  12,3 (1.100, 46%)")
-    /// with a hit-rate / damage-range detail line when attempts were tracked.</summary>
-    private static List<StatRow> AbilityRows(List<CombatParser.Row> rows, Brush fg) =>
+    /// with a hit-rate / range / rate detail line when attempts were tracked.</summary>
+    private static List<StatRow> AbilityRows(List<CombatParser.Row> rows, Brush fg,
+        double durationSec = 0, int swings = 0) =>
         rows.Select(a => new StatRow(a.Name,
-            $"{FormatDps(a.Dps)} ({FormatNum(a.Total)}, {a.Percent:0}%)", fg, AbilityDetail(a))).ToList();
+            $"{FormatDps(a.Dps)} ({FormatNum(a.Total)}, {a.Percent:0}%)", fg,
+            AbilityDetail(a, durationSec, swings))).ToList();
 
-    private static string AbilityDetail(CombatParser.Row a)
+    private static string AbilityDetail(CombatParser.Row a, double durationSec, int swings)
     {
         int attempts = a.Hits + a.Misses + a.Resists;
         if (attempts == 0) return ""; // pre-hit-tracking record (older kept fight)
@@ -227,6 +233,13 @@ public partial class HistoryWindow : Window
             parts.Add($"{a.Crits} crit");
         if (a.Resists > 0)
             parts.Add($"{a.Resists} resisted");
+
+        // Rates: how often it fires — and for procs/spells, per 100 melee swings
+        // (the number that tells you whether a proc weapon is worth it).
+        if (durationSec >= 10)
+            parts.Add($"{attempts * 60.0 / durationSec:0.#}/min");
+        if (swings > 0 && a.Hits > 0 && !CombatParser.IsMeleeAbility(a.Name))
+            parts.Add($"{100.0 * a.Hits / swings:0.#}/100 swings");
         return string.Join(" · ", parts);
     }
 

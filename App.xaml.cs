@@ -406,6 +406,10 @@ public partial class App : Application
             Check("incoming: your spell resist tracked",
                 inc2.First(r => r.Name == "Frost Breath") is { Resists: 1, Total: 0 });
 
+            Check("melee ability classification for proc rates",
+                CombatParser.IsMeleeAbility("backstab") && CombatParser.IsMeleeAbility("slash")
+                && !CombatParser.IsMeleeAbility("thorns") && !CombatParser.IsMeleeAbility("Tainted Breath"));
+
             // Raid-kill death-line parsing (level suffixes stripped).
             Check("raid kill: slain-by line",
                 RaidKills.TryParseKill("Lady Vox has been slain by Johan!", out var mob1) && mob1 == "Lady Vox");
