@@ -42,10 +42,13 @@
     <None Update="config\config.default.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <!-- Prebaked spell library (converted from jmoyers/everquest-companion, MIT). -->
+    <!-- Prebaked spell library (converted from jmoyers/everquest-companion, MIT).
+         Embedded so a lone copied exe still carries it; the on-disk copy (if
+         present next to the exe) wins, so users can tweak it. -->
     <None Update="data\spell-library.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <EmbeddedResource Include="data\spell-library.json" />
   </ItemGroup>
 
 </Project>

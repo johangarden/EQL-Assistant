@@ -464,13 +464,29 @@ public partial class MainWindow : Window
             _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
     }
 
-    /// <summary>Home every panel to its default corner (tray recovery).</summary>
+    /// <summary>
+    /// Tray recovery hammer: home every panel AND unlock + unhide. A locked
+    /// overlay with no active bars is invisible — recovery must reveal it.
+    /// </summary>
     private void ResetPosition()
     {
         _hidden = false;
         Visibility = Visibility.Visible;
         Topmost = true;
         Activate();
+
+        if (_vm.Locked)
+        {
+            _vm.Locked = false;
+            _config.Overlay.Locked = false;
+            ApplyClickThrough();
+            ApplyLockVisual();
+            _selfMatrix?.SetLocked(false);
+            _targetMatrix?.SetLocked(false);
+            _flash?.SetLocked(false);
+            foreach (var lane in _sctLanes.Values) lane.SetLocked(false);
+            _configService.SaveWindowState(_config.Overlay);
+        }
 
         _mainPlacement?.ResetToDefault();
         _selfMatrix?.ResetPosition();
@@ -483,7 +499,7 @@ public partial class MainWindow : Window
         UpdateTimerVisibility();
         UpdateMeterVisibility();
         UpdateSctVisibility();
-        _vm?.Flash("Panels reset to their corners.");
+        _vm?.Flash("Panels reset — overlay unlocked.");
     }
 
     // ---- config -------------------------------------------------------------
