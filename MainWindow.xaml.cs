@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private MeterWindow? _meter;
     private readonly CombatParser _combat = new();
     private RaidKills _raids = null!;
+    private LootTracker _loot = null!;
     private SpellLibrary _spellLib = null!;
     private RaidKillsWindow? _raidsWindow;
     private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
@@ -88,6 +89,7 @@ public partial class MainWindow : Window
 
         _alerts.Muted = _config.Overlay.Muted;
         _raids = new RaidKills(_configService);
+        _loot = new LootTracker(_configService);
         _spellLib = new SpellLibrary(_configService);
         Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
         _timerHidden = !_config.Overlay.TimerVisible;
@@ -164,6 +166,7 @@ public partial class MainWindow : Window
                 if (!TryParseLineTime(line, out var t) || t.Date != today) continue;
                 _combat.Replay(line);
                 _raids.ProcessLine(line, t);
+                _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
                 _spellLib.MarkSeenFromLine(line);
                 lines++;
             }
@@ -342,7 +345,7 @@ public partial class MainWindow : Window
     private void RebuildMeterWindow()
     {
         if (_meter is not null) { try { _meter.Close(); } catch { /* ignore */ } }
-        _meter = new MeterWindow(_configService, _combat, _raids, _config.Overlay.Opacity);
+        _meter = new MeterWindow(_configService, _combat, _raids, _loot, _config.Overlay.Opacity);
         _meter.Show();
         UpdateMeterVisibility();
     }
@@ -424,6 +427,7 @@ public partial class MainWindow : Window
                 _engine.ProcessLine(line);
                 _combat.ProcessLine(line);
                 _raids.ProcessLine(line);
+                _loot.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _logBus.Publish(line);
             }),

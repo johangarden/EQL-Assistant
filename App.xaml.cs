@@ -143,6 +143,28 @@ public partial class App : Application
 
             engine.ProcessLine("a line matching nothing at all");
             Check("non-matching line ignored", engine.Bars.Count == 1);
+
+            // Loot line parsing (all three real forms from the log).
+            Check("loot: upgrade form", LootTracker.TryParseLoot(
+                "You looted a Platinum Ring +1 from Gynok Moltor's corpse to create a Platinum Ring +4",
+                out var lk, out var li, out var lm, out var lr, out _)
+                && lk == LootTracker.LootKind.Upgrade && li == "Platinum Ring +1"
+                && lm == "Gynok Moltor" && lr == "Platinum Ring +4");
+            Check("loot: kept form strips article", LootTracker.TryParseLoot(
+                "--You have looted a Raw-Hide Gorget +2 from a ghoul's corpse.--",
+                out lk, out li, out lm, out lr, out _)
+                && lk == LootTracker.LootKind.Kept && li == "Raw-Hide Gorget +2" && lm == "a ghoul");
+            Check("loot: kept stack keeps its count", LootTracker.TryParseLoot(
+                "--You have looted 2 Bone Chips from an elf skeleton's corpse.--",
+                out lk, out li, out lm, out lr, out _)
+                && li == "2 Bone Chips" && lm == "an elf skeleton");
+            Check("loot: sold form + coin math", LootTracker.TryParseLoot(
+                "You looted a Bronze Spear +1 from Priest Amiaz's corpse and sold it for 2 platinum, 2 gold, 1 silver and 4 copper.",
+                out lk, out li, out lm, out lr, out long lc)
+                && lk == LootTracker.LootKind.Sold && li == "Bronze Spear +1" && lc == 2214);
+            Check("loot: coin formatting", LootTracker.FormatCoins(2214) == "2p 2g 1s 4c");
+            Check("loot: combat line is not loot", !LootTracker.TryParseLoot(
+                "You slash a rat for 5 points of damage.", out lk, out li, out lm, out lr, out _));
         }
         catch (Exception ex)
         {
@@ -526,7 +548,20 @@ public partial class App : Application
             p.SctEvent += hit => sctCounts[hit.Kind] = 1 + sctCounts.GetValueOrDefault(hit.Kind);
 
             int lines = 0;
-            foreach (var line in File.ReadLines(path)) { p.Replay(line); lines++; }
+            int lootUp = 0, lootKept = 0, lootSold = 0;
+            long lootCopper = 0;
+            var tsRx = new System.Text.RegularExpressions.Regex(@"^\[.+?\]\s?");
+            foreach (var line in File.ReadLines(path))
+            {
+                p.Replay(line);
+                lines++;
+                if (LootTracker.TryParseLoot(tsRx.Replace(line, "", 1), out var lk, out _, out _, out _, out long lc))
+                {
+                    if (lk == LootTracker.LootKind.Upgrade) lootUp++;
+                    else if (lk == LootTracker.LootKind.Kept) lootKept++;
+                    else { lootSold++; lootCopper += lc; }
+                }
+            }
             p.Tick(DateTime.MaxValue);
 
             report.AppendLine($"lines: {lines}   fights: {p.History.Count}   self: {p.SelfName}");
@@ -560,6 +595,7 @@ public partial class App : Application
                     incAb[a.Name] = incAb.GetValueOrDefault(a.Name) + a.Total;
             foreach (var kv in incAb.OrderByDescending(kv => kv.Value).Take(8))
                 report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
+            report.AppendLine($"--- loot: {lootUp} upgrades, {lootKept} kept, {lootSold} vendored for {LootTracker.FormatCoins(lootCopper)} ---");
             Environment.ExitCode = 0;
         }
         catch (Exception ex)

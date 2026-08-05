@@ -54,6 +54,9 @@
                     <Button Content="Raid kills" Click="Raids_Click" Style="{StaticResource ToolBtn}"
                             AutomationProperties.AutomationId="HistoryRaidsBtn"
                             ToolTip="Raid target progression — kill counts per zone"/>
+                    <Button Content="Loot" Click="Loot_Click" Style="{StaticResource ToolBtn}"
+                            AutomationProperties.AutomationId="HistoryLootBtn"
+                            ToolTip="Loot history — upgrades, kept items and vendored drops"/>
                 </StackPanel>
                 <ListBox x:Name="FightsList"
                          SelectionMode="Extended" FontSize="12"

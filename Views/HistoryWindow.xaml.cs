@@ -20,7 +20,9 @@ public partial class HistoryWindow : Window
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
     private readonly RaidKills _raids;
+    private readonly LootTracker _loot;
     private RaidKillsWindow? _raidsWindow;
+    private LootWindow? _lootWindow;
     private readonly DispatcherTimer _tick;
     private readonly List<CombatParser.FightRecord> _saved;
     private List<Entry> _shown = new();
@@ -53,10 +55,11 @@ public partial class HistoryWindow : Window
         public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids)
+    public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids, LootTracker loot)
     {
         InitializeComponent();
         WindowTheme.ApplyDark(this);
+        _loot = loot;
         _parser = parser;
         _config = config;
         _raids = raids;
@@ -136,6 +139,18 @@ public partial class HistoryWindow : Window
         }
         _raidsWindow.Activate();
         _raidsWindow.Focus();
+    }
+
+    private void Loot_Click(object sender, RoutedEventArgs e)
+    {
+        if (_lootWindow is null)
+        {
+            _lootWindow = new LootWindow(_loot);
+            _lootWindow.Closed += (_, _) => _lootWindow = null;
+            _lootWindow.Show();
+        }
+        _lootWindow.Activate();
+        _lootWindow.Focus();
     }
 
     // ---- keep / remove --------------------------------------------------------
