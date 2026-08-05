@@ -85,4 +85,10 @@ public sealed class OverlayConfig
 
     /// <summary>Your pet's name — enables the pet line in the DPS meter's incoming footer.</summary>
     public string PetName { get; set; } = "";
+
+    /// <summary>Font size of screen flash alerts.</summary>
+    public double FlashFontSize { get; set; } = 54;
+
+    /// <summary>Width of the flash-alert area (text wraps inside it).</summary>
+    public double FlashWidth { get; set; } = 900;
 }

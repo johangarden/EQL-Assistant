@@ -7,20 +7,34 @@
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
+        SizeToContent="Height"
         ResizeMode="NoResize"
-        IsHitTestVisible="False"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
-    <Grid>
-        <TextBlock x:Name="FlashText"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                   Margin="0,-140,0,0"
-                   FontSize="54" FontWeight="Bold"
-                   Foreground="#FFCC33" Opacity="0"
-                   TextAlignment="Center" TextWrapping="Wrap" MaxWidth="1000">
-            <TextBlock.Effect>
-                <DropShadowEffect ShadowDepth="2" BlurRadius="10" Color="Black" Opacity="1"/>
-            </TextBlock.Effect>
-        </TextBlock>
-    </Grid>
+
+    <Border x:Name="RootBorder" CornerRadius="6" Padding="6" Background="Transparent">
+        <StackPanel>
+            <!-- Drag handle + title, shown only when unlocked. -->
+            <Border x:Name="Header" Background="#E01B2130" CornerRadius="5" Padding="8,3" Margin="0,0,0,4"
+                    Visibility="Collapsed" MouseLeftButtonDown="Header_DragMove">
+                <TextBlock Text="Flash alerts" Foreground="#9FB4D0" FontWeight="Bold" FontSize="11"/>
+            </Border>
+
+            <Grid x:Name="Area">
+                <!-- Preview so the area is visible while placing it (unlocked only). -->
+                <TextBlock x:Name="Placeholder" Text="Flash alerts appear here"
+                           Foreground="#50FFCC33" FontWeight="Bold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           TextAlignment="Center" TextWrapping="Wrap" Visibility="Collapsed"/>
+
+                <TextBlock x:Name="FlashText" Text="" Opacity="0" FontWeight="Bold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           TextAlignment="Center" TextWrapping="Wrap">
+                    <TextBlock.Effect>
+                        <DropShadowEffect ShadowDepth="2" BlurRadius="6" Opacity="0.95" Color="Black"/>
+                    </TextBlock.Effect>
+                </TextBlock>
+            </Grid>
+        </StackPanel>
+    </Border>
 </Window>

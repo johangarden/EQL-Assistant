@@ -387,7 +387,9 @@ public sealed class ConfigService
         "timerVisible": true,
         "meterVisible": true,
         // Your pet's name — enables the pet line in the DPS meter's incoming footer.
-        "petName": ""
+        "petName": "",
+        "flashFontSize": 54,
+        "flashWidth": 900
       },
 
       "characterName": "",

@@ -108,8 +108,17 @@ public partial class MainWindow : Window
         RebuildMatrixWindows();
         RebuildTimerWindow();
         RebuildMeterWindow();
-        _flash = new FlashWindow();
+        RebuildFlashWindow();
+    }
+
+    private void RebuildFlashWindow()
+    {
+        if (_flash is not null) { try { _flash.Close(); } catch { /* ignore */ } }
+        _flash = new FlashWindow(_configService, _config.Overlay.Opacity,
+            _config.Overlay.FlashFontSize, _config.Overlay.FlashWidth);
         _flash.Show();
+        _flash.SetLocked(_vm.Locked);
+        _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
     }
 
     private void OnFlashRequested(string text, string color)
@@ -300,6 +309,7 @@ public partial class MainWindow : Window
         ApplyLockVisual();
         _selfMatrix?.SetLocked(_vm.Locked);
         _targetMatrix?.SetLocked(_vm.Locked);
+        _flash?.SetLocked(_vm.Locked);
         _configService.SaveWindowState(_config.Overlay);
     }
 
@@ -319,6 +329,8 @@ public partial class MainWindow : Window
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
         UpdateMeterVisibility();
+        if (_flash is not null)
+            _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
     }
 
     /// <summary>Home every panel to its default corner (tray recovery).</summary>
@@ -334,6 +346,7 @@ public partial class MainWindow : Window
         _targetMatrix?.ResetPosition();
         _timer?.ResetPosition();
         _meter?.ResetPosition();
+        _flash?.ResetPosition();
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
         UpdateMeterVisibility();
@@ -436,6 +449,7 @@ public partial class MainWindow : Window
         RebuildMatrixWindows();
         RebuildTimerWindow();
         RebuildMeterWindow();
+        RebuildFlashWindow();
         _vm.Flash("Settings applied.");
         Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
                  $"selfCells={_engine.SelfCells.Count}");

@@ -489,6 +489,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Bars" VerticalAlignment="Center" Margin="0,3"/>
@@ -530,7 +531,25 @@
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Flash alerts" VerticalAlignment="Center" Margin="0,3"/>
+                            <ComboBox  Grid.Row="5" Grid.Column="1" x:Name="FlashAnchorBox" Margin="0,3" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
+                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
+                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
+                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
+                            </ComboBox>
                         </Grid>
+
+                        <Border BorderBrush="#3A4560" BorderThickness="0,1,0,0" Margin="0,16,0,10"/>
+                        <TextBlock Text="Flash alerts" FontWeight="Bold" FontSize="14"/>
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Size of the screen-flash text and the width of the area it wraps in. Unlock the overlay (Ctrl+Alt+L) to see and drag the flash area."/>
+
+                        <TextBlock Text="Flash text size" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="FlashFontBox" Width="120" HorizontalAlignment="Left"/>
+                        <TextBlock Text="Flash area width" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="FlashWidthBox" Width="120" HorizontalAlignment="Left"/>
 
                         <Border BorderBrush="#3A4560" BorderThickness="0,1,0,0" Margin="0,16,0,10"/>
                         <TextBlock Text="DPS meter" FontWeight="Bold" FontSize="14"/>

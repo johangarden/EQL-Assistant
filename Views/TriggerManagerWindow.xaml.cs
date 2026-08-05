@@ -312,12 +312,15 @@ public partial class TriggerManagerWindow : Window
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
         CharNameBox.Text = _config.CharacterName;
         PetNameBox.Text = _config.Overlay.PetName;
+        FlashFontBox.Text = _config.Overlay.FlashFontSize.ToString(CultureInfo.InvariantCulture);
+        FlashWidthBox.Text = _config.Overlay.FlashWidth.ToString(CultureInfo.InvariantCulture);
 
         BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
         SelfAnchorBox.SelectedValue = (_configService.LoadPlacement("selfMatrix")?.Anchor ?? Anchor.TopLeft).ToString();
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
         TimerAnchorBox.SelectedValue = (_configService.LoadPlacement("timer")?.Anchor ?? Anchor.TopRight).ToString();
         MeterAnchorBox.SelectedValue = (_configService.LoadPlacement("meter")?.Anchor ?? Anchor.TopRight).ToString();
+        FlashAnchorBox.SelectedValue = (_configService.LoadPlacement("flash")?.Anchor ?? Anchor.TopLeft).ToString();
     }
 
     private void ApplyAnchor(string panel, System.Windows.Controls.ComboBox combo)
@@ -400,6 +403,8 @@ public partial class TriggerManagerWindow : Window
                 TimerVisible = _config.Overlay.TimerVisible,
                 MeterVisible = _config.Overlay.MeterVisible,
                 PetName = PetNameBox.Text.Trim(),
+                FlashFontSize = Math.Clamp(ParseOr(FlashFontBox.Text, _config.Overlay.FlashFontSize), 10, 200),
+                FlashWidth = Math.Clamp(ParseOr(FlashWidthBox.Text, _config.Overlay.FlashWidth), 200, 3000),
             },
         };
 
@@ -422,6 +427,7 @@ public partial class TriggerManagerWindow : Window
         ApplyAnchor("targetDebuffs", TargetAnchorBox);
         ApplyAnchor("timer", TimerAnchorBox);
         ApplyAnchor("meter", MeterAnchorBox);
+        ApplyAnchor("flash", FlashAnchorBox);
 
         _config = cfg;
         _onApplied(_currentName);
