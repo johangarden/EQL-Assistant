@@ -36,7 +36,7 @@ public partial class TriggerManagerWindow : Window
     };
 
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
-        LogBus bus, AlertService alerts, Action<string> onApplied)
+        LogBus bus, AlertService alerts, RaidKills raids, Action<string> onApplied)
     {
         InitializeComponent();
 
@@ -44,6 +44,7 @@ public partial class TriggerManagerWindow : Window
         _config = config;
         _bus = bus;
         _alerts = alerts;
+        _raids = raids;
         _onApplied = onApplied;
 
         // Load every loadout into memory.
@@ -78,6 +79,16 @@ public partial class TriggerManagerWindow : Window
             _respawns.Add(RespawnViewModel.FromEntry(r));
         RespawnList.ItemsSource = _respawns;
 
+        // Recent kills picker — refresh while the window is open.
+        RefreshRecentDeaths();
+        _deathsTick = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2)
+        };
+        _deathsTick.Tick += (_, _) => RefreshRecentDeaths();
+        _deathsTick.Start();
+        Closed += (_, _) => _deathsTick.Stop();
+
         _initializing = false;
         LoadoutCombo.SelectedItem = _currentName; // triggers ShowLoadout via SelectionChanged
 
@@ -102,6 +113,56 @@ public partial class TriggerManagerWindow : Window
         var vm = new RespawnViewModel { Name = "New respawn", Seconds = 400 };
         _respawns.Add(vm);
         RespawnList.SelectedItem = vm;
+    }
+
+    // ---- recent-kills picker --------------------------------------------------
+
+    private readonly RaidKills _raids;
+    private readonly System.Windows.Threading.DispatcherTimer _deathsTick;
+
+    private sealed record DeathItem(string Name, string Text)
+    {
+        public override string ToString() => Text;
+    }
+
+    private void RefreshRecentDeaths()
+    {
+        var items = _raids.RecentDeaths
+            .Select(d => new DeathItem(d.Name, $"{d.Name}   ·   {Ago(d.When)}"))
+            .ToList();
+
+        // Keep the selection stable across refreshes.
+        string? selected = (RecentDeathsList.SelectedItem as DeathItem)?.Name;
+        RecentDeathsList.ItemsSource = items;
+        if (selected is not null)
+            RecentDeathsList.SelectedItem = items.FirstOrDefault(i => i.Name == selected);
+    }
+
+    private static string Ago(DateTime when)
+    {
+        var span = DateTime.Now - when;
+        return span.TotalSeconds < 90 ? $"{span.TotalSeconds:0}s ago"
+            : span.TotalMinutes < 90 ? $"{span.TotalMinutes:0} min ago"
+            : $"{when:HH:mm}";
+    }
+
+    /// <summary>Pick a recent kill → it becomes a respawn entry, ready for its time.</summary>
+    private void RespawnFromDeath_Click(object sender, RoutedEventArgs e)
+    {
+        if (RecentDeathsList.SelectedItem is not DeathItem death) return;
+
+        var existing = _respawns.FirstOrDefault(r =>
+            r.Name.Equals(death.Name, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            RespawnList.SelectedItem = existing; // already tracked — jump to it
+            return;
+        }
+
+        var vm = new RespawnViewModel { Name = death.Name, Seconds = 400 };
+        _respawns.Add(vm);
+        RespawnList.SelectedItem = vm;
+        Status($"Added respawn for '{death.Name}' — set its respawn time and Save.");
     }
 
     private void RespawnDelete_Click(object sender, RoutedEventArgs e)

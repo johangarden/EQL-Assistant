@@ -34,6 +34,13 @@ public sealed class RaidKills
     /// <summary>Raised on the caller's thread when a listed raid target dies.</summary>
     public event Action<string, DateTime>? KillRecorded;
 
+    /// <summary>The last few mob deaths of ANY kind — used as a picker when adding respawns.</summary>
+    public sealed record RecentDeath(string Name, DateTime When);
+
+    private const int MaxRecentDeaths = 10;
+    private readonly List<RecentDeath> _recentDeaths = new();
+    public IReadOnlyList<RecentDeath> RecentDeaths => _recentDeaths;
+
     private static readonly Regex SlainRx = new(
         @"^(?<mob>.+?) has been slain by .+?!", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
@@ -76,6 +83,13 @@ public sealed class RaidKills
     {
         string body = TimestampPrefix.Replace(rawLine, "", 1);
         if (!TryParseKill(body, out string mob)) return;
+
+        // Every death lands in the recent list (latest kill of a name wins).
+        _recentDeaths.RemoveAll(d => d.Name.Equals(mob, StringComparison.OrdinalIgnoreCase));
+        _recentDeaths.Insert(0, new RecentDeath(mob, DateTime.Now));
+        if (_recentDeaths.Count > MaxRecentDeaths)
+            _recentDeaths.RemoveAt(MaxRecentDeaths);
+
         if (!_targetSet.TryGetValue(mob, out string? canonical)) return;
 
         var when = DateTime.Now;

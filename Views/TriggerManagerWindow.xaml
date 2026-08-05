@@ -593,19 +593,42 @@
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="Global — these work no matter which loadout is active. When the mob's death line appears in the log, the watch auto-starts with its respawn time (and the mob shows in the watch's ☰ menu)."/>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,10,0,6">
-                                <Button Content="Add" Click="RespawnAdd_Click" Width="52" Margin="0,0,4,0"
-                                        AutomationProperties.AutomationId="RespawnAddBtn"/>
-                                <Button Content="Delete" Click="RespawnDelete_Click" Width="60"/>
-                            </StackPanel>
-                            <ListBox x:Name="RespawnList" Height="150" Width="320" HorizontalAlignment="Left"
-                                     SelectionChanged="RespawnList_SelectionChanged">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Display}"/>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="300"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="280"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <Button Content="Add" Click="RespawnAdd_Click" Width="52" Margin="0,0,4,0"
+                                                AutomationProperties.AutomationId="RespawnAddBtn"/>
+                                        <Button Content="Delete" Click="RespawnDelete_Click" Width="60"/>
+                                    </StackPanel>
+                                    <ListBox x:Name="RespawnList" Height="150"
+                                             SelectionChanged="RespawnList_SelectionChanged">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Display}"/>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="Recent kills" FontWeight="SemiBold" Foreground="#C9D4E3"
+                                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <Button Content="← Add as respawn" Click="RespawnFromDeath_Click"
+                                                AutomationProperties.AutomationId="RespawnFromDeathBtn"/>
+                                    </StackPanel>
+                                    <ListBox x:Name="RecentDeathsList" Height="150"
+                                             MouseDoubleClick="RespawnFromDeath_Click"/>
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="The last 10 deaths seen in the log. Pick one, add it, set its respawn time — done."/>
+                                </StackPanel>
+                            </Grid>
 
                             <StackPanel x:Name="RespawnEditor" IsEnabled="False">
                                 <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" FontWeight="Bold" Margin="0,10,0,0"/>

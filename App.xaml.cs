@@ -69,7 +69,8 @@ public partial class App : Application
             var cs = new ConfigService();
             var cfg = cs.LoadSettings();
             cs.EnsureDefaultLoadout();
-            var mgr = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(), _ => { });
+            var mgr = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(),
+                new RaidKills(cs), _ => { });
             mgr.Show();
             mgr.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
@@ -375,6 +376,16 @@ public partial class App : Application
                 && !resp.StartRegex!.IsMatch("Lady Vox hits YOU for 10 points of damage."));
             Check("disabled respawn builds no trigger",
                 ConfigService.BuildRespawnTrigger(new Models.RespawnEntry { Name = "X", Enabled = false }) is null);
+
+            // Recent-deaths picker: every parsed death lands in the list, newest
+            // first, re-kills dedupe (unlisted mobs are never persisted).
+            var rk = new RaidKills(new ConfigService());
+            rk.ProcessLine("[x] a rat has been slain by Johan!");
+            rk.ProcessLine("[x] a bat has been slain by Johan!");
+            rk.ProcessLine("[x] a rat has been slain by Johan!");
+            Check("recent deaths: newest first, deduped",
+                rk.RecentDeaths.Count == 2
+                && rk.RecentDeaths[0].Name == "a rat" && rk.RecentDeaths[1].Name == "a bat");
 
             // Idle finalize archives the fight; a new line starts fresh.
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
