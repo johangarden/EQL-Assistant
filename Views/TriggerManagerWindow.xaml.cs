@@ -292,6 +292,19 @@ public partial class TriggerManagerWindow : Window
         if (dlg.ShowDialog(this) == true) Selected.AlertSound = dlg.FileName;
     }
 
+    // ---- sidebar navigation ---------------------------------------------------
+
+    private void NavList_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (FlashPage is null) return; // still initializing
+        var pages = new System.Windows.FrameworkElement[]
+            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SctPage, FlashPage };
+        int idx = Math.Clamp(NavList.SelectedIndex, 0, pages.Length - 1);
+        for (int i = 0; i < pages.Length; i++)
+            pages[i].Visibility = i == idx ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     // ---- contextual details form ---------------------------------------------
 
     private void PanelCombo_SelectionChanged(object sender,
@@ -352,6 +365,9 @@ public partial class TriggerManagerWindow : Window
         MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
+        TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
+        MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
+        SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
         CharNameBox.Text = _config.CharacterName;
         PetNameBox.Text = _config.Overlay.PetName;
         FlashFontBox.Text = _config.Overlay.FlashFontSize.ToString(CultureInfo.InvariantCulture);
@@ -449,15 +465,13 @@ public partial class TriggerManagerWindow : Window
                 ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
                 StartLocked = StartLockedCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
-                // Not edited here — carry the live values through so saving
-                // settings never resets them.
-                TimerSeconds = _config.Overlay.TimerSeconds,
-                TimerVisible = _config.Overlay.TimerVisible,
-                MeterVisible = _config.Overlay.MeterVisible,
+                TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
+                TimerVisible = TimerVisibleCheck.IsChecked == true,
+                MeterVisible = MeterVisibleCheck.IsChecked == true,
                 PetName = PetNameBox.Text.Trim(),
                 FlashFontSize = Math.Clamp(ParseOr(FlashFontBox.Text, _config.Overlay.FlashFontSize), 10, 200),
                 FlashWidth = Math.Clamp(ParseOr(FlashWidthBox.Text, _config.Overlay.FlashWidth), 200, 3000),
-                SctVisible = _config.Overlay.SctVisible,
+                SctVisible = SctVisibleCheck.IsChecked == true,
                 SctIncoming = SctIncomingCheck.IsChecked == true,
                 SctOutgoing = SctOutgoingCheck.IsChecked == true,
                 SctHeals = SctHealsCheck.IsChecked == true,
