@@ -275,7 +275,11 @@ public partial class MainWindow : Window
             switch (wParam.ToInt32())
             {
                 case HK_LOCK:   ToggleLock();       handled = true; break;
-                case HK_TEST:   _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell(); _combat.AddDemoFight(); UpdateMatrixVisibility(); handled = true; break;
+                case HK_TEST:
+                    _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell();
+                    _combat.AddDemoFight(); UpdateMatrixVisibility();
+                    OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
+                    handled = true; break;
                 case HK_HIDE:   ToggleHide();       handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;
                 case HK_QUIT:   Close();            handled = true; break;
