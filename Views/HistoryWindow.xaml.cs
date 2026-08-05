@@ -141,6 +141,14 @@ public partial class HistoryWindow : Window
         _raidsWindow.Focus();
     }
 
+    private void Timeline_Click(object sender, RoutedEventArgs e)
+    {
+        // One timeline window per click — open two fights side by side to compare.
+        var item = FightsList.SelectedItems.Cast<FightItem>().FirstOrDefault();
+        if (item is null) return;
+        new TimelineWindow(item.Entry.Rec).Show();
+    }
+
     private void Loot_Click(object sender, RoutedEventArgs e)
     {
         if (_lootWindow is null)

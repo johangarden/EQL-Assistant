@@ -497,6 +497,21 @@ public partial class App : Application
                 && Math.Abs(p.History[0].DurationSeconds - 18) < 0.01 // last activity = the Ts(18) line
                 && p.History[0].IncomingSelfTotal == 126 // 20 melee + 6 thorns + 100 non-melee
                 && p.History[0].Zone == "Clan Crushbone");
+
+            // Timeline events captured alongside the stats.
+            var ev = p.History[0].Events;
+            Check("timeline: events recorded across streams", ev.Count > 10
+                && ev.Any(x => x is { Stream: CombatParser.FightStream.SelfOut, Amount: > 0 })
+                && ev.Any(x => x is { Stream: CombatParser.FightStream.SelfIn, Amount: > 0 })
+                && ev.Any(x => x.Stream == CombatParser.FightStream.HealOut)
+                && ev.Any(x => x.Stream == CombatParser.FightStream.HealIn));
+            Check("timeline: miss/resist/crit flags captured",
+                ev.Any(x => x is { Ability: "slash", Miss: true, Stream: CombatParser.FightStream.SelfOut })
+                && ev.Any(x => x is { Ability: "Frost Breath", Resist: true, Stream: CombatParser.FightStream.SelfIn })
+                && ev.Any(x => x is { Ability: "crush", Crit: true }));
+            Check("timeline: offsets inside the fight window",
+                ev.All(x => x.T >= 0 && x.T <= p.History[0].DurationSeconds + 0.01)
+                && !p.History[0].EventsTruncated);
             p.ProcessLine($"[{Ts(40)}] You slash a rat for 5 points of damage.");
             Check("next combat line starts a fresh fight",
                 p.InCombat && p.GetRows(false).Count == 1 && p.IncomingSelfTotal == 0);
@@ -522,6 +537,8 @@ public partial class App : Application
                 && back[0].Damage.Any(r => r.Enemy)
                 && back[0].SelfAbilities.Any(r => r.Name == "Burst of Flame" && r.Total == 30)
                 && back[0].SelfAbilities.Any(r => r.Name == "crush" && r.Crits == 1)
+                && back[0].Events.Count == p.History[0].Events.Count
+                && back[0].Events.Any(x => x.Miss)
                 && back[0].IncomingSelfAbilities.Any(r => r.Name == "hit" && r.Total == 20));
         }
         catch (Exception ex)

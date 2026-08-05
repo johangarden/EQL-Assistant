@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace EQLOverlay.Services;
@@ -62,6 +63,23 @@ public sealed class CombatParser
         public double MinOrZero => Hits > 0 ? Min : 0;
     }
 
+    /// <summary>Which side of the fight a timeline event belongs to.</summary>
+    public enum FightStream { SelfOut = 0, PetOut = 1, SelfIn = 2, PetIn = 3, HealOut = 4, HealIn = 5 }
+
+    /// <summary>
+    /// One timeline event: offset seconds from the fight start, the ability, the
+    /// amount (0 for misses/resists) and flags. JSON names are single letters —
+    /// kept fights persist thousands of these.
+    /// </summary>
+    public sealed record FightEvent(
+        [property: JsonPropertyName("t")] double T,
+        [property: JsonPropertyName("a")] string Ability,
+        [property: JsonPropertyName("v")] double Amount,
+        [property: JsonPropertyName("s")] FightStream Stream,
+        [property: JsonPropertyName("c")] bool Crit = false,
+        [property: JsonPropertyName("m")] bool Miss = false,
+        [property: JsonPropertyName("r")] bool Resist = false);
+
     /// <summary>A finished fight, frozen for the history/compare window.</summary>
     public sealed class FightRecord
     {
@@ -81,6 +99,10 @@ public sealed class CombatParser
         public List<Row> PetAbilities { get; init; } = new();
         public List<Row> IncomingSelfAbilities { get; init; } = new();
         public List<Row> IncomingPetAbilities { get; init; } = new();
+
+        // Timeline (added later — older kept fights just have this empty).
+        public List<FightEvent> Events { get; init; } = new();
+        public bool EventsTruncated { get; init; }
     }
 
     private readonly List<FightRecord> _history = new();
@@ -100,6 +122,22 @@ public sealed class CombatParser
     private DateTime _last;
     private bool _active;
     private string _fightZone = "";
+
+    /// <summary>Event cap per fight — a 10-minute raid fight sits well under this.</summary>
+    public const int MaxFightEvents = 4000;
+
+    private readonly record struct PendingEvent(DateTime When, string Ability, double Amount,
+        FightStream Stream, bool Crit, bool Miss, bool Resist);
+    private readonly List<PendingEvent> _events = new();
+    private bool _eventsTruncated;
+
+    /// <summary>Record a timeline event for the current fight (drops past the cap).</summary>
+    private void Note(DateTime time, string ability, double amount, FightStream stream,
+        bool crit = false, bool miss = false, bool resist = false)
+    {
+        if (_events.Count >= MaxFightEvents) { _eventsTruncated = true; return; }
+        _events.Add(new PendingEvent(time, ability, amount, stream, crit, miss, resist));
+    }
 
     /// <summary>The zone we're in, from "You have entered <zone>." lines.</summary>
     public string CurrentZone { get; private set; } = "";
@@ -360,6 +398,11 @@ public sealed class CombatParser
             PetAbilities = GetAbilityRows(PetName),
             IncomingSelfAbilities = GetIncomingAbilityRows(pet: false),
             IncomingPetAbilities = GetIncomingAbilityRows(pet: true),
+            Events = _events
+                .Select(e => new FightEvent(Math.Max(0, (e.When - _start).TotalSeconds),
+                    e.Ability, e.Amount, e.Stream, e.Crit, e.Miss, e.Resist))
+                .ToList(),
+            EventsTruncated = _eventsTruncated,
         });
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
     }
@@ -376,6 +419,8 @@ public sealed class CombatParser
         _incomingSelf = 0;
         _incomingPet = 0;
         _active = false;
+        _events.Clear();
+        _eventsTruncated = false;
     }
 
     /// <summary>
@@ -464,17 +509,27 @@ public sealed class CombatParser
         {
             _incomingSelf += amount;
             StatIn(_incomingSelfAbility, ability).Land(amount, crit);
+            Note(time, ability, amount, FightStream.SelfIn, crit);
             SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, flavor, crit));
         }
         else if (IsPet(target))
         {
             _incomingPet += amount;
             StatIn(_incomingPetAbility, ability).Land(amount, crit);
+            Note(time, ability, amount, FightStream.PetIn, crit);
             SctEvent?.Invoke(new SctHit(SctKind.IncomingPet, ability, amount, flavor, crit));
         }
 
-        if (IsSelf(attacker)) SctEvent?.Invoke(new SctHit(SctKind.OutgoingSelf, ability, amount, flavor, crit));
-        else if (IsPet(attacker)) SctEvent?.Invoke(new SctHit(SctKind.OutgoingPet, ability, amount, flavor, crit));
+        if (IsSelf(attacker))
+        {
+            Note(time, ability, amount, FightStream.SelfOut, crit);
+            SctEvent?.Invoke(new SctHit(SctKind.OutgoingSelf, ability, amount, flavor, crit));
+        }
+        else if (IsPet(attacker))
+        {
+            Note(time, ability, amount, FightStream.PetOut, crit);
+            SctEvent?.Invoke(new SctHit(SctKind.OutgoingPet, ability, amount, flavor, crit));
+        }
     }
 
     /// <summary>Damage on you with no attacker in the line ("You were hit by non-melee …").</summary>
@@ -483,6 +538,7 @@ public sealed class CombatParser
         Touch(time);
         _incomingSelf += amount;
         StatIn(_incomingSelfAbility, ability).Land(amount, crit);
+        Note(time, ability, amount, FightStream.SelfIn, crit);
         SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, SctFlavor.Spell, crit));
     }
 
@@ -496,6 +552,11 @@ public sealed class CombatParser
         Stat(attacker, ability).Misses++;
         if (IsSelf(target)) StatIn(_incomingSelfAbility, ability).Misses++;
         else if (IsPet(target)) StatIn(_incomingPetAbility, ability).Misses++;
+
+        if (IsSelf(attacker)) Note(time, ability, 0, FightStream.SelfOut, miss: true);
+        else if (IsPet(attacker)) Note(time, ability, 0, FightStream.PetOut, miss: true);
+        if (IsSelf(target)) Note(time, ability, 0, FightStream.SelfIn, miss: true);
+        else if (IsPet(target)) Note(time, ability, 0, FightStream.PetIn, miss: true);
     }
 
     /// <summary>One of YOUR spells got resisted.</summary>
@@ -503,6 +564,7 @@ public sealed class CombatParser
     {
         Touch(time);
         Stat(Self(), spell.Trim()).Resists++;
+        Note(time, spell.Trim(), 0, FightStream.SelfOut, resist: true);
     }
 
     /// <summary>You resisted an enemy spell.</summary>
@@ -510,6 +572,7 @@ public sealed class CombatParser
     {
         Touch(time);
         StatIn(_incomingSelfAbility, spell.Trim()).Resists++;
+        Note(time, spell.Trim(), 0, FightStream.SelfIn, resist: true);
     }
 
     private AbilityStat Stat(string source, string ability)
@@ -535,9 +598,15 @@ public sealed class CombatParser
         Bump(_healing, healer, amount);
 
         if (IsSelf(healer))
+        {
+            Note(time, spell, amount, FightStream.HealOut, crit);
             SctEvent?.Invoke(new SctHit(SctKind.HealOut, spell, amount, SctFlavor.Heal, crit));
+        }
         else if (IsSelf(target))
+        {
+            Note(time, spell, amount, FightStream.HealIn, crit);
             SctEvent?.Invoke(new SctHit(SctKind.HealIn, spell, amount, SctFlavor.Heal, crit));
+        }
     }
 
     /// <summary>First combat line after an idle fight wipes it and starts fresh.</summary>
@@ -713,7 +782,27 @@ public sealed class CombatParser
                     new("Frost Breath", 2500, 2500 / 92.0, 61, false),
                     new("hit", 1600, 1600 / 92.0, 39, false),
                 },
+                Events = DemoEvents(),
             });
+        }
+
+        // Deterministic pseudo-fight so the timeline window can be previewed.
+        static List<FightEvent> DemoEvents()
+        {
+            var ev = new List<FightEvent>();
+            for (int i = 0; i < 92; i += 2)
+            {
+                ev.Add(new FightEvent(i, "slash", 40 + i % 50, FightStream.SelfOut, Crit: i % 14 == 0));
+                if (i % 3 == 0) ev.Add(new FightEvent(i + 0.4, "slash", 0, FightStream.SelfOut, Miss: true));
+                if (i % 6 == 0) ev.Add(new FightEvent(i + 0.8, "backstab", 180 + i * 7 % 160, FightStream.SelfOut, Crit: i % 18 == 0));
+                if (i % 8 == 0) ev.Add(new FightEvent(i + 1.0, "Lifetap", 60 + i % 45, FightStream.SelfOut));
+                if (i % 24 == 0) ev.Add(new FightEvent(i + 1.1, "Lifetap", 0, FightStream.SelfOut, Resist: true));
+                if (i % 5 == 0) ev.Add(new FightEvent(i + 1.2, "Frost Breath", 250 + i % 70, FightStream.SelfIn, Crit: i % 25 == 0));
+                if (i % 4 == 0) ev.Add(new FightEvent(i + 1.5, "hit", 60 + i % 90, FightStream.SelfIn, Miss: i % 12 == 0));
+                if (i % 7 == 0) ev.Add(new FightEvent(i + 1.7, "bite", 25 + i % 55, FightStream.PetOut));
+                if (i % 9 == 0) ev.Add(new FightEvent(i + 1.9, "Superior Healing", 300 + i % 120, FightStream.HealIn));
+            }
+            return ev;
         }
     }
 }
