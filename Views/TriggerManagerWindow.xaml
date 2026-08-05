@@ -356,7 +356,6 @@
                                     <ComboBoxItem Content="Bars — countdown timers" Tag="bars"/>
                                     <ComboBoxItem Content="Self buffs — present/missing matrix" Tag="selfBuffs"/>
                                     <ComboBoxItem Content="Target debuffs — present/missing matrix" Tag="targetDebuffs"/>
-                                    <ComboBoxItem Content="Repop timer — auto-start on match" Tag="timerAuto"/>
                                     <ComboBoxItem Content="Flash — screen-center alert" Tag="flash"/>
                                 </ComboBox>
                                 <TextBlock x:Name="PanelHint" Style="{StaticResource Hint}"
@@ -577,7 +576,7 @@
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <TextBlock Text="Repop timer" Style="{StaticResource PageTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="The circular respawn watch. Auto-start triggers for named mobs are created under Triggers → 'Repop timer'. Toggle in game: ⏱ toolbar button, tray, or Ctrl+Alt+R."/>
+                                       Text="The circular respawn watch. Toggle in game: ⏱ toolbar button, tray, or Ctrl+Alt+R."/>
 
                             <CheckBox x:Name="TimerVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
 
@@ -588,6 +587,41 @@
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Named respawns" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Global — these work no matter which loadout is active. When the mob's death line appears in the log, the watch auto-starts with its respawn time (and the mob shows in the watch's ☰ menu)."/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,6">
+                                <Button Content="Add" Click="RespawnAdd_Click" Width="52" Margin="0,0,4,0"
+                                        AutomationProperties.AutomationId="RespawnAddBtn"/>
+                                <Button Content="Delete" Click="RespawnDelete_Click" Width="60"/>
+                            </StackPanel>
+                            <ListBox x:Name="RespawnList" Height="150" Width="320" HorizontalAlignment="Left"
+                                     SelectionChanged="RespawnList_SelectionChanged">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Display}"/>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <StackPanel x:Name="RespawnEditor" IsEnabled="False">
+                                <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" FontWeight="Bold" Margin="0,10,0,0"/>
+
+                                <TextBlock Text="Mob name" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="260" HorizontalAlignment="Left"/>
+
+                                <TextBlock Text="Respawn time (seconds)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding Seconds}" Width="120" HorizontalAlignment="Left"/>
+
+                                <TextBlock Text="Death line (regex — optional)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}"
+                                         FontFamily="Consolas" TextWrapping="Wrap"/>
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Leave empty to match '&lt;Mob name&gt; has been slain by …' and 'You have slain &lt;Mob name&gt;' automatically."/>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
 

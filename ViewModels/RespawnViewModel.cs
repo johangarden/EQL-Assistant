@@ -1,0 +1,49 @@
+using EQLOverlay.Models;
+
+namespace EQLOverlay.ViewModels;
+
+/// <summary>Editable wrapper around a <see cref="RespawnEntry"/> for the Manager's repop page.</summary>
+public sealed class RespawnViewModel : ViewModelBase
+{
+    private string _name = "";
+    public string Name
+    {
+        get => _name;
+        set { if (SetField(ref _name, value)) OnPropertyChanged(nameof(Display)); }
+    }
+
+    private double _seconds = 400;
+    public double Seconds
+    {
+        get => _seconds;
+        set { if (SetField(ref _seconds, value)) OnPropertyChanged(nameof(Display)); }
+    }
+
+    private string _pattern = "";
+    public string Pattern { get => _pattern; set => SetField(ref _pattern, value); }
+
+    private bool _enabled = true;
+    public bool Enabled
+    {
+        get => _enabled;
+        set { if (SetField(ref _enabled, value)) OnPropertyChanged(nameof(Display)); }
+    }
+
+    public string Display => $"{(Enabled ? "" : "○ ")}{Name}  ·  {Seconds:0}s";
+
+    public static RespawnViewModel FromEntry(RespawnEntry e) => new()
+    {
+        Name = e.Name,
+        Seconds = e.Seconds,
+        Pattern = e.Pattern,
+        Enabled = e.Enabled,
+    };
+
+    public RespawnEntry ToEntry() => new()
+    {
+        Name = Name.Trim(),
+        Seconds = Seconds,
+        Pattern = Pattern.Trim(),
+        Enabled = Enabled,
+    };
+}

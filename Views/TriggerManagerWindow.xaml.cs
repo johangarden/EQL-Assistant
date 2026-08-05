@@ -73,6 +73,11 @@ public partial class TriggerManagerWindow : Window
         MuteCheck.IsChecked = _alerts.Muted;
         MuteCheck.Click += (_, _) => _alerts.Muted = MuteCheck.IsChecked == true;
 
+        // Global named respawns (repop page).
+        foreach (var r in _configService.LoadRespawns())
+            _respawns.Add(RespawnViewModel.FromEntry(r));
+        RespawnList.ItemsSource = _respawns;
+
         _initializing = false;
         LoadoutCombo.SelectedItem = _currentName; // triggers ShowLoadout via SelectionChanged
 
@@ -81,6 +86,29 @@ public partial class TriggerManagerWindow : Window
 
     private ObservableCollection<TriggerEditViewModel> CurrentList => _byName[_currentName];
     private TriggerEditViewModel? Selected => TriggerList.SelectedItem as TriggerEditViewModel;
+
+    // ---- global named respawns (repop page) -----------------------------------
+
+    private readonly ObservableCollection<RespawnViewModel> _respawns = new();
+
+    private void RespawnList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        RespawnEditor.DataContext = RespawnList.SelectedItem;
+        RespawnEditor.IsEnabled = RespawnList.SelectedItem is not null;
+    }
+
+    private void RespawnAdd_Click(object sender, RoutedEventArgs e)
+    {
+        var vm = new RespawnViewModel { Name = "New respawn", Seconds = 400 };
+        _respawns.Add(vm);
+        RespawnList.SelectedItem = vm;
+    }
+
+    private void RespawnDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (RespawnList.SelectedItem is RespawnViewModel vm)
+            _respawns.Remove(vm);
+    }
 
     // ---- loadouts -----------------------------------------------------------
 
@@ -489,6 +517,8 @@ public partial class TriggerManagerWindow : Window
             foreach (var lo in loadouts) _configService.SaveLoadout(lo);
             _configService.SyncDeleteLoadouts(_order);
             _configService.SaveSettings(cfg);
+            _configService.SaveRespawns(_respawns.Select(r => r.ToEntry())
+                .Where(r => !string.IsNullOrWhiteSpace(r.Name)).ToList());
         }
         catch (Exception ex)
         {

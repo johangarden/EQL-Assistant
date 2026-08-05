@@ -327,6 +327,85 @@ public sealed class ConfigService
         public bool? Locked { get; set; }
     }
 
+    // ---- global named respawns (repop timer) ---------------------------------
+
+    public string RespawnsPath => Path.Combine(ConfigDirectory, "respawns.json");
+
+    public List<RespawnEntry> LoadRespawns()
+    {
+        if (!File.Exists(RespawnsPath)) return new();
+        try
+        {
+            return JsonSerializer.Deserialize<List<RespawnEntry>>(
+                File.ReadAllText(RespawnsPath), ReadOptions) ?? new();
+        }
+        catch { return new(); }
+    }
+
+    public void SaveRespawns(List<RespawnEntry> respawns)
+    {
+        try
+        {
+            File.WriteAllText(RespawnsPath, JsonSerializer.Serialize(respawns, WriteOptions));
+        }
+        catch { /* best-effort */ }
+    }
+
+    /// <summary>
+    /// One-time migration: respawn timers used to live inside loadouts as
+    /// "timerAuto" triggers, which made them vanish on loadout switches. Move
+    /// them all into the global respawns.json.
+    /// </summary>
+    public void MigrateRespawnsFromLoadouts()
+    {
+        if (File.Exists(RespawnsPath)) return;
+
+        var respawns = new List<RespawnEntry>();
+        foreach (var lo in ListLoadouts())
+        {
+            var timers = lo.Triggers.Where(t => t.Panel == Panels.TimerAuto).ToList();
+            if (timers.Count == 0) continue;
+            foreach (var t in timers)
+            {
+                if (respawns.Any(r => r.Name.Equals(t.Name, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                respawns.Add(new RespawnEntry
+                {
+                    Name = t.Name,
+                    Seconds = t.DurationSeconds,
+                    Pattern = t.StartPattern,
+                    Enabled = t.Enabled,
+                });
+            }
+            lo.Triggers.RemoveAll(t => t.Panel == Panels.TimerAuto);
+            SaveLoadout(lo);
+        }
+        SaveRespawns(respawns); // writes the file even when empty, so this runs once
+    }
+
+    /// <summary>A respawn entry compiled into the engine's timerAuto trigger form.</summary>
+    public static TriggerDefinition? BuildRespawnTrigger(RespawnEntry r)
+    {
+        if (!r.Enabled || string.IsNullOrWhiteSpace(r.Name)) return null;
+        string n = Regex.Escape(r.Name.Trim());
+        var t = new TriggerDefinition
+        {
+            Id = "respawn-" + Slug(r.Name),
+            Name = r.Name.Trim(),
+            Panel = Panels.TimerAuto,
+            DurationSeconds = r.Seconds,
+            StartPattern = string.IsNullOrWhiteSpace(r.Pattern)
+                ? $@"(?:{n} has been slain by|You have slain {n})"
+                : r.Pattern,
+        };
+        try { CompileOne(t); return t; }
+        catch { return null; /* bad user pattern — skip rather than crash */ }
+    }
+
+    /// <summary>All enabled respawns as compiled triggers, ready to merge into the engine.</summary>
+    public List<TriggerDefinition> BuildRespawnTriggers() =>
+        LoadRespawns().Select(BuildRespawnTrigger).Where(t => t is not null).Select(t => t!).ToList();
+
     // ---- kept fights (DPS meter history) -------------------------------------
 
     public string SavedFightsPath => Path.Combine(ConfigDirectory, "fights.json");

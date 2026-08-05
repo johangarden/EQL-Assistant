@@ -365,6 +365,17 @@ public partial class App : Application
             Check("raid kill: normal line no match",
                 !RaidKills.TryParseKill("You slash a rat for 5 points of damage.", out _));
 
+            // Global respawns: the auto-generated death pattern matches both forms.
+            var resp = ConfigService.BuildRespawnTrigger(
+                new Models.RespawnEntry { Name = "Lady Vox", Seconds = 400 });
+            Check("respawn trigger compiles with derived pattern",
+                resp is { Panel: Models.Panels.TimerAuto, DurationSeconds: 400 }
+                && resp.StartRegex!.IsMatch("Lady Vox has been slain by Johan!")
+                && resp.StartRegex!.IsMatch("You have slain Lady Vox!")
+                && !resp.StartRegex!.IsMatch("Lady Vox hits YOU for 10 points of damage."));
+            Check("disabled respawn builds no trigger",
+                ConfigService.BuildRespawnTrigger(new Models.RespawnEntry { Name = "X", Enabled = false }) is null);
+
             // Idle finalize archives the fight; a new line starts fresh.
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
             Check("fight ends after 10s idle", !p.InCombat);

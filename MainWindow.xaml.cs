@@ -71,6 +71,7 @@ public partial class MainWindow : Window
         {
             _config = _configService.LoadSettings();
             _configService.EnsureDefaultLoadout();
+            _configService.MigrateRespawnsFromLoadouts();
             LoadActiveLoadoutInto(_config);
             Log.Info($"Config loaded. loadout='{_config.ActiveLoadout}', triggers={_config.Triggers.Count}, " +
                      $"logDir='{_config.Log.Directory}', startLocked={_config.Overlay.StartLocked}");
@@ -522,6 +523,18 @@ public partial class MainWindow : Window
             cfg.Triggers = lo.Triggers;
             cfg.ActiveLoadout = lo.Name;
         }
+
+        MergeGlobalRespawns(cfg);
+    }
+
+    /// <summary>
+    /// Respawn timers are global (respawns.json), not per-loadout — merge them
+    /// into the active trigger set so they survive loadout switches.
+    /// </summary>
+    private void MergeGlobalRespawns(AppConfig cfg)
+    {
+        cfg.Triggers.RemoveAll(t => t.Panel == Panels.TimerAuto);
+        cfg.Triggers.AddRange(_configService.BuildRespawnTriggers());
     }
 
     /// <summary>Apply settings + active loadout saved from the manager, live.</summary>
@@ -582,6 +595,7 @@ public partial class MainWindow : Window
 
         _config.Triggers = lo.Triggers;
         _config.ActiveLoadout = lo.Name;
+        MergeGlobalRespawns(_config);
         _configService.SaveSettings(_config); // remember the choice
 
         _engine.Reset();
