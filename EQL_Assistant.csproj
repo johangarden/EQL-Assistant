@@ -42,6 +42,10 @@
     <None Update="config\config.default.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- Prebaked spell library (converted from jmoyers/everquest-companion, MIT). -->
+    <None Update="data\spell-library.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

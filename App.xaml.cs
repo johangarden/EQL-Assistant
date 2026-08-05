@@ -70,7 +70,7 @@ public partial class App : Application
             var cfg = cs.LoadSettings();
             cs.EnsureDefaultLoadout();
             var mgr = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(),
-                new RaidKills(cs), _ => { });
+                new RaidKills(cs), new SpellLibrary(cs), _ => { });
             mgr.Show();
             mgr.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
@@ -376,6 +376,30 @@ public partial class App : Application
                 && !resp.StartRegex!.IsMatch("Lady Vox hits YOU for 10 points of damage."));
             Check("disabled respawn builds no trigger",
                 ConfigService.BuildRespawnTrigger(new Models.RespawnEntry { Name = "X", Enabled = false }) is null);
+
+            // Spell library: loads, searches, generates working triggers,
+            // and tracks seen spells via exact-message lookup.
+            var lib = new SpellLibrary(new ConfigService());
+            Check("library loads 1000+ spells", lib.Spells.Count > 1000);
+            var sow = lib.Spells.FirstOrDefault(x => x.Name == "Spirit of Wolf");
+            Check("SoW record has messages + duration", sow is not null
+                && sow.CastOnYou == "You feel the spirit of wolf enter you."
+                && sow.WearsOff == "The spirit of wolf leaves you."
+                && Math.Abs(sow.DurationSec - 2160) < 1);
+            var bar = SpellLibrary.BarTrigger(sow!, spokenWarning: true);
+            Check("library bar trigger compiles with duration + fade voice", bar is not null
+                && bar.StartRegex!.IsMatch("You feel the spirit of wolf enter you.")
+                && bar.EndRegex!.IsMatch("The spirit of wolf leaves you.")
+                && bar.DurationSeconds == 2160
+                && bar.Alert is { AtSeconds: 20 });
+            var fade = SpellLibrary.FadeFlashTrigger(sow!);
+            Check("library fade-flash trigger", fade is not null
+                && fade.Panel == Models.Panels.Flash
+                && fade.StartRegex!.IsMatch("The spirit of wolf leaves you."));
+            Check("library search finds Clarity",
+                lib.Search("clarity").Any(x => x.Name == "Clarity"));
+            lib.MarkSeenFromLine($"[{Ts(50)}] You feel the spirit of wolf enter you.");
+            Check("cast message marks spell as seen", lib.IsSeen(sow!));
 
             // Recent-deaths picker: every parsed death lands in the list, newest
             // first, re-kills dedupe (unlisted mobs are never persisted).

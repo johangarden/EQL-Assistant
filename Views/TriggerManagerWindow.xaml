@@ -319,11 +319,15 @@
                         <!-- Trigger list -->
                         <DockPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
                             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
-                                <Button Content="Add"       Click="Add_Click"       Width="52" Margin="0,0,4,0"/>
-                                <Button Content="Duplicate" Click="Duplicate_Click" Width="72" Margin="0,0,4,0"/>
-                                <Button Content="Delete"    Click="Delete_Click"    Width="60" Margin="0,0,4,0"/>
-                                <Button Content="↑"         Click="MoveUp_Click"    Width="30" Margin="0,0,4,0"/>
-                                <Button Content="↓"         Click="MoveDown_Click"  Width="30"/>
+                                <Button Content="Add"       Click="Add_Click"       Width="46" Margin="0,0,4,0"/>
+                                <Button Content="Library…"  Click="Library_Click"   Width="64" Margin="0,0,4,0"
+                                        Background="#2E6FB0" BorderBrush="#57A0DE"
+                                        AutomationProperties.AutomationId="LibraryBtn"
+                                        ToolTip="Add ready-made triggers from the ~1400-spell library"/>
+                                <Button Content="Duplicate" Click="Duplicate_Click" Width="66" Margin="0,0,4,0"/>
+                                <Button Content="Delete"    Click="Delete_Click"    Width="52" Margin="0,0,4,0"/>
+                                <Button Content="↑"         Click="MoveUp_Click"    Width="26" Margin="0,0,4,0"/>
+                                <Button Content="↓"         Click="MoveDown_Click"  Width="26"/>
                             </StackPanel>
                             <ListBox x:Name="TriggerList" SelectionChanged="TriggerList_SelectionChanged">
                                 <ListBox.ItemTemplate>

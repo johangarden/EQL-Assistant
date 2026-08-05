@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private MeterWindow? _meter;
     private readonly CombatParser _combat = new();
     private RaidKills _raids = null!;
+    private SpellLibrary _spellLib = null!;
     private RaidKillsWindow? _raidsWindow;
     private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
     private PanelPlacement? _mainPlacement;
@@ -86,6 +87,8 @@ public partial class MainWindow : Window
 
         _alerts.Muted = _config.Overlay.Muted;
         _raids = new RaidKills(_configService);
+        _spellLib = new SpellLibrary(_configService);
+        Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _sctHidden = !_config.Overlay.SctVisible;
@@ -330,6 +333,7 @@ public partial class MainWindow : Window
                 _engine.ProcessLine(line);
                 _combat.ProcessLine(line);
                 _raids.ProcessLine(line);
+                _spellLib.MarkSeenFromLine(line);
                 _logBus.Publish(line);
             }),
             onStatus: msg => Dispatcher.BeginInvoke(() => _vm.LogStatus = msg),
@@ -476,7 +480,7 @@ public partial class MainWindow : Window
     {
         if (_manager is null)
         {
-            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, OnManagerApplied);
+            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, OnManagerApplied);
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
         }
@@ -800,6 +804,7 @@ public partial class MainWindow : Window
         catch { /* ignore */ }
 
         Log.Info("Shutting down");
+        _spellLib?.SaveSeenIfDirty(); // null if the window closes before OnLoaded ran
         UnregisterHotKeys();
         _watcher?.Dispose();
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
