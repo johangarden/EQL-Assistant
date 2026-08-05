@@ -576,7 +576,7 @@
                         <TextBlock Style="{StaticResource Hint}"
                                    Text="Your character name maps the log's 'You/YOU' lines to you in the rankings and the incoming-damage footer. Set your pet's name to also track damage your pet takes (leave empty for no pet line)."/>
 
-                        <TextBlock Text="Character name" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="Character name (leave empty to auto-detect from the log filename)" Style="{StaticResource FieldLabel}"/>
                         <TextBox x:Name="CharNameBox" Width="220" HorizontalAlignment="Left"/>
                         <TextBlock Text="Pet name (optional)" Style="{StaticResource FieldLabel}"/>
                         <TextBox x:Name="PetNameBox" Width="220" HorizontalAlignment="Left"/>

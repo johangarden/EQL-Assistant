@@ -315,7 +315,7 @@ public partial class App : Application
                 Ab("slash") == 12 && Ab("Burst of Flame") == 30 && Ab("Flame Lick") == 10
                 && selfAb.Any(r => r.Name == "crush"));
             Check("melee verb normalized (hits -> hit)",
-                p.GetIncomingAbilityRows(pet: false) is [{ Name: "hit", Total: 20 }]);
+                p.GetIncomingAbilityRows(pet: false).First(r => r.Name == "hit") is { Total: 20, Hits: 1 });
             Check("pet incoming ability (bites -> bite)",
                 p.GetIncomingAbilityRows(pet: true) is [{ Name: "bite", Total: 15 }]);
 
@@ -330,12 +330,41 @@ public partial class App : Application
             Check("SCT: no heal-out events (others healed)",
                 sct.All(e => e.Kind != CombatParser.SctKind.HealOut));
 
+            // Misses, resists, hit% and damage ranges.
+            p.ProcessLine($"[{Ts(13)}] You try to slash a gnoll pup, but miss!");
+            p.ProcessLine($"[{Ts(13)}] A gnoll pup tries to bite Johan, but Johan dodges!");
+            p.ProcessLine($"[{Ts(14)}] Your target resisted the Burst of Flame spell.");
+            p.ProcessLine($"[{Ts(14)}] You resisted the Frost Breath spell!");
+
+            var ab2 = p.GetAbilityRows("Johan");
+            var slash = ab2.First(r => r.Name == "slash");
+            Check("miss tracked: slash 1/2 hit, range 12-12",
+                slash is { Hits: 1, Misses: 1, Min: 12, Max: 12, Total: 12 });
+            Check("outgoing spell resist tracked",
+                ab2.First(r => r.Name == "Burst of Flame") is { Hits: 1, Resists: 1, Total: 30 });
+            var inc2 = p.GetIncomingAbilityRows(pet: false);
+            Check("incoming: mob melee hit range 20-20",
+                inc2.First(r => r.Name == "hit") is { Hits: 1, Min: 20, Max: 20 });
+            Check("incoming: avoided bites count as misses on you (missed + dodged)",
+                inc2.First(r => r.Name == "bite") is { Hits: 0, Misses: 2, Total: 0 });
+            Check("incoming: your spell resist tracked",
+                inc2.First(r => r.Name == "Frost Breath") is { Resists: 1, Total: 0 });
+
+            // Raid-kill death-line parsing (level suffixes stripped).
+            Check("raid kill: slain-by line",
+                RaidKills.TryParseKill("Lady Vox has been slain by Johan!", out var mob1) && mob1 == "Lady Vox");
+            Check("raid kill: you-have-slain line strips level",
+                RaidKills.TryParseKill("You have slain a Sage of Innoruuk (17)!", out var mob2)
+                && mob2 == "a Sage of Innoruuk");
+            Check("raid kill: normal line no match",
+                !RaidKills.TryParseKill("You slash a rat for 5 points of damage.", out _));
+
             // Idle finalize archives the fight; a new line starts fresh.
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
             Check("fight ends after 10s idle", !p.InCombat);
             Check("ended fight archived to history", p.History.Count == 1
                 && p.History[0].Label == "a gnoll pup"
-                && Math.Abs(p.History[0].DurationSeconds - 12) < 0.01
+                && Math.Abs(p.History[0].DurationSeconds - 14) < 0.01 // miss/resist lines extend activity
                 && p.History[0].IncomingSelfTotal == 20);
             p.ProcessLine($"[{Ts(40)}] You slash a rat for 5 points of damage.");
             Check("next combat line starts a fresh fight",

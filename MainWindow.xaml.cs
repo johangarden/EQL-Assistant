@@ -29,6 +29,8 @@ public partial class MainWindow : Window
     private FlashWindow? _flash;
     private MeterWindow? _meter;
     private readonly CombatParser _combat = new();
+    private RaidKills _raids = null!;
+    private RaidKillsWindow? _raidsWindow;
     private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
     private PanelPlacement? _mainPlacement;
     private bool _hidden;
@@ -82,10 +84,11 @@ public partial class MainWindow : Window
         }
 
         _alerts.Muted = _config.Overlay.Muted;
+        _raids = new RaidKills(_configService);
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _sctHidden = !_config.Overlay.SctVisible;
-        _combat.SelfName = _config.CharacterName;
+        ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
         _combat.SctEvent += OnSctEvent;
         _engine = new TriggerEngine(_config, _alerts);
@@ -244,7 +247,7 @@ public partial class MainWindow : Window
     private void RebuildMeterWindow()
     {
         if (_meter is not null) { try { _meter.Close(); } catch { /* ignore */ } }
-        _meter = new MeterWindow(_configService, _combat, _config.Overlay.Opacity);
+        _meter = new MeterWindow(_configService, _combat, _raids, _config.Overlay.Opacity);
         _meter.Show();
         UpdateMeterVisibility();
     }
@@ -325,10 +328,41 @@ public partial class MainWindow : Window
             {
                 _engine.ProcessLine(line);
                 _combat.ProcessLine(line);
+                _raids.ProcessLine(line);
                 _logBus.Publish(line);
             }),
-            onStatus: msg => Dispatcher.BeginInvoke(() => _vm.LogStatus = msg));
+            onStatus: msg => Dispatcher.BeginInvoke(() => _vm.LogStatus = msg),
+            onFileChanged: path => Dispatcher.BeginInvoke(() =>
+            {
+                _detectedName = ExtractCharacterName(path);
+                ApplySelfName();
+            }));
         _watcher.Start();
+    }
+
+    // ---- character-name auto-detection ---------------------------------------
+
+    private string _detectedName = "";
+
+    /// <summary>"eqlog_Thorrak_paineel.txt" → "Thorrak".</summary>
+    private static string ExtractCharacterName(string path)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(
+            Path.GetFileName(path), @"^eqlog_(?<name>[A-Za-z]+)[_.]",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return m.Success ? m.Groups["name"].Value : "";
+    }
+
+    /// <summary>An explicit Character name in Settings wins; otherwise the log filename's.</summary>
+    private void ApplySelfName()
+    {
+        string name = !string.IsNullOrWhiteSpace(_config.CharacterName)
+            ? _config.CharacterName
+            : _detectedName;
+        if (string.IsNullOrWhiteSpace(name) || _combat.SelfName == name) return;
+        _combat.SelfName = name;
+        Log.Info($"Combat parser character name: '{name}'" +
+                 (string.IsNullOrWhiteSpace(_config.CharacterName) ? " (auto-detected from log filename)" : ""));
     }
 
     // ---- hotkeys ------------------------------------------------------------
@@ -509,8 +543,8 @@ public partial class MainWindow : Window
         _timerHidden = !cfg.Overlay.TimerVisible;
         _meterHidden = !cfg.Overlay.MeterVisible;
         _sctHidden = !cfg.Overlay.SctVisible;
-        _combat.SelfName = cfg.CharacterName;
         _combat.PetName = cfg.Overlay.PetName;
+        ApplySelfName();
 
         bool wasLocked = _vm.Locked;
         _engine.Reset();
@@ -588,6 +622,17 @@ public partial class MainWindow : Window
         _config.Overlay.Muted = _alerts.Muted;
         _vm.Muted = _alerts.Muted;
         _vm.Flash(_alerts.Muted ? "Alerts muted." : "Alerts on.");
+    }
+
+    private void OpenRaidKills()
+    {
+        if (_raidsWindow is null)
+        {
+            _raidsWindow = new RaidKillsWindow(_raids);
+            _raidsWindow.Closed += (_, _) => _raidsWindow = null;
+            _raidsWindow.Show();
+        }
+        BringToFront(_raidsWindow);
     }
 
     private void OpenConfigFolder()
@@ -676,6 +721,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Show / hide repop timer", null, (_, _) => ToggleTimer());
         menu.Items.Add("Show / hide DPS meter", null, (_, _) => ToggleMeter());
         menu.Items.Add("Show / hide combat text", null, (_, _) => ToggleSct());
+        menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Manage…", null, (_, _) => OpenManager());
         menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
@@ -741,6 +787,7 @@ public partial class MainWindow : Window
         try { _timer?.Close(); } catch { /* ignore */ }
         try { _meter?.Close(); } catch { /* ignore */ }
         try { _flash?.Close(); } catch { /* ignore */ }
+        try { _raidsWindow?.Close(); } catch { /* ignore */ }
         foreach (var lane in _sctLanes.Values) { try { lane.Close(); } catch { /* ignore */ } }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }

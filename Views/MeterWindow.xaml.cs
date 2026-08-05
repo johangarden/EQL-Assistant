@@ -22,6 +22,7 @@ public partial class MeterWindow : Window
 
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
+    private readonly RaidKills _raids;
     private readonly PanelPlacement _placement;
     private readonly DispatcherTimer _tick;
     private readonly ObservableCollection<MeterRowViewModel> _rows = new();
@@ -44,12 +45,13 @@ public partial class MeterWindow : Window
         Freeze(Color.FromRgb(0xA1, 0x88, 0x7F)),
     };
 
-    public MeterWindow(ConfigService config, CombatParser parser, double opacity)
+    public MeterWindow(ConfigService config, CombatParser parser, RaidKills raids, double opacity)
     {
         InitializeComponent();
 
         _parser = parser;
         _config = config;
+        _raids = raids;
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
         _placement = new PanelPlacement(this, config, "meter", Anchor.TopRight, 40, 300);
 
@@ -105,7 +107,7 @@ public partial class MeterWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_parser, _config);
+            _historyWindow = new HistoryWindow(_parser, _config, _raids);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

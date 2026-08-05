@@ -14,6 +14,7 @@ public sealed class LogWatcher : IDisposable
     private readonly LogConfig _config;
     private readonly Action<string> _onLine;
     private readonly Action<string> _onStatus;
+    private readonly Action<string>? _onFileChanged;
 
     private CancellationTokenSource? _cts;
     private Task? _loop;
@@ -25,11 +26,13 @@ public sealed class LogWatcher : IDisposable
 
     public string? CurrentPath => _currentPath;
 
-    public LogWatcher(LogConfig config, Action<string> onLine, Action<string> onStatus)
+    public LogWatcher(LogConfig config, Action<string> onLine, Action<string> onStatus,
+        Action<string>? onFileChanged = null)
     {
         _config = config;
         _onLine = onLine;
         _onStatus = onStatus;
+        _onFileChanged = onFileChanged;
     }
 
     public void Start()
@@ -121,6 +124,7 @@ public sealed class LogWatcher : IDisposable
 
         _onStatus($"Following {Path.GetFileName(path)}");
         Log.Info($"Following log file: {path}");
+        _onFileChanged?.Invoke(path);
     }
 
     private void ReadNewData()

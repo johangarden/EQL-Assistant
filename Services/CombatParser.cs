@@ -31,7 +31,29 @@ public sealed class CombatParser
     /// <summary>Raised per parsed combat event, for scrolling combat text: (kind, ability, amount).</summary>
     public event Action<SctKind, string, double>? SctEvent;
 
-    public readonly record struct Row(string Name, double Total, double Dps, double Percent, bool Enemy);
+    public readonly record struct Row(string Name, double Total, double Dps, double Percent, bool Enemy,
+        int Hits = 0, int Misses = 0, int Resists = 0, double Min = 0, double Max = 0);
+
+    /// <summary>Per-ability accumulator: landed damage plus attempt bookkeeping.</summary>
+    private sealed class AbilityStat
+    {
+        public double Total;
+        public int Hits;
+        public int Misses;
+        public int Resists;
+        public double Min = double.MaxValue;
+        public double Max;
+
+        public void Land(double amount)
+        {
+            Total += amount;
+            Hits++;
+            if (amount < Min) Min = amount;
+            if (amount > Max) Max = amount;
+        }
+
+        public double MinOrZero => Hits > 0 ? Min : 0;
+    }
 
     /// <summary>A finished fight, frozen for the history/compare window.</summary>
     public sealed class FightRecord
@@ -61,9 +83,9 @@ public sealed class CombatParser
     private readonly Dictionary<string, double> _damage = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, double> _healing = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, double> _taken = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, Dictionary<string, double>> _abilities = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, double> _incomingSelfAbility = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, double> _incomingPetAbility = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Dictionary<string, AbilityStat>> _abilities = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, AbilityStat> _incomingSelfAbility = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, AbilityStat> _incomingPetAbility = new(StringComparer.OrdinalIgnoreCase);
     private double _incomingSelf;
     private double _incomingPet;
     private DateTime _start;
@@ -152,6 +174,26 @@ public sealed class CombatParser
         ["mauls"] = "maul", ["stings"] = "sting", ["rends"] = "rend", ["slams"] = "slam",
     };
 
+    // Avoided melee: "You try to slash a rat, but miss!" / "A rat tries to bite
+    // YOU, but misses!" / "..., but a rat dodges!" (dodge/parry/riposte/block all
+    // count as a miss for hit-rate purposes).
+    private static readonly Regex MissRx = new(
+        @"^(?<att>.+?) tr(?:y|ies) to (?<verb>\w+) (?<tgt>.+?), but .+!",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // Spell resists: yours going out, and ones you shrug off.
+    private static readonly Regex ResistTargetRx = new(
+        @"^Your target resisted the (?<spell>.+?) spell\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex ResistOtherRx = new(
+        @"^(?<tgt>.+?) resisted your (?<spell>.+?)[!.]",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex ResistYouRx = new(
+        @"^You resist(?:ed)? (?:the )?(?<spell>.+?)(?: spell)?[!.]",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -183,7 +225,26 @@ public sealed class CombatParser
             string verb = m.Groups["verb"].Value;
             string ability = VerbBase.TryGetValue(verb, out var baseForm) ? baseForm : verb.ToLowerInvariant();
             AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, ability, Amount(m, "dmg"), time);
+            return;
         }
+
+        m = MissRx.Match(body);
+        if (m.Success)
+        {
+            string verb = m.Groups["verb"].Value;
+            string ability = VerbBase.TryGetValue(verb, out var baseForm) ? baseForm : verb.ToLowerInvariant();
+            AddMiss(m.Groups["att"].Value, m.Groups["tgt"].Value, ability, time);
+            return;
+        }
+
+        m = ResistTargetRx.Match(body);
+        if (m.Success) { AddOutgoingResist(m.Groups["spell"].Value, time); return; }
+
+        m = ResistYouRx.Match(body);
+        if (m.Success) { AddIncomingResist(m.Groups["spell"].Value, time); return; }
+
+        m = ResistOtherRx.Match(body);
+        if (m.Success) AddOutgoingResist(m.Groups["spell"].Value, time);
     }
 
     /// <summary>Freeze the fight once it has been idle long enough (call periodically).</summary>
@@ -275,16 +336,17 @@ public sealed class CombatParser
     public List<Row> GetIncomingAbilityRows(bool pet) =>
         AbilityRows(pet ? _incomingPetAbility : _incomingSelfAbility);
 
-    private List<Row> AbilityRows(Dictionary<string, double> byAbility)
+    private List<Row> AbilityRows(Dictionary<string, AbilityStat> byAbility)
     {
         double duration = DurationSeconds;
-        double grand = byAbility.Values.Sum();
+        double grand = byAbility.Values.Sum(s => s.Total);
         var rows = new List<Row>(byAbility.Count);
-        foreach (var (ability, total) in byAbility)
-            rows.Add(new Row(ability, total,
-                duration > 0 ? total / duration : 0,
-                grand > 0 ? total / grand * 100 : 0,
-                false));
+        foreach (var (ability, s) in byAbility)
+            rows.Add(new Row(ability, s.Total,
+                duration > 0 ? s.Total / duration : 0,
+                grand > 0 ? s.Total / grand * 100 : 0,
+                false,
+                s.Hits, s.Misses, s.Resists, s.MinOrZero, s.Max));
         rows.Sort((a, b) => b.Total.CompareTo(a.Total));
         return rows;
     }
@@ -311,26 +373,63 @@ public sealed class CombatParser
 
         Bump(_damage, attacker, amount);
         Bump(_taken, target, amount);
-
-        if (!_abilities.TryGetValue(attacker, out var byAbility))
-            _abilities[attacker] = byAbility = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-        Bump(byAbility, ability, amount);
+        Stat(attacker, ability).Land(amount);
 
         if (IsSelf(target))
         {
             _incomingSelf += amount;
-            Bump(_incomingSelfAbility, ability, amount);
+            StatIn(_incomingSelfAbility, ability).Land(amount);
             SctEvent?.Invoke(SctKind.IncomingSelf, ability, amount);
         }
         else if (IsPet(target))
         {
             _incomingPet += amount;
-            Bump(_incomingPetAbility, ability, amount);
+            StatIn(_incomingPetAbility, ability).Land(amount);
             SctEvent?.Invoke(SctKind.IncomingPet, ability, amount);
         }
 
         if (IsSelf(attacker)) SctEvent?.Invoke(SctKind.OutgoingSelf, ability, amount);
         else if (IsPet(attacker)) SctEvent?.Invoke(SctKind.OutgoingPet, ability, amount);
+    }
+
+    /// <summary>An avoided melee attempt (miss/dodge/parry/riposte/block).</summary>
+    private void AddMiss(string attacker, string target, string ability, DateTime time)
+    {
+        attacker = Normalize(attacker);
+        target = Normalize(target);
+        Touch(time);
+
+        Stat(attacker, ability).Misses++;
+        if (IsSelf(target)) StatIn(_incomingSelfAbility, ability).Misses++;
+        else if (IsPet(target)) StatIn(_incomingPetAbility, ability).Misses++;
+    }
+
+    /// <summary>One of YOUR spells got resisted.</summary>
+    private void AddOutgoingResist(string spell, DateTime time)
+    {
+        Touch(time);
+        Stat(Self(), spell.Trim()).Resists++;
+    }
+
+    /// <summary>You resisted an enemy spell.</summary>
+    private void AddIncomingResist(string spell, DateTime time)
+    {
+        Touch(time);
+        StatIn(_incomingSelfAbility, spell.Trim()).Resists++;
+    }
+
+    private AbilityStat Stat(string source, string ability)
+    {
+        if (!_abilities.TryGetValue(source, out var byAbility))
+            _abilities[source] = byAbility = new Dictionary<string, AbilityStat>(StringComparer.OrdinalIgnoreCase);
+        return StatIn(byAbility, ability);
+    }
+
+    private static AbilityStat StatIn(Dictionary<string, AbilityStat> dict, string ability)
+    {
+        if (!dict.TryGetValue(ability, out var stat))
+            dict[ability] = stat = new AbilityStat();
+        return stat;
     }
 
     private void AddHealing(string healer, string spell, double amount, DateTime time)
@@ -434,17 +533,30 @@ public sealed class CombatParser
         _incomingPet = 550;
 
         // Ability drill-down (a rog/war/nec-style split for the demo).
+        static AbilityStat DemoStat(double total, int hits, int misses, double min, double max, int resists = 0)
+        {
+            var s = new AbilityStat { Misses = misses, Resists = resists };
+            s.Land(min);
+            if (hits > 1) s.Land(max);
+            s.Hits = hits;
+            s.Total = total;
+            return s;
+        }
         _abilities[Self()] = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["backstab"] = 2300, ["slash"] = 1450, ["Lifetap"] = 860, ["Poison Bolt"] = 600,
+            ["backstab"] = DemoStat(2300, 9, 3, 180, 340),
+            ["slash"] = DemoStat(1450, 21, 6, 40, 95),
+            ["Lifetap"] = DemoStat(860, 10, 0, 62, 105, resists: 2),
+            ["Poison Bolt"] = DemoStat(600, 5, 0, 90, 140, resists: 1),
         };
         _abilities[pet] = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["bite"] = 1800, ["claw"] = 1150,
+            ["bite"] = DemoStat(1800, 30, 11, 25, 80),
+            ["claw"] = DemoStat(1150, 26, 9, 18, 66),
         };
-        _incomingSelfAbility["hit"] = 780;
-        _incomingSelfAbility["Frost Breath"] = 570;
-        _incomingPetAbility["claw"] = 550;
+        _incomingSelfAbility["hit"] = DemoStat(780, 7, 5, 60, 150);
+        _incomingSelfAbility["Frost Breath"] = DemoStat(570, 2, 0, 250, 320, resists: 1);
+        _incomingPetAbility["claw"] = DemoStat(550, 6, 3, 50, 120);
 
         // Give the history window something to compare against.
         if (_history.Count == 0)
