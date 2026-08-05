@@ -15,6 +15,10 @@ public sealed class AppConfig
     /// <summary>Name of the loadout to load on startup.</summary>
     public string ActiveLoadout { get; set; } = "Default";
 
+    /// <summary>Replay today's log lines on startup (fight history, raid kills,
+    /// seen spells) — covers starting the app mid-session.</summary>
+    public bool CatchUpOnStart { get; set; } = false;
+
     /// <summary>
     /// The active loadout's triggers, loaded at runtime from a loadout file.
     /// Not stored in config.json (triggers live in loadouts/*.json).

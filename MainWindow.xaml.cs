@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private bool _timerHidden;
     private bool _meterHidden;
     private bool _sctHidden;
+    private bool _suppressSct;   // true while replaying old lines (catch-up)
     private System.Windows.Forms.NotifyIcon? _tray;
 
     /// <summary>Set by self-tests so they never persist window position/lock.</summary>
@@ -122,6 +123,84 @@ public partial class MainWindow : Window
         RebuildMeterWindow();
         RebuildFlashWindow();
         RebuildSctLanes();
+
+        if (_config.CatchUpOnStart)
+        {
+            // Give the watcher a moment to resolve which log file to follow.
+            var once = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            once.Tick += (_, _) => { once.Stop(); CatchUpToday(); };
+            once.Start();
+        }
+    }
+
+    // ---- catch-up (started the app mid-session) -------------------------------
+
+    /// <summary>
+    /// Replay today's lines from the followed log into the combat history,
+    /// raid kills and seen spells — for when the app was started late.
+    /// Triggers/alerts and combat text are NOT fired for old lines.
+    /// </summary>
+    private void CatchUpToday()
+    {
+        string? path = _watcher?.CurrentPath;
+        if (path is null || !File.Exists(path))
+        {
+            _vm.Flash("Catch-up: no log file is being followed yet.");
+            return;
+        }
+
+        int fightsBefore = _combat.History.Count;
+        int lines = 0;
+        _suppressSct = true;
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(fs);
+            var today = DateTime.Today;
+            string? line;
+            while ((line = reader.ReadLine()) is not null)
+            {
+                if (!TryParseLineTime(line, out var t) || t.Date != today) continue;
+                _combat.Replay(line);
+                _raids.ProcessLine(line, t);
+                _spellLib.MarkSeenFromLine(line);
+                lines++;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Catch-up failed: " + ex.Message);
+            _vm.Flash("Catch-up failed — see the log file.");
+            return;
+        }
+        finally
+        {
+            _suppressSct = false;
+        }
+
+        _spellLib.SaveSeenIfDirty();
+        int fights = _combat.History.Count - fightsBefore + (_combat.InCombat ? 1 : 0);
+        _vm.Flash($"Caught up: {lines:N0} lines, {fights} fight(s) from today's log.");
+        Log.Info($"Catch-up: {lines} lines replayed from {Path.GetFileName(path)}, {fights} fights.");
+    }
+
+    private static readonly string[] LineTimeFormats =
+    {
+        "ddd MMM d HH:mm:ss yyyy",
+        "ddd MMM dd HH:mm:ss yyyy",
+    };
+
+    private static bool TryParseLineTime(string line, out DateTime time)
+    {
+        time = default;
+        int close = line.IndexOf(']');
+        if (!line.StartsWith('[') || close < 0) return false;
+        string ts = System.Text.RegularExpressions.Regex.Replace(
+            line[1..close].Trim(), @"\s+", " ");
+        return DateTime.TryParseExact(ts, LineTimeFormats,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out time);
     }
 
     // ---- scrolling combat text ------------------------------------------------
@@ -180,7 +259,7 @@ public partial class MainWindow : Window
 
     private void OnSctEvent(CombatParser.SctHit hit)
     {
-        if (_hidden || _sctHidden) return;
+        if (_hidden || _sctHidden || _suppressSct) return;
         if (_sctLanes.TryGetValue(hit.Kind, out var lane))
             lane.Post(hit.Ability, hit.Amount,
                 plus: hit.Kind is CombatParser.SctKind.HealOut or CombatParser.SctKind.HealIn,
@@ -774,6 +853,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Show / hide DPS meter", null, (_, _) => ToggleMeter());
         menu.Items.Add("Show / hide combat text", null, (_, _) => ToggleSct());
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
+        menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add("Manage…", null, (_, _) => OpenManager());
         menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());

@@ -487,6 +487,8 @@ public partial class TriggerManagerWindow : Window
         MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
+        StartWithWindowsCheck.IsChecked = IsAutoStartEnabled();
+        CatchUpCheck.IsChecked = _config.CatchUpOnStart;
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
         MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
         SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
@@ -565,6 +567,7 @@ public partial class TriggerManagerWindow : Window
         {
             CharacterName = CharNameBox.Text.Trim(),
             ActiveLoadout = _currentName,
+            CatchUpOnStart = CatchUpCheck.IsChecked == true,
             Log =
             {
                 Directory = LogDirBox.Text.Trim(),
@@ -623,6 +626,8 @@ public partial class TriggerManagerWindow : Window
             return;
         }
 
+        ApplyAutoStart(StartWithWindowsCheck.IsChecked == true);
+
         // Persist panel anchors (offsets are preserved) before the overlay re-applies.
         ApplyAnchor("main", BarsAnchorBox);
         ApplyAnchor("selfMatrix", SelfAnchorBox);
@@ -634,6 +639,38 @@ public partial class TriggerManagerWindow : Window
         _config = cfg;
         _onApplied(_currentName);
         Status($"Saved {loadouts.Count} loadout(s). Active: {_currentName}.");
+    }
+
+    // ---- start with Windows (HKCU Run key) -----------------------------------
+
+    private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string RunValueName = "EQL_Assistant";
+
+    private static bool IsAutoStartEnabled()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKeyPath);
+            return key?.GetValue(RunValueName) is string;
+        }
+        catch { return false; }
+    }
+
+    private static void ApplyAutoStart(bool enable)
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
+            if (key is null) return;
+            if (enable && Environment.ProcessPath is { } exe)
+                key.SetValue(RunValueName, $"\"{exe}\"");
+            else if (!enable)
+                key.DeleteValue(RunValueName, throwOnMissingValue: false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Start-with-Windows setting failed: " + ex.Message);
+        }
     }
 
     private static double ParseOr(string text, double fallback) =>
