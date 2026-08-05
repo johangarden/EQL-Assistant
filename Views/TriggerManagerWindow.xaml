@@ -215,7 +215,9 @@
                             <TabPanel DockPanel.Dock="Top" IsItemsHost="True" Margin="0,0,0,8"/>
                             <Border Background="#1B2130" BorderBrush="#3A4560" BorderThickness="1"
                                     CornerRadius="6">
-                                <ContentPresenter ContentSource="SelectedContent" Margin="4"/>
+                                <!-- PART_ name required for the tab's content to appear in UI Automation. -->
+                                <ContentPresenter x:Name="PART_SelectedContentHost"
+                                                  ContentSource="SelectedContent" Margin="4"/>
                             </Border>
                         </DockPanel>
                     </ControlTemplate>
@@ -330,77 +332,95 @@
                             <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
 
                             <TextBlock Text="Show in" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding Panel}">
+                            <ComboBox x:Name="PanelCombo" SelectedValuePath="Tag" SelectedValue="{Binding Panel}"
+                                      SelectionChanged="PanelCombo_SelectionChanged"
+                                      AutomationProperties.AutomationId="PanelCombo">
                                 <ComboBoxItem Content="Bars — countdown timers" Tag="bars"/>
                                 <ComboBoxItem Content="Self buffs — present/missing matrix" Tag="selfBuffs"/>
                                 <ComboBoxItem Content="Target debuffs — present/missing matrix" Tag="targetDebuffs"/>
                                 <ComboBoxItem Content="Repop timer — auto-start on match" Tag="timerAuto"/>
                                 <ComboBoxItem Content="Flash — screen-center alert" Tag="flash"/>
                             </ComboBox>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="Bars = a depleting timer. Matrix = a red/green cell (present + seconds left). Repop timer = when the start pattern matches (e.g. a named mob death), the circular watch starts with this trigger's Duration."/>
+                            <TextBlock x:Name="PanelHint" Style="{StaticResource Hint}"
+                                       Text="A depleting countdown bar in the bars panel, grouped by category."/>
 
-                            <TextBlock Text="Category (bars grouping)" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox IsEditable="True" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}">
-                                <ComboBoxItem>Buffs</ComboBoxItem>
-                                <ComboBoxItem>HoTs</ComboBoxItem>
-                                <ComboBoxItem>DoTs</ComboBoxItem>
-                                <ComboBoxItem>Cooldowns</ComboBoxItem>
-                            </ComboBox>
-
-                            <TextBlock Text="Duration (seconds)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox Text="{Binding DurationSeconds}" Width="120" HorizontalAlignment="Left"/>
-
-                            <TextBlock Text="Color" Style="{StaticResource FieldLabel}"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBox Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}"
-                                         Width="120"/>
-                                <Border Width="26" Height="20" Margin="8,0,0,0" CornerRadius="3"
-                                        BorderBrush="#5C6B82" BorderThickness="1"
-                                        Background="{Binding PreviewBrush}"/>
-                                <WrapPanel x:Name="SwatchPanel" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <StackPanel x:Name="CategoryGroup">
+                                <TextBlock Text="Category (bars grouping)" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox IsEditable="True" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}">
+                                    <ComboBoxItem>Buffs</ComboBoxItem>
+                                    <ComboBoxItem>HoTs</ComboBoxItem>
+                                    <ComboBoxItem>DoTs</ComboBoxItem>
+                                    <ComboBoxItem>Cooldowns</ComboBoxItem>
+                                </ComboBox>
                             </StackPanel>
 
-                            <TextBlock Text="Start pattern (regex — starts the bar)" Style="{StaticResource FieldLabel}"/>
+                            <StackPanel x:Name="DurationGroup">
+                                <TextBlock x:Name="DurationLabel" Text="Duration (seconds)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding DurationSeconds}" Width="120" HorizontalAlignment="Left"/>
+                            </StackPanel>
+
+                            <StackPanel x:Name="ColorGroup">
+                                <TextBlock Text="Color" Style="{StaticResource FieldLabel}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}"
+                                             Width="120"/>
+                                    <Border Width="26" Height="20" Margin="8,0,0,0" CornerRadius="3"
+                                            BorderBrush="#5C6B82" BorderThickness="1"
+                                            Background="{Binding PreviewBrush}"/>
+                                    <WrapPanel x:Name="SwatchPanel" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <TextBlock x:Name="StartLabel" Text="Start pattern (regex — starts the bar)" Style="{StaticResource FieldLabel}"/>
                             <TextBox Text="{Binding StartPattern, UpdateSourceTrigger=PropertyChanged}"
                                      FontFamily="Consolas" TextWrapping="Wrap"/>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="Tip: select a line in the log below and click '→ Start pattern' to fill this."/>
 
-                            <TextBlock Text="End pattern (regex — clears the bar early, optional)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox Text="{Binding EndPattern, UpdateSourceTrigger=PropertyChanged}"
-                                     FontFamily="Consolas" TextWrapping="Wrap"/>
+                            <StackPanel x:Name="EndGroup">
+                                <TextBlock Text="End pattern (regex — clears it early, optional)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding EndPattern, UpdateSourceTrigger=PropertyChanged}"
+                                         FontFamily="Consolas" TextWrapping="Wrap"/>
+                            </StackPanel>
 
-                            <CheckBox Content="Refresh to full when it triggers again"
-                                      IsChecked="{Binding RefreshOnRetrigger}" Margin="0,10,0,0"/>
-                            <CheckBox Content="Remind me to rebuff when this is missing"
-                                      IsChecked="{Binding RemindWhenMissing}" Margin="0,6,0,0"/>
+                            <StackPanel x:Name="BarsChecksGroup">
+                                <CheckBox Content="Refresh to full when it triggers again"
+                                          IsChecked="{Binding RefreshOnRetrigger}" Margin="0,10,0,0"/>
+                                <CheckBox Content="Remind me to rebuff when this is missing"
+                                          IsChecked="{Binding RemindWhenMissing}" Margin="0,6,0,0"/>
+                            </StackPanel>
 
                             <Border BorderBrush="#3A4560" BorderThickness="0,1,0,0" Margin="0,12,0,4"/>
                             <TextBlock Text="Alerts" FontWeight="Bold" FontSize="14" Margin="0,4,0,0"/>
 
-                            <TextBlock Text="Warn this many seconds before it drops (0 = off)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox Text="{Binding AlertAtSeconds}" Width="120" HorizontalAlignment="Left"/>
-
-                            <CheckBox Content="Alert when it reaches 0 (use for cooldown 'ready')"
-                                      IsChecked="{Binding AlertOnExpire}" Margin="0,8,0,0"/>
-
-                            <TextBlock Text="Flash this text on screen when it matches" Style="{StaticResource FieldLabel}"/>
-                            <TextBox Text="{Binding FlashText, UpdateSourceTrigger=PropertyChanged}" Width="320" HorizontalAlignment="Left"/>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="Big centred text in the trigger's colour that fades out. Works on any trigger, or use the 'Flash' panel for a flash-only trigger."/>
-
-                            <TextBlock Text="Speak this phrase (Windows text-to-speech)" Style="{StaticResource FieldLabel}"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBox Text="{Binding AlertSpeak, UpdateSourceTrigger=PropertyChanged}" Width="320"/>
-                                <Button Content="Speak" Click="Speak_Click" Width="60" Margin="8,0,0,0"/>
+                            <StackPanel x:Name="WarnGroup">
+                                <TextBlock Text="Warn this many seconds before it drops (0 = off)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding AlertAtSeconds}" Width="120" HorizontalAlignment="Left"/>
+                                <CheckBox Content="Alert when it reaches 0 (use for cooldown 'ready')"
+                                          IsChecked="{Binding AlertOnExpire}" Margin="0,8,0,0"/>
                             </StackPanel>
 
-                            <TextBlock Text="Play this .wav file" Style="{StaticResource FieldLabel}"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBox Text="{Binding AlertSound, UpdateSourceTrigger=PropertyChanged}" Width="320"/>
-                                <Button Content="Browse" Click="BrowseSound_Click" Width="66" Margin="8,0,0,0"/>
-                                <Button Content="Play" Click="PlaySound_Click" Width="50" Margin="4,0,0,0"/>
+                            <StackPanel x:Name="FlashGroup">
+                                <TextBlock x:Name="FlashLabel" Text="Flash this text on screen when it matches (optional)"
+                                           Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding FlashText, UpdateSourceTrigger=PropertyChanged}" Width="320" HorizontalAlignment="Left"/>
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="Big text in the trigger's colour in the flash area, fading out."/>
+                            </StackPanel>
+
+                            <StackPanel x:Name="SpeakSoundGroup">
+                                <TextBlock Text="Speak this phrase (Windows text-to-speech)" Style="{StaticResource FieldLabel}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox Text="{Binding AlertSpeak, UpdateSourceTrigger=PropertyChanged}" Width="320"/>
+                                    <Button Content="Speak" Click="Speak_Click" Width="60" Margin="8,0,0,0"/>
+                                </StackPanel>
+
+                                <TextBlock Text="Play this .wav file" Style="{StaticResource FieldLabel}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox Text="{Binding AlertSound, UpdateSourceTrigger=PropertyChanged}" Width="320"/>
+                                    <Button Content="Browse" Click="BrowseSound_Click" Width="66" Margin="8,0,0,0"/>
+                                    <Button Content="Play" Click="PlaySound_Click" Width="50" Margin="4,0,0,0"/>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>

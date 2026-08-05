@@ -292,6 +292,48 @@ public partial class TriggerManagerWindow : Window
         if (dlg.ShowDialog(this) == true) Selected.AlertSound = dlg.FileName;
     }
 
+    // ---- contextual details form ---------------------------------------------
+
+    private void PanelCombo_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e) => ApplyPanelVisibility();
+
+    /// <summary>
+    /// Show only the fields that mean something for the selected "Show in"
+    /// type — a repop trigger has no category, color, or rebuff reminder.
+    /// </summary>
+    private void ApplyPanelVisibility()
+    {
+        if (SpeakSoundGroup is null) return; // still initializing
+
+        string p = PanelCombo.SelectedValue as string ?? Panels.Bars;
+        bool bars = p == Panels.Bars;
+        bool matrix = p is Panels.SelfBuffs or Panels.TargetDebuffs;
+        bool timer = p == Panels.TimerAuto;
+        bool flash = p == Panels.Flash;
+
+        static Visibility V(bool show) => show ? Visibility.Visible : Visibility.Collapsed;
+        CategoryGroup.Visibility = V(bars);
+        DurationGroup.Visibility = V(bars || matrix || timer);
+        ColorGroup.Visibility = V(bars || flash);
+        EndGroup.Visibility = V(bars || matrix);
+        BarsChecksGroup.Visibility = V(bars);
+        WarnGroup.Visibility = V(bars || matrix);
+        SpeakSoundGroup.Visibility = V(bars || matrix);
+
+        DurationLabel.Text = timer ? "Respawn time (seconds)" : "Duration (seconds)";
+        StartLabel.Text = timer ? "Death line (regex — starts the repop timer)"
+            : flash ? "Pattern (regex — fires the flash)"
+            : matrix ? "Start pattern (regex — turns the cell green)"
+            : "Start pattern (regex — starts the bar)";
+        FlashLabel.Text = flash ? "Flash text (empty = the trigger's name)"
+            : "Flash this text on screen when it matches (optional)";
+        PanelHint.Text = timer
+            ? "When the pattern matches (e.g. a named mob death), the circular repop watch starts with this respawn time. Also listed in the watch's ☰ preset menu."
+            : matrix ? "A red/green cell: green with seconds left while active, red when missing."
+            : flash ? "Big screen-center text in the trigger's colour that fades out."
+            : "A depleting countdown bar in the bars panel, grouped by category.";
+    }
+
     // ---- settings tab -------------------------------------------------------
 
     private void LoadSettingsFields()
