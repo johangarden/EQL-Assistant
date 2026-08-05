@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using EQLOverlay.Interop;
 using EQLOverlay.Services;
 
 namespace EQLOverlay.Views;
@@ -55,6 +56,7 @@ public partial class HistoryWindow : Window
     public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids)
     {
         InitializeComponent();
+        WindowTheme.ApplyDark(this);
         _parser = parser;
         _config = config;
         _raids = raids;

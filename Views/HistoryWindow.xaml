@@ -5,44 +5,32 @@
         Width="820" Height="520"
         MinWidth="560" MinHeight="360"
         WindowStartupLocation="CenterScreen"
-        Background="#141A24"
+        Background="{StaticResource Brush.Window}"
         Icon="/assets/eqloverlay.ico"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
 
     <Window.Resources>
-        <!-- Sub-section label inside a section card ("Your abilities"). -->
-        <Style x:Key="SubLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#7F93AD"/>
-            <Setter Property="FontSize" Value="10"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,7,0,2"/>
-        </Style>
-        <!-- One section card (Damage dealt / Damage taken / Healing). -->
-        <Style x:Key="SectionCard" TargetType="Border">
-            <Setter Property="Background" Value="#20293A"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="9,7"/>
-            <Setter Property="Margin" Value="0,8,0,0"/>
-        </Style>
-        <Style x:Key="SectionHeader" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
-        </Style>
-        <DataTemplate x:Key="StatRowTemplate">
-            <StackPanel Margin="0,1">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" Foreground="#DCE6F5"
-                               FontSize="11" FontWeight="SemiBold" Margin="8,0,0,0"/>
-                    <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="11"
-                               TextTrimming="CharacterEllipsis"/>
-                </DockPanel>
-                <TextBlock Text="{Binding Detail}" Foreground="#5C6B82" FontSize="10"
-                           Margin="8,0,0,1" TextWrapping="Wrap"
-                           Visibility="{Binding DetailVisibility}"/>
-            </StackPanel>
-        </DataTemplate>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <DataTemplate x:Key="StatRowTemplate">
+                <StackPanel Margin="0,1">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Value}"
+                                   Foreground="{StaticResource Brush.Text}"
+                                   FontSize="11" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                        <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="11"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Brush.TextFaint}" FontSize="10"
+                               Margin="8,0,0,1" TextWrapping="Wrap"
+                               Visibility="{Binding DetailVisibility}"/>
+                </StackPanel>
+            </DataTemplate>
+        </ResourceDictionary>
     </Window.Resources>
 
     <DockPanel Margin="12">
@@ -68,7 +56,6 @@
                             ToolTip="Raid target progression — kill counts per zone"/>
                 </StackPanel>
                 <ListBox x:Name="FightsList"
-                         Background="#1B2130" Foreground="#DCE6F5" BorderBrush="#3A4560" BorderThickness="1"
                          SelectionMode="Extended" FontSize="12"
                          HorizontalContentAlignment="Stretch"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>

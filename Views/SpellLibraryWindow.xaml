@@ -5,57 +5,22 @@
         Width="760" Height="600"
         MinWidth="560" MinHeight="400"
         WindowStartupLocation="CenterOwner"
-        Background="#141A24"
+        Background="{StaticResource Brush.Window}"
         Icon="/assets/eqloverlay.ico"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
 
     <Window.Resources>
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-        </Style>
-        <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#232B3D"/>
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-            <Setter Property="BorderBrush" Value="#3A4560"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="6,5"/>
-            <Setter Property="CaretBrush" Value="#DCE6F5"/>
-            <Setter Property="SelectionBrush" Value="#2E6FB0"/>
-        </Style>
-        <Style TargetType="Button">
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-            <Setter Property="Background" Value="#2A3346"/>
-            <Setter Property="BorderBrush" Value="#4A5A78"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="8,3"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="b" CornerRadius="3"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="b" Property="Background" Value="#3C4A63"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="b" Property="Background" Value="#22608F"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="ComboBox">
-            <Setter Property="MinHeight" Value="30"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Padding" Value="8,3"/>
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <DockPanel Margin="12">
@@ -70,9 +35,9 @@
 
             <DockPanel Margin="0,0,0,8">
                 <ComboBox x:Name="ClassBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0"
-                          SelectionChanged="Filters_Changed"/>
+                          MinHeight="30" SelectionChanged="Filters_Changed"/>
                 <ComboBox x:Name="FilterBox" DockPanel.Dock="Right" Width="150" Margin="8,0,0,0"
-                          SelectionChanged="Filters_Changed" SelectedValuePath="Tag">
+                          MinHeight="30" SelectionChanged="Filters_Changed" SelectedValuePath="Tag">
                     <ComboBoxItem Content="All spells" Tag="" IsSelected="True"/>
                     <ComboBoxItem Content="Seen in your log" Tag="seen"/>
                     <ComboBoxItem Content="Buffs" Tag="Buff"/>
@@ -86,7 +51,6 @@
         </StackPanel>
 
         <ListBox x:Name="ResultsList"
-                 Background="#1B2130" Foreground="#DCE6F5" BorderBrush="#3A4560" BorderThickness="1"
                  HorizontalContentAlignment="Stretch"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  VirtualizingPanel.VirtualizationMode="Recycling">
