@@ -221,6 +221,8 @@ public partial class HistoryWindow : Window
             parts.Add(a.Hits == 1 ? "1 hit" : $"{a.Hits} hits");
         if (a.Hits > 0)
             parts.Add(a.Min == a.Max ? FormatNum(a.Max) : $"{FormatNum(a.Min)}–{FormatNum(a.Max)}");
+        if (a.Crits > 0)
+            parts.Add($"{a.Crits} crit");
         if (a.Resists > 0)
             parts.Add($"{a.Resists} resisted");
         return string.Join(" · ", parts);

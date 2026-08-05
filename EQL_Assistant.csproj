@@ -18,7 +18,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>assets\eqloverlay.ico</ApplicationIcon>
     <!-- Bump this for each standalone build; it stamps the exe and shows in the toolbar. -->
-    <Version>1.5.0</Version>
+    <Version>1.6.0</Version>
     <!-- WFO0003: WinForms wants DPI set via API, but this is a WPF app whose DPI is
          correctly declared in app.manifest (PerMonitorV2). Safe to ignore. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
@@ -40,6 +40,10 @@
     <!-- Ship a reference copy of the default config next to the exe.
          The app actually reads/writes config in %APPDATA%\EQL_Assistant. -->
     <None Update="config\config.default.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Prebaked spell library (converted from jmoyers/everquest-companion, MIT). -->
+    <None Update="data\spell-library.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

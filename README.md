@@ -214,3 +214,11 @@ The single thing that makes this accurate is matching your real log text. Enable
 logging, do a few casts/heals, then look at the lines in your `eqlog_*.txt` (or
 send them over) and copy the exact wording into `startPattern` / `endPattern`.
 ```
+
+## Credits
+
+The spell library (`data\spell-library.json` — names, cast/wear-off messages,
+class levels and durations) is converted from
+[jmoyers/everquest-companion](https://github.com/jmoyers/everquest-companion)
+(MIT License, Copyright 2026 Josh Moyers), whose data was in turn sourced from
+eqlwiki.com and wiki.project1999.com. Thanks!

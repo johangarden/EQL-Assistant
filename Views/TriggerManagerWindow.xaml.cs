@@ -36,7 +36,8 @@ public partial class TriggerManagerWindow : Window
     };
 
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
-        LogBus bus, AlertService alerts, RaidKills raids, Action<string> onApplied)
+        LogBus bus, AlertService alerts, RaidKills raids, SpellLibrary spellLibrary,
+        Action<string> onApplied)
     {
         InitializeComponent();
 
@@ -45,6 +46,7 @@ public partial class TriggerManagerWindow : Window
         _bus = bus;
         _alerts = alerts;
         _raids = raids;
+        _spellLibrary = spellLibrary;
         _onApplied = onApplied;
 
         // Load every loadout into memory.
@@ -97,6 +99,37 @@ public partial class TriggerManagerWindow : Window
 
     private ObservableCollection<TriggerEditViewModel> CurrentList => _byName[_currentName];
     private TriggerEditViewModel? Selected => TriggerList.SelectedItem as TriggerEditViewModel;
+
+    // ---- spell library --------------------------------------------------------
+
+    private readonly SpellLibrary _spellLibrary;
+    private SpellLibraryWindow? _libraryWindow;
+
+    private void Library_Click(object sender, RoutedEventArgs e)
+    {
+        if (_libraryWindow is null)
+        {
+            _libraryWindow = new SpellLibraryWindow(_spellLibrary, AddFromLibrary) { Owner = this };
+            _libraryWindow.Closed += (_, _) => _libraryWindow = null;
+            _libraryWindow.Show();
+        }
+        _libraryWindow.Activate();
+        _libraryWindow.Focus();
+    }
+
+    /// <summary>A library pick lands in the current loadout, selected and ready to tweak.</summary>
+    private void AddFromLibrary(TriggerDefinition def)
+    {
+        // Same spell added twice would collide on id — make it unique.
+        if (CurrentList.Any(t => t.Id == def.Id))
+            def.Id += "-" + DateTime.Now.Ticks % 10000;
+
+        var vm = TriggerEditViewModel.FromDefinition(def);
+        CurrentList.Add(vm);
+        TriggerList.SelectedItem = vm;
+        TriggerList.ScrollIntoView(vm);
+        Status($"Added '{def.Name}' from the library to '{_currentName}' — Save to apply.");
+    }
 
     // ---- global named respawns (repop page) -----------------------------------
 
@@ -465,6 +498,7 @@ public partial class TriggerManagerWindow : Window
         SctIncomingCheck.IsChecked = _config.Overlay.SctIncoming;
         SctOutgoingCheck.IsChecked = _config.Overlay.SctOutgoing;
         SctHealsCheck.IsChecked = _config.Overlay.SctHeals;
+        SctHealsInCheck.IsChecked = _config.Overlay.SctHealsIn;
         SctPetInCheck.IsChecked = _config.Overlay.SctPetIncoming;
         SctPetOutCheck.IsChecked = _config.Overlay.SctPetOutgoing;
         SctFontBox.Text = _config.Overlay.SctFontSize.ToString(CultureInfo.InvariantCulture);
@@ -564,6 +598,7 @@ public partial class TriggerManagerWindow : Window
                 SctIncoming = SctIncomingCheck.IsChecked == true,
                 SctOutgoing = SctOutgoingCheck.IsChecked == true,
                 SctHeals = SctHealsCheck.IsChecked == true,
+                SctHealsIn = SctHealsInCheck.IsChecked == true,
                 SctPetIncoming = SctPetInCheck.IsChecked == true,
                 SctPetOutgoing = SctPetOutCheck.IsChecked == true,
                 SctFontSize = Math.Clamp(ParseOr(SctFontBox.Text, _config.Overlay.SctFontSize), 10, 72),

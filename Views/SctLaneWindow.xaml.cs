@@ -26,11 +26,13 @@ public partial class SctLaneWindow : Window
     private const int MaxQueued = 8;
 
     private readonly PanelPlacement _placement;
-    private readonly Brush _color;
+    private readonly Brush _meleeColor;
+    private readonly Brush _spellColor;
+    private readonly Brush _procColor;
     private readonly double _fontSize;
     private readonly double _bigThreshold;
     private readonly DispatcherTimer _pump;
-    private readonly Queue<(string Label, double Amount, bool Plus)> _queue = new();
+    private readonly Queue<(string Label, double Amount, bool Plus, CombatParser.SctFlavor Flavor, bool Crit)> _queue = new();
     private DateTime _lastSpawn = DateTime.MinValue;
     private nint _hwnd;
     private bool _locked;
@@ -38,7 +40,8 @@ public partial class SctLaneWindow : Window
     private static readonly Brush UnlockedBackdrop =
         new SolidColorBrush(Color.FromArgb(0x28, 0x0A, 0x0E, 0x14));
 
-    public SctLaneWindow(ConfigService config, string placementKey, string title, Brush color,
+    public SctLaneWindow(ConfigService config, string placementKey, string title,
+        Brush meleeColor, Brush spellColor, Brush procColor,
         double opacity, double fontSize, double bigThreshold, double laneWidth, double laneHeight,
         double defaultOffX, double defaultOffY)
     {
@@ -46,7 +49,9 @@ public partial class SctLaneWindow : Window
 
         Title = "EQL Assistant — SCT " + title;
         HeaderText.Text = "SCT — " + title;
-        _color = color;
+        _meleeColor = meleeColor;
+        _spellColor = spellColor;
+        _procColor = procColor;
         _fontSize = Math.Clamp(fontSize <= 0 ? 18 : fontSize, 10, 72);
         _bigThreshold = bigThreshold <= 0 ? double.MaxValue : bigThreshold;
         Lane.Width = Math.Clamp(laneWidth <= 0 ? 170 : laneWidth, 80, 800);
@@ -80,20 +85,21 @@ public partial class SctLaneWindow : Window
     // ---- public API -----------------------------------------------------------
 
     /// <summary>Queue a combat number ("254 Frost Breath"); heals get a leading +.</summary>
-    public void Post(string label, double amount, bool plus = false)
+    public void Post(string label, double amount, bool plus = false,
+        CombatParser.SctFlavor flavor = CombatParser.SctFlavor.Melee, bool crit = false)
     {
         if (Visibility != Visibility.Visible) return;
         if (_queue.Count >= MaxQueued) _queue.Dequeue(); // shed the oldest under AoE spam
-        _queue.Enqueue((label, amount, plus));
+        _queue.Enqueue((label, amount, plus, flavor, crit));
         PumpQueue();
     }
 
     /// <summary>A few sample numbers for the Ctrl+Alt+T demo.</summary>
     public void SpawnDemo()
     {
-        Post("backstab", 312);
-        Post("hit", 118);
-        Post("Frost Breath", 254);
+        Post("backstab", 312, flavor: CombatParser.SctFlavor.Melee, crit: true);
+        Post("thorns", 44, flavor: CombatParser.SctFlavor.Proc);
+        Post("Frost Breath", 254, flavor: CombatParser.SctFlavor.Spell);
     }
 
     public void SetLocked(bool locked)
@@ -112,24 +118,29 @@ public partial class SctLaneWindow : Window
         if (_queue.Count == 0) return;
         if ((DateTime.Now - _lastSpawn).TotalMilliseconds < MinSpawnGapMs) return;
 
-        var (label, amount, plus) = _queue.Dequeue();
+        var (label, amount, plus, flavor, crit) = _queue.Dequeue();
         _lastSpawn = DateTime.Now;
-        Spawn(label, amount, plus);
+        Spawn(label, amount, plus, flavor, crit);
     }
 
-    private void Spawn(string label, double amount, bool plus)
+    private void Spawn(string label, double amount, bool plus, CombatParser.SctFlavor flavor, bool crit)
     {
-        bool big = amount >= _bigThreshold;
+        bool big = crit || amount >= _bigThreshold;
         var text = new TextBlock
         {
             Width = Lane.Width,
             TextAlignment = TextAlignment.Center,
-            Foreground = _color,
+            Foreground = flavor switch
+            {
+                CombatParser.SctFlavor.Spell => _spellColor,
+                CombatParser.SctFlavor.Proc => _procColor,
+                _ => _meleeColor,
+            },
             FontWeight = FontWeights.Bold,
             FontSize = big ? _fontSize * 1.4 : _fontSize,
             Effect = new DropShadowEffect { ShadowDepth = 1, BlurRadius = 4, Opacity = 0.95, Color = Colors.Black },
         };
-        text.Inlines.Add(new Run((plus ? "+" : "") + amount.ToString("N0")));
+        text.Inlines.Add(new Run((plus ? "+" : "") + amount.ToString("N0") + (crit ? "!" : "")));
         if (!string.IsNullOrEmpty(label))
             text.Inlines.Add(new Run("  " + label)
             {

@@ -26,13 +26,18 @@ public sealed class CombatParser
     public const int MaxHistory = 50;
 
     /// <summary>Which scrolling-combat-text lane an event belongs to.</summary>
-    public enum SctKind { IncomingSelf, IncomingPet, OutgoingSelf, OutgoingPet, HealOut }
+    public enum SctKind { IncomingSelf, IncomingPet, OutgoingSelf, OutgoingPet, HealOut, HealIn }
 
-    /// <summary>Raised per parsed combat event, for scrolling combat text: (kind, ability, amount).</summary>
-    public event Action<SctKind, string, double>? SctEvent;
+    /// <summary>What kind of hit it was — lanes color melee, spells and procs differently.</summary>
+    public enum SctFlavor { Melee, Spell, Proc, Heal }
+
+    public readonly record struct SctHit(SctKind Kind, string Ability, double Amount, SctFlavor Flavor, bool Crit);
+
+    /// <summary>Raised per parsed combat event, for scrolling combat text.</summary>
+    public event Action<SctHit>? SctEvent;
 
     public readonly record struct Row(string Name, double Total, double Dps, double Percent, bool Enemy,
-        int Hits = 0, int Misses = 0, int Resists = 0, double Min = 0, double Max = 0);
+        int Hits = 0, int Misses = 0, int Resists = 0, double Min = 0, double Max = 0, int Crits = 0);
 
     /// <summary>Per-ability accumulator: landed damage plus attempt bookkeeping.</summary>
     private sealed class AbilityStat
@@ -41,13 +46,15 @@ public sealed class CombatParser
         public int Hits;
         public int Misses;
         public int Resists;
+        public int Crits;
         public double Min = double.MaxValue;
         public double Max;
 
-        public void Land(double amount)
+        public void Land(double amount, bool crit = false)
         {
             Total += amount;
             Hits++;
+            if (crit) Crits++;
             if (amount < Min) Min = amount;
             if (amount > Max) Max = amount;
         }
@@ -150,19 +157,43 @@ public sealed class CombatParser
     // The first number is the effective amount; "0 (65)" means fully mitigated.
 
     private static readonly Regex NonMeleeRx = new(
-        @"^(?<att>.+?) hit (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points of \w+ damage by (?<spell>.+?)\.",
+        @"^(?<att>.+?) hit (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of \w+ damage by (?<spell>.+?)\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex DotRx = new(
         @"^(?<tgt>.+?) has taken (?<dmg>\d+)(?: \(\d+\))? damage from (?<spell>.+?) by (?<att>.+?)\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Your own DoT ticks use a shorter form with no "by" clause:
+    // "Orc legionnaire has taken 12 damage from your Tainted Breath."
+    private static readonly Regex DotYourRx = new(
+        @"^(?<tgt>.+?) has taken (?<dmg>\d+)(?: \(\d+\))? damage from your (?<spell>.+?)\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // "by <spell>" is optional — plain "You healed Thorrak for 12 hit points."
+    // exists too, as does "healed <tgt> over time for" on HoT ticks.
     private static readonly Regex HealRx = new(
-        @"^(?<att>.+?) (?:healed|heals?) (?<tgt>.+?) for (?<amt>\d+)(?: \(\d+\))? hit points by (?<spell>.+?)\.",
+        @"^(?<att>.+?) (?:healed|heals?) (?<tgt>.+?)(?: over time)? for (?<amt>\d+)(?: \(\d+\))? hit points?(?: by (?<spell>.+?))?\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex MeleeRx = new(
-        @"^(?<att>.+?) (?<verb>slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?|gores?|mauls?|stings?|rends?|slams?) (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points of damage\.",
+        @"^(?<att>.+?) (?<verb>slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?|gores?|mauls?|stings?|rends?|slams?) (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of damage\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // Damage shields: "Orc slaver is pierced by YOUR thorns for 8 points of
+    // non-melee damage." / "YOU are pierced by an orc's thorns for 6 points of
+    // non-melee damage!"
+    private static readonly Regex ThornsOutRx = new(
+        @"^(?<tgt>.+?) is pierced by YOUR thorns for (?<dmg>\d+)(?: \(\d+\))? points? of non-melee damage\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex ThornsInRx = new(
+        @"^YOU are pierced by (?<att>.+?)'s thorns for (?<dmg>\d+)(?: \(\d+\))? points? of non-melee damage!",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // Unattributed spell damage on you: "You were hit by non-melee for 100 damage."
+    private static readonly Regex NonMeleeYouRx = new(
+        @"^You were hit by non-melee for (?<dmg>\d+)(?: \(\d+\))? damage\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>Third-person melee verbs → the base form used as the ability label.</summary>
@@ -206,27 +237,42 @@ public sealed class CombatParser
     public void ProcessLine(string rawLine)
     {
         DateTime time = ExtractTimestamp(rawLine, out string body);
+        bool crit = body.Contains("(Critical)", StringComparison.Ordinal);
 
-        // Cheapest-first ordering: spell hits, DoT ticks, heals, then melee
-        // (the melee alternation is the widest net). Misses/"tries to" lines
-        // match none of these.
         Match m = NonMeleeRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time); return; }
+        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit); return; }
 
         m = DotRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time); return; }
+        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit); return; }
+
+        m = DotYourRx.Match(body);
+        if (m.Success) { AddDamage(Self(), m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit); return; }
 
         m = HealRx.Match(body);
-        if (m.Success) { AddHealing(m.Groups["att"].Value, m.Groups["spell"].Value, Amount(m, "amt"), time); return; }
+        if (m.Success)
+        {
+            string spell = m.Groups["spell"].Success ? m.Groups["spell"].Value : "heal";
+            AddHealing(m.Groups["att"].Value, m.Groups["tgt"].Value, spell, Amount(m, "amt"), time, crit);
+            return;
+        }
 
         m = MeleeRx.Match(body);
         if (m.Success)
         {
             string verb = m.Groups["verb"].Value;
             string ability = VerbBase.TryGetValue(verb, out var baseForm) ? baseForm : verb.ToLowerInvariant();
-            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, ability, Amount(m, "dmg"), time);
+            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, ability, Amount(m, "dmg"), time, SctFlavor.Melee, crit);
             return;
         }
+
+        m = ThornsOutRx.Match(body);
+        if (m.Success) { AddDamage(Self(), m.Groups["tgt"].Value, "thorns", Amount(m, "dmg"), time, SctFlavor.Proc, crit); return; }
+
+        m = ThornsInRx.Match(body);
+        if (m.Success) { AddDamage(m.Groups["att"].Value, Self(), "thorns", Amount(m, "dmg"), time, SctFlavor.Proc, crit); return; }
+
+        m = NonMeleeYouRx.Match(body);
+        if (m.Success) { AddIncomingOnly("non-melee", Amount(m, "dmg"), time, crit); return; }
 
         m = MissRx.Match(body);
         if (m.Success)
@@ -245,6 +291,14 @@ public sealed class CombatParser
 
         m = ResistOtherRx.Match(body);
         if (m.Success) AddOutgoingResist(m.Groups["spell"].Value, time);
+    }
+
+    /// <summary>Replay a historical line: fight-splitting uses the LINE's timestamp.</summary>
+    public void Replay(string rawLine)
+    {
+        DateTime t = ExtractTimestamp(rawLine, out _);
+        Tick(t);
+        ProcessLine(rawLine);
     }
 
     /// <summary>Freeze the fight once it has been idle long enough (call periodically).</summary>
@@ -346,7 +400,7 @@ public sealed class CombatParser
                 duration > 0 ? s.Total / duration : 0,
                 grand > 0 ? s.Total / grand * 100 : 0,
                 false,
-                s.Hits, s.Misses, s.Resists, s.MinOrZero, s.Max));
+                s.Hits, s.Misses, s.Resists, s.MinOrZero, s.Max, s.Crits));
         rows.Sort((a, b) => b.Total.CompareTo(a.Total));
         return rows;
     }
@@ -364,7 +418,8 @@ public sealed class CombatParser
 
     // ---- accumulation ---------------------------------------------------------
 
-    private void AddDamage(string attacker, string target, string ability, double amount, DateTime time)
+    private void AddDamage(string attacker, string target, string ability, double amount, DateTime time,
+        SctFlavor flavor = SctFlavor.Melee, bool crit = false)
     {
         attacker = Normalize(attacker);
         target = Normalize(target);
@@ -373,23 +428,32 @@ public sealed class CombatParser
 
         Bump(_damage, attacker, amount);
         Bump(_taken, target, amount);
-        Stat(attacker, ability).Land(amount);
+        Stat(attacker, ability).Land(amount, crit);
 
         if (IsSelf(target))
         {
             _incomingSelf += amount;
-            StatIn(_incomingSelfAbility, ability).Land(amount);
-            SctEvent?.Invoke(SctKind.IncomingSelf, ability, amount);
+            StatIn(_incomingSelfAbility, ability).Land(amount, crit);
+            SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, flavor, crit));
         }
         else if (IsPet(target))
         {
             _incomingPet += amount;
-            StatIn(_incomingPetAbility, ability).Land(amount);
-            SctEvent?.Invoke(SctKind.IncomingPet, ability, amount);
+            StatIn(_incomingPetAbility, ability).Land(amount, crit);
+            SctEvent?.Invoke(new SctHit(SctKind.IncomingPet, ability, amount, flavor, crit));
         }
 
-        if (IsSelf(attacker)) SctEvent?.Invoke(SctKind.OutgoingSelf, ability, amount);
-        else if (IsPet(attacker)) SctEvent?.Invoke(SctKind.OutgoingPet, ability, amount);
+        if (IsSelf(attacker)) SctEvent?.Invoke(new SctHit(SctKind.OutgoingSelf, ability, amount, flavor, crit));
+        else if (IsPet(attacker)) SctEvent?.Invoke(new SctHit(SctKind.OutgoingPet, ability, amount, flavor, crit));
+    }
+
+    /// <summary>Damage on you with no attacker in the line ("You were hit by non-melee …").</summary>
+    private void AddIncomingOnly(string ability, double amount, DateTime time, bool crit)
+    {
+        Touch(time);
+        _incomingSelf += amount;
+        StatIn(_incomingSelfAbility, ability).Land(amount, crit);
+        SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, SctFlavor.Spell, crit));
     }
 
     /// <summary>An avoided melee attempt (miss/dodge/parry/riposte/block).</summary>
@@ -432,12 +496,18 @@ public sealed class CombatParser
         return stat;
     }
 
-    private void AddHealing(string healer, string spell, double amount, DateTime time)
+    private void AddHealing(string healer, string target, string spell, double amount, DateTime time, bool crit)
     {
         healer = Normalize(healer);
+        target = Normalize(target);
+        if (IsReflexive(target)) target = healer;
         Touch(time);
         Bump(_healing, healer, amount);
-        if (IsSelf(healer)) SctEvent?.Invoke(SctKind.HealOut, spell, amount);
+
+        if (IsSelf(healer))
+            SctEvent?.Invoke(new SctHit(SctKind.HealOut, spell, amount, SctFlavor.Heal, crit));
+        else if (IsSelf(target))
+            SctEvent?.Invoke(new SctHit(SctKind.HealIn, spell, amount, SctFlavor.Heal, crit));
     }
 
     /// <summary>First combat line after an idle fight wipes it and starts fresh.</summary>
