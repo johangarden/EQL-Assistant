@@ -267,6 +267,8 @@ public partial class App : Application
         try
         {
             var p = new CombatParser { SelfName = "Johan", PetName = "Jabber" };
+            var sct = new List<(CombatParser.SctKind Kind, string Ability, double Amount)>();
+            p.SctEvent += (k, a, v) => sct.Add((k, a, v));
             string Ts(int sec) => new DateTime(2026, 8, 3, 12, 0, sec)
                 .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -316,6 +318,17 @@ public partial class App : Application
                 p.GetIncomingAbilityRows(pet: false) is [{ Name: "hit", Total: 20 }]);
             Check("pet incoming ability (bites -> bite)",
                 p.GetIncomingAbilityRows(pet: true) is [{ Name: "bite", Total: 15 }]);
+
+            // SCT events: one per own/pet-relevant combat line, routed by kind.
+            Check("SCT: 4 outgoing-self events (incl. the 0 hit)",
+                sct.Count(e => e.Kind == CombatParser.SctKind.OutgoingSelf) == 4);
+            Check("SCT: incoming-self (hit, 20)",
+                sct.Count(e => e.Kind == CombatParser.SctKind.IncomingSelf) == 1
+                && sct.Any(e => e is { Kind: CombatParser.SctKind.IncomingSelf, Ability: "hit", Amount: 20 }));
+            Check("SCT: incoming-pet (bite, 15)",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.IncomingPet, Ability: "bite", Amount: 15 }));
+            Check("SCT: no heal-out events (others healed)",
+                sct.All(e => e.Kind != CombatParser.SctKind.HealOut));
 
             // Idle finalize archives the fight; a new line starts fresh.
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));

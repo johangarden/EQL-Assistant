@@ -134,6 +134,11 @@
                                 AutomationProperties.AutomationId="MeterToggleBtn"
                                 ToolTip="Show / hide the DPS meter (Ctrl+Alt+D)"/>
 
+                        <Button DockPanel.Dock="Right" Click="OnSct" Style="{StaticResource IconBtn}"
+                                Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE945;"
+                                AutomationProperties.AutomationId="SctToggleBtn"
+                                ToolTip="Show / hide scrolling combat text (Ctrl+Alt+C)"/>
+
                         <!-- fill: loadout dropdown, truncates to fit -->
                         <Button Click="OnLoadoutMenu" Style="{StaticResource ToolBtn}"
                                 Margin="8,0,0,0" HorizontalContentAlignment="Left" ToolTip="Switch loadout">
@@ -143,7 +148,7 @@
                     </DockPanel>
                     <TextBlock Text="{Binding Status}" Foreground="#7F93AD"
                                FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap"/>
-                    <TextBlock Text="Ctrl+Alt+ L lock · R timer · D meter · T test · H hide · S mute · Q quit"
+                    <TextBlock Text="Ctrl+Alt+ L lock · R timer · D meter · C text · T test · H hide · S mute · Q quit"
                                Foreground="#5C6B82" FontSize="10" Margin="0,3,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>

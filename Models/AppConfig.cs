@@ -91,4 +91,24 @@ public sealed class OverlayConfig
 
     /// <summary>Width of the flash-alert area (text wraps inside it).</summary>
     public double FlashWidth { get; set; } = 900;
+
+    // ---- scrolling combat text ------------------------------------------------
+
+    /// <summary>Master switch for scrolling combat text (toolbar ⚡ / tray / Ctrl+Alt+C).</summary>
+    public bool SctVisible { get; set; } = true;
+
+    /// <summary>Which SCT lanes exist (each is its own movable panel).</summary>
+    public bool SctIncoming { get; set; } = true;
+    public bool SctOutgoing { get; set; } = true;
+    public bool SctHeals { get; set; } = true;
+    public bool SctPetIncoming { get; set; } = false;
+    public bool SctPetOutgoing { get; set; } = false;
+
+    /// <summary>SCT number size; hits at/above the big-hit threshold render 40% larger.</summary>
+    public double SctFontSize { get; set; } = 18;
+    public double SctBigHit { get; set; } = 200;
+
+    /// <summary>Size of each SCT lane.</summary>
+    public double SctLaneWidth { get; set; } = 170;
+    public double SctLaneHeight { get; set; } = 300;
 }

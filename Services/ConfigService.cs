@@ -389,7 +389,18 @@ public sealed class ConfigService
         // Your pet's name — enables the pet line in the DPS meter's incoming footer.
         "petName": "",
         "flashFontSize": 54,
-        "flashWidth": 900
+        "flashWidth": 900,
+        // Scrolling combat text: master switch + one movable lane per enabled type.
+        "sctVisible": true,
+        "sctIncoming": true,
+        "sctOutgoing": true,
+        "sctHeals": true,
+        "sctPetIncoming": false,
+        "sctPetOutgoing": false,
+        "sctFontSize": 18,
+        "sctBigHit": 200,
+        "sctLaneWidth": 170,
+        "sctLaneHeight": 300
       },
 
       "characterName": "",
