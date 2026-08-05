@@ -16,8 +16,12 @@ public sealed class TriggerEditViewModel : ViewModelBase
     public string Category { get => _category; set { if (SetField(ref _category, value)) OnPropertyChanged(nameof(Display)); } }
 
     private string _panel = Panels.Bars;
-    /// <summary>"bars", "selfBuffs", or "targetDebuffs".</summary>
-    public string Panel { get => _panel; set => SetField(ref _panel, value); }
+    /// <summary>"bars", "selfBuffs", "targetDebuffs", "timerAuto", or "flash".</summary>
+    public string Panel
+    {
+        get => _panel;
+        set { if (SetField(ref _panel, value)) OnPropertyChanged(nameof(Display)); }
+    }
 
     private bool _enabled = true;
     public bool Enabled { get => _enabled; set { if (SetField(ref _enabled, value)) OnPropertyChanged(nameof(Display)); } }
@@ -60,9 +64,23 @@ public sealed class TriggerEditViewModel : ViewModelBase
     private bool _remindWhenMissing;
     public bool RemindWhenMissing { get => _remindWhenMissing; set => SetField(ref _remindWhenMissing, value); }
 
-    /// <summary>Label shown in the trigger list.</summary>
-    public string Display =>
-        $"{(Enabled ? "" : "○ ")}{Name}  ·  {Category}  ·  {DurationSeconds:0}s";
+    /// <summary>Label shown in the trigger list ("Vox repop · Repop · 400s").</summary>
+    public string Display
+    {
+        get
+        {
+            string kind = Panel switch
+            {
+                Panels.SelfBuffs => "Self buff",
+                Panels.TargetDebuffs => "Target debuff",
+                Panels.TimerAuto => "Repop",
+                Panels.Flash => "Flash",
+                _ => Category,
+            };
+            string dur = Panel == Panels.Flash ? "" : $"  ·  {DurationSeconds:0}s";
+            return $"{(Enabled ? "" : "○ ")}{Name}  ·  {kind}{dur}";
+        }
+    }
 
     public Brush PreviewBrush
     {

@@ -43,6 +43,12 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Contains("--selftest-repop"))
+        {
+            RunRepopSelfTest();
+            return;
+        }
+
         Log.Init();
         var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
         Log.Info($"===== EQL Assistant v{ver} starting =====");
@@ -63,7 +69,8 @@ public partial class App : Application
             var cs = new ConfigService();
             var cfg = cs.LoadSettings();
             cs.EnsureDefaultLoadout();
-            var mgr = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(), _ => { });
+            var mgr = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(),
+                new RaidKills(cs), _ => { });
             mgr.Show();
             mgr.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
@@ -315,7 +322,7 @@ public partial class App : Application
                 Ab("slash") == 12 && Ab("Burst of Flame") == 30 && Ab("Flame Lick") == 10
                 && selfAb.Any(r => r.Name == "crush"));
             Check("melee verb normalized (hits -> hit)",
-                p.GetIncomingAbilityRows(pet: false) is [{ Name: "hit", Total: 20 }]);
+                p.GetIncomingAbilityRows(pet: false).First(r => r.Name == "hit") is { Total: 20, Hits: 1 });
             Check("pet incoming ability (bites -> bite)",
                 p.GetIncomingAbilityRows(pet: true) is [{ Name: "bite", Total: 15 }]);
 
@@ -330,12 +337,62 @@ public partial class App : Application
             Check("SCT: no heal-out events (others healed)",
                 sct.All(e => e.Kind != CombatParser.SctKind.HealOut));
 
+            // Misses, resists, hit% and damage ranges.
+            p.ProcessLine($"[{Ts(13)}] You try to slash a gnoll pup, but miss!");
+            p.ProcessLine($"[{Ts(13)}] A gnoll pup tries to bite Johan, but Johan dodges!");
+            p.ProcessLine($"[{Ts(14)}] Your target resisted the Burst of Flame spell.");
+            p.ProcessLine($"[{Ts(14)}] You resisted the Frost Breath spell!");
+
+            var ab2 = p.GetAbilityRows("Johan");
+            var slash = ab2.First(r => r.Name == "slash");
+            Check("miss tracked: slash 1/2 hit, range 12-12",
+                slash is { Hits: 1, Misses: 1, Min: 12, Max: 12, Total: 12 });
+            Check("outgoing spell resist tracked",
+                ab2.First(r => r.Name == "Burst of Flame") is { Hits: 1, Resists: 1, Total: 30 });
+            var inc2 = p.GetIncomingAbilityRows(pet: false);
+            Check("incoming: mob melee hit range 20-20",
+                inc2.First(r => r.Name == "hit") is { Hits: 1, Min: 20, Max: 20 });
+            Check("incoming: avoided bites count as misses on you (missed + dodged)",
+                inc2.First(r => r.Name == "bite") is { Hits: 0, Misses: 2, Total: 0 });
+            Check("incoming: your spell resist tracked",
+                inc2.First(r => r.Name == "Frost Breath") is { Resists: 1, Total: 0 });
+
+            // Raid-kill death-line parsing (level suffixes stripped).
+            Check("raid kill: slain-by line",
+                RaidKills.TryParseKill("Lady Vox has been slain by Johan!", out var mob1) && mob1 == "Lady Vox");
+            Check("raid kill: you-have-slain line strips level",
+                RaidKills.TryParseKill("You have slain a Sage of Innoruuk (17)!", out var mob2)
+                && mob2 == "a Sage of Innoruuk");
+            Check("raid kill: normal line no match",
+                !RaidKills.TryParseKill("You slash a rat for 5 points of damage.", out _));
+
+            // Global respawns: the auto-generated death pattern matches both forms.
+            var resp = ConfigService.BuildRespawnTrigger(
+                new Models.RespawnEntry { Name = "Lady Vox", Seconds = 400 });
+            Check("respawn trigger compiles with derived pattern",
+                resp is { Panel: Models.Panels.TimerAuto, DurationSeconds: 400 }
+                && resp.StartRegex!.IsMatch("Lady Vox has been slain by Johan!")
+                && resp.StartRegex!.IsMatch("You have slain Lady Vox!")
+                && !resp.StartRegex!.IsMatch("Lady Vox hits YOU for 10 points of damage."));
+            Check("disabled respawn builds no trigger",
+                ConfigService.BuildRespawnTrigger(new Models.RespawnEntry { Name = "X", Enabled = false }) is null);
+
+            // Recent-deaths picker: every parsed death lands in the list, newest
+            // first, re-kills dedupe (unlisted mobs are never persisted).
+            var rk = new RaidKills(new ConfigService());
+            rk.ProcessLine("[x] a rat has been slain by Johan!");
+            rk.ProcessLine("[x] a bat has been slain by Johan!");
+            rk.ProcessLine("[x] a rat has been slain by Johan!");
+            Check("recent deaths: newest first, deduped",
+                rk.RecentDeaths.Count == 2
+                && rk.RecentDeaths[0].Name == "a rat" && rk.RecentDeaths[1].Name == "a bat");
+
             // Idle finalize archives the fight; a new line starts fresh.
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
             Check("fight ends after 10s idle", !p.InCombat);
             Check("ended fight archived to history", p.History.Count == 1
                 && p.History[0].Label == "a gnoll pup"
-                && Math.Abs(p.History[0].DurationSeconds - 12) < 0.01
+                && Math.Abs(p.History[0].DurationSeconds - 14) < 0.01 // miss/resist lines extend activity
                 && p.History[0].IncomingSelfTotal == 20);
             p.ProcessLine($"[{Ts(40)}] You slash a rat for 5 points of damage.");
             Check("next combat line starts a fresh fight",
@@ -371,6 +428,51 @@ public partial class App : Application
 
         string result = (failures == 0 ? "ALL PASS\n" : $"{failures} FAILURE(S)\n") + report;
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest_meter.txt"), result);
+        Environment.ExitCode = failures == 0 ? 0 : 1;
+        Shutdown();
+    }
+
+    private void RunRepopSelfTest()
+    {
+        var report = new System.Text.StringBuilder();
+        int failures = 0;
+        void Check(string label, bool ok)
+        {
+            report.AppendLine($"{(ok ? "PASS" : "FAIL")}  {label}");
+            if (!ok) failures++;
+        }
+
+        try
+        {
+            var tw = new TimerWindow(new ConfigService(), new AlertService(), 400, 1.0, null);
+
+            tw.StartWith(200, "Kurven");
+            Check("first kill takes the pie",
+                tw.BigState is { Mode: "Kurven", Running: true } && tw.SecondaryNames.Count == 0);
+
+            tw.StartWith(400, "Baron"); // longer respawn -> must NOT displace the sooner one
+            Check("longer repop stays secondary",
+                tw.BigState.Mode == "Kurven" && tw.SecondaryNames is ["Baron"]);
+
+            tw.StartWith(50, "Vox"); // soonest -> takes the pie
+            Check("soonest repop claims the pie",
+                tw.BigState is { Mode: "Vox", Remaining: <= 50 and > 45 }
+                && tw.SecondaryNames is ["Kurven", "Baron"]);
+
+            tw.StartWith(30, "Kurven"); // re-kill of a secondary, now soonest
+            Check("re-killed secondary promotes when soonest",
+                tw.BigState.Mode == "Kurven" && tw.SecondaryNames is ["Vox", "Baron"]);
+
+            tw.Close();
+        }
+        catch (Exception ex)
+        {
+            report.AppendLine("EXCEPTION: " + ex);
+            failures++;
+        }
+
+        string result = (failures == 0 ? "ALL PASS\n" : $"{failures} FAILURE(S)\n") + report;
+        File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest_repop.txt"), result);
         Environment.ExitCode = failures == 0 ? 0 : 1;
         Shutdown();
     }

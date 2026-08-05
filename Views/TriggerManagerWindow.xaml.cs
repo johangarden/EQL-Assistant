@@ -36,7 +36,7 @@ public partial class TriggerManagerWindow : Window
     };
 
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
-        LogBus bus, AlertService alerts, Action<string> onApplied)
+        LogBus bus, AlertService alerts, RaidKills raids, Action<string> onApplied)
     {
         InitializeComponent();
 
@@ -44,6 +44,7 @@ public partial class TriggerManagerWindow : Window
         _config = config;
         _bus = bus;
         _alerts = alerts;
+        _raids = raids;
         _onApplied = onApplied;
 
         // Load every loadout into memory.
@@ -73,6 +74,21 @@ public partial class TriggerManagerWindow : Window
         MuteCheck.IsChecked = _alerts.Muted;
         MuteCheck.Click += (_, _) => _alerts.Muted = MuteCheck.IsChecked == true;
 
+        // Global named respawns (repop page).
+        foreach (var r in _configService.LoadRespawns())
+            _respawns.Add(RespawnViewModel.FromEntry(r));
+        RespawnList.ItemsSource = _respawns;
+
+        // Recent kills picker — refresh while the window is open.
+        RefreshRecentDeaths();
+        _deathsTick = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2)
+        };
+        _deathsTick.Tick += (_, _) => RefreshRecentDeaths();
+        _deathsTick.Start();
+        Closed += (_, _) => _deathsTick.Stop();
+
         _initializing = false;
         LoadoutCombo.SelectedItem = _currentName; // triggers ShowLoadout via SelectionChanged
 
@@ -81,6 +97,79 @@ public partial class TriggerManagerWindow : Window
 
     private ObservableCollection<TriggerEditViewModel> CurrentList => _byName[_currentName];
     private TriggerEditViewModel? Selected => TriggerList.SelectedItem as TriggerEditViewModel;
+
+    // ---- global named respawns (repop page) -----------------------------------
+
+    private readonly ObservableCollection<RespawnViewModel> _respawns = new();
+
+    private void RespawnList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        RespawnEditor.DataContext = RespawnList.SelectedItem;
+        RespawnEditor.IsEnabled = RespawnList.SelectedItem is not null;
+    }
+
+    private void RespawnAdd_Click(object sender, RoutedEventArgs e)
+    {
+        var vm = new RespawnViewModel { Name = "New respawn", Seconds = 400 };
+        _respawns.Add(vm);
+        RespawnList.SelectedItem = vm;
+    }
+
+    // ---- recent-kills picker --------------------------------------------------
+
+    private readonly RaidKills _raids;
+    private readonly System.Windows.Threading.DispatcherTimer _deathsTick;
+
+    private sealed record DeathItem(string Name, string Text)
+    {
+        public override string ToString() => Text;
+    }
+
+    private void RefreshRecentDeaths()
+    {
+        var items = _raids.RecentDeaths
+            .Select(d => new DeathItem(d.Name, $"{d.Name}   ·   {Ago(d.When)}"))
+            .ToList();
+
+        // Keep the selection stable across refreshes.
+        string? selected = (RecentDeathsList.SelectedItem as DeathItem)?.Name;
+        RecentDeathsList.ItemsSource = items;
+        if (selected is not null)
+            RecentDeathsList.SelectedItem = items.FirstOrDefault(i => i.Name == selected);
+    }
+
+    private static string Ago(DateTime when)
+    {
+        var span = DateTime.Now - when;
+        return span.TotalSeconds < 90 ? $"{span.TotalSeconds:0}s ago"
+            : span.TotalMinutes < 90 ? $"{span.TotalMinutes:0} min ago"
+            : $"{when:HH:mm}";
+    }
+
+    /// <summary>Pick a recent kill → it becomes a respawn entry, ready for its time.</summary>
+    private void RespawnFromDeath_Click(object sender, RoutedEventArgs e)
+    {
+        if (RecentDeathsList.SelectedItem is not DeathItem death) return;
+
+        var existing = _respawns.FirstOrDefault(r =>
+            r.Name.Equals(death.Name, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            RespawnList.SelectedItem = existing; // already tracked — jump to it
+            return;
+        }
+
+        var vm = new RespawnViewModel { Name = death.Name, Seconds = 400 };
+        _respawns.Add(vm);
+        RespawnList.SelectedItem = vm;
+        Status($"Added respawn for '{death.Name}' — set its respawn time and Save.");
+    }
+
+    private void RespawnDelete_Click(object sender, RoutedEventArgs e)
+    {
+        if (RespawnList.SelectedItem is RespawnViewModel vm)
+            _respawns.Remove(vm);
+    }
 
     // ---- loadouts -----------------------------------------------------------
 
@@ -292,6 +381,61 @@ public partial class TriggerManagerWindow : Window
         if (dlg.ShowDialog(this) == true) Selected.AlertSound = dlg.FileName;
     }
 
+    // ---- sidebar navigation ---------------------------------------------------
+
+    private void NavList_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (FlashPage is null) return; // still initializing
+        var pages = new System.Windows.FrameworkElement[]
+            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SctPage, FlashPage };
+        int idx = Math.Clamp(NavList.SelectedIndex, 0, pages.Length - 1);
+        for (int i = 0; i < pages.Length; i++)
+            pages[i].Visibility = i == idx ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    // ---- contextual details form ---------------------------------------------
+
+    private void PanelCombo_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e) => ApplyPanelVisibility();
+
+    /// <summary>
+    /// Show only the fields that mean something for the selected "Show in"
+    /// type — a repop trigger has no category, color, or rebuff reminder.
+    /// </summary>
+    private void ApplyPanelVisibility()
+    {
+        if (SpeakSoundGroup is null) return; // still initializing
+
+        string p = PanelCombo.SelectedValue as string ?? Panels.Bars;
+        bool bars = p == Panels.Bars;
+        bool matrix = p is Panels.SelfBuffs or Panels.TargetDebuffs;
+        bool timer = p == Panels.TimerAuto;
+        bool flash = p == Panels.Flash;
+
+        static Visibility V(bool show) => show ? Visibility.Visible : Visibility.Collapsed;
+        CategoryGroup.Visibility = V(bars);
+        DurationGroup.Visibility = V(bars || matrix || timer);
+        ColorGroup.Visibility = V(bars || flash);
+        EndGroup.Visibility = V(bars || matrix);
+        BarsChecksGroup.Visibility = V(bars);
+        WarnGroup.Visibility = V(bars || matrix);
+        SpeakSoundGroup.Visibility = V(bars || matrix);
+
+        DurationLabel.Text = timer ? "Respawn time (seconds)" : "Duration (seconds)";
+        StartLabel.Text = timer ? "Death line (regex — starts the repop timer)"
+            : flash ? "Pattern (regex — fires the flash)"
+            : matrix ? "Start pattern (regex — turns the cell green)"
+            : "Start pattern (regex — starts the bar)";
+        FlashLabel.Text = flash ? "Flash text (empty = the trigger's name)"
+            : "Flash this text on screen when it matches (optional)";
+        PanelHint.Text = timer
+            ? "When the pattern matches (e.g. a named mob death), the circular repop watch starts with this respawn time. Also listed in the watch's ☰ preset menu."
+            : matrix ? "A red/green cell: green with seconds left while active, red when missing."
+            : flash ? "Big screen-center text in the trigger's colour that fades out."
+            : "A depleting countdown bar in the bars panel, grouped by category.";
+    }
+
     // ---- settings tab -------------------------------------------------------
 
     private void LoadSettingsFields()
@@ -310,6 +454,9 @@ public partial class TriggerManagerWindow : Window
         MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
+        TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
+        MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
+        SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
         CharNameBox.Text = _config.CharacterName;
         PetNameBox.Text = _config.Overlay.PetName;
         FlashFontBox.Text = _config.Overlay.FlashFontSize.ToString(CultureInfo.InvariantCulture);
@@ -407,15 +554,13 @@ public partial class TriggerManagerWindow : Window
                 ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
                 StartLocked = StartLockedCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
-                // Not edited here — carry the live values through so saving
-                // settings never resets them.
-                TimerSeconds = _config.Overlay.TimerSeconds,
-                TimerVisible = _config.Overlay.TimerVisible,
-                MeterVisible = _config.Overlay.MeterVisible,
+                TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
+                TimerVisible = TimerVisibleCheck.IsChecked == true,
+                MeterVisible = MeterVisibleCheck.IsChecked == true,
                 PetName = PetNameBox.Text.Trim(),
                 FlashFontSize = Math.Clamp(ParseOr(FlashFontBox.Text, _config.Overlay.FlashFontSize), 10, 200),
                 FlashWidth = Math.Clamp(ParseOr(FlashWidthBox.Text, _config.Overlay.FlashWidth), 200, 3000),
-                SctVisible = _config.Overlay.SctVisible,
+                SctVisible = SctVisibleCheck.IsChecked == true,
                 SctIncoming = SctIncomingCheck.IsChecked == true,
                 SctOutgoing = SctOutgoingCheck.IsChecked == true,
                 SctHeals = SctHealsCheck.IsChecked == true,
@@ -433,6 +578,8 @@ public partial class TriggerManagerWindow : Window
             foreach (var lo in loadouts) _configService.SaveLoadout(lo);
             _configService.SyncDeleteLoadouts(_order);
             _configService.SaveSettings(cfg);
+            _configService.SaveRespawns(_respawns.Select(r => r.ToEntry())
+                .Where(r => !string.IsNullOrWhiteSpace(r.Name)).ToList());
         }
         catch (Exception ex)
         {

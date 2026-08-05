@@ -18,6 +18,8 @@ public partial class HistoryWindow : Window
 
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
+    private readonly RaidKills _raids;
+    private RaidKillsWindow? _raidsWindow;
     private readonly DispatcherTimer _tick;
     private readonly List<CombatParser.FightRecord> _saved;
     private List<Entry> _shown = new();
@@ -29,7 +31,11 @@ public partial class HistoryWindow : Window
     private static readonly Brush EnemyFg = Freeze(Color.FromRgb(0x8F, 0xA6, 0xC4));
     private static readonly Brush IncomingFg = Freeze(Color.FromRgb(0xFF, 0x8A, 0x80));
 
-    public sealed record StatRow(string Name, string Value, Brush NameBrush);
+    public sealed record StatRow(string Name, string Value, Brush NameBrush, string Detail = "")
+    {
+        public Visibility DetailVisibility =>
+            Detail.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     /// <summary>List item wrapper — reference-unique even when two fights render identically.</summary>
     private sealed record FightItem(Entry Entry, string Text)
@@ -46,11 +52,12 @@ public partial class HistoryWindow : Window
         public Visibility IncomingSectionVisibility => IncomingAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public HistoryWindow(CombatParser parser, ConfigService config)
+    public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids)
     {
         InitializeComponent();
         _parser = parser;
         _config = config;
+        _raids = raids;
         _saved = config.LoadSavedFights();
 
         FightsList.SelectionChanged += (_, _) => BuildColumns();
@@ -114,6 +121,18 @@ public partial class HistoryWindow : Window
             .Take(MaxCompare)
             .Select(e => e.Rec);
         ColumnsControl.ItemsSource = records.Select(BuildColumn).ToList();
+    }
+
+    private void Raids_Click(object sender, RoutedEventArgs e)
+    {
+        if (_raidsWindow is null)
+        {
+            _raidsWindow = new RaidKillsWindow(_raids);
+            _raidsWindow.Closed += (_, _) => _raidsWindow = null;
+            _raidsWindow.Show();
+        }
+        _raidsWindow.Activate();
+        _raidsWindow.Focus();
     }
 
     // ---- keep / remove --------------------------------------------------------
@@ -184,10 +203,28 @@ public partial class HistoryWindow : Window
             AbilityRows(r.IncomingSelfAbilities, IncomingFg));
     }
 
-    /// <summary>Format ability drill-down rows ("backstab  12,3 (1.100, 46%)").</summary>
+    /// <summary>Format ability drill-down rows ("backstab  12,3 (1.100, 46%)")
+    /// with a hit-rate / damage-range detail line when attempts were tracked.</summary>
     private static List<StatRow> AbilityRows(List<CombatParser.Row> rows, Brush fg) =>
         rows.Select(a => new StatRow(a.Name,
-            $"{FormatDps(a.Dps)} ({FormatNum(a.Total)}, {a.Percent:0}%)", fg)).ToList();
+            $"{FormatDps(a.Dps)} ({FormatNum(a.Total)}, {a.Percent:0}%)", fg, AbilityDetail(a))).ToList();
+
+    private static string AbilityDetail(CombatParser.Row a)
+    {
+        int attempts = a.Hits + a.Misses + a.Resists;
+        if (attempts == 0) return ""; // pre-hit-tracking record (older kept fight)
+
+        var parts = new List<string>();
+        if (a.Misses > 0 || a.Resists > 0)
+            parts.Add($"{a.Hits}/{attempts} hit ({100.0 * a.Hits / attempts:0}%)");
+        else
+            parts.Add(a.Hits == 1 ? "1 hit" : $"{a.Hits} hits");
+        if (a.Hits > 0)
+            parts.Add(a.Min == a.Max ? FormatNum(a.Max) : $"{FormatNum(a.Min)}–{FormatNum(a.Max)}");
+        if (a.Resists > 0)
+            parts.Add($"{a.Resists} resisted");
+        return string.Join(" · ", parts);
+    }
 
     private Brush FgFor(string name) =>
         name.Equals(_parser.SelfName, StringComparison.OrdinalIgnoreCase)

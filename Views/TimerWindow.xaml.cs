@@ -35,6 +35,10 @@ public partial class TimerWindow : Window
     /// <summary>Supplies the named-mob presets (from timerAuto triggers) for the menu.</summary>
     public Func<IReadOnlyList<(string Name, double Seconds)>>? PresetProvider { get; set; }
 
+    /// <summary>Test hooks (gated self-test only).</summary>
+    internal (string? Mode, double Remaining, bool Running) BigState => (_modeName, _remaining, _running);
+    internal IReadOnlyList<string> SecondaryNames => _repops.Select(e => e.Name).ToList();
+
     // Secondary named repops still running (the big watch shows the most recent).
     private sealed class RepopEntry
     {
@@ -69,6 +73,9 @@ public partial class TimerWindow : Window
 
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
+        // Without this, a closed watch keeps ticking invisibly and beeps
+        // when its repops hit zero (the "ghost spawn alert" bug).
+        Closed += (_, _) => _tick.Stop();
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
@@ -76,6 +83,13 @@ public partial class TimerWindow : Window
         _placement.Attach();
         UpdateVisual();
         _tick.Start();
+    }
+
+    /// <summary>Apply changed settings live — running repop timers survive.</summary>
+    public void ApplySettings(double opacity)
+    {
+        Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
+        _placement.Reload();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -106,24 +120,48 @@ public partial class TimerWindow : Window
     public void ResetPosition() => _placement.ResetToDefault();
     public void ReloadPlacement() => _placement.Reload();
 
-    /// <summary>Start (or restart) the timer at the given duration — used by auto-start triggers.</summary>
+    /// <summary>
+    /// Start a repop for a named kill. The big pie always shows the repop that
+    /// will spawn SOONEST — a fresh kill with a long respawn slots into the
+    /// secondary list until it becomes the next one up.
+    /// </summary>
     public void StartWith(double seconds, string? name = null)
     {
         if (seconds <= 0) return;
 
-        if (name is not null)
+        if (name is null)
         {
-            // The big watch shows the most recent kill; if it's currently running a
-            // *different* named repop, move that one to the secondary list so it isn't lost.
-            if (_modeName is not null && _running && _remaining > 0
-                && !string.Equals(_modeName, name, StringComparison.OrdinalIgnoreCase))
-                AddSecondary(_modeName, _total, _endTime);
-
-            RemoveSecondary(name); // re-kill of a mob that was a secondary -> it becomes the big watch
-            SetMode(name);
+            SetDuration(seconds, start: true);
+            return;
         }
 
-        SetDuration(seconds, start: true);
+        // Upsert: drop any old entry for this mob, keep the current big repop
+        // as a candidate too, then let the soonest of them claim the pie.
+        RemoveSecondary(name);
+        if (_modeName is not null && _running && _remaining > 0
+            && !string.Equals(_modeName, name, StringComparison.OrdinalIgnoreCase))
+            AddSecondary(_modeName, _total, _endTime);
+
+        AddSecondary(name, seconds, DateTime.Now.AddSeconds(seconds));
+        PromoteSoonest();
+    }
+
+    /// <summary>Move the soonest-to-spawn repop out of the list and onto the big pie.</summary>
+    private void PromoteSoonest()
+    {
+        if (_repops.Count == 0) return;
+
+        var next = _repops.MinBy(e => e.EndTime)!;
+        _repops.Remove(next);
+        _secondaries.Remove(next.Vm);
+
+        SetMode(next.Name);
+        _total = next.Total;
+        _endTime = next.EndTime;
+        _remaining = Math.Max(0, (_endTime - DateTime.Now).TotalSeconds);
+        _running = _remaining > 0;
+        SortSecondaries();
+        UpdateVisual();
     }
 
     private void AddSecondary(string name, double total, DateTime endTime)
@@ -132,6 +170,18 @@ public partial class TimerWindow : Window
         var vm = new SecondaryTimerViewModel(name);
         _repops.Add(new RepopEntry { Name = name, Total = total, EndTime = endTime, Vm = vm });
         _secondaries.Add(vm);
+        SortSecondaries();
+    }
+
+    /// <summary>Keep the secondary rows ordered by time left (soonest first).</summary>
+    private void SortSecondaries()
+    {
+        _repops.Sort((a, b) => a.EndTime.CompareTo(b.EndTime));
+        for (int i = 0; i < _repops.Count; i++)
+        {
+            int cur = _secondaries.IndexOf(_repops[i].Vm);
+            if (cur != i) _secondaries.Move(cur, i);
+        }
     }
 
     private void RemoveSecondary(string name)
@@ -232,6 +282,8 @@ public partial class TimerWindow : Window
                 _remaining = 0;
                 _running = false;
                 _alerts.Beep();
+                // A named repop just spawned — the next-soonest takes the pie.
+                if (_modeName is not null) PromoteSoonest();
             }
         }
         UpdateVisual();
