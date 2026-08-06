@@ -1,219 +1,229 @@
 # EQL Assistant
 
-A local, log-file-based buff / heal-over-time (HoT) / DoT **timer overlay** for
-EQ Legends — in the spirit of GINA/GamParse for classic EverQuest. It reads the
-game's log file (no injection, no memory reading), matches lines you define, and
-draws depleting countdown bars in a transparent, always-on-top window over the
+A local, log-file-based **overlay suite** for EQ Legends — in the spirit of
+GINA + GamParse for classic EverQuest, in one lightweight native app. It reads
+the game's log file (no injection, no memory reading — just `eqlog_*.txt`) and
+gives you:
+
+- **Buff / HoT / DoT countdown bars** and present/missing **buff matrices**
+- A **spell library** with ~1,400 real EQL spells for one-click triggers
+- A **repop watch** with named respawns auto-started by mob death lines
+- A **DPS meter** with fight history, side-by-side comparison and an
+  ability-level drill-down (hit %, damage ranges, crits, resists, proc rates)
+- A per-fight **timeline** — every hit, miss, crit and resist on a time axis
+- **Scrolling combat text** in movable lanes
+- A **raid kill tracker** and a persistent **loot history** (upgrades, kept
+  items, vendor income)
+- **Flash alerts** + Windows text-to-speech / sound alerts
+
+Everything renders in transparent, always-on-top, click-through panels over the
 game.
 
 ## Requirements
 
-- Windows 10/11
-- .NET 9 SDK/runtime (already installed here)
+- Windows 10/11 (the standalone exe needs no .NET installed)
 - **The game must run in *Windowed* or *Borderless Windowed* mode.** True
-  exclusive fullscreen will hide any overlay — this is a Windows limitation, not
-  a bug. (Borderless Windowed looks/feels like fullscreen and works great.)
-- In-game logging must be **on**. In classic EverQuest that's the `/log on`
-  command; do that once so the game writes an `eqlog_*.txt` file.
+  exclusive fullscreen hides any overlay — a Windows limitation, not a bug.
+- In-game logging must be **on** (`/log on` once) so the game writes an
+  `eqlog_<Char>_<server>.txt` file.
 
 ## Run it
 
-From the project folder:
+Standalone: just run `EQL_Assistant-vX.Y.exe` — a single portable file, no
+install. From source:
 
 ```bash
 dotnet run
 ```
 
-Or launch the built exe directly:
+or the debug build directly:
 
 ```bash
 bin\Debug\net9.0-windows\EQL_Assistant.exe
 ```
 
-On first launch the overlay starts **unlocked** (you'll see a small toolbar and a
-status line) and creates its config at:
+Config lives in `%APPDATA%\EQL_Assistant\` (created on first launch).
 
-```
-%APPDATA%\EQL_Assistant\config.json
-```
-
-## Standalone build (portable exe)
-
-To produce a single, self-contained exe that runs without .NET installed:
+### Standalone build (portable exe)
 
 ```bash
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o dist
 ```
 
-Result: `dist\EQL_Assistant.exe` (~70 MB). The build **version** (shown as `v1.0` in
-the toolbar and stamped into the exe) comes from `<Version>` in
-[EQL_Assistant.csproj](EQL_Assistant.csproj) — **bump it before each standalone build**
-to keep track, e.g. `1.1.0`, then rename the output like `EQL_Assistant-v1.1.exe`.
+Result: `dist\EQL_Assistant.exe` (~71 MB). Bump `<Version>` in
+[EQL_Assistant.csproj](EQL_Assistant.csproj) before each cut — it stamps the exe
+and shows in the toolbar — then keep a versioned copy like
+`EQL_Assistant-v1.8.exe`. The spell library is embedded in the exe, so a lone
+copied file carries everything.
 
 ## First-time setup
 
-1. Open **Manage** (toolbar button) → **Settings** tab → **Browse** to your log
-   folder (e.g. `…\EverQuest Legends\Logs`) and **Save**. The newest
-   `eqlog_*.txt` there is followed automatically, so it "just works" across
-   characters. The status line should read `Following eqlog_YourChar.txt`.
-2. Build your triggers in the Manager (see below), then **lock** the overlay
-   (padlock, or Ctrl+Alt+L) so clicks pass through to the game, and play.
+1. Open **Manage** (toolbar button or tray) → **General** page → **Browse** to
+   your log folder (e.g. `…\EverQuest Legends\Logs`) and **Save**. The newest
+   `eqlog_*.txt` is followed automatically, so it works across characters — and
+   your **character name is auto-detected from the log filename** (override it
+   on the General page if needed; set a **Pet name** there too if you run one).
+2. Recommended, also on the General page:
+   - **Start with Windows** — so you never forget to launch it.
+   - **Catch up from today's log on startup** — if the app starts late, it
+     rebuilds today's fight history, raid kills, loot and seen spells from the
+     log (also on demand: tray → *Catch up from today's log*).
+3. Add triggers (easiest: the **Library…** button — see below), then **lock**
+   the overlay (padlock or Ctrl+Alt+L) and play.
 
-## Hotkeys (work globally, even while the game is focused)
+## Hotkeys (global — they work while the game is focused)
 
 | Hotkey | Action |
 |---|---|
-| **Ctrl+Alt+L** | Lock / unlock. Locked = click-through + no toolbar. Unlocked = movable, toolbar shown. |
-| **Ctrl+Alt+T** | Spawn a demo bar (see the overlay without being in-game). |
-| **Ctrl+Alt+H** | Hide / show the overlay. |
-| **Ctrl+Alt+S** | Mute / unmute all alerts. |
-| **Ctrl+Alt+Q** | Quit the overlay. |
+| **Ctrl+Alt+L** | Lock / unlock all panels. Locked = click-through, no chrome. |
+| **Ctrl+Alt+R** | Show / hide the repop timer |
+| **Ctrl+Alt+D** | Show / hide the DPS meter |
+| **Ctrl+Alt+C** | Show / hide scrolling combat text |
+| **Ctrl+Alt+H** | Hide / show the whole overlay |
+| **Ctrl+Alt+S** | Mute / unmute all alerts |
+| **Ctrl+Alt+T** | Demo data (bars, meter, a fight with timeline — try everything without being in-game) |
+| **Ctrl+Alt+Q** | Quit |
 
-**System tray icon:** right-click for Show/Hide, Lock/Unlock, Loadout, Manage,
-Mute, **Open config folder**, **Reset position**, and Quit — your fallback while
-the overlay is locked (no visible chrome). Double-click toggles show/hide.
+**System tray icon:** right-click for Show/Hide, Lock/Unlock, Loadout, panel
+toggles, Raid kills, Catch up from today's log, Manage, Mute, Open config
+folder, **Reset position** (also unlocks and unhides everything — the fixer if
+a panel is lost off-screen), and Quit.
 
-**Toolbar** (unlocked only): red **✕** (quit) top-left, a **Loadout ▾** dropdown,
-an accented **Manage** button, and a **🔒 padlock** (lock) top-right. A **🔇**
-shows when muted. Opening the config folder now lives in the tray menu.
+**Toolbar** (visible while unlocked): ✕ quit · **Loadout ▾** picker · panel
+toggles · **Manage** · version · 🔒 lock. Drag it to move the bars panel.
 
-**Settings** (Manage → Settings) adds **Opacity** (whole-overlay see-through),
-**Start locked** (launch game-ready), plus bar height/font for a compact look.
+## The Manager
 
-Move it by dragging the toolbar while unlocked. Position and lock state are
-remembered.
+**Manage** opens a sidebar window with one page per feature:
 
-## Display panels
+- **Triggers** — the trigger editor (list, details form, live log capture).
+  Click a line in the live feed → **→ Start pattern** to build a regex from the
+  real log line. **Test matches** checks a pasted line against all triggers.
+- **General** — log source, character/pet names, opacity, start locked,
+  start with Windows, catch-up on start.
+- **Buff bars** — bar sizes, warn/reminder timings, screen anchor; plus the
+  buff/debuff **matrix** settings (columns, anchors).
+- **Repop timer** — visibility, anchor, and **global named respawns**.
+- **DPS meter** — visibility and anchor.
+- **Skill tracker** — visibility, anchor, and the skill list to watch.
+- **Combat text** — which lanes exist, sizes, big-hit threshold.
+- **Flash alerts** — text size, area width, anchor.
 
-Tracking is split across three independent, movable overlay panels:
+Panels stick to their chosen screen corner and grow away from it (Bottom-left
+keeps a panel above your hotbar, growing upward). Fine-tune by dragging while
+unlocked; positions survive restarts and resolution changes.
 
-1. **Bars** — countdown timers for your (and pet/other players') HoTs & short
-   buffs. Unique log names make per-target timers reliable here.
-2. **Self Buffs** — a present/missing **matrix**: each buff is a cell, green +
-   seconds-left when up, red when missing. Great "do I have everything?" check.
-3. **Target Debuffs** — same matrix, for debuffs on your target. It's
-   **single-target, spell-keyed** (a debuff is "up" while its timer runs), which
-   is how it copes with EQ's non-unique mob names — accurate on bosses,
-   approximate on duplicate trash.
+## Spell library — one-click triggers
 
-Assign each trigger to a panel with the **"Show in"** dropdown in the Manager.
+**Triggers page → Library…** opens ~1,400 real EQL spells with cast/wear-off
+messages, class levels and durations. Filter by *seen in your log*, buffs,
+debuffs or class, then one click adds:
 
-**Anchors:** in Manage → Settings, pin each panel to a screen corner. A panel
-grows *away* from its anchor, so a **Bottom-Left** bars panel keeps its bottom
-edge fixed and grows upward — ideal above your hotbar. Positions are stored
-relative to the corner, so they survive resolution changes. (Anchors are
-relative to your primary monitor.) Drag to fine-tune while unlocked; **tray →
-Reset position** homes every panel.
+- **Bar** — countdown with the right duration, cleared early by the wear-off line
+- **Bar + voice** — same, plus a spoken warning 20s before it drops
+- **Fade flash** — screen flash the moment the wear-off line appears
 
-## Repop / respawn timer
+Added triggers are normal triggers — edit them like any other.
 
-A circular **Time-Timer-style** watch (its own panel + anchor) for spawn timers:
-- A red pie shrinks clockwise (ramps **green → amber → red**), big `m:ss` centre,
-  pulses red in the last 10s and **beeps at 0**.
-- Controls: **☰** mode/preset menu · **✏** set duration · **▶/⏸** play/pause ·
-  **↻** restart. Show/hide the watch with **⏱** on the toolbar, the tray, or
-  **Ctrl+Alt+R**. Set = manual ("Normal") mode.
-- **Auto-start on death:** make a trigger, capture the mob's death line (e.g.
-  `Lord Nagafen has been slain`) from the live feed, set its Duration to the
-  repop, and choose **"Repop timer — auto-start on match"**. When that line
-  appears, the watch starts automatically.
-- **☰ menu** switches between *Normal (manual)* and your named-mob presets.
-- **Multiple at once:** the big watch shows the most-recent kill; other running
-  named repops appear as small secondary rows so none are lost, each dropping
-  off (with a beep) when it expires.
+## Triggers, alerts and loadouts
 
-## Loadouts (class combos)
+A trigger = *"when a log line matches `startPattern`, do something"* — show a
+countdown bar (with category grouping), a matrix cell, or a screen flash;
+optionally cleared early by `endPattern`. Patterns are .NET regex matched after
+the `[timestamp]` prefix; a `(?<target>...)` capture gives per-target bars.
 
-EQL is one character but many class combinations, so triggers are organised into
-**loadouts** — named sets you switch between. Each loadout is its own file in
-`%APPDATA%\EQL_Assistant\loadouts\<name>.json` (easy to back up or share).
+Per-trigger alerts: spoken phrase (Windows TTS) and/or `.wav`, *warn N seconds
+before it drops*, *alert at 0* (cooldown "ready"), *remind me to rebuff when
+missing* (pulsing REBUFF bar + periodic nudge, only after the buff has been
+seen up once).
 
-- Switch in-game with **Ctrl+Alt+P** or the **⇄** button on the toolbar — the
-  active loadout name is shown on the overlay. Switching clears the previous
-  combo's bars and loads the new set instantly.
-- Create / rename / duplicate / delete loadouts at the top of the Trigger
-  Manager (Ctrl+Alt+M). *Duplicate* is handy: build one combo, copy it, tweak.
-- Your previous single trigger list was migrated into a loadout named **Default**.
+**Loadouts** hold trigger sets per class combo — create/rename/duplicate/delete
+at the top of the Triggers page, switch from the toolbar **Loadout ▾** menu.
+Each is a file in `%APPDATA%\EQL_Assistant\loadouts\`.
 
-## Managing triggers — the visual editor
+## Repop watch
 
-Press **Ctrl+Alt+M** (or the *Manage* button on the toolbar) to open the Trigger
-Manager. No JSON editing required:
+A circular Time-Timer-style countdown (own panel + anchor): shrinking pie,
+big `m:ss`, pulses red near 0 and beeps at 0. Controls: **☰** mode/presets ·
+**✏** set duration · **▶/⏸** · **↻**.
 
-- **Trigger list** on the left — Add / Duplicate / Delete / reorder.
-- **Details form** on the right — name, category, duration, color (with preset
-  swatches + live preview), start/end regex, and all the alert options.
-- **Live log feed** at the bottom — lines stream in as they happen in-game.
-  Click a line, then **→ Start pattern** / **→ End pattern** to auto-fill the
-  regex from that exact line (this is the easiest way to make a trigger — just
-  point at the line that scrolled by).
-- **Test matches** — paste/select a line and see which triggers fire on it.
-- **Settings tab** — log folder (Browse), sizes, warn/reminder timings, mute.
+**Named respawns** (Repop timer page) are **global** — independent of loadouts.
+When the mob's death line appears in the log, the watch auto-starts with its
+respawn time. Adding one is two clicks: pick from **Recent kills** (the last 10
+deaths seen in the log) → set the respawn seconds. With several running, the
+watch shows the **soonest spawn** big, the rest as secondary rows.
 
-Click **Save** to write everything and apply it to the running overlay live.
-(Saving from the GUI rewrites `config.json`, so inline comments are replaced —
-the documented reference stays in `config.default.json`.)
+## DPS meter, fight history and timeline
 
-## Alerts, cooldowns, and missing-buff reminders
+The meter shows live ranked damage (or healing — toggle **DPS/HPS**) per
+source, with your character highlighted, same-named mobs merged into a combined
+**Enemies** row (log lines can't tell two "a royal guard" apart), and a
+**DAMAGE TAKEN** footer for you and your pet. A fight ends ~10s after combat
+goes quiet.
 
-Each trigger has optional alerts (set them in the Manager's *Alerts* section):
+**Fight history** (📜 on the meter) keeps the last 50 fights — Ctrl-click up to
+three to compare side by side. **★ Keep** saves a fight permanently, so you can
+compare this week's Vox kill against last week's. Each fight card shows three
+sections:
 
-- **Sound / voice when a buff is about to drop** — set *"warn N seconds before it
-  drops"* and give it a **spoken phrase** (Windows text-to-speech, e.g. "Clarity
-  fading") and/or a **`.wav` file**.
-- **Cooldown timers** — make a trigger in category `Cooldowns` whose start
-  pattern is your *cast* line and whose duration is the recast time, then tick
-  **"alert when it reaches 0"** with a phrase like "Gate ready".
-- **Missing-buff reminder** — tick **"remind me to rebuff when this is missing"**.
-  Once that buff has been up at least once, whenever it's *not* active you get a
-  pulsing red **REBUFF** bar plus a spoken nudge every N seconds (interval in
-  Settings). It won't nag before it's seen the buff once, so it stays quiet until
-  it's relevant.
+- **Damage dealt** — ranked sources, then your/pet abilities with
+  `40/52 hit (77%) · 32–78 · 13 crit · 2 resisted · 30/min · 11,5/100 swings`
+  detail lines (per-100-swings = the "is this proc weapon worth it" number).
+- **Damage taken** — you/pet totals plus *what* hit you — melee vs breath
+  weapon tells you whether to stack AC or resists.
+- **Healing** — ranked healers.
 
-Mute everything anytime with **Ctrl+Alt+S**.
+Fights are tagged with the **zone** they happened in.
 
-## How triggers work
+**Timeline** opens the selected fight as a second-by-second visual: one lane
+per ability, grouped into *Your damage / Pet / Damage taken / Healing*. Mark
+height scales with the amount; crits are wider and brighter, misses gray,
+resists purple. Hover any mark for the exact number. Open two fights side by
+side to compare pulls.
 
-Each entry in `triggers` says: *"when a log line matches `startPattern`, start a
-countdown bar of `durationSeconds`; optionally clear it early when a line matches
-`endPattern`."* The log doesn't report remaining time, so — exactly like GINA —
-you supply each spell's known duration and the bar counts down from when the
-trigger fired.
+## Skill tracker
 
-```json
-{
-  "id": "sow",
-  "name": "Spirit of Wolf",
-  "category": "Buffs",
-  "startPattern": "You feel the spirit of wolf enter you\\.",
-  "endPattern": "Your Spirit of Wolf spell has worn off\\.",
-  "durationSeconds": 1800,
-  "color": "#4FC3F7",
-  "refreshOnRetrigger": true
-}
-```
+A small panel for grinding skills: configure the abilities to watch (Manage →
+Skill tracker — e.g. `backstab, reave, Smite`) and each gets a bar filled by
+its **session-wide** hit rate, colored red → amber → green, with `hits/attempts
+· %` on the right and misses/resists/crits/max in the tooltip. Counts
+accumulate across fights — only the panel's **⟲** button resets them. Spell
+resists count as failed attempts. Toggle the panel from the tray.
 
-- **`category`** — free text; bars are grouped under it (`Buffs`, `HoTs`, `DoTs`,
-  `Cooldowns`, whatever you like).
-- **`startPattern` / `endPattern`** — .NET regex, matched against the log line
-  *after* the `[timestamp]` prefix is stripped. Escape regex specials (`.` →
-  `\\.`).
-- **Per-target bars** — add a named capture group `(?<target>...)` and each
-  target gets its own bar, labelled with the captured name. Great for HoTs/DoTs
-  you land on different people/mobs.
-- **`refreshOnRetrigger`** — recasting resets the bar to full.
-- Bars flash red under `overlay.warnSeconds` (default 6s) so you can refresh in
-  time.
+## Raid kills and loot history
 
-The shipped patterns use classic EverQuest wording as a starting point — **adjust
-them to match your actual log lines.**
+Both open from the Fight History window (and raid kills from the tray):
 
-## Tuning to your log
+- **Raid kills** — a tiered target list (Open World, Fear, Hate, Sky — edit
+  `raid-targets.json` to taste) with kill counts and dates, detected from death
+  lines and remembered forever.
+- **Loot** — every item you loot, persisted forever: **upgrades** (gold, with
+  the "+N → +M" chain), **kept** items, and auto-**vendored** drops with their
+  sale price. Search by item/mob/zone, filter by kind, and watch the running
+  totals ("251 upgrades · vendored 217p 8g 6s 6c").
 
-The single thing that makes this accurate is matching your real log text. Enable
-logging, do a few casts/heals, then look at the lines in your `eqlog_*.txt` (or
-send them over) and copy the exact wording into `startPattern` / `endPattern`.
-```
+## Scrolling combat text
+
+Floating numbers in up to six fixed lanes, each its own movable panel with its
+own anchor: incoming (you/pet), outgoing (you/pet), your heals, heals on you.
+Melee, spells/DoTs and procs get distinct colors per lane; crits render big
+with a "!". Big-hit threshold, number size and lane sizes are on the Combat
+text page. Master toggle: Ctrl+Alt+C.
+
+## Config folder
+
+`%APPDATA%\EQL_Assistant\` holds everything — copy it to move machines:
+
+| File | Contents |
+|---|---|
+| `config.json` | settings |
+| `loadouts\*.json` | trigger sets |
+| `respawns.json` | global named respawns |
+| `fights.json` | ★-kept fights (including their timelines) |
+| `raid-kills.json` / `raid-targets.json` | raid progression / target list |
+| `loot.json` | loot history |
+| `seen-spells.json` | which library spells appeared in your log |
+| `window-*.json` | panel positions |
 
 ## Credits
 

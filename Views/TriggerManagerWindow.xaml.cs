@@ -423,7 +423,7 @@ public partial class TriggerManagerWindow : Window
     {
         if (FlashPage is null) return; // still initializing
         var pages = new System.Windows.FrameworkElement[]
-            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SctPage, FlashPage };
+            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SkillsPage, SctPage, FlashPage };
         int idx = Math.Clamp(NavList.SelectedIndex, 0, pages.Length - 1);
         for (int i = 0; i < pages.Length; i++)
             pages[i].Visibility = i == idx ? Visibility.Visible : Visibility.Collapsed;
@@ -493,6 +493,8 @@ public partial class TriggerManagerWindow : Window
         CatchUpCheck.IsChecked = _config.CatchUpOnStart;
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
         MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
+        SkillsVisibleCheck.IsChecked = _config.Overlay.SkillTrackerVisible;
+        SkillListBox.Text = string.Join(", ", _config.Overlay.SkillTrackerSkills);
         SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
         CharNameBox.Text = _config.CharacterName;
         PetNameBox.Text = _config.Overlay.PetName;
@@ -515,6 +517,7 @@ public partial class TriggerManagerWindow : Window
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
         TimerAnchorBox.SelectedValue = (_configService.LoadPlacement("timer")?.Anchor ?? Anchor.TopRight).ToString();
         MeterAnchorBox.SelectedValue = (_configService.LoadPlacement("meter")?.Anchor ?? Anchor.TopRight).ToString();
+        SkillsAnchorBox.SelectedValue = (_configService.LoadPlacement("skills")?.Anchor ?? Anchor.TopRight).ToString();
         FlashAnchorBox.SelectedValue = (_configService.LoadPlacement("flash")?.Anchor ?? Anchor.TopLeft).ToString();
     }
 
@@ -596,6 +599,10 @@ public partial class TriggerManagerWindow : Window
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,
+                SkillTrackerVisible = SkillsVisibleCheck.IsChecked == true,
+                SkillTrackerSkills = SkillListBox.Text
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                 PetName = PetNameBox.Text.Trim(),
                 FlashFontSize = Math.Clamp(ParseOr(FlashFontBox.Text, _config.Overlay.FlashFontSize), 10, 200),
                 FlashWidth = Math.Clamp(ParseOr(FlashWidthBox.Text, _config.Overlay.FlashWidth), 200, 3000),
@@ -636,6 +643,7 @@ public partial class TriggerManagerWindow : Window
         ApplyAnchor("targetDebuffs", TargetAnchorBox);
         ApplyAnchor("timer", TimerAnchorBox);
         ApplyAnchor("meter", MeterAnchorBox);
+        ApplyAnchor("skills", SkillsAnchorBox);
         ApplyAnchor("flash", FlashAnchorBox);
 
         _config = cfg;

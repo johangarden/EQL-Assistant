@@ -521,6 +521,16 @@ public partial class App : Application
             p.ProcessLine($"[{Ts(42)}] You slash a royal guard for 9 points of damage.");
             Check("multi-pull label gets +N", p.TargetLabel is "a rat +1" or "a royal guard +1");
 
+            // Session skill tracker: accumulates ACROSS fights (1 hit + 1 miss in
+            // the first fight, 2 more hits in this one) and ignores fight resets.
+            Check("session skills accumulate across fights",
+                p.GetSessionSkill("slash") is { Hits: 3, Misses: 1 });
+            Check("session skills count spell resists as attempts",
+                p.GetSessionSkill("Burst of Flame") is { Hits: 1, Resists: 1, Attempts: 2 });
+            Check("session skill hit rate", p.GetSessionSkill("slash") is { } sk
+                && Math.Abs(sk.HitRate - 0.75) < 0.001);
+            Check("unattempted skill is null", p.GetSessionSkill("Kick of Doom") is null);
+
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions
             {

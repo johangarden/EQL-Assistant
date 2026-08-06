@@ -90,6 +90,12 @@ public sealed class OverlayConfig
     /// <summary>Your pet's name — enables the pet line in the DPS meter's incoming footer.</summary>
     public string PetName { get; set; } = "";
 
+    /// <summary>Whether the skill tracker panel is shown.</summary>
+    public bool SkillTrackerVisible { get; set; } = false;
+
+    /// <summary>Abilities the skill tracker watches (backstab, reave, Smite, …).</summary>
+    public List<string> SkillTrackerSkills { get; set; } = new();
+
     /// <summary>Font size of screen flash alerts.</summary>
     public double FlashFontSize { get; set; } = 54;
 
