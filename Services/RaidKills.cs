@@ -35,7 +35,10 @@ public sealed class RaidKills
     public event Action<string, DateTime>? KillRecorded;
 
     /// <summary>The last few mob deaths of ANY kind — used as a picker when adding respawns.</summary>
-    public sealed record RecentDeath(string Name, DateTime When);
+    public sealed record RecentDeath(string Name, DateTime When, string Zone = "");
+
+    private string _zone = "";
+    private const string ZonePrefix = "You have entered ";
 
     private const int MaxRecentDeaths = 10;
     private readonly List<RecentDeath> _recentDeaths = new();
@@ -84,13 +87,20 @@ public sealed class RaidKills
     public void ProcessLine(string rawLine, DateTime? when = null)
     {
         string body = TimestampPrefix.Replace(rawLine, "", 1);
+
+        if (body.StartsWith(ZonePrefix, StringComparison.Ordinal) && body.EndsWith('.'))
+        {
+            _zone = body[ZonePrefix.Length..^1];
+            return;
+        }
+
         if (!TryParseKill(body, out string mob)) return;
 
         DateTime t = when ?? DateTime.Now;
 
         // Every death lands in the recent list (latest kill of a name wins).
         _recentDeaths.RemoveAll(d => d.Name.Equals(mob, StringComparison.OrdinalIgnoreCase));
-        _recentDeaths.Insert(0, new RecentDeath(mob, t));
+        _recentDeaths.Insert(0, new RecentDeath(mob, t, _zone));
         if (_recentDeaths.Count > MaxRecentDeaths)
             _recentDeaths.RemoveAt(MaxRecentDeaths);
 

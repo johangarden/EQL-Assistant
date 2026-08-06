@@ -19,6 +19,16 @@ public sealed class RespawnViewModel : ViewModelBase
         set { if (SetField(ref _seconds, value)) OnPropertyChanged(nameof(Display)); }
     }
 
+    private string _zone = "";
+    public string Zone
+    {
+        get => _zone;
+        set { if (SetField(ref _zone, value)) OnPropertyChanged(nameof(ZoneGroup)); }
+    }
+
+    /// <summary>Group header for the Manager list (empty zones bucket together).</summary>
+    public string ZoneGroup => string.IsNullOrWhiteSpace(Zone) ? "No zone set" : Zone.Trim();
+
     private string _pattern = "";
     public string Pattern { get => _pattern; set => SetField(ref _pattern, value); }
 
@@ -34,6 +44,7 @@ public sealed class RespawnViewModel : ViewModelBase
     public static RespawnViewModel FromEntry(RespawnEntry e) => new()
     {
         Name = e.Name,
+        Zone = e.Zone,
         Seconds = e.Seconds,
         Pattern = e.Pattern,
         Enabled = e.Enabled,
@@ -42,6 +53,7 @@ public sealed class RespawnViewModel : ViewModelBase
     public RespawnEntry ToEntry() => new()
     {
         Name = Name.Trim(),
+        Zone = Zone.Trim(),
         Seconds = Seconds,
         Pattern = Pattern.Trim(),
         Enabled = Enabled,

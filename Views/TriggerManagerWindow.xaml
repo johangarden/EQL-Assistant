@@ -425,11 +425,23 @@
                                                 AutomationProperties.AutomationId="RespawnAddBtn"/>
                                         <Button Content="Delete" Click="RespawnDelete_Click" Width="60"/>
                                     </StackPanel>
-                                    <ListBox x:Name="RespawnList" Height="150"
+                                    <ListBox x:Name="RespawnList" Height="190"
                                              SelectionChanged="RespawnList_SelectionChanged">
+                                        <ListBox.GroupStyle>
+                                            <GroupStyle>
+                                                <GroupStyle.HeaderTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   Foreground="{StaticResource Brush.TextHint}"
+                                                                   FontSize="10" FontWeight="Bold"
+                                                                   Margin="2,5,0,2"/>
+                                                    </DataTemplate>
+                                                </GroupStyle.HeaderTemplate>
+                                            </GroupStyle>
+                                        </ListBox.GroupStyle>
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding Display}"/>
+                                                <TextBlock Text="{Binding Display}" Margin="8,0,0,0"/>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
@@ -442,7 +454,8 @@
                                         <Button Content="← Add as respawn" Click="RespawnFromDeath_Click"
                                                 AutomationProperties.AutomationId="RespawnFromDeathBtn"/>
                                     </StackPanel>
-                                    <ListBox x:Name="RecentDeathsList" Height="150"
+                                    <ListBox x:Name="RecentDeathsList" Height="190"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                              MouseDoubleClick="RespawnFromDeath_Click"/>
                                     <TextBlock Style="{StaticResource Hint}"
                                                Text="The last 10 deaths seen in the log. Pick one, add it, set its respawn time — done."/>
@@ -454,6 +467,9 @@
 
                                 <TextBlock Text="Mob name" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="260" HorizontalAlignment="Left"/>
+
+                                <TextBlock Text="Zone (groups the list — filled in automatically)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding Zone, UpdateSourceTrigger=PropertyChanged}" Width="260" HorizontalAlignment="Left"/>
 
                                 <TextBlock Text="Respawn time (seconds)" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding Seconds}" Width="120" HorizontalAlignment="Left"/>

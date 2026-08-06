@@ -8,6 +8,10 @@ public sealed class RespawnEntry
 {
     public string Name { get; set; } = "";
 
+    /// <summary>Zone the mob lives in — used to group long respawn lists
+    /// (Manager page + the watch's ☰ menu). Optional.</summary>
+    public string Zone { get; set; } = "";
+
     /// <summary>Respawn time in seconds.</summary>
     public double Seconds { get; set; } = 400;
 

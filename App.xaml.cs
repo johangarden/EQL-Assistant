@@ -496,6 +496,11 @@ public partial class App : Application
             Check("recent deaths: newest first, deduped",
                 rk.RecentDeaths.Count == 2
                 && rk.RecentDeaths[0].Name == "a rat" && rk.RecentDeaths[1].Name == "a bat");
+            rk.ProcessLine("[x] You have entered Blackburrow.");
+            rk.ProcessLine("[x] a gnoll pup has been slain by Johan!");
+            Check("recent deaths carry the zone they happened in",
+                rk.RecentDeaths[0] is { Name: "a gnoll pup", Zone: "Blackburrow" }
+                && rk.RecentDeaths[1].Zone == ""); // killed before any zone line
 
             // Idle finalize archives the fight; a new line starts fresh.
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));

@@ -32,8 +32,9 @@ public partial class TimerWindow : Window
     private double _manualSeconds;   // duration used by "Normal (manual)" mode
     private string? _modeName;       // null = Normal; otherwise the selected preset/mob name
 
-    /// <summary>Supplies the named-mob presets (from timerAuto triggers) for the menu.</summary>
-    public Func<IReadOnlyList<(string Name, double Seconds)>>? PresetProvider { get; set; }
+    /// <summary>Supplies the named-mob presets (from timerAuto triggers) for the
+    /// menu, with the zone each mob belongs to (empty = ungrouped).</summary>
+    public Func<IReadOnlyList<(string Name, double Seconds, string Zone)>>? PresetProvider { get; set; }
 
     /// <summary>Test hooks (gated self-test only).</summary>
     internal (string? Mode, double Remaining, bool Running) BigState => (_modeName, _remaining, _running);
@@ -205,18 +206,39 @@ public partial class TimerWindow : Window
         var presets = PresetProvider?.Invoke();
         if (presets is { Count: > 0 })
         {
-            menu.Items.Add(new Separator());
-            foreach (var (name, seconds) in presets)
+            // Segment by zone: named zones alphabetically, zoneless mobs last.
+            var groups = presets
+                .GroupBy(p => p.Zone.Trim(), StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g.Key.Length == 0 ? 1 : 0)
+                .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            bool severalZones = groups.Count > 1 || groups[0].Key.Length > 0;
+
+            foreach (var group in groups)
             {
-                string cn = name;
-                double cs = seconds;
-                var mi = new MenuItem
+                menu.Items.Add(new Separator());
+                if (severalZones)
+                    menu.Items.Add(new MenuItem
+                    {
+                        Header = group.Key.Length > 0 ? group.Key : "No zone set",
+                        IsEnabled = false,
+                        FontSize = 10,
+                        FontWeight = System.Windows.FontWeights.Bold,
+                    });
+
+                foreach (var (name, seconds, _) in group
+                    .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
                 {
-                    Header = $"{name}  ({Format(seconds)})",
-                    IsChecked = string.Equals(name, _modeName, StringComparison.OrdinalIgnoreCase),
-                };
-                mi.Click += (_, _) => { SetMode(cn); SetDuration(cs, start: false); };
-                menu.Items.Add(mi);
+                    string cn = name;
+                    double cs = seconds;
+                    var mi = new MenuItem
+                    {
+                        Header = $"{name}  ({Format(seconds)})",
+                        IsChecked = string.Equals(name, _modeName, StringComparison.OrdinalIgnoreCase),
+                    };
+                    mi.Click += (_, _) => { SetMode(cn); SetDuration(cs, start: false); };
+                    menu.Items.Add(mi);
+                }
             }
         }
 
