@@ -575,6 +575,13 @@ public partial class App : Application
                     Amount: 5, Flavor: CombatParser.SctFlavor.Spell, Text: "+5" }));
             Check("SCT: AA point floats big",
                 sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Crit: true, Text: "AA point!" }));
+            p.ProcessLine($"[{Ts(46)}] You have gained an ability point!  You now have 1 ability point.");
+            Check("SCT: singular '1 ability point' still floats",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Text: "AA point!", Ability: "1 total" }));
+            p.ProcessLine($"[{Ts(46)}] You have improved Mastery of the Past 2 at a cost of 4 ability points.");
+            Check("SCT: AA spend floats with the improved ability",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Text: "-4 AA",
+                    Ability: "Mastery of the Past 2", Amount: -4 }));
             Check("progress lines never touch the fight model",
                 p.InCombat == wasActive && Math.Abs(p.DurationSeconds - durBefore) < 0.001);
 
