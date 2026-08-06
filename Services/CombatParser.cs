@@ -137,6 +137,12 @@ public sealed class CombatParser
         public double Total;
         public double Max;
 
+        /// <summary>Current skill level from "You have become better at X! (N)" (0 = never seen).</summary>
+        public int Level;
+
+        /// <summary>Skill-ups seen this session.</summary>
+        public int Ups;
+
         public int Attempts => Hits + Misses + Resists;
         public double HitRate => Attempts > 0 ? (double)Hits / Attempts : 0;
     }
@@ -253,7 +259,7 @@ public sealed class CombatParser
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex MeleeRx = new(
-        @"^(?<att>.+?) (?<verb>slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?|gores?|mauls?|stings?|rends?|slams?) (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of damage\.",
+        @"^(?<att>.+?) (?<verb>slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?|gores?|mauls?|stings?|rends?|slams?|reaves?) (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of damage\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // Damage shields: "Orc slaver is pierced by YOUR thorns for 8 points of
@@ -279,6 +285,7 @@ public sealed class CombatParser
         ["pierces"] = "pierce", ["kicks"] = "kick", ["hits"] = "hit", ["bites"] = "bite",
         ["claws"] = "claw", ["backstabs"] = "backstab", ["cleaves"] = "cleave", ["gores"] = "gore",
         ["mauls"] = "maul", ["stings"] = "sting", ["rends"] = "rend", ["slams"] = "slam",
+        ["reaves"] = "reave", // EQL shadowknight skill; rider damage logs separately as "Reaving Strike"
     };
 
     private static readonly HashSet<string> MeleeAbilities =
@@ -308,6 +315,11 @@ public sealed class CombatParser
     // possessive is stripped in the handler (split on the first "'s ").
     private static readonly Regex ResistYouRx = new(
         @"^You resist(?:ed)? (?:the )?(?<rest>.+?)(?: spell)?[!.]",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // Skill-ups: "You have become better at Reave! (3)" — (3) is the new level.
+    private static readonly Regex SkillUpRx = new(
+        @"^You have become better at (?<skill>.+?)! \((?<lvl>\d+)\)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex TimestampPrefix =
@@ -390,7 +402,16 @@ public sealed class CombatParser
         }
 
         m = ResistOtherRx.Match(body);
-        if (m.Success) AddOutgoingResist(m.Groups["spell"].Value, time);
+        if (m.Success) { AddOutgoingResist(m.Groups["spell"].Value, time); return; }
+
+        m = SkillUpRx.Match(body);
+        if (m.Success)
+        {
+            // Deliberately does NOT touch the fight model — a skill-up is not combat.
+            var s = SessionSkill(m.Groups["skill"].Value.Trim());
+            s.Level = (int)Amount(m, "lvl");
+            s.Ups++;
+        }
     }
 
     /// <summary>Replay a historical line: fight-splitting uses the LINE's timestamp.</summary>

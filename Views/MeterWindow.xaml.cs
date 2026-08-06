@@ -256,7 +256,9 @@ public partial class MeterWindow : Window
                 row.Fraction = 0;
                 row.ValueText = "—";
                 row.Fill = SkillMidFill;
-                row.Detail = "no attempts yet this session";
+                row.Detail = s is { Level: > 0 }
+                    ? $"skill {s.Level} · no attempts yet this session"
+                    : "no attempts yet this session";
                 continue;
             }
 
@@ -268,6 +270,8 @@ public partial class MeterWindow : Window
             row.Fill = rate < 0.60 ? SkillLowFill : rate < 0.85 ? SkillMidFill : SkillHighFill;
 
             var extra = new List<string>();
+            if (s.Level > 0)
+                extra.Add(s.Ups > 0 ? $"skill {s.Level} (+{s.Ups} this session)" : $"skill {s.Level}");
             if (s.Misses > 0) extra.Add($"{s.Misses} missed");
             if (s.Resists > 0) extra.Add($"{s.Resists} resisted");
             if (s.Crits > 0) extra.Add($"{s.Crits} crit");
