@@ -105,7 +105,7 @@ toggles · **Manage** · version · 🔒 lock. Drag it to move the bars panel.
   buff/debuff **matrix** settings (columns, anchors).
 - **Repop timer** — visibility, anchor, and **global named respawns**.
 - **DPS meter** — visibility and anchor.
-- **Skill tracker** — visibility, anchor, and the skill list to watch.
+- **Skill tracker** — the meter's SKILLS section and the skill list to watch.
 - **Combat text** — which lanes exist, sizes, big-hit threshold.
 - **Flash alerts** — text size, area width, anchor.
 
@@ -183,12 +183,13 @@ side to compare pulls.
 
 ## Skill tracker
 
-A small panel for grinding skills: configure the abilities to watch (Manage →
-Skill tracker — e.g. `backstab, reave, Smite`) and each gets a bar filled by
-its **session-wide** hit rate, colored red → amber → green, with `hits/attempts
-· %` on the right and misses/resists/crits/max in the tooltip. Counts
-accumulate across fights — only the panel's **⟲** button resets them. Spell
-resists count as failed attempts. Toggle the panel from the tray.
+A **SKILLS section on the DPS meter** for grinding skills: configure the
+abilities to watch (Manage → Skill tracker — e.g. `backstab, reave, Smite`)
+and each gets a bar filled by its **session-wide** hit rate, colored red →
+amber → green, with `hits/attempts · % · crit %` on the right and
+misses/resists/max in the tooltip. Counts accumulate across fights — only the
+section's **⟲** button resets them. Spell resists count as failed attempts.
+Toggle from the tray.
 
 ## Raid kills and loot history
 

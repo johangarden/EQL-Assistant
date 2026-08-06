@@ -517,7 +517,6 @@ public partial class TriggerManagerWindow : Window
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
         TimerAnchorBox.SelectedValue = (_configService.LoadPlacement("timer")?.Anchor ?? Anchor.TopRight).ToString();
         MeterAnchorBox.SelectedValue = (_configService.LoadPlacement("meter")?.Anchor ?? Anchor.TopRight).ToString();
-        SkillsAnchorBox.SelectedValue = (_configService.LoadPlacement("skills")?.Anchor ?? Anchor.TopRight).ToString();
         FlashAnchorBox.SelectedValue = (_configService.LoadPlacement("flash")?.Anchor ?? Anchor.TopLeft).ToString();
     }
 
@@ -643,7 +642,6 @@ public partial class TriggerManagerWindow : Window
         ApplyAnchor("targetDebuffs", TargetAnchorBox);
         ApplyAnchor("timer", TimerAnchorBox);
         ApplyAnchor("meter", MeterAnchorBox);
-        ApplyAnchor("skills", SkillsAnchorBox);
         ApplyAnchor("flash", FlashAnchorBox);
 
         _config = cfg;
