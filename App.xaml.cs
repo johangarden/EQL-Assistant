@@ -165,6 +165,14 @@ public partial class App : Application
             Check("loot: coin formatting", LootTracker.FormatCoins(2214) == "2p 2g 1s 4c");
             Check("loot: combat line is not loot", !LootTracker.TryParseLoot(
                 "You slash a rat for 5 points of damage.", out lk, out li, out lm, out lr, out _));
+
+            // Catch-up mode resolution (off / ask / auto, legacy bool migrates).
+            Check("catch-up: legacy auto migrates",
+                new Models.AppConfig { CatchUpOnStart = true }.EffectiveCatchUpMode() == "auto");
+            Check("catch-up: fresh config asks",
+                new Models.AppConfig().EffectiveCatchUpMode() == "ask");
+            Check("catch-up: explicit off beats legacy",
+                new Models.AppConfig { CatchUpOnStart = true, CatchUpMode = "off" }.EffectiveCatchUpMode() == "off");
         }
         catch (Exception ex)
         {

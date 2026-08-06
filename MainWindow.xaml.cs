@@ -128,16 +128,40 @@ public partial class MainWindow : Window
         RebuildFlashWindow();
         RebuildSctLanes();
 
-        if (_config.CatchUpOnStart)
+        string catchUpMode = _config.EffectiveCatchUpMode();
+        if (catchUpMode != "off")
         {
             // Give the watcher a moment to resolve which log file to follow.
             var once = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-            once.Tick += (_, _) => { once.Stop(); CatchUpToday(); };
+            once.Tick += (_, _) =>
+            {
+                once.Stop();
+                if (catchUpMode == "auto") CatchUpToday();
+                else OfferCatchUp();
+            };
             once.Start();
         }
     }
 
     // ---- catch-up (started the app mid-session) -------------------------------
+
+    /// <summary>Ask-first mode: only speaks up when the followed log actually
+    /// has lines from today, and names the file so there are no surprises.</summary>
+    private void OfferCatchUp()
+    {
+        string? path = _watcher?.CurrentPath;
+        if (path is null || !File.Exists(path)) return;
+
+        DateTime wrote = File.GetLastWriteTime(path);
+        if (wrote.Date != DateTime.Today) return; // nothing from today — stay quiet
+
+        bool yes = Views.ConfirmDialog.Show(this, "EQL Assistant — Catch up?",
+            $"{Path.GetFileName(path)} has lines from today (last written {wrote:HH:mm}).\n\n" +
+            "Parse today's log now to rebuild fight history, raid kills, loot and seen " +
+            "spells? Alerts and combat text won't fire for old lines.",
+            yesText: "Catch up", noText: "Skip");
+        if (yes) CatchUpToday();
+    }
 
     /// <summary>
     /// Replay today's lines from the followed log into the combat history,

@@ -15,9 +15,19 @@ public sealed class AppConfig
     /// <summary>Name of the loadout to load on startup.</summary>
     public string ActiveLoadout { get; set; } = "Default";
 
-    /// <summary>Replay today's log lines on startup (fight history, raid kills,
-    /// seen spells) — covers starting the app mid-session.</summary>
+    /// <summary>Legacy toggle (pre-2.1) — kept so old configs migrate; superseded
+    /// by <see cref="CatchUpMode"/>.</summary>
     public bool CatchUpOnStart { get; set; } = false;
+
+    /// <summary>What to do about today's log on startup: "off", "ask" (prompt with
+    /// the log name when it has lines from today) or "auto" (parse silently).</summary>
+    public string CatchUpMode { get; set; } = "";
+
+    /// <summary>Resolved mode — legacy CatchUpOnStart=true becomes "auto"; new
+    /// configs default to "ask".</summary>
+    public string EffectiveCatchUpMode() => CatchUpMode is "off" or "ask" or "auto"
+        ? CatchUpMode
+        : CatchUpOnStart ? "auto" : "ask";
 
     /// <summary>
     /// The active loadout's triggers, loaded at runtime from a loadout file.
