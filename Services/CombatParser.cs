@@ -123,6 +123,39 @@ public sealed class CombatParser
     private bool _active;
     private string _fightZone = "";
 
+    // ---- session skill tracker -------------------------------------------------
+    // Session-wide attempts of YOUR abilities for the skill tracker panel.
+    // Deliberately NOT part of the fight model: it accumulates across fights and
+    // only ResetSessionSkills() (the panel's ⟲ button) clears it.
+
+    public sealed class SkillStat
+    {
+        public int Hits;
+        public int Misses;
+        public int Resists;
+        public int Crits;
+        public double Total;
+        public double Max;
+
+        public int Attempts => Hits + Misses + Resists;
+        public double HitRate => Attempts > 0 ? (double)Hits / Attempts : 0;
+    }
+
+    private readonly Dictionary<string, SkillStat> _sessionSkills = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Session totals for one of your abilities (null if never attempted).</summary>
+    public SkillStat? GetSessionSkill(string ability) =>
+        _sessionSkills.TryGetValue(ability.Trim(), out var s) ? s : null;
+
+    public void ResetSessionSkills() => _sessionSkills.Clear();
+
+    private SkillStat SessionSkill(string ability)
+    {
+        if (!_sessionSkills.TryGetValue(ability, out var s))
+            _sessionSkills[ability] = s = new SkillStat();
+        return s;
+    }
+
     /// <summary>Event cap per fight — a 10-minute raid fight sits well under this.</summary>
     public const int MaxFightEvents = 4000;
 
@@ -522,6 +555,11 @@ public sealed class CombatParser
 
         if (IsSelf(attacker))
         {
+            var skill = SessionSkill(ability);
+            skill.Hits++;
+            skill.Total += amount;
+            if (crit) skill.Crits++;
+            if (amount > skill.Max) skill.Max = amount;
             Note(time, ability, amount, FightStream.SelfOut, crit);
             SctEvent?.Invoke(new SctHit(SctKind.OutgoingSelf, ability, amount, flavor, crit));
         }
@@ -553,7 +591,11 @@ public sealed class CombatParser
         if (IsSelf(target)) StatIn(_incomingSelfAbility, ability).Misses++;
         else if (IsPet(target)) StatIn(_incomingPetAbility, ability).Misses++;
 
-        if (IsSelf(attacker)) Note(time, ability, 0, FightStream.SelfOut, miss: true);
+        if (IsSelf(attacker))
+        {
+            SessionSkill(ability).Misses++;
+            Note(time, ability, 0, FightStream.SelfOut, miss: true);
+        }
         else if (IsPet(attacker)) Note(time, ability, 0, FightStream.PetOut, miss: true);
         if (IsSelf(target)) Note(time, ability, 0, FightStream.SelfIn, miss: true);
         else if (IsPet(target)) Note(time, ability, 0, FightStream.PetIn, miss: true);
@@ -564,6 +606,7 @@ public sealed class CombatParser
     {
         Touch(time);
         Stat(Self(), spell.Trim()).Resists++;
+        SessionSkill(spell.Trim()).Resists++;
         Note(time, spell.Trim(), 0, FightStream.SelfOut, resist: true);
     }
 
@@ -729,6 +772,14 @@ public sealed class CombatParser
         _incomingSelfAbility["hit"] = DemoStat(780, 7, 5, 60, 150);
         _incomingSelfAbility["Frost Breath"] = DemoStat(570, 2, 0, 250, 320, resists: 1);
         _incomingPetAbility["claw"] = DemoStat(550, 6, 3, 50, 120);
+
+        // Skill-tracker demo: session-scope, so only seed when nothing real is there.
+        if (_sessionSkills.Count == 0)
+        {
+            _sessionSkills["backstab"] = new SkillStat { Hits = 41, Misses = 11, Crits = 6, Total = 9800, Max = 340 };
+            _sessionSkills["slash"] = new SkillStat { Hits = 210, Misses = 35, Crits = 12, Total = 14200, Max = 95 };
+            _sessionSkills["Lifetap"] = new SkillStat { Hits = 44, Resists = 6, Crits = 2, Total = 3900, Max = 105 };
+        }
 
         // Give the history window something to compare against.
         if (_history.Count == 0)

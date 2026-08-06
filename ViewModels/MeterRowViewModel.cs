@@ -18,4 +18,8 @@ public sealed class MeterRowViewModel : ViewModelBase
 
     private Brush _fill = Brushes.DodgerBlue;
     public Brush Fill { get => _fill; set => SetField(ref _fill, value); }
+
+    /// <summary>Optional tooltip line (used by the skill tracker rows).</summary>
+    private string _detail = "";
+    public string Detail { get => _detail; set => SetField(ref _detail, value); }
 }

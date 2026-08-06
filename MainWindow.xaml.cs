@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private TimerWindow? _timer;
     private FlashWindow? _flash;
     private MeterWindow? _meter;
+    private SkillTrackerWindow? _skills;
     private readonly CombatParser _combat = new();
     private RaidKills _raids = null!;
     private LootTracker _loot = null!;
@@ -38,6 +39,7 @@ public partial class MainWindow : Window
     private bool _hidden;
     private bool _timerHidden;
     private bool _meterHidden;
+    private bool _skillsHidden;
     private bool _sctHidden;
     private bool _suppressSct;   // true while replaying old lines (catch-up)
     private System.Windows.Forms.NotifyIcon? _tray;
@@ -94,6 +96,7 @@ public partial class MainWindow : Window
         Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
+        _skillsHidden = !_config.Overlay.SkillTrackerVisible;
         _sctHidden = !_config.Overlay.SctVisible;
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
@@ -123,6 +126,7 @@ public partial class MainWindow : Window
         RebuildMatrixWindows();
         RebuildTimerWindow();
         RebuildMeterWindow();
+        RebuildSkillsWindow();
         RebuildFlashWindow();
         RebuildSctLanes();
 
@@ -367,6 +371,34 @@ public partial class MainWindow : Window
         _vm.Flash(_meterHidden ? "DPS meter hidden." : "DPS meter shown.");
     }
 
+    // ---- skill tracker panel --------------------------------------------------
+
+    private void RebuildSkillsWindow()
+    {
+        if (_skills is not null) { try { _skills.Close(); } catch { /* ignore */ } }
+        _skills = new SkillTrackerWindow(_configService, _combat,
+            _config.Overlay.SkillTrackerSkills, _config.Overlay.Opacity);
+        _skills.Show();
+        UpdateSkillsVisibility();
+    }
+
+    private void UpdateSkillsVisibility()
+    {
+        if (_skills is not null)
+            _skills.Visibility = (_hidden || _skillsHidden) ? Visibility.Hidden : Visibility.Visible;
+    }
+
+    /// <summary>Show/hide the skill tracker (tray / Manager page), and remember it.</summary>
+    private void ToggleSkills()
+    {
+        _skillsHidden = !_skillsHidden;
+        _config.Overlay.SkillTrackerVisible = !_skillsHidden;
+        _configService.SaveSettings(_config);
+        if (_hidden && !_skillsHidden) ToggleHide(); // unhide everything if it was globally hidden
+        UpdateSkillsVisibility();
+        _vm.Flash(_skillsHidden ? "Skill tracker hidden." : "Skill tracker shown.");
+    }
+
     // ---- matrix panels ------------------------------------------------------
 
     private void RebuildMatrixWindows()
@@ -542,6 +574,7 @@ public partial class MainWindow : Window
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
         UpdateMeterVisibility();
+        UpdateSkillsVisibility();
         UpdateSctVisibility();
         if (_flash is not null)
             _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
@@ -576,11 +609,13 @@ public partial class MainWindow : Window
         _targetMatrix?.ResetPosition();
         _timer?.ResetPosition();
         _meter?.ResetPosition();
+        _skills?.ResetPosition();
         _flash?.ResetPosition();
         foreach (var lane in _sctLanes.Values) lane.ResetPosition();
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
         UpdateMeterVisibility();
+        UpdateSkillsVisibility();
         UpdateSctVisibility();
         _vm?.Flash("Panels reset — overlay unlocked.");
     }
@@ -670,6 +705,7 @@ public partial class MainWindow : Window
         _alerts.Muted = cfg.Overlay.Muted;
         _timerHidden = !cfg.Overlay.TimerVisible;
         _meterHidden = !cfg.Overlay.MeterVisible;
+        _skillsHidden = !cfg.Overlay.SkillTrackerVisible;
         _sctHidden = !cfg.Overlay.SctVisible;
         _combat.PetName = cfg.Overlay.PetName;
         ApplySelfName();
@@ -699,6 +735,8 @@ public partial class MainWindow : Window
         else { _timer.ApplySettings(cfg.Overlay.Opacity); UpdateTimerVisibility(); }
         if (_meter is null) RebuildMeterWindow();
         else { _meter.ApplySettings(cfg.Overlay.Opacity); UpdateMeterVisibility(); }
+        if (_skills is null) RebuildSkillsWindow();
+        else { _skills.ApplySettings(cfg.Overlay.SkillTrackerSkills, cfg.Overlay.Opacity); UpdateSkillsVisibility(); }
 
         RebuildFlashWindow();
         RebuildSctLanes();
@@ -855,6 +893,7 @@ public partial class MainWindow : Window
 
         menu.Items.Add("Show / hide repop timer", null, (_, _) => ToggleTimer());
         menu.Items.Add("Show / hide DPS meter", null, (_, _) => ToggleMeter());
+        menu.Items.Add("Show / hide skill tracker", null, (_, _) => ToggleSkills());
         menu.Items.Add("Show / hide combat text", null, (_, _) => ToggleSct());
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
@@ -923,6 +962,7 @@ public partial class MainWindow : Window
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
         try { _timer?.Close(); } catch { /* ignore */ }
         try { _meter?.Close(); } catch { /* ignore */ }
+        try { _skills?.Close(); } catch { /* ignore */ }
         try { _flash?.Close(); } catch { /* ignore */ }
         try { _raidsWindow?.Close(); } catch { /* ignore */ }
         foreach (var lane in _sctLanes.Values) { try { lane.Close(); } catch { /* ignore */ } }

@@ -76,6 +76,7 @@
                     <ListBoxItem Content="Buff bars"/>
                     <ListBoxItem Content="Repop timer"/>
                     <ListBoxItem Content="DPS meter"/>
+                    <ListBoxItem Content="Skill tracker"/>
                     <ListBoxItem Content="Combat text"/>
                         <ListBoxItem Content="Flash alerts"/>
                     </ListBox>
@@ -469,6 +470,31 @@
 
                             <TextBlock Text="Screen anchor" Style="{StaticResource FieldLabel}"/>
                             <ComboBox x:Name="MeterAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
+                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
+                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
+                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ============================ SKILL TRACKER ============================ -->
+                    <ScrollViewer x:Name="SkillsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <TextBlock Text="Skill tracker" Style="{StaticResource PageTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A small panel with one bar per skill you're grinding — session-wide hits/attempts and hit %, colored red → amber → green as the land rate climbs. Counts accumulate across fights; the panel's ⟲ button resets them. Toggle the panel from the tray."/>
+
+                            <CheckBox x:Name="SkillsVisibleCheck" Content="Show the skill tracker" Margin="0,12,0,0"/>
+
+                            <TextBlock Text="Skills to track (comma-separated)" Style="{StaticResource FieldLabel}"/>
+                            <TextBox x:Name="SkillListBox" Width="440" HorizontalAlignment="Left"
+                                     AutomationProperties.AutomationId="SkillListBox"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Use the names as they appear in the fight drill-down: melee skills lowercase (backstab, bash, kick…), spells by name (Smite). Spell resists count as failed attempts."/>
+
+                            <TextBlock Text="Screen anchor" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox x:Name="SkillsAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
                                 <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
                                 <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
