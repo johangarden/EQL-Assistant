@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Win32;
+using EQLOverlay.Interop;
 using EQLOverlay.Models;
 using EQLOverlay.Services;
 using EQLOverlay.ViewModels;
@@ -40,6 +41,7 @@ public partial class TriggerManagerWindow : Window
         Action<string> onApplied)
     {
         InitializeComponent();
+        WindowTheme.ApplyDark(this);
 
         _configService = configService;
         _config = config;

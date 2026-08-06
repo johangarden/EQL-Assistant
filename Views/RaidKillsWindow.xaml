@@ -5,10 +5,18 @@
         Width="560" Height="620"
         MinWidth="420" MinHeight="360"
         WindowStartupLocation="CenterScreen"
-        Background="#141A24"
+        Background="{StaticResource Brush.Window}"
         Icon="/assets/eqloverlay.ico"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
 
     <DockPanel Margin="12">
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">

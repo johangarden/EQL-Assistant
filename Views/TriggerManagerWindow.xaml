@@ -5,252 +5,42 @@
         Icon="/assets/eqloverlay.ico"
         Width="960" Height="700"
         WindowStartupLocation="CenterScreen"
-        Background="#141A24">
+        Background="{StaticResource Brush.Window}">
 
-    <!-- Dark theme, matching the overlay panels / fight-history window.
-         Scoped to this window so app-wide defaults stay untouched. -->
+    <!-- Shared dark theme; only window-specific styles live here. -->
     <Window.Resources>
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-        </Style>
-        <Style TargetType="TextBlock" x:Key="FieldLabel" BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="Margin" Value="0,8,0,2"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="#C9D4E3"/>
-        </Style>
-        <Style TargetType="TextBlock" x:Key="Hint" BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="Foreground" Value="#7F93AD"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Margin" Value="0,1,0,0"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-        </Style>
-        <Style TargetType="TextBlock" x:Key="PageTitle" BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Margin" Value="0,0,0,2"/>
-        </Style>
-        <Style TargetType="TextBlock" x:Key="SectionTitle" BasedOn="{StaticResource {x:Type TextBlock}}">
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Margin" Value="0,4,0,0"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
 
-        <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#232B3D"/>
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-            <Setter Property="BorderBrush" Value="#3A4560"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="4,3"/>
-            <Setter Property="CaretBrush" Value="#DCE6F5"/>
-            <Setter Property="SelectionBrush" Value="#2E6FB0"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="BorderBrush" Value="#4A5A78"/>
-                </Trigger>
-                <Trigger Property="IsFocused" Value="True">
-                    <Setter Property="BorderBrush" Value="#57A0DE"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-        </Style>
-
-        <Style TargetType="Button">
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-            <Setter Property="Background" Value="#2A3346"/>
-            <Setter Property="BorderBrush" Value="#4A5A78"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="b" CornerRadius="3"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="b" Property="Background" Value="#3C4A63"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="b" Property="Background" Value="#22608F"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="ListBox">
-            <Setter Property="Background" Value="#1B2130"/>
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-            <Setter Property="BorderBrush" Value="#3A4560"/>
-        </Style>
-        <Style TargetType="ListBoxItem">
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-            <Setter Property="Padding" Value="5,3"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="bd" Background="Transparent" CornerRadius="2"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#2A3346"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#2E6FB0"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- Sidebar navigation entries: roomier, pill-shaped. -->
-        <Style TargetType="ListBoxItem" x:Key="NavItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
-            <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="Margin" Value="0,0,0,2"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="bd" Background="Transparent" CornerRadius="5"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#2A3346"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#2E6FB0"/>
-                                <Setter Property="Foreground" Value="White"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="ComboBoxItem">
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-            <Setter Property="Padding" Value="7,4"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBoxItem">
-                        <Border x:Name="bd" Background="Transparent"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#2E6FB0"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style TargetType="ComboBox">
-            <Setter Property="Foreground" Value="#DCE6F5"/>
-            <Setter Property="MinHeight" Value="27"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <ToggleButton Focusable="False" ClickMode="Press"
-                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
-                                                      RelativeSource={RelativeSource TemplatedParent}}">
-                                <ToggleButton.Template>
-                                    <ControlTemplate TargetType="ToggleButton">
-                                        <Border x:Name="bd" Background="#232B3D" BorderBrush="#3A4560"
-                                                BorderThickness="1" CornerRadius="3">
-                                            <Path HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                  Margin="0,0,9,0" Data="M0,0 L4,4 8,0"
-                                                  Stroke="#8FA6C4" StrokeThickness="1.5"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="bd" Property="BorderBrush" Value="#4A5A78"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </ToggleButton.Template>
-                            </ToggleButton>
-                            <ContentPresenter x:Name="Selected" IsHitTestVisible="False"
-                                              Content="{TemplateBinding SelectionBoxItem}"
-                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                              Margin="8,0,26,0" VerticalAlignment="Center"/>
-                            <TextBox x:Name="PART_EditableTextBox" Visibility="Collapsed"
-                                     Background="Transparent" BorderThickness="0"
-                                     Foreground="#DCE6F5" CaretBrush="#DCE6F5"
-                                     Margin="3,1,24,1" VerticalContentAlignment="Center"/>
-                            <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   Placement="Bottom" AllowsTransparency="True" PopupAnimation="Fade">
-                                <Border Background="#1B2130" BorderBrush="#3A4560" BorderThickness="1"
-                                        CornerRadius="3" MinWidth="{TemplateBinding ActualWidth}"
-                                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                    <ScrollViewer>
-                                        <ItemsPresenter/>
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsEditable" Value="True">
-                                <Setter TargetName="Selected" Property="Visibility" Value="Collapsed"/>
-                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style TargetType="GroupBox">
-            <Setter Property="Foreground" Value="#C9D4E3"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="GroupBox">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <ContentPresenter ContentSource="Header" Margin="2,0,0,4"
-                                              TextElement.FontWeight="SemiBold"
-                                              TextElement.Foreground="#C9D4E3"/>
-                            <Border Grid.Row="1" BorderBrush="#3A4560" BorderThickness="1"
-                                    CornerRadius="4" Padding="8">
+            <!-- Sidebar navigation entries: roomier, pill-shaped. -->
+            <Style TargetType="ListBoxItem" x:Key="NavItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                <Setter Property="Padding" Value="10,8"/>
+                <Setter Property="Margin" Value="0,0,0,2"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="bd" Background="Transparent" CornerRadius="5"
+                                    Padding="{TemplateBinding Padding}">
                                 <ContentPresenter/>
                             </Border>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- One reusable anchor picker items list (cloned per combo below). -->
-        <Style TargetType="Border" x:Key="PageSep">
-            <Setter Property="BorderBrush" Value="#3A4560"/>
-            <Setter Property="BorderThickness" Value="0,1,0,0"/>
-            <Setter Property="Margin" Value="0,16,0,10"/>
-        </Style>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource Brush.Control}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource Brush.Accent}"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
     <DockPanel>
@@ -263,25 +53,33 @@
                         Width="90" Height="30" Margin="8,0,0,0"/>
                 <Button Content="Save" Click="Save_Click" DockPanel.Dock="Right"
                         Width="120" Height="30" FontWeight="Bold"
-                        Background="#2E6FB0" BorderBrush="#57A0DE"/>
+                        Style="{StaticResource PrimaryBtn}"/>
             </DockPanel>
         </Border>
 
         <DockPanel Margin="8">
             <!-- Sidebar navigation: one page per feature. -->
-            <Border DockPanel.Dock="Left" Background="#10151F" CornerRadius="6" Padding="6"
+            <Border DockPanel.Dock="Left" Background="{StaticResource Brush.Sunken}" CornerRadius="6" Padding="6"
                     Margin="0,0,8,0" Width="168">
-                <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
-                         ItemContainerStyle="{StaticResource NavItem}"
-                         SelectionChanged="NavList_SelectionChanged">
+                <DockPanel>
+                    <!-- App identity header above the navigation. -->
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,4,4,10">
+                        <Image Source="/assets/eqloverlay.ico" Width="18" Height="18" VerticalAlignment="Center"/>
+                        <TextBlock Text="EQL Assistant" Foreground="White" FontWeight="Bold"
+                                   FontSize="13" VerticalAlignment="Center" Margin="7,0,0,0"/>
+                    </StackPanel>
+                    <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
+                             ItemContainerStyle="{StaticResource NavItem}"
+                             SelectionChanged="NavList_SelectionChanged">
                     <ListBoxItem Content="Triggers" IsSelected="True"/>
                     <ListBoxItem Content="General"/>
                     <ListBoxItem Content="Buff bars"/>
                     <ListBoxItem Content="Repop timer"/>
                     <ListBoxItem Content="DPS meter"/>
                     <ListBoxItem Content="Combat text"/>
-                    <ListBoxItem Content="Flash alerts"/>
-                </ListBox>
+                        <ListBoxItem Content="Flash alerts"/>
+                    </ListBox>
+                </DockPanel>
             </Border>
 
             <Border Background="#1B2130" BorderBrush="#3A4560" BorderThickness="1" CornerRadius="6"
@@ -321,7 +119,7 @@
                             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
                                 <Button Content="Add"       Click="Add_Click"       Width="46" Margin="0,0,4,0"/>
                                 <Button Content="Library…"  Click="Library_Click"   Width="64" Margin="0,0,4,0"
-                                        Background="#2E6FB0" BorderBrush="#57A0DE"
+                                        Style="{StaticResource PrimaryBtn}"
                                         AutomationProperties.AutomationId="LibraryBtn"
                                         ToolTip="Add ready-made triggers from the ~1400-spell library"/>
                                 <Button Content="Duplicate" Click="Duplicate_Click" Width="66" Margin="0,0,4,0"/>

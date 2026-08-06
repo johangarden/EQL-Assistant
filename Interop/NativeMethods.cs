@@ -78,6 +78,18 @@ internal static class NativeMethods
         catch { /* best-effort */ }
     }
 
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(nint hWnd, int attr, ref int value, int size);
+
+    /// <summary>Dark window title bar (Windows 10 20H1+). Best-effort no-op elsewhere.</summary>
+    public static void UseDarkTitleBar(nint hWnd)
+    {
+        const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        int on = 1;
+        try { _ = DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref on, sizeof(int)); }
+        catch { /* pre-20H1 Windows — keep the light title bar */ }
+    }
+
     /// <summary>Turn mouse click-through on or off for the given window.</summary>
     public static void SetClickThrough(nint hWnd, bool enabled)
     {

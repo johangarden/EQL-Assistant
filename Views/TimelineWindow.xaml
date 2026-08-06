@@ -1,0 +1,33 @@
+<Window x:Class="EQLOverlay.Views.TimelineWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="EQL Assistant — Fight Timeline"
+        Width="940" Height="620"
+        MinWidth="600" MinHeight="380"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Brush.Window}"
+        Icon="/assets/eqloverlay.ico"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Top">
+            <TextBlock x:Name="TitleText" Style="{StaticResource PageTitle}"/>
+            <TextBlock x:Name="SubtitleText" Style="{StaticResource Hint}" Margin="0,2,0,8"/>
+            <!-- Time axis; left margin matches the lane label column, right the scrollbar. -->
+            <Canvas x:Name="AxisCanvas" Height="18" Margin="150,0,11,3" ClipToBounds="True"/>
+        </StackPanel>
+
+        <ScrollViewer VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel x:Name="LanesHost"/>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

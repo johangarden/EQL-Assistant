@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media;
 using EQLOverlay.Interop;
 
 namespace EQLOverlay.Views;
@@ -21,6 +22,14 @@ public static class PromptDialog
             WindowStyle = WindowStyle.ToolWindow,
             Topmost = true, // the overlay is topmost; make sure the prompt is above it
         };
+
+        // Same dark theme as the dialog windows (implicit styles from Controls.xaml).
+        win.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/Themes/Controls.xaml", UriKind.Relative),
+        });
+        win.Background = (Brush)win.Resources["Brush.Window"];
+        WindowTheme.ApplyDark(win);
 
         var panel = new StackPanel { Margin = new Thickness(14) };
         panel.Children.Add(new TextBlock { Text = prompt, Margin = new Thickness(0, 0, 0, 8) });

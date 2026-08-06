@@ -5,30 +5,32 @@
         Width="820" Height="520"
         MinWidth="560" MinHeight="360"
         WindowStartupLocation="CenterScreen"
-        Background="#141A24"
+        Background="{StaticResource Brush.Window}"
         Icon="/assets/eqloverlay.ico"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
 
     <Window.Resources>
-        <Style x:Key="SectionLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#5C6B82"/>
-            <Setter Property="FontSize" Value="9"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Margin" Value="0,8,0,2"/>
-        </Style>
-        <DataTemplate x:Key="StatRowTemplate">
-            <StackPanel Margin="0,1">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Right" Text="{Binding Value}" Foreground="#DCE6F5"
-                               FontSize="11" FontWeight="SemiBold" Margin="8,0,0,0"/>
-                    <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="11"
-                               TextTrimming="CharacterEllipsis"/>
-                </DockPanel>
-                <TextBlock Text="{Binding Detail}" Foreground="#5C6B82" FontSize="10"
-                           Margin="8,0,0,1" Visibility="{Binding DetailVisibility}"/>
-            </StackPanel>
-        </DataTemplate>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <DataTemplate x:Key="StatRowTemplate">
+                <StackPanel Margin="0,1">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Value}"
+                                   Foreground="{StaticResource Brush.Text}"
+                                   FontSize="11" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                        <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}" FontSize="11"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Brush.TextFaint}" FontSize="10"
+                               Margin="8,0,0,1" TextWrapping="Wrap"
+                               Visibility="{Binding DetailVisibility}"/>
+                </StackPanel>
+            </DataTemplate>
+        </ResourceDictionary>
     </Window.Resources>
 
     <DockPanel Margin="12">
@@ -52,9 +54,14 @@
                     <Button Content="Raid kills" Click="Raids_Click" Style="{StaticResource ToolBtn}"
                             AutomationProperties.AutomationId="HistoryRaidsBtn"
                             ToolTip="Raid target progression — kill counts per zone"/>
+                    <Button Content="Loot" Click="Loot_Click" Style="{StaticResource ToolBtn}"
+                            AutomationProperties.AutomationId="HistoryLootBtn"
+                            ToolTip="Loot history — upgrades, kept items and vendored drops"/>
+                    <Button Content="Timeline" Click="Timeline_Click" Style="{StaticResource ToolBtn}"
+                            AutomationProperties.AutomationId="HistoryTimelineBtn"
+                            ToolTip="Second-by-second timeline of the selected fight — a lane per ability with every hit, miss, crit and resist"/>
                 </StackPanel>
                 <ListBox x:Name="FightsList"
-                         Background="#1B2130" Foreground="#DCE6F5" BorderBrush="#3A4560" BorderThickness="1"
                          SelectionMode="Extended" FontSize="12"
                          HorizontalContentAlignment="Stretch"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
@@ -70,44 +77,62 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Width="228" Margin="0,0,10,0" Padding="10" CornerRadius="8"
+                            <Border Width="240" Margin="0,0,10,0" Padding="10" CornerRadius="8"
                                     Background="#1B2130" BorderBrush="#3A4560" BorderThickness="1"
                                     VerticalAlignment="Top">
                                 <StackPanel>
                                     <TextBlock Text="{Binding Title}" Foreground="#C9D4E3" FontWeight="Bold"
                                                FontSize="13" TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="{Binding Subtitle}" Foreground="#7F93AD" FontSize="11"
-                                               Margin="0,1,0,0"/>
+                                               Margin="0,1,0,0" TextWrapping="Wrap"/>
 
-                                    <TextBlock Text="DAMAGE" Style="{StaticResource SectionLabel}"/>
-                                    <ItemsControl ItemsSource="{Binding DamageRows}"
-                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                    <!-- ============ DAMAGE DEALT ============ -->
+                                    <Border Style="{StaticResource SectionCard}">
+                                        <StackPanel>
+                                            <TextBlock Text="Damage dealt" Foreground="#FFD54F"
+                                                       Style="{StaticResource SectionHeader}"/>
+                                            <ItemsControl ItemsSource="{Binding DamageRows}"
+                                                          ItemTemplate="{StaticResource StatRowTemplate}"/>
 
-                                    <StackPanel Visibility="{Binding SelfSectionVisibility}">
-                                        <TextBlock Text="YOUR DAMAGE — BY ABILITY" Style="{StaticResource SectionLabel}"/>
-                                        <ItemsControl ItemsSource="{Binding SelfAbilityRows}"
-                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                    </StackPanel>
+                                            <StackPanel Visibility="{Binding SelfSectionVisibility}">
+                                                <TextBlock Text="Your abilities" Style="{StaticResource SubLabel}"/>
+                                                <ItemsControl ItemsSource="{Binding SelfAbilityRows}" Margin="8,0,0,0"
+                                                              ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                            </StackPanel>
 
-                                    <StackPanel Visibility="{Binding PetSectionVisibility}">
-                                        <TextBlock Text="PET — BY ABILITY" Style="{StaticResource SectionLabel}"/>
-                                        <ItemsControl ItemsSource="{Binding PetAbilityRows}"
-                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                    </StackPanel>
+                                            <StackPanel Visibility="{Binding PetSectionVisibility}">
+                                                <TextBlock Text="Pet abilities" Style="{StaticResource SubLabel}"/>
+                                                <ItemsControl ItemsSource="{Binding PetAbilityRows}" Margin="8,0,0,0"
+                                                              ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <TextBlock Text="HEALING" Style="{StaticResource SectionLabel}"/>
-                                    <ItemsControl ItemsSource="{Binding HealingRows}"
-                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                    <!-- ============ DAMAGE TAKEN ============ -->
+                                    <Border Style="{StaticResource SectionCard}">
+                                        <StackPanel>
+                                            <TextBlock Text="Damage taken" Foreground="#FF8A80"
+                                                       Style="{StaticResource SectionHeader}"/>
+                                            <ItemsControl ItemsSource="{Binding TakenRows}"
+                                                          ItemTemplate="{StaticResource StatRowTemplate}"/>
 
-                                    <TextBlock Text="INCOMING" Style="{StaticResource SectionLabel}"/>
-                                    <ItemsControl ItemsSource="{Binding IncomingRows}"
-                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                            <StackPanel Visibility="{Binding TakenSectionVisibility}">
+                                                <TextBlock Text="What hit you" Style="{StaticResource SubLabel}"/>
+                                                <ItemsControl ItemsSource="{Binding TakenAbilityRows}" Margin="8,0,0,0"
+                                                              ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
 
-                                    <StackPanel Visibility="{Binding IncomingSectionVisibility}">
-                                        <TextBlock Text="INCOMING ON YOU — BY ABILITY" Style="{StaticResource SectionLabel}"/>
-                                        <ItemsControl ItemsSource="{Binding IncomingAbilityRows}"
-                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                    </StackPanel>
+                                    <!-- ============ HEALING ============ -->
+                                    <Border Style="{StaticResource SectionCard}">
+                                        <StackPanel>
+                                            <TextBlock Text="Healing" Foreground="#81C784"
+                                                       Style="{StaticResource SectionHeader}"/>
+                                            <ItemsControl ItemsSource="{Binding HealingRows}"
+                                                          ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>

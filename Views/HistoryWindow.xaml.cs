@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using EQLOverlay.Interop;
 using EQLOverlay.Services;
 
 namespace EQLOverlay.Views;
@@ -19,7 +20,9 @@ public partial class HistoryWindow : Window
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
     private readonly RaidKills _raids;
+    private readonly LootTracker _loot;
     private RaidKillsWindow? _raidsWindow;
+    private LootWindow? _lootWindow;
     private readonly DispatcherTimer _tick;
     private readonly List<CombatParser.FightRecord> _saved;
     private List<Entry> _shown = new();
@@ -44,17 +47,19 @@ public partial class HistoryWindow : Window
     }
 
     public sealed record FightColumn(string Title, string Subtitle,
-        List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> IncomingRows,
-        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> IncomingAbilityRows)
+        List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> TakenRows,
+        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows)
     {
         public Visibility SelfSectionVisibility => SelfAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility PetSectionVisibility => PetAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility IncomingSectionVisibility => IncomingAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids)
+    public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids, LootTracker loot)
     {
         InitializeComponent();
+        WindowTheme.ApplyDark(this);
+        _loot = loot;
         _parser = parser;
         _config = config;
         _raids = raids;
@@ -110,7 +115,8 @@ public partial class HistoryWindow : Window
         string when = r.EndedAt.Date == DateTime.Today
             ? r.EndedAt.ToString("HH:mm")
             : r.EndedAt.ToString("dd MMM HH:mm");
-        return $"{star}{when}  {r.Label}   ·   {FormatDuration(r.DurationSeconds)}   ·   {FormatDps(r.TotalDps)} dps";
+        string zone = r.Zone.Length > 0 ? $"  ·  {r.Zone}" : "";
+        return $"{star}{when}  {r.Label}   ·   {FormatDuration(r.DurationSeconds)}   ·   {FormatDps(r.TotalDps)} dps{zone}";
     }
 
     private void BuildColumns()
@@ -133,6 +139,26 @@ public partial class HistoryWindow : Window
         }
         _raidsWindow.Activate();
         _raidsWindow.Focus();
+    }
+
+    private void Timeline_Click(object sender, RoutedEventArgs e)
+    {
+        // One timeline window per click — open two fights side by side to compare.
+        var item = FightsList.SelectedItems.Cast<FightItem>().FirstOrDefault();
+        if (item is null) return;
+        new TimelineWindow(item.Entry.Rec).Show();
+    }
+
+    private void Loot_Click(object sender, RoutedEventArgs e)
+    {
+        if (_lootWindow is null)
+        {
+            _lootWindow = new LootWindow(_loot);
+            _lootWindow.Closed += (_, _) => _lootWindow = null;
+            _lootWindow.Show();
+        }
+        _lootWindow.Activate();
+        _lootWindow.Focus();
     }
 
     // ---- keep / remove --------------------------------------------------------
@@ -166,6 +192,10 @@ public partial class HistoryWindow : Window
         Sync(force: true);
     }
 
+    /// <summary>Melee swing attempts (hits + misses) — the denominator for proc rates.</summary>
+    private static int Swings(List<CombatParser.Row> abilities) =>
+        abilities.Where(a => CombatParser.IsMeleeAbility(a.Name)).Sum(a => a.Hits + a.Misses);
+
     private FightColumn BuildColumn(CombatParser.FightRecord r)
     {
         var damage = new List<StatRow>();
@@ -186,30 +216,33 @@ public partial class HistoryWindow : Window
         if (healing.Count == 0) healing.Add(new StatRow("—", "", NameFg));
 
         double dur = Math.Max(1, r.DurationSeconds);
-        var incoming = new List<StatRow>
+        var taken = new List<StatRow>
         {
             new("You", $"{FormatDps(r.IncomingSelfTotal / dur)} dps · {FormatNum(r.IncomingSelfTotal)}", IncomingFg),
         };
         if (r.IncomingPetTotal > 0)
-            incoming.Add(new StatRow("Pet",
+            taken.Add(new StatRow("Pet",
                 $"{FormatDps(r.IncomingPetTotal / dur)} dps · {FormatNum(r.IncomingPetTotal)}", IncomingFg));
 
+        string zone = r.Zone.Length > 0 ? $" · {r.Zone}" : "";
         return new FightColumn(
             r.Label,
-            $"{r.EndedAt:HH:mm:ss} · {FormatDuration(r.DurationSeconds)} · total {FormatDps(r.TotalDps)} dps",
-            damage, healing, incoming,
-            AbilityRows(r.SelfAbilities, NameFg),
-            AbilityRows(r.PetAbilities, NameFg),
-            AbilityRows(r.IncomingSelfAbilities, IncomingFg));
+            $"{r.EndedAt:HH:mm:ss} · {FormatDuration(r.DurationSeconds)} · total {FormatDps(r.TotalDps)} dps{zone}",
+            damage, healing, taken,
+            AbilityRows(r.SelfAbilities, NameFg, dur, Swings(r.SelfAbilities)),
+            AbilityRows(r.PetAbilities, NameFg, dur, Swings(r.PetAbilities)),
+            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0));
     }
 
     /// <summary>Format ability drill-down rows ("backstab  12,3 (1.100, 46%)")
-    /// with a hit-rate / damage-range detail line when attempts were tracked.</summary>
-    private static List<StatRow> AbilityRows(List<CombatParser.Row> rows, Brush fg) =>
+    /// with a hit-rate / range / rate detail line when attempts were tracked.</summary>
+    private static List<StatRow> AbilityRows(List<CombatParser.Row> rows, Brush fg,
+        double durationSec = 0, int swings = 0) =>
         rows.Select(a => new StatRow(a.Name,
-            $"{FormatDps(a.Dps)} ({FormatNum(a.Total)}, {a.Percent:0}%)", fg, AbilityDetail(a))).ToList();
+            $"{FormatDps(a.Dps)} ({FormatNum(a.Total)}, {a.Percent:0}%)", fg,
+            AbilityDetail(a, durationSec, swings))).ToList();
 
-    private static string AbilityDetail(CombatParser.Row a)
+    private static string AbilityDetail(CombatParser.Row a, double durationSec, int swings)
     {
         int attempts = a.Hits + a.Misses + a.Resists;
         if (attempts == 0) return ""; // pre-hit-tracking record (older kept fight)
@@ -225,6 +258,13 @@ public partial class HistoryWindow : Window
             parts.Add($"{a.Crits} crit");
         if (a.Resists > 0)
             parts.Add($"{a.Resists} resisted");
+
+        // Rates: how often it fires — and for procs/spells, per 100 melee swings
+        // (the number that tells you whether a proc weapon is worth it).
+        if (durationSec >= 10)
+            parts.Add($"{attempts * 60.0 / durationSec:0.#}/min");
+        if (swings > 0 && a.Hits > 0 && !CombatParser.IsMeleeAbility(a.Name))
+            parts.Add($"{100.0 * a.Hits / swings:0.#}/100 swings");
         return string.Join(" · ", parts);
     }
 

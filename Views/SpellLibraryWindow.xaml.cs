@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using EQLOverlay.Interop;
 using EQLOverlay.Models;
 using EQLOverlay.Services;
 
@@ -22,6 +23,7 @@ public partial class SpellLibraryWindow : Window
     public SpellLibraryWindow(SpellLibrary library, Action<TriggerDefinition> onAdd)
     {
         InitializeComponent();
+        WindowTheme.ApplyDark(this);
         _library = library;
         _onAdd = onAdd;
 

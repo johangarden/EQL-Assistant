@@ -143,6 +143,28 @@ public partial class App : Application
 
             engine.ProcessLine("a line matching nothing at all");
             Check("non-matching line ignored", engine.Bars.Count == 1);
+
+            // Loot line parsing (all three real forms from the log).
+            Check("loot: upgrade form", LootTracker.TryParseLoot(
+                "You looted a Platinum Ring +1 from Gynok Moltor's corpse to create a Platinum Ring +4",
+                out var lk, out var li, out var lm, out var lr, out _)
+                && lk == LootTracker.LootKind.Upgrade && li == "Platinum Ring +1"
+                && lm == "Gynok Moltor" && lr == "Platinum Ring +4");
+            Check("loot: kept form strips article", LootTracker.TryParseLoot(
+                "--You have looted a Raw-Hide Gorget +2 from a ghoul's corpse.--",
+                out lk, out li, out lm, out lr, out _)
+                && lk == LootTracker.LootKind.Kept && li == "Raw-Hide Gorget +2" && lm == "a ghoul");
+            Check("loot: kept stack keeps its count", LootTracker.TryParseLoot(
+                "--You have looted 2 Bone Chips from an elf skeleton's corpse.--",
+                out lk, out li, out lm, out lr, out _)
+                && li == "2 Bone Chips" && lm == "an elf skeleton");
+            Check("loot: sold form + coin math", LootTracker.TryParseLoot(
+                "You looted a Bronze Spear +1 from Priest Amiaz's corpse and sold it for 2 platinum, 2 gold, 1 silver and 4 copper.",
+                out lk, out li, out lm, out lr, out long lc)
+                && lk == LootTracker.LootKind.Sold && li == "Bronze Spear +1" && lc == 2214);
+            Check("loot: coin formatting", LootTracker.FormatCoins(2214) == "2p 2g 1s 4c");
+            Check("loot: combat line is not loot", !LootTracker.TryParseLoot(
+                "You slash a rat for 5 points of damage.", out lk, out li, out lm, out lr, out _));
         }
         catch (Exception ex)
         {
@@ -285,6 +307,9 @@ public partial class App : Application
             var p = new CombatParser { SelfName = "Johan", PetName = "Jabber" };
             var sct = new List<CombatParser.SctHit>();
             p.SctEvent += hit => sct.Add(hit);
+
+            p.ProcessLine($"[{Ts(0)}] You have entered Clan Crushbone.");
+            Check("zone tracked from entry line", p.CurrentZone == "Clan Crushbone");
             string Ts(int sec) => new DateTime(2026, 8, 3, 12, 0, sec)
                 .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -388,6 +413,7 @@ public partial class App : Application
             p.ProcessLine($"[{Ts(13)}] A gnoll pup tries to bite Johan, but Johan dodges!");
             p.ProcessLine($"[{Ts(14)}] Your target resisted the Burst of Flame spell.");
             p.ProcessLine($"[{Ts(14)}] You resisted the Frost Breath spell!");
+            p.ProcessLine($"[{Ts(14)}] You resist ice boned skeleton's Ice Bone Frost Burst!");
 
             var ab2 = p.GetAbilityRows("Johan");
             var slash = ab2.First(r => r.Name == "slash");
@@ -402,6 +428,12 @@ public partial class App : Application
                 inc2.First(r => r.Name == "bite") is { Hits: 0, Misses: 2, Total: 0 });
             Check("incoming: your spell resist tracked",
                 inc2.First(r => r.Name == "Frost Breath") is { Resists: 1, Total: 0 });
+            Check("incoming: possessive resist form strips the attacker",
+                inc2.First(r => r.Name == "Ice Bone Frost Burst") is { Resists: 1 });
+
+            Check("melee ability classification for proc rates",
+                CombatParser.IsMeleeAbility("backstab") && CombatParser.IsMeleeAbility("slash")
+                && !CombatParser.IsMeleeAbility("thorns") && !CombatParser.IsMeleeAbility("Tainted Breath"));
 
             // Raid-kill death-line parsing (level suffixes stripped).
             Check("raid kill: slain-by line",
@@ -463,7 +495,23 @@ public partial class App : Application
             Check("ended fight archived to history", p.History.Count == 1
                 && p.History[0].Label.StartsWith("a gnoll pup") // multi-enemy pull -> "+N" suffix
                 && Math.Abs(p.History[0].DurationSeconds - 18) < 0.01 // last activity = the Ts(18) line
-                && p.History[0].IncomingSelfTotal == 126); // 20 melee + 6 thorns + 100 non-melee
+                && p.History[0].IncomingSelfTotal == 126 // 20 melee + 6 thorns + 100 non-melee
+                && p.History[0].Zone == "Clan Crushbone");
+
+            // Timeline events captured alongside the stats.
+            var ev = p.History[0].Events;
+            Check("timeline: events recorded across streams", ev.Count > 10
+                && ev.Any(x => x is { Stream: CombatParser.FightStream.SelfOut, Amount: > 0 })
+                && ev.Any(x => x is { Stream: CombatParser.FightStream.SelfIn, Amount: > 0 })
+                && ev.Any(x => x.Stream == CombatParser.FightStream.HealOut)
+                && ev.Any(x => x.Stream == CombatParser.FightStream.HealIn));
+            Check("timeline: miss/resist/crit flags captured",
+                ev.Any(x => x is { Ability: "slash", Miss: true, Stream: CombatParser.FightStream.SelfOut })
+                && ev.Any(x => x is { Ability: "Frost Breath", Resist: true, Stream: CombatParser.FightStream.SelfIn })
+                && ev.Any(x => x is { Ability: "crush", Crit: true }));
+            Check("timeline: offsets inside the fight window",
+                ev.All(x => x.T >= 0 && x.T <= p.History[0].DurationSeconds + 0.01)
+                && !p.History[0].EventsTruncated);
             p.ProcessLine($"[{Ts(40)}] You slash a rat for 5 points of damage.");
             Check("next combat line starts a fresh fight",
                 p.InCombat && p.GetRows(false).Count == 1 && p.IncomingSelfTotal == 0);
@@ -489,6 +537,8 @@ public partial class App : Application
                 && back[0].Damage.Any(r => r.Enemy)
                 && back[0].SelfAbilities.Any(r => r.Name == "Burst of Flame" && r.Total == 30)
                 && back[0].SelfAbilities.Any(r => r.Name == "crush" && r.Crits == 1)
+                && back[0].Events.Count == p.History[0].Events.Count
+                && back[0].Events.Any(x => x.Miss)
                 && back[0].IncomingSelfAbilities.Any(r => r.Name == "hit" && r.Total == 20));
         }
         catch (Exception ex)
@@ -515,7 +565,20 @@ public partial class App : Application
             p.SctEvent += hit => sctCounts[hit.Kind] = 1 + sctCounts.GetValueOrDefault(hit.Kind);
 
             int lines = 0;
-            foreach (var line in File.ReadLines(path)) { p.Replay(line); lines++; }
+            int lootUp = 0, lootKept = 0, lootSold = 0;
+            long lootCopper = 0;
+            var tsRx = new System.Text.RegularExpressions.Regex(@"^\[.+?\]\s?");
+            foreach (var line in File.ReadLines(path))
+            {
+                p.Replay(line);
+                lines++;
+                if (LootTracker.TryParseLoot(tsRx.Replace(line, "", 1), out var lk, out _, out _, out _, out long lc))
+                {
+                    if (lk == LootTracker.LootKind.Upgrade) lootUp++;
+                    else if (lk == LootTracker.LootKind.Kept) lootKept++;
+                    else { lootSold++; lootCopper += lc; }
+                }
+            }
             p.Tick(DateTime.MaxValue);
 
             report.AppendLine($"lines: {lines}   fights: {p.History.Count}   self: {p.SelfName}");
@@ -523,7 +586,7 @@ public partial class App : Application
                 sctCounts.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}")));
 
             var dmg = new Dictionary<string, double>();
-            var abil = new Dictionary<string, (double Total, int Hits, int Misses, int Crits)>();
+            var abil = new Dictionary<string, (double Total, int Hits, int Misses, int Resists, int Crits)>();
             foreach (var f in p.History)
             {
                 foreach (var r in f.Damage.Where(r => !r.Enemy))
@@ -531,15 +594,16 @@ public partial class App : Application
                 foreach (var a in f.SelfAbilities)
                 {
                     var cur = abil.GetValueOrDefault(a.Name);
-                    abil[a.Name] = (cur.Total + a.Total, cur.Hits + a.Hits, cur.Misses + a.Misses, cur.Crits + a.Crits);
+                    abil[a.Name] = (cur.Total + a.Total, cur.Hits + a.Hits, cur.Misses + a.Misses,
+                        cur.Resists + a.Resists, cur.Crits + a.Crits);
                 }
             }
             report.AppendLine("--- player damage across all fights ---");
             foreach (var kv in dmg.OrderByDescending(kv => kv.Value).Take(8))
                 report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
-            report.AppendLine("--- your abilities (total / hits / misses / crits) ---");
+            report.AppendLine("--- your abilities (total / hits / misses / resists / crits) ---");
             foreach (var kv in abil.OrderByDescending(kv => kv.Value.Total).Take(14))
-                report.AppendLine($"  {kv.Key}: {kv.Value.Total:N0} / {kv.Value.Hits} / {kv.Value.Misses} / {kv.Value.Crits}");
+                report.AppendLine($"  {kv.Key}: {kv.Value.Total:N0} / {kv.Value.Hits} / {kv.Value.Misses} / {kv.Value.Resists} / {kv.Value.Crits}");
             double incoming = p.History.Sum(f => f.IncomingSelfTotal);
             report.AppendLine($"--- incoming on you across all fights: {incoming:N0} ---");
             var incAb = new Dictionary<string, double>();
@@ -548,6 +612,7 @@ public partial class App : Application
                     incAb[a.Name] = incAb.GetValueOrDefault(a.Name) + a.Total;
             foreach (var kv in incAb.OrderByDescending(kv => kv.Value).Take(8))
                 report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
+            report.AppendLine($"--- loot: {lootUp} upgrades, {lootKept} kept, {lootSold} vendored for {LootTracker.FormatCoins(lootCopper)} ---");
             Environment.ExitCode = 0;
         }
         catch (Exception ex)

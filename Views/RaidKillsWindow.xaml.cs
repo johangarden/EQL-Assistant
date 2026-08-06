@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using EQLOverlay.Interop;
 using EQLOverlay.Services;
 
 namespace EQLOverlay.Views;
@@ -23,6 +24,7 @@ public partial class RaidKillsWindow : Window
     public RaidKillsWindow(RaidKills raids)
     {
         InitializeComponent();
+        WindowTheme.ApplyDark(this);
         _raids = raids;
 
         _tick = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };

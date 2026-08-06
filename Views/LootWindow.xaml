@@ -1,0 +1,65 @@
+<Window x:Class="EQLOverlay.Views.LootWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="EQL Assistant — Loot History"
+        Width="680" Height="560"
+        MinWidth="500" MinHeight="360"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Brush.Window}"
+        Icon="/assets/eqloverlay.ico"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Top">
+            <DockPanel>
+                <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.Gold}"
+                           FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                <TextBlock Text="Loot history" Style="{StaticResource PageTitle}"/>
+            </DockPanel>
+            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,8"
+                       Text="Every item looted, from the log: upgrades applied to your gear, items kept in your bags, and auto-vendored drops with what they sold for."/>
+
+            <DockPanel Margin="0,0,0,8">
+                <ComboBox x:Name="KindBox" DockPanel.Dock="Right" Width="130" Margin="8,0,0,0"
+                          SelectionChanged="Filters_Changed" SelectedValuePath="Tag">
+                    <ComboBoxItem Content="Everything" Tag="" IsSelected="True"/>
+                    <ComboBoxItem Content="Upgrades" Tag="Upgrade"/>
+                    <ComboBoxItem Content="Kept" Tag="Kept"/>
+                    <ComboBoxItem Content="Vendored" Tag="Sold"/>
+                </ComboBox>
+                <TextBox x:Name="SearchBox" TextChanged="Filters_Changed"
+                         AutomationProperties.AutomationId="LootSearchBox"
+                         ToolTip="Search item, mob or zone"/>
+            </DockPanel>
+        </StackPanel>
+
+        <ListBox x:Name="ResultsList"
+                 HorizontalContentAlignment="Stretch"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingPanel.VirtualizationMode="Recycling">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <DockPanel Margin="2,3">
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding ValueText}"
+                                   Foreground="{Binding ValueBrush}" FontWeight="SemiBold" FontSize="11"
+                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Item}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Brush.TextHint}"
+                                       FontSize="11" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </DockPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</Window>

@@ -84,7 +84,7 @@
 
             <!-- Incoming damage taken by you (and your pet, when a pet name is set). -->
             <Border BorderBrush="#3A4560" BorderThickness="0,1,0,0" Margin="0,4,0,5"/>
-            <TextBlock Text="INCOMING" Foreground="#5C6B82" FontSize="9" FontWeight="Bold" Margin="1,0,0,2"/>
+            <TextBlock Text="DAMAGE TAKEN" Foreground="#5C6B82" FontSize="9" FontWeight="Bold" Margin="1,0,0,2"/>
             <DockPanel>
                 <TextBlock x:Name="IncomingSelfValue" DockPanel.Dock="Right" Text="—"
                            Foreground="#FF8A80" FontSize="11" FontWeight="Bold"/>
