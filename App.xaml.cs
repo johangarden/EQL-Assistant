@@ -538,6 +538,9 @@ public partial class App : Application
             p.ProcessLine($"[{Ts(45)}] You have become better at Reave! (4)");
             Check("reave parses as a melee hit", p.GetSessionSkill("reave") is { Hits: 1, Misses: 1 }
                 && CombatParser.IsMeleeAbility("reave"));
+            Check("SCT: reave melee hit fires the outgoing lane",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.OutgoingSelf, Ability: "reave",
+                    Amount: 24, Flavor: CombatParser.SctFlavor.Melee }));
             Check("skill-ups tracked with level (case-insensitive name)",
                 p.GetSessionSkill("REAVE") is { Level: 4, Ups: 2 });
 
