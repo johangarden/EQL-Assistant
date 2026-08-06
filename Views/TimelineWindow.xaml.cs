@@ -101,6 +101,7 @@ public partial class TimelineWindow : Window
         double scale = width / dur;
 
         DrawAxis(width, dur, scale);
+        DrawGraph(width, dur, scale);
 
         if (_rec.Events.Count == 0)
         {
@@ -197,6 +198,86 @@ public partial class TimelineWindow : Window
         }
 
         return row;
+    }
+
+    /// <summary>Rolling-DPS curves (5s window) for each side of the fight.</summary>
+    private void DrawGraph(double width, double dur, double scale)
+    {
+        GraphCanvas.Children.Clear();
+        LegendPanel.Children.Clear();
+
+        if (_rec.Events.Count == 0)
+        {
+            GraphHost.Visibility = Visibility.Collapsed;
+            return;
+        }
+        GraphHost.Visibility = Visibility.Visible;
+        GraphCanvas.Width = width;
+
+        double h = GraphCanvas.Height;
+        double win = Math.Min(5, dur);              // rolling window (short fights shrink it)
+        double step = Math.Max(0.25, dur / 400);    // sample spacing
+
+        var series = new (string Label, Brush Brush, Func<FightEvent, bool> Pick)[]
+        {
+            ("You", Rgb(0xFF, 0xC1, 0x2E), e => e.Stream == FightStream.SelfOut),
+            ("Pet", Rgb(0xA1, 0x88, 0x7F), e => e.Stream == FightStream.PetOut),
+            ("Taken", Rgb(0xFF, 0x8A, 0x80), e => e.Stream is FightStream.SelfIn or FightStream.PetIn),
+            ("Healing", Rgb(0x81, 0xC7, 0x84), e => e.Stream is FightStream.HealOut or FightStream.HealIn),
+        };
+
+        // Pass 1: sample every series so they share one vertical scale.
+        var sampled = new List<(string Label, Brush Brush, List<(double T, double Dps)> Points)>();
+        double maxDps = 0;
+        foreach (var (label, brush, pick) in series)
+        {
+            var evs = _rec.Events.Where(e => pick(e) && e.Amount > 0).OrderBy(e => e.T).ToList();
+            if (evs.Count == 0) continue;
+
+            var pts = new List<(double, double)>();
+            double sum = 0;
+            int add = 0, drop = 0;
+            for (double t = 0; t <= dur + 1e-9; t += step)
+            {
+                while (add < evs.Count && evs[add].T <= t) sum += evs[add++].Amount;
+                while (drop < add && evs[drop].T <= t - win) sum -= evs[drop++].Amount;
+                double dps = sum / Math.Min(Math.Max(t, step), win);
+                pts.Add((t, dps));
+                if (dps > maxDps) maxDps = dps;
+            }
+            sampled.Add((label, brush, pts));
+        }
+        if (maxDps <= 0) { GraphHost.Visibility = Visibility.Collapsed; return; }
+
+        // Pass 2: draw, and build the legend for the series that exist.
+        foreach (var (label, brush, pts) in sampled)
+        {
+            var line = new Polyline
+            {
+                Stroke = brush,
+                StrokeThickness = 1.6,
+                StrokeLineJoin = PenLineJoin.Round,
+            };
+            foreach (var (t, dps) in pts)
+                line.Points.Add(new Point(t * scale, h - 4 - dps / maxDps * (h - 12)));
+            GraphCanvas.Children.Add(line);
+
+            LegendPanel.Children.Add(new Border
+            {
+                Width = 8, Height = 8, CornerRadius = new CornerRadius(2),
+                Background = brush, Margin = new Thickness(0, 0, 4, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            LegendPanel.Children.Add(new TextBlock
+            {
+                Text = label, FontSize = 10,
+                Foreground = (Brush)FindResource("Brush.TextHint"),
+                Margin = new Thickness(0, 0, 10, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+        }
+
+        PeakText.Text = $"5s rolling · peak {maxDps:N0}/s";
     }
 
     private void DrawAxis(double width, double dur, double scale)

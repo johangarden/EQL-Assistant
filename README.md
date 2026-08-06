@@ -175,7 +175,9 @@ sections:
 
 Fights are tagged with the **zone** they happened in.
 
-**Timeline** opens the selected fight as a second-by-second visual: one lane
+**Timeline** opens the selected fight as a second-by-second visual: a
+**rolling-DPS graph** on top (5s window — one curve each for your damage, pet,
+damage taken and healing, with the fight's peak), and below it one mark lane
 per ability, grouped into *Your damage / Pet / Damage taken / Healing*. Mark
 height scales with the amount; crits are wider and brighter, misses gray,
 resists purple. Hover any mark for the exact number. Open two fights side by
