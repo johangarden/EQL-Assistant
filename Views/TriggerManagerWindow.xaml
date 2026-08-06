@@ -487,11 +487,37 @@
 
                             <CheckBox x:Name="SkillsVisibleCheck" Content="Show the skills section on the DPS meter" Margin="0,12,0,0"/>
 
-                            <TextBlock Text="Skills to track (comma-separated)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox x:Name="SkillListBox" Width="440" HorizontalAlignment="Left"
-                                     AutomationProperties.AutomationId="SkillListBox"/>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="Use the names as they appear in the fight drill-down: melee skills lowercase (backstab, bash, kick…), spells by name (Smite). Spell resists count as failed attempts."/>
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="290"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="300"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Skills to track (comma-separated)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox x:Name="SkillListBox" TextWrapping="Wrap" AcceptsReturn="False"
+                                             MinHeight="52" VerticalContentAlignment="Top"
+                                             AutomationProperties.AutomationId="SkillListBox"/>
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="Easiest: pick from the seen list — it uses the log's exact spelling. Spell resists count as failed attempts."/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,4">
+                                        <TextBlock Text="Seen in your log" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource Brush.TextDim}"
+                                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <Button Content="← Track" Click="SkillFromSeen_Click"
+                                                AutomationProperties.AutomationId="SkillFromSeenBtn"/>
+                                    </StackPanel>
+                                    <ListBox x:Name="SeenSkillsList" Height="170"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             MouseDoubleClick="SkillFromSeen_Click"/>
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="Every ability you've used this session, busiest first ('Catch up from today's log' fills it after a restart). Double-click to track."/>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </ScrollViewer>
 

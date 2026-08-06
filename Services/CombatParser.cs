@@ -153,6 +153,10 @@ public sealed class CombatParser
     public SkillStat? GetSessionSkill(string ability) =>
         _sessionSkills.TryGetValue(ability.Trim(), out var s) ? s : null;
 
+    /// <summary>Every ability you've used this session, exactly as the log spells it
+    /// (the Manager's "seen in your log" skill picker).</summary>
+    public IReadOnlyDictionary<string, SkillStat> SessionSkills => _sessionSkills;
+
     public void ResetSessionSkills() => _sessionSkills.Clear();
 
     private SkillStat SessionSkill(string ability)

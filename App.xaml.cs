@@ -79,7 +79,7 @@ public partial class App : Application
             var cfg = cs.LoadSettings();
             cs.EnsureDefaultLoadout();
             var mgr = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(),
-                new RaidKills(cs), new SpellLibrary(cs), _ => { });
+                new RaidKills(cs), new SpellLibrary(cs), new CombatParser(), _ => { });
             mgr.Show();
             mgr.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");

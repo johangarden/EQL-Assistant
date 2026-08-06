@@ -606,7 +606,7 @@ public partial class MainWindow : Window
     {
         if (_manager is null)
         {
-            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, OnManagerApplied);
+            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied);
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
         }
