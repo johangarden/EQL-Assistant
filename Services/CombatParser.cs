@@ -27,12 +27,15 @@ public sealed class CombatParser
     public const int MaxHistory = 50;
 
     /// <summary>Which scrolling-combat-text lane an event belongs to.</summary>
-    public enum SctKind { IncomingSelf, IncomingPet, OutgoingSelf, OutgoingPet, HealOut, HealIn }
+    public enum SctKind { IncomingSelf, IncomingPet, OutgoingSelf, OutgoingPet, HealOut, HealIn, Progress }
 
     /// <summary>What kind of hit it was — lanes color melee, spells and procs differently.</summary>
     public enum SctFlavor { Melee, Spell, Proc, Heal }
 
-    public readonly record struct SctHit(SctKind Kind, string Ability, double Amount, SctFlavor Flavor, bool Crit);
+    /// <summary>When <paramref name="Text"/> is set, the lane shows it verbatim
+    /// instead of formatting <paramref name="Amount"/> ("+3,5%" xp floats).</summary>
+    public readonly record struct SctHit(SctKind Kind, string Ability, double Amount,
+        SctFlavor Flavor, bool Crit, string? Text = null);
 
     /// <summary>Raised per parsed combat event, for scrolling combat text.</summary>
     public event Action<SctHit>? SctEvent;
@@ -326,6 +329,21 @@ public sealed class CombatParser
         @"^You have become better at (?<skill>.+?)! \((?<lvl>\d+)\)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Progress lane: "You gain experience! (3.552%)",
+    // "Your faction standing with Burning Dead has been adjusted by -2.",
+    // "You have gained an ability point!  You now have 2 ability points."
+    private static readonly Regex XpRx = new(
+        @"^You gain (?:party |group )?experience! \((?<pct>\d+(?:\.\d+)?)%\)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex FactionRx = new(
+        @"^Your faction standing with (?<fac>.+?) has been adjusted by (?<amt>-?\d+)\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex AaRx = new(
+        @"^You have gained an ability point! +You now have (?<n>\d+) ability points",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -415,6 +433,35 @@ public sealed class CombatParser
             var s = SessionSkill(m.Groups["skill"].Value.Trim());
             s.Level = (int)Amount(m, "lvl");
             s.Ups++;
+            return;
+        }
+
+        // Progress floats (xp / faction / AA) — informational only, never combat.
+        m = XpRx.Match(body);
+        if (m.Success)
+        {
+            double pct = double.Parse(m.Groups["pct"].Value, CultureInfo.InvariantCulture);
+            SctEvent?.Invoke(new SctHit(SctKind.Progress, "xp", pct, SctFlavor.Melee, false,
+                $"+{pct.ToString("0.##", CultureInfo.CurrentCulture)}%"));
+            return;
+        }
+
+        m = FactionRx.Match(body);
+        if (m.Success)
+        {
+            double amt = Amount(m, "amt");
+            SctEvent?.Invoke(new SctHit(SctKind.Progress, m.Groups["fac"].Value, amt,
+                amt >= 0 ? SctFlavor.Spell : SctFlavor.Proc, false,
+                amt >= 0 ? $"+{amt:N0}" : amt.ToString("N0")));
+            return;
+        }
+
+        m = AaRx.Match(body);
+        if (m.Success)
+        {
+            double n = Amount(m, "n");
+            SctEvent?.Invoke(new SctHit(SctKind.Progress, $"{n:N0} total", n,
+                SctFlavor.Melee, true, "AA point!"));
         }
     }
 

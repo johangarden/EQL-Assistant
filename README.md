@@ -210,8 +210,10 @@ Both open from the Fight History window (and raid kills from the tray):
 
 ## Scrolling combat text
 
-Floating numbers in up to six fixed lanes, each its own movable panel with its
-own anchor: incoming (you/pet), outgoing (you/pet), your heals, heals on you.
+Floating numbers in up to seven fixed lanes, each its own movable panel with
+its own anchor: incoming (you/pet), outgoing (you/pet), your heals, heals on
+you, and an **XP & faction** lane — xp gains float gold ("+3,5% xp"), faction
+adjustments teal/red by sign with the faction name, and AA points float big.
 Melee, spells/DoTs and procs get distinct colors per lane; crits render big
 with a "!". Big-hit threshold, number size and lane sizes are on the Combat
 text page. Master toggle: Ctrl+Alt+C.

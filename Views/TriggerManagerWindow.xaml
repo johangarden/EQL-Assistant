@@ -547,6 +547,7 @@
                             <CheckBox x:Name="SctHealsInCheck" Content="Heals on you (from others)" Margin="0,6,0,0"/>
                             <CheckBox x:Name="SctPetInCheck" Content="Pet incoming damage" Margin="0,6,0,0"/>
                             <CheckBox x:Name="SctPetOutCheck" Content="Pet outgoing damage" Margin="0,6,0,0"/>
+                            <CheckBox x:Name="SctProgressCheck" Content="XP, faction hits &amp; AA points" Margin="0,6,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Appearance" Style="{StaticResource SectionTitle}"/>

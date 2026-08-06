@@ -125,6 +125,9 @@ public sealed class OverlayConfig
     public bool SctPetIncoming { get; set; } = false;
     public bool SctPetOutgoing { get; set; } = false;
 
+    /// <summary>XP gains, faction adjustments and AA points as floating text.</summary>
+    public bool SctProgress { get; set; } = true;
+
     /// <summary>SCT number size; hits at/above the big-hit threshold render 40% larger.</summary>
     public double SctFontSize { get; set; } = 18;
     public double SctBigHit { get; set; } = 200;
