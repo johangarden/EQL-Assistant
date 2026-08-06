@@ -153,7 +153,9 @@ big `m:ss`, pulses red near 0 and beeps at 0. Controls: **☰** mode/presets ·
 **Named respawns** (Repop timer page) are **global** — independent of loadouts.
 When the mob's death line appears in the log, the watch auto-starts with its
 respawn time. Adding one is two clicks: pick from **Recent kills** (the last 10
-deaths seen in the log) → set the respawn seconds. With several running, the
+deaths seen in the log) → set the respawn seconds — the **zone is filled in
+automatically**, and both the Manager list and the watch's ☰ menu are
+**grouped by zone** so long lists stay navigable. With several running, the
 watch shows the **soonest spawn** big, the rest as secondary rows.
 
 ## DPS meter, fight history and timeline

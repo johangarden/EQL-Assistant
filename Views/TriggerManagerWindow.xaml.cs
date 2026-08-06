@@ -79,10 +79,19 @@ public partial class TriggerManagerWindow : Window
         MuteCheck.IsChecked = _alerts.Muted;
         MuteCheck.Click += (_, _) => _alerts.Muted = MuteCheck.IsChecked == true;
 
-        // Global named respawns (repop page).
+        // Global named respawns (repop page), grouped by zone.
         foreach (var r in _configService.LoadRespawns())
             _respawns.Add(RespawnViewModel.FromEntry(r));
         RespawnList.ItemsSource = _respawns;
+        var respawnView = (System.Windows.Data.ListCollectionView)
+            System.Windows.Data.CollectionViewSource.GetDefaultView(_respawns);
+        respawnView.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(nameof(RespawnViewModel.ZoneGroup)));
+        respawnView.CustomSort = RespawnComparer.Instance; // zones A→Z, zoneless last
+        respawnView.IsLiveGrouping = true;
+        respawnView.IsLiveSorting = true;
+        respawnView.LiveGroupingProperties.Add(nameof(RespawnViewModel.ZoneGroup));
+        respawnView.LiveSortingProperties.Add(nameof(RespawnViewModel.ZoneGroup));
+        respawnView.LiveSortingProperties.Add(nameof(RespawnViewModel.Name));
 
         // Recent kills + seen skills pickers — refresh while the window is open.
         RefreshRecentDeaths();
@@ -139,6 +148,22 @@ public partial class TriggerManagerWindow : Window
 
     private readonly ObservableCollection<RespawnViewModel> _respawns = new();
 
+    /// <summary>Zoned respawns A→Z by zone then name; zoneless entries sink to the bottom.</summary>
+    private sealed class RespawnComparer : System.Collections.IComparer
+    {
+        public static readonly RespawnComparer Instance = new();
+
+        public int Compare(object? x, object? y)
+        {
+            if (x is not RespawnViewModel a || y is not RespawnViewModel b) return 0;
+            bool aNone = string.IsNullOrWhiteSpace(a.Zone);
+            bool bNone = string.IsNullOrWhiteSpace(b.Zone);
+            if (aNone != bNone) return aNone ? 1 : -1;
+            int byZone = string.Compare(a.ZoneGroup, b.ZoneGroup, StringComparison.OrdinalIgnoreCase);
+            return byZone != 0 ? byZone : string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     private void RespawnList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         RespawnEditor.DataContext = RespawnList.SelectedItem;
@@ -147,7 +172,12 @@ public partial class TriggerManagerWindow : Window
 
     private void RespawnAdd_Click(object sender, RoutedEventArgs e)
     {
-        var vm = new RespawnViewModel { Name = "New respawn", Seconds = 400 };
+        var vm = new RespawnViewModel
+        {
+            Name = "New respawn",
+            Seconds = 400,
+            Zone = _combat.CurrentZone, // where you are is the best guess
+        };
         _respawns.Add(vm);
         RespawnList.SelectedItem = vm;
     }
@@ -158,7 +188,7 @@ public partial class TriggerManagerWindow : Window
     private readonly CombatParser _combat;
     private readonly System.Windows.Threading.DispatcherTimer _deathsTick;
 
-    private sealed record DeathItem(string Name, string Text)
+    private sealed record DeathItem(string Name, string Zone, string Text)
     {
         public override string ToString() => Text;
     }
@@ -166,7 +196,10 @@ public partial class TriggerManagerWindow : Window
     private void RefreshRecentDeaths()
     {
         var items = _raids.RecentDeaths
-            .Select(d => new DeathItem(d.Name, $"{d.Name}   ·   {Ago(d.When)}"))
+            .Select(d => new DeathItem(d.Name, d.Zone,
+                d.Zone.Length > 0
+                    ? $"{d.Name}   ·   {Ago(d.When)}   ·   {d.Zone}"
+                    : $"{d.Name}   ·   {Ago(d.When)}"))
             .ToList();
 
         // Keep the selection stable across refreshes.
@@ -247,7 +280,7 @@ public partial class TriggerManagerWindow : Window
             return;
         }
 
-        var vm = new RespawnViewModel { Name = death.Name, Seconds = 400 };
+        var vm = new RespawnViewModel { Name = death.Name, Zone = death.Zone, Seconds = 400 };
         _respawns.Add(vm);
         RespawnList.SelectedItem = vm;
         Status($"Added respawn for '{death.Name}' — set its respawn time and Save.");

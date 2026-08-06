@@ -496,6 +496,11 @@ public partial class App : Application
             Check("recent deaths: newest first, deduped",
                 rk.RecentDeaths.Count == 2
                 && rk.RecentDeaths[0].Name == "a rat" && rk.RecentDeaths[1].Name == "a bat");
+            rk.ProcessLine("[x] You have entered Blackburrow.");
+            rk.ProcessLine("[x] a gnoll pup has been slain by Johan!");
+            Check("recent deaths carry the zone they happened in",
+                rk.RecentDeaths[0] is { Name: "a gnoll pup", Zone: "Blackburrow" }
+                && rk.RecentDeaths[1].Zone == ""); // killed before any zone line
 
             // Idle finalize archives the fight; a new line starts fresh.
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
@@ -570,6 +575,13 @@ public partial class App : Application
                     Amount: 5, Flavor: CombatParser.SctFlavor.Spell, Text: "+5" }));
             Check("SCT: AA point floats big",
                 sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Crit: true, Text: "AA point!" }));
+            p.ProcessLine($"[{Ts(46)}] You have gained an ability point!  You now have 1 ability point.");
+            Check("SCT: singular '1 ability point' still floats",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Text: "AA point!", Ability: "1 total" }));
+            p.ProcessLine($"[{Ts(46)}] You have improved Mastery of the Past 2 at a cost of 4 ability points.");
+            Check("SCT: AA spend floats with the improved ability",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Text: "-4 AA",
+                    Ability: "Mastery of the Past 2", Amount: -4 }));
             Check("progress lines never touch the fight model",
                 p.InCombat == wasActive && Math.Abs(p.DurationSeconds - durBefore) < 0.001);
 

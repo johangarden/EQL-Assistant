@@ -340,8 +340,15 @@ public sealed class CombatParser
         @"^Your faction standing with (?<fac>.+?) has been adjusted by (?<amt>-?\d+)\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // The total is singular at 1 ("1 ability point.") and absent in no variant we
+    // know — but stay tolerant and float the gain even without a readable total.
     private static readonly Regex AaRx = new(
-        @"^You have gained an ability point! +You now have (?<n>\d+) ability points",
+        @"^You have gained an ability point!(?: +You now have (?<n>\d+) ability points?\.?)?",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // AA spend: "You have improved Mastery of the Past 2 at a cost of 4 ability points."
+    private static readonly Regex AaSpendRx = new(
+        @"^You have improved (?<ab>.+?) at a cost of (?<n>\d+) ability points?\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex TimestampPrefix =
@@ -460,8 +467,18 @@ public sealed class CombatParser
         if (m.Success)
         {
             double n = Amount(m, "n");
-            SctEvent?.Invoke(new SctHit(SctKind.Progress, $"{n:N0} total", n,
+            SctEvent?.Invoke(new SctHit(SctKind.Progress,
+                m.Groups["n"].Success ? $"{n:N0} total" : "", n,
                 SctFlavor.Melee, true, "AA point!"));
+            return;
+        }
+
+        m = AaSpendRx.Match(body);
+        if (m.Success)
+        {
+            double n = Amount(m, "n");
+            SctEvent?.Invoke(new SctHit(SctKind.Progress, m.Groups["ab"].Value, -n,
+                SctFlavor.Spell, false, $"-{n:N0} AA"));
         }
     }
 

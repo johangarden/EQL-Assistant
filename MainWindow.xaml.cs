@@ -283,7 +283,9 @@ public partial class MainWindow : Window
                 new SolidColorBrush(def.Melee), new SolidColorBrush(def.Spell), new SolidColorBrush(def.Proc),
                 o.Opacity, o.SctFontSize, o.SctBigHit,
                 o.SctLaneWidth, o.SctLaneHeight,
-                centerX + def.OffsetFromCenter - o.SctLaneWidth / 2, topY);
+                centerX + def.OffsetFromCenter - o.SctLaneWidth / 2, topY,
+                // xp/faction floats are rare and worth reading — drift up slowly.
+                lifetimeSeconds: def.Kind == CombatParser.SctKind.Progress ? 7 : 2.6);
             lane.Show();
             lane.SetLocked(_vm.Locked);
             _sctLanes[def.Kind] = lane;
@@ -346,10 +348,17 @@ public partial class MainWindow : Window
         if (_timer is not null) { try { _timer.Close(); } catch { /* ignore */ } }
         _timer = new TimerWindow(_configService, _alerts, _config.Overlay.TimerSeconds, _config.Overlay.Opacity,
             onDurationSet: s => { _config.Overlay.TimerSeconds = s; _configService.SaveSettings(_config); });
-        _timer.PresetProvider = () => _config.Triggers
-            .Where(t => t.Panel == Panels.TimerAuto && t.Enabled)
-            .Select(t => (t.Name, t.DurationSeconds))
-            .ToList();
+        _timer.PresetProvider = () =>
+        {
+            // Zones live on the respawn entries, not the derived triggers.
+            var zones = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in _configService.LoadRespawns())
+                zones[r.Name] = r.Zone;
+            return (IReadOnlyList<(string, double, string)>)_config.Triggers
+                .Where(t => t.Panel == Panels.TimerAuto && t.Enabled)
+                .Select(t => (t.Name, t.DurationSeconds, zones.GetValueOrDefault(t.Name, "")))
+                .ToList();
+        };
         _timer.Show();
         UpdateTimerVisibility();
     }
