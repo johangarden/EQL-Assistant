@@ -17,7 +17,7 @@
     <Border x:Name="RootBorder" CornerRadius="10" Padding="10"
             Background="#D6141A24" BorderBrush="#3A4560" BorderThickness="1"
             MouseLeftButtonDown="Card_DragMove">
-        <StackPanel Width="200">
+        <StackPanel Width="252">
 
             <DockPanel Margin="0,0,0,2">
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Click="OnReset"
@@ -48,7 +48,7 @@
                             <Grid Margin="6,0">
                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center" HorizontalAlignment="Left"
                                            Foreground="White" FontSize="11" FontWeight="SemiBold"
-                                           TextTrimming="CharacterEllipsis" Margin="0,0,86,0">
+                                           TextTrimming="CharacterEllipsis" Margin="0,0,138,0">
                                     <TextBlock.Effect>
                                         <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.9" Color="Black"/>
                                     </TextBlock.Effect>

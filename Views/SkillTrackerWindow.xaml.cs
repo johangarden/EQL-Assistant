@@ -117,7 +117,8 @@ public partial class SkillTrackerWindow : Window
             attempts += s.Attempts;
             double rate = s.HitRate;
             row.Fraction = rate;
-            row.ValueText = $"{s.Hits}/{s.Attempts} · {rate * 100:0}%";
+            string crit = s.Crits > 0 && s.Hits > 0 ? $" · {100.0 * s.Crits / s.Hits:0}% crit" : "";
+            row.ValueText = $"{s.Hits}/{s.Attempts} · {rate * 100:0}%{crit}";
             row.Fill = rate < 0.60 ? LowFill : rate < 0.85 ? MidFill : HighFill;
 
             var extra = new List<string>();
