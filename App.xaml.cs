@@ -166,6 +166,19 @@ public partial class App : Application
             Check("loot: combat line is not loot", !LootTracker.TryParseLoot(
                 "You slash a rat for 5 points of damage.", out lk, out li, out lm, out lr, out _));
 
+            // Tail reader for the catch-up prompt: last parseable line stamp wins,
+            // trailing junk is skipped, only the file tail is read.
+            string tailFile = Path.Combine(Path.GetTempPath(), "eql_tailtest.txt");
+            File.WriteAllLines(tailFile, new[]
+            {
+                "[Thu Aug 06 10:00:00 2026] You slash a rat for 5 points of damage.",
+                "[Thu Aug 06 10:41:03 2026] You gain experience! (1.0%)",
+                "no timestamp on this trailing line",
+            });
+            Check("catch-up: tail reader finds the last stamped line",
+                EQLOverlay.MainWindow.ReadLastLineTime(tailFile) == new DateTime(2026, 8, 6, 10, 41, 3));
+            File.Delete(tailFile);
+
             // Catch-up mode resolution (off / ask / auto, legacy bool migrates).
             Check("catch-up: legacy auto migrates",
                 new Models.AppConfig { CatchUpOnStart = true }.EffectiveCatchUpMode() == "auto");

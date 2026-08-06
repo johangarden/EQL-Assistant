@@ -128,6 +128,11 @@ public partial class MainWindow : Window
         RebuildFlashWindow();
         RebuildSctLanes();
 
+        // Crash-tolerant last-seen marker: persisted every minute while lines flow.
+        var lastSeenTick = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
+        lastSeenTick.Tick += (_, _) => SaveLastSeen();
+        lastSeenTick.Start();
+
         string catchUpMode = _config.EffectiveCatchUpMode();
         if (catchUpMode != "off")
         {
@@ -145,22 +150,87 @@ public partial class MainWindow : Window
 
     // ---- catch-up (started the app mid-session) -------------------------------
 
-    /// <summary>Ask-first mode: only speaks up when the followed log actually
-    /// has lines from today, and names the file so there are no surprises.</summary>
+    /// <summary>Ask-first mode: only speaks up when the followed log actually has
+    /// lines from today that the app hasn't parsed yet — and shows exactly what's
+    /// missing (log end vs. last parsed, and the gap between them).</summary>
     private void OfferCatchUp()
     {
         string? path = _watcher?.CurrentPath;
         if (path is null || !File.Exists(path)) return;
 
-        DateTime wrote = File.GetLastWriteTime(path);
-        if (wrote.Date != DateTime.Today) return; // nothing from today — stay quiet
+        DateTime logEnd = ReadLastLineTime(path) ?? File.GetLastWriteTime(path);
+        if (logEnd.Date != DateTime.Today) return; // nothing from today — stay quiet
+
+        var prev = _configService.LoadLastSeen();
+        DateTime? seen = prev is not null
+            && prev.File.Equals(Path.GetFileName(path), StringComparison.OrdinalIgnoreCase)
+            ? prev.Time : null;
+
+        // Quick restart: the app already parsed (nearly) everything — don't nag.
+        if (seen is not null && (logEnd - seen.Value).TotalMinutes < 2) return;
+
+        string seenText = seen is null
+            ? "never (first run with this log)"
+            : FmtTime(seen.Value);
+        string gapText = seen is null || seen.Value.Date != DateTime.Today
+            ? "all of today"
+            : $"~{FmtGap(logEnd - seen.Value)}";
 
         bool yes = Views.ConfirmDialog.Show(this, "EQL Assistant — Catch up?",
-            $"{Path.GetFileName(path)} has lines from today (last written {wrote:HH:mm}).\n\n" +
+            $"{Path.GetFileName(path)}\n\n" +
+            $"Log ends at:\t{FmtTime(logEnd)}\n" +
+            $"Last parsed:\t{seenText}\n" +
+            $"Missing:\t{gapText}\n\n" +
             "Parse today's log now to rebuild fight history, raid kills, loot and seen " +
             "spells? Alerts and combat text won't fire for old lines.",
             yesText: "Catch up", noText: "Skip");
         if (yes) CatchUpToday();
+    }
+
+    private static string FmtTime(DateTime t) =>
+        t.Date == DateTime.Today ? $"{t:HH:mm} today" : $"{t:ddd HH:mm}";
+
+    private static string FmtGap(TimeSpan gap)
+    {
+        if (gap < TimeSpan.Zero) gap = TimeSpan.Zero;
+        return gap.TotalHours >= 1
+            ? $"{(int)gap.TotalHours}h {gap.Minutes}m"
+            : $"{Math.Max(1, (int)gap.TotalMinutes)} min";
+    }
+
+    /// <summary>Timestamp of the last parseable line — reads only the file's tail.</summary>
+    internal static DateTime? ReadLastLineTime(string path)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            fs.Seek(Math.Max(0, fs.Length - 64 * 1024), SeekOrigin.Begin);
+            using var reader = new StreamReader(fs);
+            string tail = reader.ReadToEnd();
+            var lines = tail.Split('\n');
+            for (int i = lines.Length - 1; i >= 0; i--)
+                if (TryParseLineTime(lines[i].TrimEnd('\r'), out var t))
+                    return t;
+        }
+        catch { /* unreadable tail -> caller falls back to the write time */ }
+        return null;
+    }
+
+    // ---- last-seen marker (how far the app has parsed) ------------------------
+
+    private DateTime _lastLineSeen;
+
+    private void NoteLineSeen(DateTime t)
+    {
+        if (t > _lastLineSeen) _lastLineSeen = t;
+    }
+
+    private void SaveLastSeen()
+    {
+        string? path = _watcher?.CurrentPath;
+        if (_lastLineSeen != default && path is not null)
+            _configService.SaveLastSeen(Path.GetFileName(path), _lastLineSeen);
     }
 
     /// <summary>
@@ -194,6 +264,7 @@ public partial class MainWindow : Window
                 _raids.ProcessLine(line, t);
                 _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
                 _spellLib.MarkSeenFromLine(line);
+                NoteLineSeen(t);
                 lines++;
             }
         }
@@ -209,6 +280,7 @@ public partial class MainWindow : Window
         }
 
         _spellLib.SaveSeenIfDirty();
+        SaveLastSeen();
         int fights = _combat.History.Count - fightsBefore + (_combat.InCombat ? 1 : 0);
         _vm.Flash($"Caught up: {lines:N0} lines, {fights} fight(s) from today's log.");
         Log.Info($"Catch-up: {lines} lines replayed from {Path.GetFileName(path)}, {fights} fights.");
@@ -482,6 +554,7 @@ public partial class MainWindow : Window
                 _raids.ProcessLine(line);
                 _loot.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
+                if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
             }),
             onStatus: msg => Dispatcher.BeginInvoke(() => _vm.LogStatus = msg),
@@ -978,6 +1051,7 @@ public partial class MainWindow : Window
                 _config.Overlay.Left = Left;
                 _config.Overlay.Top = Top;
                 _configService.SaveWindowState(_config.Overlay);
+                SaveLastSeen();
             }
         }
         catch { /* ignore */ }

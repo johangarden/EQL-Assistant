@@ -67,10 +67,11 @@ copied file carries everything.
    - **Start with Windows** — so you never forget to launch it.
    - **Catch up from today's log on startup** — if the app starts late, it can
      rebuild today's fight history, raid kills, loot and seen spells from the
-     log. By default it **asks first**, naming the log file and when it was
-     last written, so a quick restart is easy to skip; set it to automatic or
-     off on the General page (also on demand: tray → *Catch up from today's
-     log*).
+     log. By default it **asks first**, showing the log's last line time, how
+     far the app had parsed before, and the gap between them — and it stays
+     quiet entirely after a quick restart where nothing was missed. Set it to
+     automatic or off on the General page (also on demand: tray → *Catch up
+     from today's log*).
 3. Add triggers (easiest: the **Library…** button — see below), then **lock**
    the overlay (padlock or Ctrl+Alt+L) and play.
 
