@@ -320,10 +320,18 @@
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Session" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="So a forgotten start never costs you data: launch with Windows, and/or rebuild today's fight history, raid kills and seen spells from the log when the app starts late (also on demand: tray → 'Catch up from today's log')."/>
+                                       Text="So a forgotten start never costs you data: launch with Windows, and rebuild today's fight history, raid kills, loot and seen spells from the log when the app starts late (also on demand: tray → 'Catch up from today's log')."/>
 
                             <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows (this exe)" Margin="0,10,0,0"/>
-                            <CheckBox x:Name="CatchUpCheck" Content="Catch up from today's log on startup" Margin="0,6,0,0"/>
+
+                            <TextBlock Text="Catch up from today's log on startup" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox x:Name="CatchUpModeBox" Width="300" HorizontalAlignment="Left" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Do nothing" Tag="off"/>
+                                <ComboBoxItem Content="Ask me when the log has lines from today" Tag="ask"/>
+                                <ComboBoxItem Content="Catch up automatically" Tag="auto"/>
+                            </ComboBox>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="'Ask me' names the log file and its last-write time, so you can skip it after e.g. a quick restart."/>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -539,6 +547,7 @@
                             <CheckBox x:Name="SctHealsInCheck" Content="Heals on you (from others)" Margin="0,6,0,0"/>
                             <CheckBox x:Name="SctPetInCheck" Content="Pet incoming damage" Margin="0,6,0,0"/>
                             <CheckBox x:Name="SctPetOutCheck" Content="Pet outgoing damage" Margin="0,6,0,0"/>
+                            <CheckBox x:Name="SctProgressCheck" Content="XP, faction hits &amp; AA points" Margin="0,6,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Appearance" Style="{StaticResource SectionTitle}"/>

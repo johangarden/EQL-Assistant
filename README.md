@@ -65,9 +65,12 @@ copied file carries everything.
    on the General page if needed; set a **Pet name** there too if you run one).
 2. Recommended, also on the General page:
    - **Start with Windows** — so you never forget to launch it.
-   - **Catch up from today's log on startup** — if the app starts late, it
-     rebuilds today's fight history, raid kills, loot and seen spells from the
-     log (also on demand: tray → *Catch up from today's log*).
+   - **Catch up from today's log on startup** — if the app starts late, it can
+     rebuild today's fight history, raid kills, loot and seen spells from the
+     log. By default it **asks first**, naming the log file and when it was
+     last written, so a quick restart is easy to skip; set it to automatic or
+     off on the General page (also on demand: tray → *Catch up from today's
+     log*).
 3. Add triggers (easiest: the **Library…** button — see below), then **lock**
    the overlay (padlock or Ctrl+Alt+L) and play.
 
@@ -175,7 +178,9 @@ sections:
 
 Fights are tagged with the **zone** they happened in.
 
-**Timeline** opens the selected fight as a second-by-second visual: one lane
+**Timeline** opens the selected fight as a second-by-second visual: a
+**rolling-DPS graph** on top (5s window — one curve each for your damage, pet,
+damage taken and healing, with the fight's peak), and below it one mark lane
 per ability, grouped into *Your damage / Pet / Damage taken / Healing*. Mark
 height scales with the amount; crits are wider and brighter, misses gray,
 resists purple. Hover any mark for the exact number. Open two fights side by
@@ -205,8 +210,10 @@ Both open from the Fight History window (and raid kills from the tray):
 
 ## Scrolling combat text
 
-Floating numbers in up to six fixed lanes, each its own movable panel with its
-own anchor: incoming (you/pet), outgoing (you/pet), your heals, heals on you.
+Floating numbers in up to seven fixed lanes, each its own movable panel with
+its own anchor: incoming (you/pet), outgoing (you/pet), your heals, heals on
+you, and an **XP & faction** lane — xp gains float gold ("+3,5% xp"), faction
+adjustments teal/red by sign with the faction name, and AA points float big.
 Melee, spells/DoTs and procs get distinct colors per lane; crits render big
 with a "!". Big-hit threshold, number size and lane sizes are on the Combat
 text page. Master toggle: Ctrl+Alt+C.

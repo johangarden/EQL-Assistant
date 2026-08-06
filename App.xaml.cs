@@ -165,6 +165,14 @@ public partial class App : Application
             Check("loot: coin formatting", LootTracker.FormatCoins(2214) == "2p 2g 1s 4c");
             Check("loot: combat line is not loot", !LootTracker.TryParseLoot(
                 "You slash a rat for 5 points of damage.", out lk, out li, out lm, out lr, out _));
+
+            // Catch-up mode resolution (off / ask / auto, legacy bool migrates).
+            Check("catch-up: legacy auto migrates",
+                new Models.AppConfig { CatchUpOnStart = true }.EffectiveCatchUpMode() == "auto");
+            Check("catch-up: fresh config asks",
+                new Models.AppConfig().EffectiveCatchUpMode() == "ask");
+            Check("catch-up: explicit off beats legacy",
+                new Models.AppConfig { CatchUpOnStart = true, CatchUpMode = "off" }.EffectiveCatchUpMode() == "off");
         }
         catch (Exception ex)
         {
@@ -538,8 +546,32 @@ public partial class App : Application
             p.ProcessLine($"[{Ts(45)}] You have become better at Reave! (4)");
             Check("reave parses as a melee hit", p.GetSessionSkill("reave") is { Hits: 1, Misses: 1 }
                 && CombatParser.IsMeleeAbility("reave"));
+            Check("SCT: reave melee hit fires the outgoing lane",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.OutgoingSelf, Ability: "reave",
+                    Amount: 24, Flavor: CombatParser.SctFlavor.Melee }));
             Check("skill-ups tracked with level (case-insensitive name)",
                 p.GetSessionSkill("REAVE") is { Level: 4, Ups: 2 });
+
+            // Progress lane events: xp / faction (sign colors) / AA — never combat.
+            bool wasActive = p.InCombat;
+            double durBefore = p.DurationSeconds;
+            p.ProcessLine($"[{Ts(46)}] You gain experience! (3.552%)");
+            p.ProcessLine($"[{Ts(46)}] Your faction standing with Burning Dead has been adjusted by -2.");
+            p.ProcessLine($"[{Ts(46)}] Your faction standing with Steel Warriors has been adjusted by 5.");
+            p.ProcessLine($"[{Ts(46)}] You have gained an ability point!  You now have 2 ability points.");
+            Check("SCT: xp gain floats with percent text",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Ability: "xp" }
+                    && e.Amount > 3.5 && e.Amount < 3.6 && e.Text is not null && e.Text.StartsWith('+')));
+            Check("SCT: faction down uses the proc color slot",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Ability: "Burning Dead",
+                    Amount: -2, Flavor: CombatParser.SctFlavor.Proc, Text: "-2" }));
+            Check("SCT: faction up uses the spell color slot",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Ability: "Steel Warriors",
+                    Amount: 5, Flavor: CombatParser.SctFlavor.Spell, Text: "+5" }));
+            Check("SCT: AA point floats big",
+                sct.Any(e => e is { Kind: CombatParser.SctKind.Progress, Crit: true, Text: "AA point!" }));
+            Check("progress lines never touch the fight model",
+                p.InCombat == wasActive && Math.Abs(p.DurationSeconds - durBefore) < 0.001);
 
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions

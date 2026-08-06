@@ -128,16 +128,40 @@ public partial class MainWindow : Window
         RebuildFlashWindow();
         RebuildSctLanes();
 
-        if (_config.CatchUpOnStart)
+        string catchUpMode = _config.EffectiveCatchUpMode();
+        if (catchUpMode != "off")
         {
             // Give the watcher a moment to resolve which log file to follow.
             var once = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-            once.Tick += (_, _) => { once.Stop(); CatchUpToday(); };
+            once.Tick += (_, _) =>
+            {
+                once.Stop();
+                if (catchUpMode == "auto") CatchUpToday();
+                else OfferCatchUp();
+            };
             once.Start();
         }
     }
 
     // ---- catch-up (started the app mid-session) -------------------------------
+
+    /// <summary>Ask-first mode: only speaks up when the followed log actually
+    /// has lines from today, and names the file so there are no surprises.</summary>
+    private void OfferCatchUp()
+    {
+        string? path = _watcher?.CurrentPath;
+        if (path is null || !File.Exists(path)) return;
+
+        DateTime wrote = File.GetLastWriteTime(path);
+        if (wrote.Date != DateTime.Today) return; // nothing from today — stay quiet
+
+        bool yes = Views.ConfirmDialog.Show(this, "EQL Assistant — Catch up?",
+            $"{Path.GetFileName(path)} has lines from today (last written {wrote:HH:mm}).\n\n" +
+            "Parse today's log now to rebuild fight history, raid kills, loot and seen " +
+            "spells? Alerts and combat text won't fire for old lines.",
+            yesText: "Catch up", noText: "Skip");
+        if (yes) CatchUpToday();
+    }
 
     /// <summary>
     /// Replay today's lines from the followed log into the combat history,
@@ -226,6 +250,10 @@ public partial class MainWindow : Window
             Color.FromRgb(0xF0, 0x62, 0x92), Color.FromRgb(0xF4, 0x8F, 0xB1), Color.FromRgb(0xCE, 0x93, 0xD8), -470),
         (CombatParser.SctKind.OutgoingPet,   "sctPetOut",    "Pet outgoing",
             Color.FromRgb(0xFF, 0xB7, 0x4D), Color.FromRgb(0xFF, 0xE0, 0x82), Color.FromRgb(0xB3, 0x9D, 0xDB),  490),
+        // Progress floats: melee slot = xp/AA gold, spell slot = faction up,
+        // proc slot = faction down.
+        (CombatParser.SctKind.Progress,      "sctProgress",  "XP & faction",
+            Color.FromRgb(0xFF, 0xD5, 0x4F), Color.FromRgb(0x4D, 0xB6, 0xAC), Color.FromRgb(0xE5, 0x73, 0x73), -660),
     };
 
     private bool SctLaneEnabled(CombatParser.SctKind kind) => kind switch
@@ -236,6 +264,7 @@ public partial class MainWindow : Window
         CombatParser.SctKind.HealIn => _config.Overlay.SctHealsIn,
         CombatParser.SctKind.IncomingPet => _config.Overlay.SctPetIncoming,
         CombatParser.SctKind.OutgoingPet => _config.Overlay.SctPetOutgoing,
+        CombatParser.SctKind.Progress => _config.Overlay.SctProgress,
         _ => false,
     };
 
@@ -268,7 +297,7 @@ public partial class MainWindow : Window
         if (_sctLanes.TryGetValue(hit.Kind, out var lane))
             lane.Post(hit.Ability, hit.Amount,
                 plus: hit.Kind is CombatParser.SctKind.HealOut or CombatParser.SctKind.HealIn,
-                flavor: hit.Flavor, crit: hit.Crit);
+                flavor: hit.Flavor, crit: hit.Crit, text: hit.Text);
     }
 
     private void UpdateSctVisibility()
@@ -513,7 +542,14 @@ public partial class MainWindow : Window
                     _combat.AddDemoFight(); UpdateMatrixVisibility();
                     OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
                     if (!_hidden && !_sctHidden)
-                        foreach (var lane in _sctLanes.Values) lane.SpawnDemo();
+                        foreach (var (kind, lane) in _sctLanes)
+                            if (kind == CombatParser.SctKind.Progress)
+                            {
+                                lane.Post("xp", 2.4, flavor: CombatParser.SctFlavor.Melee, text: "+2,4%");
+                                lane.Post("Steel Warriors", 5, flavor: CombatParser.SctFlavor.Spell, text: "+5");
+                                lane.Post("Befallen Inhabitants", -30, flavor: CombatParser.SctFlavor.Proc, text: "-30");
+                            }
+                            else lane.SpawnDemo();
                     handled = true; break;
                 case HK_HIDE:   ToggleHide();       handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;

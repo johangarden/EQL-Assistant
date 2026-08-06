@@ -50,7 +50,7 @@
     <Border x:Name="RootBorder" CornerRadius="10" Padding="10"
             Background="#D6141A24" BorderBrush="#3A4560" BorderThickness="1"
             MouseLeftButtonDown="Card_DragMove">
-        <StackPanel Width="236">
+        <StackPanel Width="272">
 
             <DockPanel Margin="0,0,0,2">
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Click="OnClear"

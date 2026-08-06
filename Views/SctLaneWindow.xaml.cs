@@ -32,7 +32,7 @@ public partial class SctLaneWindow : Window
     private readonly double _fontSize;
     private readonly double _bigThreshold;
     private readonly DispatcherTimer _pump;
-    private readonly Queue<(string Label, double Amount, bool Plus, CombatParser.SctFlavor Flavor, bool Crit)> _queue = new();
+    private readonly Queue<(string Label, double Amount, bool Plus, CombatParser.SctFlavor Flavor, bool Crit, string? Text)> _queue = new();
     private DateTime _lastSpawn = DateTime.MinValue;
     private nint _hwnd;
     private bool _locked;
@@ -84,13 +84,15 @@ public partial class SctLaneWindow : Window
 
     // ---- public API -----------------------------------------------------------
 
-    /// <summary>Queue a combat number ("254 Frost Breath"); heals get a leading +.</summary>
+    /// <summary>Queue a combat number ("254 Frost Breath"); heals get a leading +.
+    /// A non-null <paramref name="text"/> replaces the formatted number ("+3,5%" xp).</summary>
     public void Post(string label, double amount, bool plus = false,
-        CombatParser.SctFlavor flavor = CombatParser.SctFlavor.Melee, bool crit = false)
+        CombatParser.SctFlavor flavor = CombatParser.SctFlavor.Melee, bool crit = false,
+        string? text = null)
     {
         if (Visibility != Visibility.Visible) return;
         if (_queue.Count >= MaxQueued) _queue.Dequeue(); // shed the oldest under AoE spam
-        _queue.Enqueue((label, amount, plus, flavor, crit));
+        _queue.Enqueue((label, amount, plus, flavor, crit, text));
         PumpQueue();
     }
 
@@ -118,14 +120,15 @@ public partial class SctLaneWindow : Window
         if (_queue.Count == 0) return;
         if ((DateTime.Now - _lastSpawn).TotalMilliseconds < MinSpawnGapMs) return;
 
-        var (label, amount, plus, flavor, crit) = _queue.Dequeue();
+        var (label, amount, plus, flavor, crit, overrideText) = _queue.Dequeue();
         _lastSpawn = DateTime.Now;
-        Spawn(label, amount, plus, flavor, crit);
+        Spawn(label, amount, plus, flavor, crit, overrideText);
     }
 
-    private void Spawn(string label, double amount, bool plus, CombatParser.SctFlavor flavor, bool crit)
+    private void Spawn(string label, double amount, bool plus, CombatParser.SctFlavor flavor, bool crit,
+        string? overrideText = null)
     {
-        bool big = crit || amount >= _bigThreshold;
+        bool big = crit || (overrideText is null && amount >= _bigThreshold);
         var text = new TextBlock
         {
             Width = Lane.Width,
@@ -140,7 +143,7 @@ public partial class SctLaneWindow : Window
             FontSize = big ? _fontSize * 1.4 : _fontSize,
             Effect = new DropShadowEffect { ShadowDepth = 1, BlurRadius = 4, Opacity = 0.95, Color = Colors.Black },
         };
-        text.Inlines.Add(new Run((plus ? "+" : "") + amount.ToString("N0") + (crit ? "!" : "")));
+        text.Inlines.Add(new Run(overrideText ?? (plus ? "+" : "") + amount.ToString("N0") + (crit ? "!" : "")));
         if (!string.IsNullOrEmpty(label))
             text.Inlines.Add(new Run("  " + label)
             {

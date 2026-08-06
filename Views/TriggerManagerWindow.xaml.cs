@@ -543,12 +543,13 @@ public partial class TriggerManagerWindow : Window
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
         StartWithWindowsCheck.IsChecked = IsAutoStartEnabled();
-        CatchUpCheck.IsChecked = _config.CatchUpOnStart;
+        CatchUpModeBox.SelectedValue = _config.EffectiveCatchUpMode();
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
         MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
         SkillsVisibleCheck.IsChecked = _config.Overlay.SkillTrackerVisible;
         SkillListBox.Text = string.Join(", ", _config.Overlay.SkillTrackerSkills);
         SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
+        SctProgressCheck.IsChecked = _config.Overlay.SctProgress;
         CharNameBox.Text = _config.CharacterName;
         PetNameBox.Text = _config.Overlay.PetName;
         FlashFontBox.Text = _config.Overlay.FlashFontSize.ToString(CultureInfo.InvariantCulture);
@@ -624,7 +625,8 @@ public partial class TriggerManagerWindow : Window
         {
             CharacterName = CharNameBox.Text.Trim(),
             ActiveLoadout = _currentName,
-            CatchUpOnStart = CatchUpCheck.IsChecked == true,
+            CatchUpMode = (CatchUpModeBox.SelectedValue as string) ?? "ask",
+            CatchUpOnStart = (CatchUpModeBox.SelectedValue as string) == "auto", // legacy mirror
             Log =
             {
                 Directory = LogDirBox.Text.Trim(),
@@ -665,6 +667,7 @@ public partial class TriggerManagerWindow : Window
                 SctHealsIn = SctHealsInCheck.IsChecked == true,
                 SctPetIncoming = SctPetInCheck.IsChecked == true,
                 SctPetOutgoing = SctPetOutCheck.IsChecked == true,
+                SctProgress = SctProgressCheck.IsChecked == true,
                 SctFontSize = Math.Clamp(ParseOr(SctFontBox.Text, _config.Overlay.SctFontSize), 10, 72),
                 SctBigHit = Math.Max(0, ParseOr(SctBigHitBox.Text, _config.Overlay.SctBigHit)),
                 SctLaneWidth = Math.Clamp(ParseOr(SctLaneWidthBox.Text, _config.Overlay.SctLaneWidth), 80, 800),
