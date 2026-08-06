@@ -266,7 +266,8 @@ public partial class MeterWindow : Window
             double rate = s.HitRate;
             row.Fraction = rate;
             string crit = s.Crits > 0 && s.Hits > 0 ? $" · {100.0 * s.Crits / s.Hits:0}% crit" : "";
-            row.ValueText = $"{s.Hits}/{s.Attempts} · {rate * 100:0}%{crit}";
+            string max = s.Max > 0 ? $" · max {s.Max:N0}" : "";
+            row.ValueText = $"{s.Hits}/{s.Attempts} · {rate * 100:0}%{crit}{max}";
             row.Fill = rate < 0.60 ? SkillLowFill : rate < 0.85 ? SkillMidFill : SkillHighFill;
 
             var extra = new List<string>();
