@@ -21,9 +21,11 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class SctLaneWindow : Window
 {
-    private const double LifetimeSeconds = 2.6;
-    private const int MinSpawnGapMs = 260;
+    private const double DefaultLifetimeSeconds = 2.6;
     private const int MaxQueued = 8;
+
+    private readonly double _lifetimeSeconds;
+    private readonly int _minSpawnGapMs;
 
     private readonly PanelPlacement _placement;
     private readonly Brush _meleeColor;
@@ -43,9 +45,15 @@ public partial class SctLaneWindow : Window
     public SctLaneWindow(ConfigService config, string placementKey, string title,
         Brush meleeColor, Brush spellColor, Brush procColor,
         double opacity, double fontSize, double bigThreshold, double laneWidth, double laneHeight,
-        double defaultOffX, double defaultOffY)
+        double defaultOffX, double defaultOffY,
+        double lifetimeSeconds = DefaultLifetimeSeconds)
     {
         InitializeComponent();
+
+        // Slow lanes (xp/faction) rise gently; the spawn gap scales with the
+        // lifetime so queued floats keep the same on-screen spacing.
+        _lifetimeSeconds = Math.Clamp(lifetimeSeconds, 1, 15);
+        _minSpawnGapMs = (int)(260 * _lifetimeSeconds / DefaultLifetimeSeconds);
 
         Title = "EQL Assistant — SCT " + title;
         HeaderText.Text = "SCT — " + title;
@@ -118,7 +126,7 @@ public partial class SctLaneWindow : Window
     private void PumpQueue()
     {
         if (_queue.Count == 0) return;
-        if ((DateTime.Now - _lastSpawn).TotalMilliseconds < MinSpawnGapMs) return;
+        if ((DateTime.Now - _lastSpawn).TotalMilliseconds < _minSpawnGapMs) return;
 
         var (label, amount, plus, flavor, crit, overrideText) = _queue.Dequeue();
         _lastSpawn = DateTime.Now;
@@ -155,13 +163,13 @@ public partial class SctLaneWindow : Window
         Canvas.SetTop(text, Lane.Height - _fontSize * 1.8);
         Lane.Children.Add(text);
 
-        var dur = TimeSpan.FromSeconds(LifetimeSeconds);
+        var dur = TimeSpan.FromSeconds(_lifetimeSeconds);
         var rise = new DoubleAnimation(Lane.Height - _fontSize * 1.8, 4, dur);
 
         var fade = new DoubleAnimationUsingKeyFrames();
         fade.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
         fade.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.10))));
-        fade.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(LifetimeSeconds * 0.7))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(_lifetimeSeconds * 0.7))));
         fade.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromTimeSpan(dur)));
 
         rise.Completed += (_, _) => Lane.Children.Remove(text);

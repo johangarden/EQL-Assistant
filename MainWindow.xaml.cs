@@ -283,7 +283,9 @@ public partial class MainWindow : Window
                 new SolidColorBrush(def.Melee), new SolidColorBrush(def.Spell), new SolidColorBrush(def.Proc),
                 o.Opacity, o.SctFontSize, o.SctBigHit,
                 o.SctLaneWidth, o.SctLaneHeight,
-                centerX + def.OffsetFromCenter - o.SctLaneWidth / 2, topY);
+                centerX + def.OffsetFromCenter - o.SctLaneWidth / 2, topY,
+                // xp/faction floats are rare and worth reading — drift up slowly.
+                lifetimeSeconds: def.Kind == CombatParser.SctKind.Progress ? 7 : 2.6);
             lane.Show();
             lane.SetLocked(_vm.Locked);
             _sctLanes[def.Kind] = lane;
