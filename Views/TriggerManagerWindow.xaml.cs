@@ -38,7 +38,7 @@ public partial class TriggerManagerWindow : Window
 
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
         LogBus bus, AlertService alerts, RaidKills raids, SpellLibrary spellLibrary,
-        Action<string> onApplied)
+        CombatParser combat, Action<string> onApplied)
     {
         InitializeComponent();
         WindowTheme.ApplyDark(this);
@@ -49,6 +49,7 @@ public partial class TriggerManagerWindow : Window
         _alerts = alerts;
         _raids = raids;
         _spellLibrary = spellLibrary;
+        _combat = combat;
         _onApplied = onApplied;
 
         // Load every loadout into memory.
@@ -83,13 +84,14 @@ public partial class TriggerManagerWindow : Window
             _respawns.Add(RespawnViewModel.FromEntry(r));
         RespawnList.ItemsSource = _respawns;
 
-        // Recent kills picker — refresh while the window is open.
+        // Recent kills + seen skills pickers — refresh while the window is open.
         RefreshRecentDeaths();
+        RefreshSeenSkills();
         _deathsTick = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(2)
         };
-        _deathsTick.Tick += (_, _) => RefreshRecentDeaths();
+        _deathsTick.Tick += (_, _) => { RefreshRecentDeaths(); RefreshSeenSkills(); };
         _deathsTick.Start();
         Closed += (_, _) => _deathsTick.Stop();
 
@@ -153,6 +155,7 @@ public partial class TriggerManagerWindow : Window
     // ---- recent-kills picker --------------------------------------------------
 
     private readonly RaidKills _raids;
+    private readonly CombatParser _combat;
     private readonly System.Windows.Threading.DispatcherTimer _deathsTick;
 
     private sealed record DeathItem(string Name, string Text)
@@ -179,6 +182,56 @@ public partial class TriggerManagerWindow : Window
         return span.TotalSeconds < 90 ? $"{span.TotalSeconds:0}s ago"
             : span.TotalMinutes < 90 ? $"{span.TotalMinutes:0} min ago"
             : $"{when:HH:mm}";
+    }
+
+    // ---- seen-skills picker (skill tracker page) --------------------------------
+
+    private sealed record SeenSkillItem(string Name, string Text)
+    {
+        public override string ToString() => Text;
+    }
+
+    /// <summary>Every ability used this session, busiest first — exact log spelling.</summary>
+    private void RefreshSeenSkills()
+    {
+        var selected = (SeenSkillsList.SelectedItem as SeenSkillItem)?.Name;
+        var items = _combat.SessionSkills
+            .Where(kv => kv.Value.Attempts > 0 || kv.Value.Level > 0)
+            .OrderByDescending(kv => kv.Value.Attempts)
+            .Take(30)
+            .Select(kv =>
+            {
+                var s = kv.Value;
+                string text = s.Attempts > 0
+                    ? $"{kv.Key} — {s.Attempts} attempts · {s.HitRate * 100:0}%"
+                    : kv.Key;
+                if (s.Level > 0) text += $" · skill {s.Level}";
+                return new SeenSkillItem(kv.Key, text);
+            })
+            .ToList();
+
+        if (items.Select(i => i.Text).SequenceEqual(
+                SeenSkillsList.Items.Cast<SeenSkillItem>().Select(i => i.Text)))
+            return;
+
+        SeenSkillsList.ItemsSource = items;
+        if (selected is not null)
+            SeenSkillsList.SelectedItem = items.FirstOrDefault(i => i.Name == selected);
+    }
+
+    /// <summary>Pick a seen skill → appended to the tracked list with exact spelling.</summary>
+    private void SkillFromSeen_Click(object sender, RoutedEventArgs e)
+    {
+        if (SeenSkillsList.SelectedItem is not SeenSkillItem skill) return;
+
+        var current = SkillListBox.Text
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+        if (current.Any(s => s.Equals(skill.Name, StringComparison.OrdinalIgnoreCase))) return;
+
+        current.Add(skill.Name);
+        SkillListBox.Text = string.Join(", ", current);
+        SkillsVisibleCheck.IsChecked = true; // picking a skill implies wanting the section
     }
 
     /// <summary>Pick a recent kill → it becomes a respawn entry, ready for its time.</summary>
@@ -517,7 +570,6 @@ public partial class TriggerManagerWindow : Window
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
         TimerAnchorBox.SelectedValue = (_configService.LoadPlacement("timer")?.Anchor ?? Anchor.TopRight).ToString();
         MeterAnchorBox.SelectedValue = (_configService.LoadPlacement("meter")?.Anchor ?? Anchor.TopRight).ToString();
-        SkillsAnchorBox.SelectedValue = (_configService.LoadPlacement("skills")?.Anchor ?? Anchor.TopRight).ToString();
         FlashAnchorBox.SelectedValue = (_configService.LoadPlacement("flash")?.Anchor ?? Anchor.TopLeft).ToString();
     }
 
@@ -643,7 +695,6 @@ public partial class TriggerManagerWindow : Window
         ApplyAnchor("targetDebuffs", TargetAnchorBox);
         ApplyAnchor("timer", TimerAnchorBox);
         ApplyAnchor("meter", MeterAnchorBox);
-        ApplyAnchor("skills", SkillsAnchorBox);
         ApplyAnchor("flash", FlashAnchorBox);
 
         _config = cfg;

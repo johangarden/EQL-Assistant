@@ -79,7 +79,7 @@ public partial class App : Application
             var cfg = cs.LoadSettings();
             cs.EnsureDefaultLoadout();
             var mgr = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(),
-                new RaidKills(cs), new SpellLibrary(cs), _ => { });
+                new RaidKills(cs), new SpellLibrary(cs), new CombatParser(), _ => { });
             mgr.Show();
             mgr.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
@@ -530,6 +530,16 @@ public partial class App : Application
             Check("session skill hit rate", p.GetSessionSkill("slash") is { } sk
                 && Math.Abs(sk.HitRate - 0.75) < 0.001);
             Check("unattempted skill is null", p.GetSessionSkill("Kick of Doom") is null);
+
+            // Reave: the real EQL melee form + skill-up lines carry the level.
+            p.ProcessLine($"[{Ts(44)}] You reave a royal guard for 24 points of damage.");
+            p.ProcessLine($"[{Ts(44)}] You try to reave a royal guard, but miss!");
+            p.ProcessLine($"[{Ts(44)}] You have become better at Reave! (3)");
+            p.ProcessLine($"[{Ts(45)}] You have become better at Reave! (4)");
+            Check("reave parses as a melee hit", p.GetSessionSkill("reave") is { Hits: 1, Misses: 1 }
+                && CombatParser.IsMeleeAbility("reave"));
+            Check("skill-ups tracked with level (case-insensitive name)",
+                p.GetSessionSkill("REAVE") is { Level: 4, Ups: 2 });
 
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions
