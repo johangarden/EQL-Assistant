@@ -594,6 +594,7 @@ public partial class TriggerManagerWindow : Window
         SkillListBox.Text = string.Join(", ", _config.Overlay.SkillTrackerSkills);
         SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
         SctProgressCheck.IsChecked = _config.Overlay.SctProgress;
+        FlashVisibleCheck.IsChecked = _config.Overlay.FlashVisible;
         CharNameBox.Text = _config.CharacterName;
         PetNameBox.Text = _config.Overlay.PetName;
         FlashFontBox.Text = _config.Overlay.FlashFontSize.ToString(CultureInfo.InvariantCulture);
@@ -702,6 +703,7 @@ public partial class TriggerManagerWindow : Window
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                 PetName = PetNameBox.Text.Trim(),
+                FlashVisible = FlashVisibleCheck.IsChecked == true,
                 FlashFontSize = Math.Clamp(ParseOr(FlashFontBox.Text, _config.Overlay.FlashFontSize), 10, 200),
                 FlashWidth = Math.Clamp(ParseOr(FlashWidthBox.Text, _config.Overlay.FlashWidth), 200, 3000),
                 SctVisible = SctVisibleCheck.IsChecked == true,

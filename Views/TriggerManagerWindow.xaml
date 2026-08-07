@@ -596,6 +596,8 @@
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="The screen-flash area. Flash triggers (and per-trigger flash text) are created under Triggers. Unlock the overlay (Ctrl+Alt+L) to see and drag the area."/>
 
+                            <CheckBox x:Name="FlashVisibleCheck" Content="Show flash alerts" Margin="0,12,0,0"/>
+
                             <TextBlock Text="Flash text size" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="FlashFontBox" Width="120" HorizontalAlignment="Left"/>
                             <TextBlock Text="Flash area width (text wraps inside)" Style="{StaticResource FieldLabel}"/>

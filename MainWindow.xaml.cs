@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private bool _timerHidden;
     private bool _meterHidden;
     private bool _skillsHidden;
+    private bool _flashHidden;
     private bool _sctHidden;
     private bool _suppressSct;   // true while replaying old lines (catch-up)
     private System.Windows.Forms.NotifyIcon? _tray;
@@ -96,6 +97,7 @@ public partial class MainWindow : Window
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
+        _flashHidden = !_config.Overlay.FlashVisible;
         _sctHidden = !_config.Overlay.SctVisible;
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
@@ -409,12 +411,29 @@ public partial class MainWindow : Window
             _config.Overlay.FlashFontSize, _config.Overlay.FlashWidth);
         _flash.Show();
         _flash.SetLocked(_vm.Locked);
-        _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
+        UpdateFlashVisibility();
+    }
+
+    private void UpdateFlashVisibility()
+    {
+        if (_flash is not null)
+            _flash.Visibility = (_hidden || _flashHidden) ? Visibility.Hidden : Visibility.Visible;
+    }
+
+    /// <summary>Show/hide the flash-alert area (tray / Manager page), and remember it.</summary>
+    private void ToggleFlash()
+    {
+        _flashHidden = !_flashHidden;
+        _config.Overlay.FlashVisible = !_flashHidden;
+        _configService.SaveSettings(_config);
+        if (_hidden && !_flashHidden) ToggleHide(); // unhide everything if it was globally hidden
+        UpdateFlashVisibility();
+        _vm.Flash(_flashHidden ? "Flash alerts hidden." : "Flash alerts shown.");
     }
 
     private void OnFlashRequested(string text, string color)
     {
-        if (_hidden) return;
+        if (_hidden || _flashHidden) return;
         _flash?.Flash(text, BrushFromColor(color));
     }
 
@@ -707,8 +726,7 @@ public partial class MainWindow : Window
         UpdateTimerVisibility();
         UpdateMeterVisibility();
         UpdateSctVisibility();
-        if (_flash is not null)
-            _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
+        UpdateFlashVisibility();
     }
 
     /// <summary>
@@ -836,6 +854,7 @@ public partial class MainWindow : Window
         _timerHidden = !cfg.Overlay.TimerVisible;
         _meterHidden = !cfg.Overlay.MeterVisible;
         _skillsHidden = !cfg.Overlay.SkillTrackerVisible;
+        _flashHidden = !cfg.Overlay.FlashVisible;
         _sctHidden = !cfg.Overlay.SctVisible;
         _combat.PetName = cfg.Overlay.PetName;
         ApplySelfName();
@@ -1026,10 +1045,21 @@ public partial class MainWindow : Window
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
         var panelsItem = new System.Windows.Forms.ToolStripMenuItem("Panels");
-        panelsItem.DropDownItems.Add("Repop timer", null, (_, _) => ToggleTimer());
-        panelsItem.DropDownItems.Add("DPS meter", null, (_, _) => ToggleMeter());
-        panelsItem.DropDownItems.Add("Skill tracker", null, (_, _) => ToggleSkills());
-        panelsItem.DropDownItems.Add("Combat text", null, (_, _) => ToggleSct());
+        var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Repop timer", null, (_, _) => ToggleTimer());
+        var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
+        var panelSkills = new System.Windows.Forms.ToolStripMenuItem("Skill tracker", null, (_, _) => ToggleSkills());
+        var panelSct = new System.Windows.Forms.ToolStripMenuItem("Combat text", null, (_, _) => ToggleSct());
+        var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
+        panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
+            { panelTimer, panelMeter, panelSkills, panelSct, panelFlash });
+        panelsItem.DropDownOpening += (_, _) =>
+        {
+            panelTimer.Checked = !_timerHidden;
+            panelMeter.Checked = !_meterHidden;
+            panelSkills.Checked = !_skillsHidden;
+            panelSct.Checked = !_sctHidden;
+            panelFlash.Checked = !_flashHidden;
+        };
         menu.Items.Add(panelsItem);
 
         var loadoutItem = new System.Windows.Forms.ToolStripMenuItem("Loadout");
