@@ -484,6 +484,15 @@ public partial class App : Application
                 CombatParser.IsMeleeAbility("backstab") && CombatParser.IsMeleeAbility("slash")
                 && !CombatParser.IsMeleeAbility("thorns") && !CombatParser.IsMeleeAbility("Tainted Breath"));
 
+            // Zone difficulty parse for D0–D4 kill tiers.
+            Check("zone difficulty: D0 for plain zones",
+                RaidKills.ParseDifficulty("Befallen") == 0
+                && RaidKills.ParseDifficulty("The Northern Desert of Ro") == 0);
+            Check("zone difficulty: numbered variants map D1–D4",
+                RaidKills.ParseDifficulty("Befallen 1 (Awakened)") == 1
+                && RaidKills.ParseDifficulty("Blackburrow 1 (Awakened)") == 1
+                && RaidKills.ParseDifficulty("Clan Crushbone 4 (Refined)") == 4);
+
             // Raid-kill death-line parsing (level suffixes stripped).
             Check("raid kill: slain-by line",
                 RaidKills.TryParseKill("Lady Vox has been slain by Johan!", out var mob1) && mob1 == "Lady Vox");

@@ -88,11 +88,11 @@ copied file carries everything.
 | **Ctrl+Alt+T** | Demo data (bars, meter, a fight with timeline — try everything without being in-game) |
 | **Ctrl+Alt+Q** | Quit |
 
-**System tray icon:** right-click for Show/Hide, Lock/Unlock, Mute, a
-**Panels ▸** submenu (repop timer / DPS meter / skill tracker / combat text),
-**Loadout ▸**, Manage, Raid kills, Catch up from today's log, Open config
-folder, **Reset position** (also unlocks and unhides everything — the fixer if
-a panel is lost off-screen), and Quit.
+**System tray icon:** right-click for **Manage settings** (top), Show/Hide,
+Lock/Unlock, Mute, a **Panels ▸** submenu (repop timer / DPS meter / skill
+tracker / combat text), **Loadout ▸**, Raid kills, Catch up from today's log,
+Open config folder, **Reset position** (also unlocks and unhides everything —
+the fixer if a panel is lost off-screen), and Quit.
 
 **Toolbar** (visible while unlocked): ✕ quit · **Loadout ▾** picker · panel
 toggles · **Manage** · version · 🔒 lock. Drag it to move the bars panel.
@@ -213,7 +213,9 @@ Both open from the Fight History window (and raid kills from the tray):
 
 - **Raid kills** — a tiered target list (Open World, Fear, Hate, Sky — edit
   `raid-targets.json` to taste) with kill counts and dates, detected from death
-  lines and remembered forever.
+  lines and remembered forever. Each killed target shows **D0–D4 badges** for
+  the zone difficulties you've beaten it at (difficulty is read from the zone
+  name — "Befallen 4 (Refined)" = D4; kills recorded before v2.3 count as D0).
 - **Loot** — every item you loot, persisted forever: **upgrades** (gold, with
   the "+N → +M" chain), **kept** items, and auto-**vendored** drops with their
   sale price. Search by item/mob/zone, filter by kind, and watch the running

@@ -1003,8 +1003,10 @@ public partial class MainWindow : Window
             Icon = LoadAppIcon(),
         };
 
-        // Grouped: overlay state · Panels/Loadout submenus · tools · recovery · quit.
+        // Grouped: settings · overlay state · Panels/Loadout · tools · recovery · quit.
         var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add("Manage settings…", null, (_, _) => OpenManager());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         menu.Items.Add("Show / Hide", null, (_, _) => ToggleHide());
         menu.Items.Add("Lock / Unlock", null, (_, _) => ToggleLock());
         menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
@@ -1035,7 +1037,6 @@ public partial class MainWindow : Window
         menu.Items.Add(loadoutItem);
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
-        menu.Items.Add("Manage…", null, (_, _) => OpenManager());
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
