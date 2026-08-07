@@ -29,7 +29,9 @@
                        Text="Turn-in items are counted from your loot history (kept items only). Quests sort closest-to-done; a quest checks itself off when its reward shows up in the log — or tick it yourself. Hover items for who drops them, hover the reward for its stats."/>
 
             <DockPanel Margin="0,0,0,8">
-                <ComboBox x:Name="ClassBox" DockPanel.Dock="Right" Width="140" Margin="8,0,0,0"
+                <ComboBox x:Name="ClassBox" DockPanel.Dock="Right" Width="130" Margin="8,0,0,0"
+                          SelectionChanged="Filters_Changed"/>
+                <ComboBox x:Name="SlotBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0"
                           SelectionChanged="Filters_Changed"/>
                 <CheckBox x:Name="HideDoneCheck" DockPanel.Dock="Right" Content="Hide completed"
                           Margin="8,0,0,0" VerticalAlignment="Center" Checked="Filters_Changed"
@@ -63,6 +65,12 @@
                                         <TextBlock Text="{Binding Reward}" Foreground="{StaticResource Brush.Gold}"
                                                    FontWeight="SemiBold" FontSize="12" Margin="10,0,0,0"
                                                    ToolTip="{Binding RewardStats}"/>
+                                        <Border CornerRadius="3" Background="{StaticResource Brush.Card}"
+                                                Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                Visibility="{Binding SlotVisibility}">
+                                            <TextBlock Text="{Binding Slot}" Foreground="{StaticResource Brush.TextBlue}"
+                                                       FontSize="9" FontWeight="Bold"/>
+                                        </Border>
                                     </StackPanel>
                                 </DockPanel>
                                 <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource Brush.TextHint}"

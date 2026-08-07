@@ -498,6 +498,7 @@ public partial class App : Application
             Check("sky: known quest parsed fully", bard is not null
                 && bard.Giver == "Cilin Spellsinger" && bard.Reward == "Mask of Song"
                 && bard.Items.Count == 2 && sky.Progress(bard).Need == 2);
+            Check("sky: reward slot parsed from stats", bard is not null && bard.Slot == "FACE");
             sky.ProcessLine("[x] You receive 5 gold and 2 copper from the corpse.");
             Check("sky: coin receive completes nothing", sky.CompletedCount == 0);
             sky.ProcessLine("[x] You receive a Mask of Song!");

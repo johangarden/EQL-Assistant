@@ -34,6 +34,13 @@ public sealed class SkyQuests
         public List<SkyItem> Items { get; set; } = new();
 
         [JsonIgnore] public string Key => Class + "|" + Name;
+
+        private string? _slot;
+
+        /// <summary>Equip slot(s) parsed from the reward stats ("FACE", "EAR NECK", …).</summary>
+        [JsonIgnore]
+        public string Slot => _slot ??= Regex.Match(RewardStats, @"(?im)^Slot:\s*(.+)$")
+            is { Success: true } m ? m.Groups[1].Value.Trim() : "";
     }
 
     private sealed class SkyDoc

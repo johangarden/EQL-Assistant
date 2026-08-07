@@ -28,8 +28,11 @@ public partial class SkyWindow : Window
     public sealed record ChipVm(string Text, Brush Bg, Brush Fg, string Tip);
 
     public sealed record QuestVm(SkyQuests.SkyQuest Quest, string Title, string Subtitle,
-        string Reward, string RewardStats, string ProgressText, Brush ProgressBrush,
-        bool Done, double CardOpacity, List<ChipVm> Chips);
+        string Reward, string RewardStats, string Slot, string ProgressText, Brush ProgressBrush,
+        bool Done, double CardOpacity, List<ChipVm> Chips)
+    {
+        public Visibility SlotVisibility => Slot.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     public SkyWindow(SkyQuests sky)
     {
@@ -41,6 +44,13 @@ public partial class SkyWindow : Window
             .Concat(_sky.Quests.Select(q => q.Class).Distinct().OrderBy(c => c))
             .ToList();
         ClassBox.SelectedIndex = 0;
+
+        // Slots split into tokens — "FACE BACK" filters under both FACE and BACK.
+        SlotBox.ItemsSource = new[] { "All slots" }
+            .Concat(_sky.Quests.SelectMany(q => q.Slot.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(s => s))
+            .ToList();
+        SlotBox.SelectedIndex = 0;
 
         _sky.Changed += OnSkyChanged;
         Closed += (_, _) => _sky.Changed -= OnSkyChanged;
@@ -68,6 +78,7 @@ public partial class SkyWindow : Window
         if (_initializing || QuestsControl is null) return;
 
         string cls = ClassBox.SelectedIndex > 0 ? (string)ClassBox.SelectedItem : "";
+        string slot = SlotBox.SelectedIndex > 0 ? (string)SlotBox.SelectedItem : "";
         string search = SearchBox.Text.Trim();
         bool hideDone = HideDoneCheck.IsChecked == true;
 
@@ -75,6 +86,8 @@ public partial class SkyWindow : Window
         foreach (var q in _sky.Quests)
         {
             if (cls.Length > 0 && !q.Class.Equals(cls, StringComparison.OrdinalIgnoreCase)) continue;
+            if (slot.Length > 0 && !q.Slot.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Contains(slot, StringComparer.OrdinalIgnoreCase)) continue;
             bool done = _sky.IsCompleted(q);
             if (hideDone && done) continue;
             if (search.Length > 0
@@ -117,7 +130,7 @@ public partial class SkyWindow : Window
         return new QuestVm(q,
             $"{q.Name}",
             $"{q.Class} · turn in to {q.Giver}",
-            q.Reward, q.RewardStats,
+            q.Reward, q.RewardStats, q.Slot,
             done ? "✓ done" : $"{have}/{need}",
             done ? DoneFg : OpenFg,
             done, done ? 0.55 : 1.0, chips);
