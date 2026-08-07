@@ -208,6 +208,9 @@ public sealed class ConfigService
         t.EndRegex = string.IsNullOrWhiteSpace(t.EndPattern)
             ? null
             : new Regex(t.EndPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        t.ReduceRegex = string.IsNullOrWhiteSpace(t.ReducePattern)
+            ? null
+            : new Regex(t.ReducePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
     }
 
     private List<TriggerDefinition>? TryReadLegacyTriggers()

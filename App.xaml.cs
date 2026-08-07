@@ -144,6 +144,34 @@ public partial class App : Application
             engine.ProcessLine("a line matching nothing at all");
             Check("non-matching line ignored", engine.Bars.Count == 1);
 
+            // Cooldown reducer: SK Reave shaving time off the Harm Touch cooldown.
+            var ht = new Models.TriggerDefinition
+            {
+                Id = "ht", Name = "Harm Touch", Category = "Cooldowns",
+                StartPattern = @"^You begin casting Harm Touch",
+                DurationSeconds = 1200,
+                ReducePattern = @"^You reave ", ReduceSeconds = 60,
+            };
+            ConfigService.CompileOne(ht);
+            cfg.Triggers.Add(ht); // engine holds the same list
+            double reducedTotal = 0; string? reducedName = null;
+            engine.BarReduced += (n, s) => { reducedName = n; reducedTotal += s; };
+
+            engine.ProcessLine($"[{now}] You reave a gnoll for 9 points of damage.");
+            Check("reducer: no running bar -> nothing to cut", reducedTotal == 0);
+
+            engine.ProcessLine($"[{now}] You begin casting Harm Touch II.");
+            var htBar = engine.Bars.First(b => b.Name == "Harm Touch");
+            var endBefore = htBar.EndTimeLocal;
+            engine.ProcessLine($"[{now}] You reave a gnoll for 24 points of damage.");
+            engine.ProcessLine($"[{now}] You reave a gnoll elite for 11 points of damage.");
+            Check("reducer: two reaves cut 120s off Harm Touch",
+                Math.Abs((endBefore - htBar.EndTimeLocal).TotalSeconds - 120) < 0.01
+                && reducedName == "Harm Touch" && reducedTotal == 120);
+            engine.ProcessLine($"[{now}] You slash a gnoll for 5 points of damage.");
+            Check("reducer: unrelated line cuts nothing",
+                Math.Abs((endBefore - htBar.EndTimeLocal).TotalSeconds - 120) < 0.01);
+
             // Loot line parsing (all three real forms from the log).
             Check("loot: upgrade form", LootTracker.TryParseLoot(
                 "You looted a Platinum Ring +1 from Gynok Moltor's corpse to create a Platinum Ring +4",

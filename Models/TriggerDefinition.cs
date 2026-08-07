@@ -59,9 +59,20 @@ public sealed class TriggerDefinition
     /// </summary>
     public bool RemindWhenMissing { get; set; }
 
+    /// <summary>
+    /// Optional cooldown-reducer regex: while this bar is running, every line
+    /// that matches cuts <see cref="ReduceSeconds"/> off the remaining time
+    /// (e.g. SK Reave landing shaves 60s off the Harm Touch cooldown).
+    /// </summary>
+    public string? ReducePattern { get; set; }
+
+    /// <summary>Seconds cut per reducer match (0 = feature off).</summary>
+    public double ReduceSeconds { get; set; }
+
     /// <summary>Compiled once at load. Not serialized.</summary>
     [JsonIgnore] public Regex? StartRegex { get; set; }
     [JsonIgnore] public Regex? EndRegex { get; set; }
+    [JsonIgnore] public Regex? ReduceRegex { get; set; }
 }
 
 /// <summary>When/how to alert for a trigger.</summary>

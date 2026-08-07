@@ -64,6 +64,13 @@ public sealed class TriggerEditViewModel : ViewModelBase
     private bool _remindWhenMissing;
     public bool RemindWhenMissing { get => _remindWhenMissing; set => SetField(ref _remindWhenMissing, value); }
 
+    // Cooldown reducer (bars only).
+    private string _reducePattern = "";
+    public string ReducePattern { get => _reducePattern; set => SetField(ref _reducePattern, value); }
+
+    private double _reduceSeconds;
+    public double ReduceSeconds { get => _reduceSeconds; set => SetField(ref _reduceSeconds, value); }
+
     /// <summary>Label shown in the trigger list ("Vox repop · Repop · 400s").</summary>
     public string Display
     {
@@ -109,6 +116,8 @@ public sealed class TriggerEditViewModel : ViewModelBase
         AlertOnExpire = d.Alert?.OnExpire ?? false,
         FlashText = d.Alert?.FlashText ?? "",
         RemindWhenMissing = d.RemindWhenMissing,
+        ReducePattern = d.ReducePattern ?? "",
+        ReduceSeconds = d.ReduceSeconds,
     };
 
     public TriggerDefinition ToDefinition()
@@ -132,6 +141,8 @@ public sealed class TriggerEditViewModel : ViewModelBase
             Color = Color,
             RefreshOnRetrigger = RefreshOnRetrigger,
             RemindWhenMissing = RemindWhenMissing,
+            ReducePattern = string.IsNullOrWhiteSpace(ReducePattern) ? null : ReducePattern,
+            ReduceSeconds = ReduceSeconds,
             Alert = hasAlert ? new AlertConfig
             {
                 Speak = string.IsNullOrWhiteSpace(AlertSpeak) ? null : AlertSpeak,

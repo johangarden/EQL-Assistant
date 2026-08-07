@@ -106,6 +106,14 @@ public sealed class TimerBarViewModel : ViewModelBase
         FadeAlertFired = false;
     }
 
+    /// <summary>Cut time off a running bar (cooldown reducers) — the bar visibly
+    /// jumps; hitting 0 expires it through the normal tick path.</summary>
+    public void ReduceBy(double seconds)
+    {
+        if (!IsMissing && seconds > 0)
+            EndTimeLocal = EndTimeLocal.AddSeconds(-seconds);
+    }
+
     public void Refresh(DateTime now, double warnSeconds)
     {
         if (IsMissing)

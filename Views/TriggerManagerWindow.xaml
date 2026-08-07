@@ -208,6 +208,16 @@
                                               IsChecked="{Binding RefreshOnRetrigger}" Margin="0,10,0,0"/>
                                     <CheckBox Content="Remind me to rebuff when this is missing"
                                               IsChecked="{Binding RemindWhenMissing}" Margin="0,6,0,0"/>
+
+                                    <TextBlock Text="Cooldown reducer (regex — each match cuts time off the running bar, optional)"
+                                               Style="{StaticResource FieldLabel}"/>
+                                    <TextBox Text="{Binding ReducePattern, UpdateSourceTrigger=PropertyChanged}"
+                                             FontFamily="Consolas" TextWrapping="Wrap"
+                                             AutomationProperties.AutomationId="ReducePatternBox"/>
+                                    <TextBlock Text="Seconds cut per match" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox Text="{Binding ReduceSeconds}" Width="120" HorizontalAlignment="Left"/>
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="SK example: a Cooldowns bar 'Harm Touch' starting on '^You begin casting Harm Touch' (1200s) with reducer '^You reave ' cutting 60 — the bar jumps on every landed reave and '-60s' floats in the XP &amp; faction lane. 'Alert at 0' then announces it's ready."/>
                                 </StackPanel>
 
                                 <Border BorderBrush="#3A4560" BorderThickness="0,1,0,0" Margin="0,12,0,4"/>

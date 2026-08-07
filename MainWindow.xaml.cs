@@ -103,6 +103,7 @@ public partial class MainWindow : Window
         _engine = new TriggerEngine(_config, _alerts);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
+        _engine.BarReduced += OnBarReduced;
         _vm = new OverlayViewModel(_engine, _config) { LoadoutName = _config.ActiveLoadout };
         DataContext = _vm;
 
@@ -363,6 +364,16 @@ public partial class MainWindow : Window
             _sctLanes[def.Kind] = lane;
         }
         UpdateSctVisibility();
+    }
+
+    /// <summary>A cooldown reducer fired — float the cut on the progress lane
+    /// ("-60s Harm Touch") so the jump on the bar is impossible to miss.</summary>
+    private void OnBarReduced(string triggerName, double seconds)
+    {
+        if (_hidden || _sctHidden) return;
+        if (_sctLanes.TryGetValue(CombatParser.SctKind.Progress, out var lane))
+            lane.Post(triggerName, -seconds,
+                flavor: CombatParser.SctFlavor.Spell, text: $"-{seconds:0}s");
     }
 
     private void OnSctEvent(CombatParser.SctHit hit)

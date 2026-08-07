@@ -46,6 +46,9 @@ public sealed class TriggerEngine
     /// <summary>Raised when a trigger with flash text matches: (text, colorString).</summary>
     public event Action<string, string>? FlashRequested;
 
+    /// <summary>Raised when a cooldown reducer cuts a running bar: (triggerName, seconds).</summary>
+    public event Action<string, double>? BarReduced;
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -185,6 +188,24 @@ public sealed class TriggerEngine
             {
                 var m = startRx.Match(body);
                 if (m.Success) StartOrRefresh(trigger, m, eventTime);
+            }
+
+            // Cooldown reducer: each match cuts time off this trigger's RUNNING
+            // bars (SK: Reave landing shaves 60s off the Harm Touch cooldown).
+            if (trigger.ReduceRegex is { } reduceRx && trigger.ReduceSeconds > 0
+                && reduceRx.IsMatch(body))
+            {
+                bool reduced = false;
+                foreach (var (key, bar) in _active)
+                {
+                    if (key != trigger.Id
+                        && !key.StartsWith(trigger.Id + "|", StringComparison.Ordinal))
+                        continue;
+                    bar.ReduceBy(trigger.ReduceSeconds);
+                    bar.Refresh(eventTime, _warnSeconds);
+                    reduced = true;
+                }
+                if (reduced) BarReduced?.Invoke(trigger.Name, trigger.ReduceSeconds);
             }
         }
     }
