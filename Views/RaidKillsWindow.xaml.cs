@@ -12,7 +12,9 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class RaidKillsWindow : Window
 {
-    public sealed record KillRow(string Name, string Detail, Brush NameBrush, FontWeight Weight);
+    public sealed record BadgeVm(string Text, Brush Bg, Brush Fg);
+    public sealed record KillRow(string Name, string Detail, Brush NameBrush, FontWeight Weight,
+        List<BadgeVm> Badges);
     public sealed record TierRow(string Title, Visibility ClearedVisibility, List<KillRow> Rows);
 
     private readonly RaidKills _raids;
@@ -20,6 +22,10 @@ public partial class RaidKillsWindow : Window
 
     private static readonly Brush KilledFg = Freeze(Color.FromRgb(0x81, 0xC7, 0x84));
     private static readonly Brush UnkilledFg = Freeze(Color.FromRgb(0x6E, 0x7C, 0x93));
+    private static readonly Brush BadgeOnBg = Freeze(Color.FromRgb(0x1F, 0x6B, 0x2E));
+    private static readonly Brush BadgeOnFg = Freeze(Color.FromRgb(0xC9, 0xF0, 0xD2));
+    private static readonly Brush BadgeOffBg = Freeze(Color.FromRgb(0x20, 0x29, 0x3A));
+    private static readonly Brush BadgeOffFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
 
     public RaidKillsWindow(RaidKills raids)
     {
@@ -48,7 +54,12 @@ public partial class RaidKillsWindow : Window
                     ? $"{x.Count}× · last {x.Last:dd MMM yyyy}"
                     : "—",
                 x.Count > 0 ? KilledFg : UnkilledFg,
-                x.Count > 0 ? FontWeights.SemiBold : FontWeights.Normal)).ToList()
+                x.Count > 0 ? FontWeights.SemiBold : FontWeights.Normal,
+                x.Count > 0
+                    ? Enumerable.Range(0, 5).Select(d => new BadgeVm($"D{d}",
+                        x.Tiers.Contains(d) ? BadgeOnBg : BadgeOffBg,
+                        x.Tiers.Contains(d) ? BadgeOnFg : BadgeOffFg)).ToList()
+                    : new List<BadgeVm>())).ToList()
         )).ToList();
     }
 

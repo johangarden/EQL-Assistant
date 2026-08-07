@@ -212,7 +212,7 @@ public partial class TriggerManagerWindow : Window
     private static string Ago(DateTime when)
     {
         var span = DateTime.Now - when;
-        return span.TotalSeconds < 90 ? $"{span.TotalSeconds:0}s ago"
+        return span.TotalSeconds < 90 ? $"{Math.Max(0, span.TotalSeconds):0}s ago"
             : span.TotalMinutes < 90 ? $"{span.TotalMinutes:0} min ago"
             : $"{when:HH:mm}";
     }
@@ -502,6 +502,17 @@ public partial class TriggerManagerWindow : Window
         if (dlg.ShowDialog(this) == true) Selected.AlertSound = dlg.FileName;
     }
 
+    /// <summary>Jump to a sidebar page by its title ("Repop timer", "General", …).</summary>
+    public void SelectPage(string title)
+    {
+        foreach (var item in NavList.Items.OfType<System.Windows.Controls.ListBoxItem>())
+            if (string.Equals(item.Content as string, title, StringComparison.OrdinalIgnoreCase))
+            {
+                item.IsSelected = true;
+                return;
+            }
+    }
+
     // ---- sidebar navigation ---------------------------------------------------
 
     private void NavList_SelectionChanged(object sender,
@@ -583,6 +594,7 @@ public partial class TriggerManagerWindow : Window
         SkillListBox.Text = string.Join(", ", _config.Overlay.SkillTrackerSkills);
         SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
         SctProgressCheck.IsChecked = _config.Overlay.SctProgress;
+        FlashVisibleCheck.IsChecked = _config.Overlay.FlashVisible;
         CharNameBox.Text = _config.CharacterName;
         PetNameBox.Text = _config.Overlay.PetName;
         FlashFontBox.Text = _config.Overlay.FlashFontSize.ToString(CultureInfo.InvariantCulture);
@@ -691,6 +703,7 @@ public partial class TriggerManagerWindow : Window
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                 PetName = PetNameBox.Text.Trim(),
+                FlashVisible = FlashVisibleCheck.IsChecked == true,
                 FlashFontSize = Math.Clamp(ParseOr(FlashFontBox.Text, _config.Overlay.FlashFontSize), 10, 200),
                 FlashWidth = Math.Clamp(ParseOr(FlashWidthBox.Text, _config.Overlay.FlashWidth), 200, 3000),
                 SctVisible = SctVisibleCheck.IsChecked == true,

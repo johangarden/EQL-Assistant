@@ -53,6 +53,34 @@ public sealed class ConfigService
         WindowStatePath = Path.Combine(ConfigDirectory, "window-state.json");
     }
 
+    // ---- last-seen marker (last-seen.json) ----------------------------------
+    // How far into which log the app has parsed — lets the startup catch-up
+    // prompt show what's actually missing (and stay quiet after a quick restart).
+
+    public sealed record LastSeen(string File, DateTime Time);
+
+    private string LastSeenPath => Path.Combine(ConfigDirectory, "last-seen.json");
+
+    public LastSeen? LoadLastSeen()
+    {
+        try
+        {
+            if (!File.Exists(LastSeenPath)) return null;
+            return JsonSerializer.Deserialize<LastSeen>(File.ReadAllText(LastSeenPath), ReadOptions);
+        }
+        catch { return null; }
+    }
+
+    public void SaveLastSeen(string logFileName, DateTime time)
+    {
+        try
+        {
+            File.WriteAllText(LastSeenPath,
+                JsonSerializer.Serialize(new LastSeen(logFileName, time), WriteOptions));
+        }
+        catch { /* best-effort */ }
+    }
+
     // ---- settings (config.json) --------------------------------------------
 
     public AppConfig LoadSettings()
@@ -180,6 +208,9 @@ public sealed class ConfigService
         t.EndRegex = string.IsNullOrWhiteSpace(t.EndPattern)
             ? null
             : new Regex(t.EndPattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        t.ReduceRegex = string.IsNullOrWhiteSpace(t.ReducePattern)
+            ? null
+            : new Regex(t.ReducePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
     }
 
     private List<TriggerDefinition>? TryReadLegacyTriggers()

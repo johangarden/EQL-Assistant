@@ -18,7 +18,10 @@ public sealed class RaidKills
         public List<string> Targets { get; set; } = new();
     }
 
-    public sealed record TargetView(string Name, int Count, DateTime? Last);
+    /// <summary>One recorded kill: when, and at which zone difficulty (D0–D4).</summary>
+    public sealed record Kill(DateTime When, int D);
+
+    public sealed record TargetView(string Name, int Count, DateTime? Last, IReadOnlySet<int> Tiers);
     public sealed record TierView(string Name, List<TargetView> Targets)
     {
         public int Killed => Targets.Count(t => t.Count > 0);
@@ -29,7 +32,19 @@ public sealed class RaidKills
     private readonly string _killsPath;
     private readonly List<Tier> _tiers = new();
     private readonly HashSet<string> _targetSet = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, List<DateTime>> _kills = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<Kill>> _kills = new(StringComparer.OrdinalIgnoreCase);
+
+    // EQL zone difficulty rides in the zone name: "Befallen" = D0,
+    // "Befallen 1 (Awakened)" = D1 … "Befallen 4 (Refined)" = D4.
+    private static readonly Regex DifficultyRx = new(
+        @"\s(?<d>[1-4]) \([^)]+\)$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>Difficulty tier (0–4) encoded in a zone name.</summary>
+    public static int ParseDifficulty(string zone)
+    {
+        var m = DifficultyRx.Match(zone.Trim());
+        return m.Success ? int.Parse(m.Groups["d"].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
+    }
 
     /// <summary>Raised on the caller's thread when a listed raid target dies.</summary>
     public event Action<string, DateTime>? KillRecorded;
@@ -74,9 +89,10 @@ public sealed class RaidKills
     public IReadOnlyList<TierView> GetView() =>
         _tiers.Select(t => new TierView(t.Name, t.Targets.Select(name =>
         {
-            _kills.TryGetValue(name, out var when);
-            return new TargetView(name, when?.Count ?? 0,
-                when is { Count: > 0 } ? when.Max() : null);
+            _kills.TryGetValue(name, out var kills);
+            return new TargetView(name, kills?.Count ?? 0,
+                kills is { Count: > 0 } ? kills.Max(k => k.When) : null,
+                kills is { Count: > 0 } ? kills.Select(k => k.D).ToHashSet() : new HashSet<int>());
         }).ToList())).ToList();
 
     public int TotalTargets => _tiers.Sum(t => t.Targets.Count);
@@ -107,11 +123,11 @@ public sealed class RaidKills
         if (!_targetSet.TryGetValue(mob, out string? canonical)) return;
 
         if (!_kills.TryGetValue(canonical, out var list))
-            _kills[canonical] = list = new List<DateTime>();
-        if (list.Any(k => Math.Abs((k - t).TotalMinutes) < 10)) return; // replayed line
-        list.Add(t);
+            _kills[canonical] = list = new List<Kill>();
+        if (list.Any(k => Math.Abs((k.When - t).TotalMinutes) < 10)) return; // replayed line
+        list.Add(new Kill(t, ParseDifficulty(_zone)));
         SaveKills();
-        Log.Info($"Raid target down: {canonical}");
+        Log.Info($"Raid target down: {canonical} (D{ParseDifficulty(_zone)})");
         KillRecorded?.Invoke(canonical, t);
     }
 
@@ -147,11 +163,22 @@ public sealed class RaidKills
         try
         {
             if (!File.Exists(_killsPath)) return;
-            var kills = JsonSerializer.Deserialize<Dictionary<string, List<DateTime>>>(
-                File.ReadAllText(_killsPath), JsonOpts);
-            if (kills is null) return;
-            foreach (var (name, list) in kills)
-                _kills[name] = list;
+            string json = File.ReadAllText(_killsPath);
+            try
+            {
+                var kills = JsonSerializer.Deserialize<Dictionary<string, List<Kill>>>(json, JsonOpts);
+                if (kills is null) return;
+                foreach (var (name, list) in kills)
+                    _kills[name] = list.Where(k => k is not null).ToList();
+            }
+            catch (JsonException)
+            {
+                // Pre-2.3 shape: plain kill timestamps — migrate as D0 (tier unknown).
+                var legacy = JsonSerializer.Deserialize<Dictionary<string, List<DateTime>>>(json, JsonOpts);
+                if (legacy is null) return;
+                foreach (var (name, list) in legacy)
+                    _kills[name] = list.Select(t => new Kill(t, 0)).ToList();
+            }
         }
         catch { /* ignore */ }
     }

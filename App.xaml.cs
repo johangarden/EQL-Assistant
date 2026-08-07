@@ -144,6 +144,34 @@ public partial class App : Application
             engine.ProcessLine("a line matching nothing at all");
             Check("non-matching line ignored", engine.Bars.Count == 1);
 
+            // Cooldown reducer: SK Reave shaving time off the Harm Touch cooldown.
+            var ht = new Models.TriggerDefinition
+            {
+                Id = "ht", Name = "Harm Touch", Category = "Cooldowns",
+                StartPattern = @"^You begin casting Harm Touch",
+                DurationSeconds = 1200,
+                ReducePattern = @"^You reave ", ReduceSeconds = 60,
+            };
+            ConfigService.CompileOne(ht);
+            cfg.Triggers.Add(ht); // engine holds the same list
+            double reducedTotal = 0; string? reducedName = null;
+            engine.BarReduced += (n, s) => { reducedName = n; reducedTotal += s; };
+
+            engine.ProcessLine($"[{now}] You reave a gnoll for 9 points of damage.");
+            Check("reducer: no running bar -> nothing to cut", reducedTotal == 0);
+
+            engine.ProcessLine($"[{now}] You begin casting Harm Touch II.");
+            var htBar = engine.Bars.First(b => b.Name == "Harm Touch");
+            var endBefore = htBar.EndTimeLocal;
+            engine.ProcessLine($"[{now}] You reave a gnoll for 24 points of damage.");
+            engine.ProcessLine($"[{now}] You reave a gnoll elite for 11 points of damage.");
+            Check("reducer: two reaves cut 120s off Harm Touch",
+                Math.Abs((endBefore - htBar.EndTimeLocal).TotalSeconds - 120) < 0.01
+                && reducedName == "Harm Touch" && reducedTotal == 120);
+            engine.ProcessLine($"[{now}] You slash a gnoll for 5 points of damage.");
+            Check("reducer: unrelated line cuts nothing",
+                Math.Abs((endBefore - htBar.EndTimeLocal).TotalSeconds - 120) < 0.01);
+
             // Loot line parsing (all three real forms from the log).
             Check("loot: upgrade form", LootTracker.TryParseLoot(
                 "You looted a Platinum Ring +1 from Gynok Moltor's corpse to create a Platinum Ring +4",
@@ -165,6 +193,19 @@ public partial class App : Application
             Check("loot: coin formatting", LootTracker.FormatCoins(2214) == "2p 2g 1s 4c");
             Check("loot: combat line is not loot", !LootTracker.TryParseLoot(
                 "You slash a rat for 5 points of damage.", out lk, out li, out lm, out lr, out _));
+
+            // Tail reader for the catch-up prompt: last parseable line stamp wins,
+            // trailing junk is skipped, only the file tail is read.
+            string tailFile = Path.Combine(Path.GetTempPath(), "eql_tailtest.txt");
+            File.WriteAllLines(tailFile, new[]
+            {
+                "[Thu Aug 06 10:00:00 2026] You slash a rat for 5 points of damage.",
+                "[Thu Aug 06 10:41:03 2026] You gain experience! (1.0%)",
+                "no timestamp on this trailing line",
+            });
+            Check("catch-up: tail reader finds the last stamped line",
+                EQLOverlay.MainWindow.ReadLastLineTime(tailFile) == new DateTime(2026, 8, 6, 10, 41, 3));
+            File.Delete(tailFile);
 
             // Catch-up mode resolution (off / ask / auto, legacy bool migrates).
             Check("catch-up: legacy auto migrates",
@@ -442,6 +483,15 @@ public partial class App : Application
             Check("melee ability classification for proc rates",
                 CombatParser.IsMeleeAbility("backstab") && CombatParser.IsMeleeAbility("slash")
                 && !CombatParser.IsMeleeAbility("thorns") && !CombatParser.IsMeleeAbility("Tainted Breath"));
+
+            // Zone difficulty parse for D0–D4 kill tiers.
+            Check("zone difficulty: D0 for plain zones",
+                RaidKills.ParseDifficulty("Befallen") == 0
+                && RaidKills.ParseDifficulty("The Northern Desert of Ro") == 0);
+            Check("zone difficulty: numbered variants map D1–D4",
+                RaidKills.ParseDifficulty("Befallen 1 (Awakened)") == 1
+                && RaidKills.ParseDifficulty("Blackburrow 1 (Awakened)") == 1
+                && RaidKills.ParseDifficulty("Clan Crushbone 4 (Refined)") == 4);
 
             // Raid-kill death-line parsing (level suffixes stripped).
             Check("raid kill: slain-by line",

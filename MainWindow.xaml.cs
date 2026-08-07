@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private bool _timerHidden;
     private bool _meterHidden;
     private bool _skillsHidden;
+    private bool _flashHidden;
     private bool _sctHidden;
     private bool _suppressSct;   // true while replaying old lines (catch-up)
     private System.Windows.Forms.NotifyIcon? _tray;
@@ -96,6 +97,7 @@ public partial class MainWindow : Window
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
+        _flashHidden = !_config.Overlay.FlashVisible;
         _sctHidden = !_config.Overlay.SctVisible;
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
@@ -103,6 +105,7 @@ public partial class MainWindow : Window
         _engine = new TriggerEngine(_config, _alerts);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
+        _engine.BarReduced += OnBarReduced;
         _vm = new OverlayViewModel(_engine, _config) { LoadoutName = _config.ActiveLoadout };
         DataContext = _vm;
 
@@ -128,6 +131,11 @@ public partial class MainWindow : Window
         RebuildFlashWindow();
         RebuildSctLanes();
 
+        // Crash-tolerant last-seen marker: persisted every minute while lines flow.
+        var lastSeenTick = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
+        lastSeenTick.Tick += (_, _) => SaveLastSeen();
+        lastSeenTick.Start();
+
         string catchUpMode = _config.EffectiveCatchUpMode();
         if (catchUpMode != "off")
         {
@@ -145,22 +153,87 @@ public partial class MainWindow : Window
 
     // ---- catch-up (started the app mid-session) -------------------------------
 
-    /// <summary>Ask-first mode: only speaks up when the followed log actually
-    /// has lines from today, and names the file so there are no surprises.</summary>
+    /// <summary>Ask-first mode: only speaks up when the followed log actually has
+    /// lines from today that the app hasn't parsed yet — and shows exactly what's
+    /// missing (log end vs. last parsed, and the gap between them).</summary>
     private void OfferCatchUp()
     {
         string? path = _watcher?.CurrentPath;
         if (path is null || !File.Exists(path)) return;
 
-        DateTime wrote = File.GetLastWriteTime(path);
-        if (wrote.Date != DateTime.Today) return; // nothing from today — stay quiet
+        DateTime logEnd = ReadLastLineTime(path) ?? File.GetLastWriteTime(path);
+        if (logEnd.Date != DateTime.Today) return; // nothing from today — stay quiet
+
+        var prev = _configService.LoadLastSeen();
+        DateTime? seen = prev is not null
+            && prev.File.Equals(Path.GetFileName(path), StringComparison.OrdinalIgnoreCase)
+            ? prev.Time : null;
+
+        // Quick restart: the app already parsed (nearly) everything — don't nag.
+        if (seen is not null && (logEnd - seen.Value).TotalMinutes < 2) return;
+
+        string seenText = seen is null
+            ? "never (first run with this log)"
+            : FmtTime(seen.Value);
+        string gapText = seen is null || seen.Value.Date != DateTime.Today
+            ? "all of today"
+            : $"~{FmtGap(logEnd - seen.Value)}";
 
         bool yes = Views.ConfirmDialog.Show(this, "EQL Assistant — Catch up?",
-            $"{Path.GetFileName(path)} has lines from today (last written {wrote:HH:mm}).\n\n" +
+            $"{Path.GetFileName(path)}\n\n" +
+            $"Log ends at:\t{FmtTime(logEnd)}\n" +
+            $"Last parsed:\t{seenText}\n" +
+            $"Missing:\t{gapText}\n\n" +
             "Parse today's log now to rebuild fight history, raid kills, loot and seen " +
             "spells? Alerts and combat text won't fire for old lines.",
             yesText: "Catch up", noText: "Skip");
         if (yes) CatchUpToday();
+    }
+
+    private static string FmtTime(DateTime t) =>
+        t.Date == DateTime.Today ? $"{t:HH:mm} today" : $"{t:ddd HH:mm}";
+
+    private static string FmtGap(TimeSpan gap)
+    {
+        if (gap < TimeSpan.Zero) gap = TimeSpan.Zero;
+        return gap.TotalHours >= 1
+            ? $"{(int)gap.TotalHours}h {gap.Minutes}m"
+            : $"{Math.Max(1, (int)gap.TotalMinutes)} min";
+    }
+
+    /// <summary>Timestamp of the last parseable line — reads only the file's tail.</summary>
+    internal static DateTime? ReadLastLineTime(string path)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            fs.Seek(Math.Max(0, fs.Length - 64 * 1024), SeekOrigin.Begin);
+            using var reader = new StreamReader(fs);
+            string tail = reader.ReadToEnd();
+            var lines = tail.Split('\n');
+            for (int i = lines.Length - 1; i >= 0; i--)
+                if (TryParseLineTime(lines[i].TrimEnd('\r'), out var t))
+                    return t;
+        }
+        catch { /* unreadable tail -> caller falls back to the write time */ }
+        return null;
+    }
+
+    // ---- last-seen marker (how far the app has parsed) ------------------------
+
+    private DateTime _lastLineSeen;
+
+    private void NoteLineSeen(DateTime t)
+    {
+        if (t > _lastLineSeen) _lastLineSeen = t;
+    }
+
+    private void SaveLastSeen()
+    {
+        string? path = _watcher?.CurrentPath;
+        if (_lastLineSeen != default && path is not null)
+            _configService.SaveLastSeen(Path.GetFileName(path), _lastLineSeen);
     }
 
     /// <summary>
@@ -194,6 +267,7 @@ public partial class MainWindow : Window
                 _raids.ProcessLine(line, t);
                 _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
                 _spellLib.MarkSeenFromLine(line);
+                NoteLineSeen(t);
                 lines++;
             }
         }
@@ -209,6 +283,7 @@ public partial class MainWindow : Window
         }
 
         _spellLib.SaveSeenIfDirty();
+        SaveLastSeen();
         int fights = _combat.History.Count - fightsBefore + (_combat.InCombat ? 1 : 0);
         _vm.Flash($"Caught up: {lines:N0} lines, {fights} fight(s) from today's log.");
         Log.Info($"Catch-up: {lines} lines replayed from {Path.GetFileName(path)}, {fights} fights.");
@@ -293,6 +368,16 @@ public partial class MainWindow : Window
         UpdateSctVisibility();
     }
 
+    /// <summary>A cooldown reducer fired — float the cut on the progress lane
+    /// ("-60s Harm Touch") so the jump on the bar is impossible to miss.</summary>
+    private void OnBarReduced(string triggerName, double seconds)
+    {
+        if (_hidden || _sctHidden) return;
+        if (_sctLanes.TryGetValue(CombatParser.SctKind.Progress, out var lane))
+            lane.Post(triggerName, -seconds,
+                flavor: CombatParser.SctFlavor.Spell, text: $"-{seconds:0}s");
+    }
+
     private void OnSctEvent(CombatParser.SctHit hit)
     {
         if (_hidden || _sctHidden || _suppressSct) return;
@@ -326,12 +411,29 @@ public partial class MainWindow : Window
             _config.Overlay.FlashFontSize, _config.Overlay.FlashWidth);
         _flash.Show();
         _flash.SetLocked(_vm.Locked);
-        _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
+        UpdateFlashVisibility();
+    }
+
+    private void UpdateFlashVisibility()
+    {
+        if (_flash is not null)
+            _flash.Visibility = (_hidden || _flashHidden) ? Visibility.Hidden : Visibility.Visible;
+    }
+
+    /// <summary>Show/hide the flash-alert area (tray / Manager page), and remember it.</summary>
+    private void ToggleFlash()
+    {
+        _flashHidden = !_flashHidden;
+        _config.Overlay.FlashVisible = !_flashHidden;
+        _configService.SaveSettings(_config);
+        if (_hidden && !_flashHidden) ToggleHide(); // unhide everything if it was globally hidden
+        UpdateFlashVisibility();
+        _vm.Flash(_flashHidden ? "Flash alerts hidden." : "Flash alerts shown.");
     }
 
     private void OnFlashRequested(string text, string color)
     {
-        if (_hidden) return;
+        if (_hidden || _flashHidden) return;
         _flash?.Flash(text, BrushFromColor(color));
     }
 
@@ -359,6 +461,26 @@ public partial class MainWindow : Window
                 .Select(t => (t.Name, t.DurationSeconds, zones.GetValueOrDefault(t.Name, "")))
                 .ToList();
         };
+        _timer.RecentKillsProvider = () =>
+        {
+            var tracked = _configService.LoadRespawns();
+            return (IReadOnlyList<(string, string, DateTime, bool)>)_raids.RecentDeaths
+                .Select(d => (d.Name, d.Zone, d.When,
+                    tracked.Any(r => r.Name.Equals(d.Name, StringComparison.OrdinalIgnoreCase))))
+                .ToList();
+        };
+        _timer.AddRespawnRequested = (name, zone, seconds) =>
+        {
+            var list = _configService.LoadRespawns();
+            if (list.Any(r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return;
+            list.Add(new Models.RespawnEntry { Name = name, Zone = zone, Seconds = seconds });
+            _configService.SaveRespawns(list);
+            // The engine holds the same trigger list instance, so re-merging the
+            // timerAuto triggers makes the new respawn live immediately.
+            MergeGlobalRespawns(_config);
+            _vm.Flash($"Respawn added: {name} ({seconds:0}s).");
+        };
+        _timer.ManageRespawnsRequested = () => OpenManager("Repop timer");
         _timer.Show();
         UpdateTimerVisibility();
     }
@@ -482,6 +604,7 @@ public partial class MainWindow : Window
                 _raids.ProcessLine(line);
                 _loot.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
+                if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
             }),
             onStatus: msg => Dispatcher.BeginInvoke(() => _vm.LogStatus = msg),
@@ -603,8 +726,7 @@ public partial class MainWindow : Window
         UpdateTimerVisibility();
         UpdateMeterVisibility();
         UpdateSctVisibility();
-        if (_flash is not null)
-            _flash.Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
+        UpdateFlashVisibility();
     }
 
     /// <summary>
@@ -647,7 +769,7 @@ public partial class MainWindow : Window
 
     // ---- config -------------------------------------------------------------
 
-    private void OpenManager()
+    private void OpenManager(string? page = null)
     {
         if (_manager is null)
         {
@@ -655,6 +777,7 @@ public partial class MainWindow : Window
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
         }
+        if (page is not null) _manager.SelectPage(page);
         BringToFront(_manager);
     }
 
@@ -731,6 +854,7 @@ public partial class MainWindow : Window
         _timerHidden = !cfg.Overlay.TimerVisible;
         _meterHidden = !cfg.Overlay.MeterVisible;
         _skillsHidden = !cfg.Overlay.SkillTrackerVisible;
+        _flashHidden = !cfg.Overlay.FlashVisible;
         _sctHidden = !cfg.Overlay.SctVisible;
         _combat.PetName = cfg.Overlay.PetName;
         ApplySelfName();
@@ -836,6 +960,19 @@ public partial class MainWindow : Window
         BringToFront(_raidsWindow);
     }
 
+    private Views.LootWindow? _lootWindow;
+
+    private void OpenLootHistory()
+    {
+        if (_lootWindow is null)
+        {
+            _lootWindow = new Views.LootWindow(_loot);
+            _lootWindow.Closed += (_, _) => _lootWindow = null;
+            _lootWindow.Show();
+        }
+        BringToFront(_lootWindow);
+    }
+
     private void OpenConfigFolder()
     {
         try
@@ -898,9 +1035,32 @@ public partial class MainWindow : Window
             Icon = LoadAppIcon(),
         };
 
+        // Grouped: settings · overlay state · Panels/Loadout · tools · recovery · quit.
         var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add("Manage settings…", null, (_, _) => OpenManager());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
         menu.Items.Add("Show / Hide", null, (_, _) => ToggleHide());
         menu.Items.Add("Lock / Unlock", null, (_, _) => ToggleLock());
+        menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
+        var panelsItem = new System.Windows.Forms.ToolStripMenuItem("Panels");
+        var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Repop timer", null, (_, _) => ToggleTimer());
+        var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
+        var panelSkills = new System.Windows.Forms.ToolStripMenuItem("DPS meter · skills section", null, (_, _) => ToggleSkills());
+        var panelSct = new System.Windows.Forms.ToolStripMenuItem("Combat text", null, (_, _) => ToggleSct());
+        var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
+        panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
+            { panelTimer, panelMeter, panelSkills, panelSct, panelFlash });
+        panelsItem.DropDownOpening += (_, _) =>
+        {
+            panelTimer.Checked = !_timerHidden;
+            panelMeter.Checked = !_meterHidden;
+            panelSkills.Checked = !_skillsHidden;
+            panelSct.Checked = !_sctHidden;
+            panelFlash.Checked = !_flashHidden;
+        };
+        menu.Items.Add(panelsItem);
 
         var loadoutItem = new System.Windows.Forms.ToolStripMenuItem("Loadout");
         loadoutItem.DropDownOpening += (_, _) =>
@@ -918,15 +1078,13 @@ public partial class MainWindow : Window
             }
         };
         menu.Items.Add(loadoutItem);
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
-        menu.Items.Add("Show / hide repop timer", null, (_, _) => ToggleTimer());
-        menu.Items.Add("Show / hide DPS meter", null, (_, _) => ToggleMeter());
-        menu.Items.Add("Show / hide skill tracker", null, (_, _) => ToggleSkills());
-        menu.Items.Add("Show / hide combat text", null, (_, _) => ToggleSct());
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
+        menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
-        menu.Items.Add("Manage…", null, (_, _) => OpenManager());
-        menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
         menu.Items.Add("Reset position", null, (_, _) => ResetPosition());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
@@ -978,6 +1136,7 @@ public partial class MainWindow : Window
                 _config.Overlay.Left = Left;
                 _config.Overlay.Top = Top;
                 _configService.SaveWindowState(_config.Overlay);
+                SaveLastSeen();
             }
         }
         catch { /* ignore */ }

@@ -67,10 +67,11 @@ copied file carries everything.
    - **Start with Windows** — so you never forget to launch it.
    - **Catch up from today's log on startup** — if the app starts late, it can
      rebuild today's fight history, raid kills, loot and seen spells from the
-     log. By default it **asks first**, naming the log file and when it was
-     last written, so a quick restart is easy to skip; set it to automatic or
-     off on the General page (also on demand: tray → *Catch up from today's
-     log*).
+     log. By default it **asks first**, showing the log's last line time, how
+     far the app had parsed before, and the gap between them — and it stays
+     quiet entirely after a quick restart where nothing was missed. Set it to
+     automatic or off on the General page (also on demand: tray → *Catch up
+     from today's log*).
 3. Add triggers (easiest: the **Library…** button — see below), then **lock**
    the overlay (padlock or Ctrl+Alt+L) and play.
 
@@ -87,10 +88,11 @@ copied file carries everything.
 | **Ctrl+Alt+T** | Demo data (bars, meter, a fight with timeline — try everything without being in-game) |
 | **Ctrl+Alt+Q** | Quit |
 
-**System tray icon:** right-click for Show/Hide, Lock/Unlock, Loadout, panel
-toggles, Raid kills, Catch up from today's log, Manage, Mute, Open config
-folder, **Reset position** (also unlocks and unhides everything — the fixer if
-a panel is lost off-screen), and Quit.
+**System tray icon:** right-click for **Manage settings** (top), Show/Hide,
+Lock/Unlock, Mute, a **Panels ▸** submenu (repop timer / DPS meter / skill
+tracker / combat text), **Loadout ▸**, Raid kills, Catch up from today's log,
+Open config folder, **Reset position** (also unlocks and unhides everything —
+the fixer if a panel is lost off-screen), and Quit.
 
 **Toolbar** (visible while unlocked): ✕ quit · **Loadout ▾** picker · panel
 toggles · **Manage** · version · 🔒 lock. Drag it to move the bars panel.
@@ -140,6 +142,13 @@ before it drops*, *alert at 0* (cooldown "ready"), *remind me to rebuff when
 missing* (pulsing REBUFF bar + periodic nudge, only after the buff has been
 seen up once).
 
+Bar triggers can also carry a **cooldown reducer**: while the bar runs, every
+log line matching the reducer regex cuts N seconds off it — the bar visibly
+jumps and "−Ns" floats in the XP & faction lane. Built for the SK mechanic
+where every landed Reave shaves 60s off Harm Touch's 20-minute cooldown:
+start `^You begin casting Harm Touch`, duration 1200, reducer `^You reave `
+cutting 60, with *alert at 0* announcing it ready.
+
 **Loadouts** hold trigger sets per class combo — create/rename/duplicate/delete
 at the top of the Triggers page, switch from the toolbar **Loadout ▾** menu.
 Each is a file in `%APPDATA%\EQL_Assistant\loadouts\`.
@@ -150,13 +159,13 @@ A circular Time-Timer-style countdown (own panel + anchor): shrinking pie,
 big `m:ss`, pulses red near 0 and beeps at 0. Controls: **☰** mode/presets ·
 **✏** set duration · **▶/⏸** · **↻**.
 
-**Named respawns** (Repop timer page) are **global** — independent of loadouts.
-When the mob's death line appears in the log, the watch auto-starts with its
-respawn time. Adding one is two clicks: pick from **Recent kills** (the last 10
-deaths seen in the log) → set the respawn seconds — the **zone is filled in
-automatically**, and both the Manager list and the watch's ☰ menu are
-**grouped by zone** so long lists stay navigable. With several running, the
-watch shows the **soonest spawn** big, the rest as secondary rows.
+**Named respawns** are **global** — independent of loadouts. When the mob's
+death line appears in the log, the watch auto-starts with its respawn time.
+Adding one is two clicks **right on the watch**: **➕** → pick from your recent
+kills → type the respawn time (m:ss, 900s or 15m) — the **zone is filled in
+automatically**, and both the Manager list (Repop timer page) and the watch's
+☰ menu are **grouped by zone** so long lists stay navigable. With several
+running, the watch shows the **soonest spawn** big, the rest as secondary rows.
 
 ## DPS meter, fight history and timeline
 
@@ -204,7 +213,9 @@ Both open from the Fight History window (and raid kills from the tray):
 
 - **Raid kills** — a tiered target list (Open World, Fear, Hate, Sky — edit
   `raid-targets.json` to taste) with kill counts and dates, detected from death
-  lines and remembered forever.
+  lines and remembered forever. Each killed target shows **D0–D4 badges** for
+  the zone difficulties you've beaten it at (difficulty is read from the zone
+  name — "Befallen 4 (Refined)" = D4; kills recorded before v2.3 count as D0).
 - **Loot** — every item you loot, persisted forever: **upgrades** (gold, with
   the "+N → +M" chain), **kept** items, and auto-**vendored** drops with their
   sale price. Search by item/mob/zone, filter by kind, and watch the running

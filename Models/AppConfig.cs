@@ -106,6 +106,9 @@ public sealed class OverlayConfig
     /// <summary>Abilities the skill tracker watches (backstab, reave, Smite, …).</summary>
     public List<string> SkillTrackerSkills { get; set; } = new();
 
+    /// <summary>Whether the flash-alert area is shown (flash triggers stay quiet when off).</summary>
+    public bool FlashVisible { get; set; } = true;
+
     /// <summary>Font size of screen flash alerts.</summary>
     public double FlashFontSize { get; set; } = 54;
 
