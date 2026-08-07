@@ -141,6 +141,13 @@ before it drops*, *alert at 0* (cooldown "ready"), *remind me to rebuff when
 missing* (pulsing REBUFF bar + periodic nudge, only after the buff has been
 seen up once).
 
+Bar triggers can also carry a **cooldown reducer**: while the bar runs, every
+log line matching the reducer regex cuts N seconds off it — the bar visibly
+jumps and "−Ns" floats in the XP & faction lane. Built for the SK mechanic
+where every landed Reave shaves 60s off Harm Touch's 20-minute cooldown:
+start `^You begin casting Harm Touch`, duration 1200, reducer `^You reave `
+cutting 60, with *alert at 0* announcing it ready.
+
 **Loadouts** hold trigger sets per class combo — create/rename/duplicate/delete
 at the top of the Triggers page, switch from the toolbar **Loadout ▾** menu.
 Each is a file in `%APPDATA%\EQL_Assistant\loadouts\`.
