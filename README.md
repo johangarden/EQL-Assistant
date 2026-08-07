@@ -88,8 +88,9 @@ copied file carries everything.
 | **Ctrl+Alt+T** | Demo data (bars, meter, a fight with timeline — try everything without being in-game) |
 | **Ctrl+Alt+Q** | Quit |
 
-**System tray icon:** right-click for Show/Hide, Lock/Unlock, Loadout, panel
-toggles, Raid kills, Catch up from today's log, Manage, Mute, Open config
+**System tray icon:** right-click for Show/Hide, Lock/Unlock, Mute, a
+**Panels ▸** submenu (repop timer / DPS meter / skill tracker / combat text),
+**Loadout ▸**, Manage, Raid kills, Catch up from today's log, Open config
 folder, **Reset position** (also unlocks and unhides everything — the fixer if
 a panel is lost off-screen), and Quit.
 
@@ -158,13 +159,13 @@ A circular Time-Timer-style countdown (own panel + anchor): shrinking pie,
 big `m:ss`, pulses red near 0 and beeps at 0. Controls: **☰** mode/presets ·
 **✏** set duration · **▶/⏸** · **↻**.
 
-**Named respawns** (Repop timer page) are **global** — independent of loadouts.
-When the mob's death line appears in the log, the watch auto-starts with its
-respawn time. Adding one is two clicks: pick from **Recent kills** (the last 10
-deaths seen in the log) → set the respawn seconds — the **zone is filled in
-automatically**, and both the Manager list and the watch's ☰ menu are
-**grouped by zone** so long lists stay navigable. With several running, the
-watch shows the **soonest spawn** big, the rest as secondary rows.
+**Named respawns** are **global** — independent of loadouts. When the mob's
+death line appears in the log, the watch auto-starts with its respawn time.
+Adding one is two clicks **right on the watch**: **➕** → pick from your recent
+kills → type the respawn time (m:ss, 900s or 15m) — the **zone is filled in
+automatically**, and both the Manager list (Repop timer page) and the watch's
+☰ menu are **grouped by zone** so long lists stay navigable. With several
+running, the watch shows the **soonest spawn** big, the rest as secondary rows.
 
 ## DPS meter, fight history and timeline
 

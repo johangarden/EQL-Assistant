@@ -212,7 +212,7 @@ public partial class TriggerManagerWindow : Window
     private static string Ago(DateTime when)
     {
         var span = DateTime.Now - when;
-        return span.TotalSeconds < 90 ? $"{span.TotalSeconds:0}s ago"
+        return span.TotalSeconds < 90 ? $"{Math.Max(0, span.TotalSeconds):0}s ago"
             : span.TotalMinutes < 90 ? $"{span.TotalMinutes:0} min ago"
             : $"{when:HH:mm}";
     }
@@ -500,6 +500,17 @@ public partial class TriggerManagerWindow : Window
         if (Selected is null) return;
         var dlg = new OpenFileDialog { Filter = "WAV files (*.wav)|*.wav|All files (*.*)|*.*" };
         if (dlg.ShowDialog(this) == true) Selected.AlertSound = dlg.FileName;
+    }
+
+    /// <summary>Jump to a sidebar page by its title ("Repop timer", "General", …).</summary>
+    public void SelectPage(string title)
+    {
+        foreach (var item in NavList.Items.OfType<System.Windows.Controls.ListBoxItem>())
+            if (string.Equals(item.Content as string, title, StringComparison.OrdinalIgnoreCase))
+            {
+                item.IsSelected = true;
+                return;
+            }
     }
 
     // ---- sidebar navigation ---------------------------------------------------

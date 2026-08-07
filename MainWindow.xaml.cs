@@ -442,6 +442,26 @@ public partial class MainWindow : Window
                 .Select(t => (t.Name, t.DurationSeconds, zones.GetValueOrDefault(t.Name, "")))
                 .ToList();
         };
+        _timer.RecentKillsProvider = () =>
+        {
+            var tracked = _configService.LoadRespawns();
+            return (IReadOnlyList<(string, string, DateTime, bool)>)_raids.RecentDeaths
+                .Select(d => (d.Name, d.Zone, d.When,
+                    tracked.Any(r => r.Name.Equals(d.Name, StringComparison.OrdinalIgnoreCase))))
+                .ToList();
+        };
+        _timer.AddRespawnRequested = (name, zone, seconds) =>
+        {
+            var list = _configService.LoadRespawns();
+            if (list.Any(r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return;
+            list.Add(new Models.RespawnEntry { Name = name, Zone = zone, Seconds = seconds });
+            _configService.SaveRespawns(list);
+            // The engine holds the same trigger list instance, so re-merging the
+            // timerAuto triggers makes the new respawn live immediately.
+            MergeGlobalRespawns(_config);
+            _vm.Flash($"Respawn added: {name} ({seconds:0}s).");
+        };
+        _timer.ManageRespawnsRequested = () => OpenManager("Repop timer");
         _timer.Show();
         UpdateTimerVisibility();
     }
@@ -731,7 +751,7 @@ public partial class MainWindow : Window
 
     // ---- config -------------------------------------------------------------
 
-    private void OpenManager()
+    private void OpenManager(string? page = null)
     {
         if (_manager is null)
         {
@@ -739,6 +759,7 @@ public partial class MainWindow : Window
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
         }
+        if (page is not null) _manager.SelectPage(page);
         BringToFront(_manager);
     }
 
@@ -982,9 +1003,19 @@ public partial class MainWindow : Window
             Icon = LoadAppIcon(),
         };
 
+        // Grouped: overlay state · Panels/Loadout submenus · tools · recovery · quit.
         var menu = new System.Windows.Forms.ContextMenuStrip();
         menu.Items.Add("Show / Hide", null, (_, _) => ToggleHide());
         menu.Items.Add("Lock / Unlock", null, (_, _) => ToggleLock());
+        menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
+        var panelsItem = new System.Windows.Forms.ToolStripMenuItem("Panels");
+        panelsItem.DropDownItems.Add("Repop timer", null, (_, _) => ToggleTimer());
+        panelsItem.DropDownItems.Add("DPS meter", null, (_, _) => ToggleMeter());
+        panelsItem.DropDownItems.Add("Skill tracker", null, (_, _) => ToggleSkills());
+        panelsItem.DropDownItems.Add("Combat text", null, (_, _) => ToggleSct());
+        menu.Items.Add(panelsItem);
 
         var loadoutItem = new System.Windows.Forms.ToolStripMenuItem("Loadout");
         loadoutItem.DropDownOpening += (_, _) =>
@@ -1002,15 +1033,13 @@ public partial class MainWindow : Window
             }
         };
         menu.Items.Add(loadoutItem);
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
-        menu.Items.Add("Show / hide repop timer", null, (_, _) => ToggleTimer());
-        menu.Items.Add("Show / hide DPS meter", null, (_, _) => ToggleMeter());
-        menu.Items.Add("Show / hide skill tracker", null, (_, _) => ToggleSkills());
-        menu.Items.Add("Show / hide combat text", null, (_, _) => ToggleSct());
+        menu.Items.Add("Manage…", null, (_, _) => OpenManager());
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
-        menu.Items.Add("Manage…", null, (_, _) => OpenManager());
-        menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
         menu.Items.Add("Reset position", null, (_, _) => ResetPosition());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());

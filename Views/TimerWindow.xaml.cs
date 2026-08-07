@@ -36,6 +36,15 @@ public partial class TimerWindow : Window
     /// menu, with the zone each mob belongs to (empty = ungrouped).</summary>
     public Func<IReadOnlyList<(string Name, double Seconds, string Zone)>>? PresetProvider { get; set; }
 
+    /// <summary>Recent kills for the ➕ quick-add menu (Tracked = already a respawn).</summary>
+    public Func<IReadOnlyList<(string Name, string Zone, DateTime When, bool Tracked)>>? RecentKillsProvider { get; set; }
+
+    /// <summary>Quick-add confirmed: (mobName, zone, respawnSeconds).</summary>
+    public Action<string, string, double>? AddRespawnRequested { get; set; }
+
+    /// <summary>"Manage respawns…" picked from the ➕ menu.</summary>
+    public Action? ManageRespawnsRequested { get; set; }
+
     /// <summary>Test hooks (gated self-test only).</summary>
     internal (string? Mode, double Remaining, bool Running) BigState => (_modeName, _remaining, _running);
     internal IReadOnlyList<string> SecondaryNames => _repops.Select(e => e.Name).ToList();
@@ -251,6 +260,66 @@ public partial class TimerWindow : Window
     {
         _modeName = name;
         ModeLabel.Text = name ?? "Timer";
+    }
+
+    // ---- ➕ quick-add respawn -------------------------------------------------
+
+    /// <summary>Kill something → ➕ → pick it → type the respawn time. No Manager trip.</summary>
+    private void OnAddRespawn(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu();
+        var kills = RecentKillsProvider?.Invoke() ?? Array.Empty<(string, string, DateTime, bool)>();
+
+        if (kills.Count == 0)
+        {
+            menu.Items.Add(new MenuItem
+            {
+                Header = "No kills seen in the log yet",
+                IsEnabled = false,
+            });
+        }
+
+        foreach (var (name, zone, when, tracked) in kills)
+        {
+            string cn = name, cz = zone;
+            string zoneText = zone.Length > 0 ? $"  ·  {zone}" : "";
+            var mi = new MenuItem
+            {
+                Header = tracked
+                    ? $"{name} — already tracked"
+                    : $"{name}  ·  {Ago(when)}{zoneText}",
+                IsEnabled = !tracked,
+            };
+            mi.Click += (_, _) => PromptAddRespawn(cn, cz);
+            menu.Items.Add(mi);
+        }
+
+        menu.Items.Add(new Separator());
+        var manage = new MenuItem { Header = "Manage respawns…" };
+        manage.Click += (_, _) => ManageRespawnsRequested?.Invoke();
+        menu.Items.Add(manage);
+
+        menu.PlacementTarget = (UIElement)sender;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    private void PromptAddRespawn(string name, string zone)
+    {
+        string? input = PromptDialog.Show(this, "Add respawn",
+            $"Respawn time for '{name}' — m:ss, 900s, or 15m:");
+        if (input is null) return;
+        double? sec = ParseDuration(input);
+        if (sec is not > 0) return;
+        AddRespawnRequested?.Invoke(name, zone, sec.Value);
+    }
+
+    private static string Ago(DateTime when)
+    {
+        var span = DateTime.Now - when;
+        return span.TotalSeconds < 90 ? $"{Math.Max(0, span.TotalSeconds):0}s ago"
+            : span.TotalMinutes < 90 ? $"{span.TotalMinutes:0} min ago"
+            : $"{when:HH:mm}";
     }
 
     // ---- controls -----------------------------------------------------------
