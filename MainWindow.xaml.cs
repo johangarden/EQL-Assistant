@@ -1047,7 +1047,7 @@ public partial class MainWindow : Window
         var panelsItem = new System.Windows.Forms.ToolStripMenuItem("Panels");
         var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Repop timer", null, (_, _) => ToggleTimer());
         var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
-        var panelSkills = new System.Windows.Forms.ToolStripMenuItem("Skill tracker", null, (_, _) => ToggleSkills());
+        var panelSkills = new System.Windows.Forms.ToolStripMenuItem("DPS meter · skills section", null, (_, _) => ToggleSkills());
         var panelSct = new System.Windows.Forms.ToolStripMenuItem("Combat text", null, (_, _) => ToggleSct());
         var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
         panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
