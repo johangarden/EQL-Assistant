@@ -941,6 +941,19 @@ public partial class MainWindow : Window
         BringToFront(_raidsWindow);
     }
 
+    private Views.LootWindow? _lootWindow;
+
+    private void OpenLootHistory()
+    {
+        if (_lootWindow is null)
+        {
+            _lootWindow = new Views.LootWindow(_loot);
+            _lootWindow.Closed += (_, _) => _lootWindow = null;
+            _lootWindow.Show();
+        }
+        BringToFront(_lootWindow);
+    }
+
     private void OpenConfigFolder()
     {
         try
@@ -1038,6 +1051,7 @@ public partial class MainWindow : Window
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
+        menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
