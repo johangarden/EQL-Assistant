@@ -21,8 +21,10 @@ public partial class HistoryWindow : Window
     private readonly ConfigService _config;
     private readonly RaidKills _raids;
     private readonly LootTracker _loot;
+    private readonly SkyQuests _sky;
     private RaidKillsWindow? _raidsWindow;
     private LootWindow? _lootWindow;
+    private SkyWindow? _skyWindow;
     private readonly DispatcherTimer _tick;
     private readonly List<CombatParser.FightRecord> _saved;
     private List<Entry> _shown = new();
@@ -55,11 +57,13 @@ public partial class HistoryWindow : Window
         public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids, LootTracker loot)
+    public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids, LootTracker loot,
+        SkyQuests sky)
     {
         InitializeComponent();
         WindowTheme.ApplyDark(this);
         _loot = loot;
+        _sky = sky;
         _parser = parser;
         _config = config;
         _raids = raids;
@@ -159,6 +163,18 @@ public partial class HistoryWindow : Window
         }
         _lootWindow.Activate();
         _lootWindow.Focus();
+    }
+
+    private void Sky_Click(object sender, RoutedEventArgs e)
+    {
+        if (_skyWindow is null)
+        {
+            _skyWindow = new SkyWindow(_sky);
+            _skyWindow.Closed += (_, _) => _skyWindow = null;
+            _skyWindow.Show();
+        }
+        _skyWindow.Activate();
+        _skyWindow.Focus();
     }
 
     // ---- keep / remove --------------------------------------------------------

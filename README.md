@@ -207,6 +207,16 @@ misses/resists/max in the tooltip. Counts accumulate across fights — only the
 section's **⟲** button resets them. Spell resists count as failed attempts.
 Toggle from the tray.
 
+## Plane of Sky quest tracker
+
+Every class's Test quests (~95 quests) with **have/need chips per turn-in
+item**, counted automatically from your loot history. Open it from the tray
+(*Sky quests…*) or the Fight History window (*Sky*). Filter by class or
+search; quests sort **closest-to-done**; hover an item for who drops it and
+where, hover the reward for its full stats. A quest **checks itself off when
+its reward item appears in the log** (with a celebration flash) — or tick it
+manually. Progress persists in `sky-progress.json`.
+
 ## Raid kills and loot history
 
 Both open from the Fight History window (and raid kills from the tray):
@@ -243,13 +253,16 @@ text page. Master toggle: Ctrl+Alt+C.
 | `fights.json` | ★-kept fights (including their timelines) |
 | `raid-kills.json` / `raid-targets.json` | raid progression / target list |
 | `loot.json` | loot history |
+| `sky-progress.json` | Plane of Sky item counts + completed quests |
 | `seen-spells.json` | which library spells appeared in your log |
 | `window-*.json` | panel positions |
 
 ## Credits
 
 The spell library (`data\spell-library.json` — names, cast/wear-off messages,
-class levels and durations) is converted from
+class levels and durations) and the Plane of Sky quest data
+(`data\sky-quests.json` — quests, turn-in items, droppers and reward stats)
+are converted from
 [jmoyers/everquest-companion](https://github.com/jmoyers/everquest-companion)
 (MIT License, Copyright 2026 Josh Moyers), whose data was in turn sourced from
 eqlwiki.com and wiki.project1999.com. Thanks!

@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private readonly CombatParser _combat = new();
     private RaidKills _raids = null!;
     private LootTracker _loot = null!;
+    private SkyQuests _skyQuests = null!;
     private SpellLibrary _spellLib = null!;
     private RaidKillsWindow? _raidsWindow;
     private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
@@ -92,6 +93,9 @@ public partial class MainWindow : Window
         _alerts.Muted = _config.Overlay.Muted;
         _raids = new RaidKills(_configService);
         _loot = new LootTracker(_configService);
+        _skyQuests = new SkyQuests(_configService, _loot);
+        _skyQuests.QuestCompleted += q =>
+            OnFlashRequested($"Sky quest complete — {q.Reward}!", "#FFD54F");
         _spellLib = new SpellLibrary(_configService);
         Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
         _timerHidden = !_config.Overlay.TimerVisible;
@@ -266,6 +270,7 @@ public partial class MainWindow : Window
                 _combat.Replay(line);
                 _raids.ProcessLine(line, t);
                 _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
+                _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 NoteLineSeen(t);
                 lines++;
@@ -507,7 +512,8 @@ public partial class MainWindow : Window
     private void RebuildMeterWindow()
     {
         if (_meter is not null) { try { _meter.Close(); } catch { /* ignore */ } }
-        _meter = new MeterWindow(_configService, _combat, _raids, _loot, _config.Overlay.Opacity,
+        _meter = new MeterWindow(_configService, _combat, _raids, _loot, _skyQuests,
+            _config.Overlay.Opacity,
             _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible);
         _meter.Show();
         UpdateMeterVisibility();
@@ -603,6 +609,7 @@ public partial class MainWindow : Window
                 _combat.ProcessLine(line);
                 _raids.ProcessLine(line);
                 _loot.ProcessLine(line);
+                _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
@@ -973,6 +980,19 @@ public partial class MainWindow : Window
         BringToFront(_lootWindow);
     }
 
+    private Views.SkyWindow? _skyWindow;
+
+    private void OpenSkyQuests()
+    {
+        if (_skyWindow is null)
+        {
+            _skyWindow = new Views.SkyWindow(_skyQuests);
+            _skyWindow.Closed += (_, _) => _skyWindow = null;
+            _skyWindow.Show();
+        }
+        BringToFront(_skyWindow);
+    }
+
     private void OpenConfigFolder()
     {
         try
@@ -1082,6 +1102,7 @@ public partial class MainWindow : Window
 
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
+        menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 

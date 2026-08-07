@@ -175,24 +175,26 @@ public partial class App : Application
             // Loot line parsing (all three real forms from the log).
             Check("loot: upgrade form", LootTracker.TryParseLoot(
                 "You looted a Platinum Ring +1 from Gynok Moltor's corpse to create a Platinum Ring +4",
-                out var lk, out var li, out var lm, out var lr, out _)
+                out var lk, out var li, out var lm, out var lr, out _, out _)
                 && lk == LootTracker.LootKind.Upgrade && li == "Platinum Ring +1"
                 && lm == "Gynok Moltor" && lr == "Platinum Ring +4");
             Check("loot: kept form strips article", LootTracker.TryParseLoot(
                 "--You have looted a Raw-Hide Gorget +2 from a ghoul's corpse.--",
-                out lk, out li, out lm, out lr, out _)
+                out lk, out li, out lm, out lr, out _, out _)
                 && lk == LootTracker.LootKind.Kept && li == "Raw-Hide Gorget +2" && lm == "a ghoul");
-            Check("loot: kept stack keeps its count", LootTracker.TryParseLoot(
+            Check("loot: kept stack splits its count", LootTracker.TryParseLoot(
                 "--You have looted 2 Bone Chips from an elf skeleton's corpse.--",
-                out lk, out li, out lm, out lr, out _)
-                && li == "2 Bone Chips" && lm == "an elf skeleton");
+                out lk, out li, out lm, out lr, out _, out int lcount)
+                && li == "Bone Chips" && lcount == 2 && lm == "an elf skeleton");
             Check("loot: sold form + coin math", LootTracker.TryParseLoot(
                 "You looted a Bronze Spear +1 from Priest Amiaz's corpse and sold it for 2 platinum, 2 gold, 1 silver and 4 copper.",
-                out lk, out li, out lm, out lr, out long lc)
+                out lk, out li, out lm, out lr, out long lc, out _)
                 && lk == LootTracker.LootKind.Sold && li == "Bronze Spear +1" && lc == 2214);
             Check("loot: coin formatting", LootTracker.FormatCoins(2214) == "2p 2g 1s 4c");
             Check("loot: combat line is not loot", !LootTracker.TryParseLoot(
-                "You slash a rat for 5 points of damage.", out lk, out li, out lm, out lr, out _));
+                "You slash a rat for 5 points of damage.", out lk, out li, out lm, out lr, out _, out _));
+            Check("loot: item key strips +N", LootTracker.ItemKey("Sphinx Claw +2") == "sphinx claw"
+                && LootTracker.ItemKey("Bone Chips") == "bone chips");
 
             // Tail reader for the catch-up prompt: last parseable line stamp wins,
             // trailing junk is skipped, only the file tail is read.
@@ -484,6 +486,29 @@ public partial class App : Application
                 CombatParser.IsMeleeAbility("backstab") && CombatParser.IsMeleeAbility("slash")
                 && !CombatParser.IsMeleeAbility("thorns") && !CombatParser.IsMeleeAbility("Tainted Breath"));
 
+            // Plane of Sky quest tracker: data loads, completion watcher works
+            // (temp progress path so tests never touch real progress).
+            string skyProgress = Path.Combine(Path.GetTempPath(), "eql_sky_test.json");
+            if (File.Exists(skyProgress)) File.Delete(skyProgress);
+            var skyCs = new ConfigService();
+            var sky = new SkyQuests(skyCs, new LootTracker(skyCs), skyProgress);
+            Check("sky: quest data loads", sky.Quests.Count >= 90
+                && sky.Quests.Select(q => q.Class).Distinct().Count() == 16);
+            var bard = sky.Quests.FirstOrDefault(q => q.Name == "Bard Test of Tone");
+            Check("sky: known quest parsed fully", bard is not null
+                && bard.Giver == "Cilin Spellsinger" && bard.Reward == "Mask of Song"
+                && bard.Items.Count == 2 && sky.Progress(bard).Need == 2);
+            sky.ProcessLine("[x] You receive 5 gold and 2 copper from the corpse.");
+            Check("sky: coin receive completes nothing", sky.CompletedCount == 0);
+            sky.ProcessLine("[x] You receive a Mask of Song!");
+            Check("sky: reward receipt completes the quest",
+                bard is not null && sky.IsCompleted(bard) && sky.CompletedCount == 1);
+            sky.ProcessLine("[x] You receive a Mask of Song!");
+            Check("sky: replayed reward line is a no-op", sky.CompletedCount == 1);
+            if (bard is not null) sky.SetCompleted(bard, false);
+            Check("sky: manual un-complete works", sky.CompletedCount == 0);
+            File.Delete(skyProgress);
+
             // Zone difficulty parse for D0–D4 kill tiers.
             Check("zone difficulty: D0 for plain zones",
                 RaidKills.ParseDifficulty("Befallen") == 0
@@ -686,7 +711,7 @@ public partial class App : Application
             {
                 p.Replay(line);
                 lines++;
-                if (LootTracker.TryParseLoot(tsRx.Replace(line, "", 1), out var lk, out _, out _, out _, out long lc))
+                if (LootTracker.TryParseLoot(tsRx.Replace(line, "", 1), out var lk, out _, out _, out _, out long lc, out _))
                 {
                     if (lk == LootTracker.LootKind.Upgrade) lootUp++;
                     else if (lk == LootTracker.LootKind.Kept) lootKept++;

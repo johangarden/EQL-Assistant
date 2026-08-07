@@ -19,7 +19,7 @@ public sealed class LootTracker
     public enum LootKind { Upgrade, Kept, Sold }
 
     public sealed record LootEntry(DateTime When, string Item, string Mob, string Zone, LootKind Kind,
-        string Result = "", long Copper = 0);
+        string Result = "", long Copper = 0, int Count = 1);
 
     private const int MaxEntries = 5000;
 
@@ -32,6 +32,10 @@ public sealed class LootTracker
 
     /// <summary>Raised on the caller's thread when a loot line was recorded.</summary>
     public event Action? Changed;
+
+    /// <summary>Raised with each newly recorded entry (fires before the cap trims
+    /// old rows — consumers keeping running totals never miss one).</summary>
+    public event Action<LootEntry>? Added;
 
     public long TotalVendorCopper
     {
@@ -98,7 +102,8 @@ public sealed class LootTracker
             return;
         }
 
-        if (!TryParseLoot(body, out var kind, out string item, out string mob, out string result, out long copper))
+        if (!TryParseLoot(body, out var kind, out string item, out string mob, out string result,
+                out long copper, out int count))
             return;
 
         // Exact-second dedupe: a re-run catch-up feeds the very same lines.
@@ -110,17 +115,20 @@ public sealed class LootTracker
                 return;
         }
 
-        _entries.Insert(0, new LootEntry(when, item, mob, _zone, kind, result, copper));
+        var entry = new LootEntry(when, item, mob, _zone, kind, result, copper, count);
+        _entries.Insert(0, entry);
+        Added?.Invoke(entry);
         if (_entries.Count > MaxEntries) _entries.RemoveAt(_entries.Count - 1);
         Save();
         Changed?.Invoke();
     }
 
-    /// <summary>Parse a loot line body into its parts (public for the self-tests).</summary>
+    /// <summary>Parse a loot line body into its parts (public for the self-tests).
+    /// Kept stacks split their count out: "2 Bone Chips" → count 2, item "Bone Chips".</summary>
     public static bool TryParseLoot(string body, out LootKind kind, out string item,
-        out string mob, out string result, out long copper)
+        out string mob, out string result, out long copper, out int count)
     {
-        kind = LootKind.Kept; item = ""; mob = ""; result = ""; copper = 0;
+        kind = LootKind.Kept; item = ""; mob = ""; result = ""; copper = 0; count = 1;
 
         var m = UpgradeRx.Match(body);
         if (m.Success)
@@ -146,14 +154,25 @@ public sealed class LootTracker
         if (m.Success)
         {
             kind = LootKind.Kept;
-            // "a Raw-Hide Gorget +2" → strip the article; "2 Bone Chips" keeps its count.
+            // "a Raw-Hide Gorget +2" → strip the article; "2 Bone Chips" → count 2.
             item = Regex.Replace(m.Groups["item"].Value, @"^(?:an?|the) ", "");
+            var stack = Regex.Match(item, @"^(?<n>\d+) (?<rest>.+)$");
+            if (stack.Success)
+            {
+                count = int.Parse(stack.Groups["n"].Value, CultureInfo.InvariantCulture);
+                item = stack.Groups["rest"].Value;
+            }
             mob = m.Groups["mob"].Value;
             return true;
         }
 
         return false;
     }
+
+    /// <summary>Canonical key for "how many of X do I hold" — "+N" upgrade suffixes
+    /// collapse ("Sphinx Claw +1" counts as "Sphinx Claw").</summary>
+    public static string ItemKey(string item) =>
+        Regex.Replace(item.Trim(), @"\s\+\d+$", "").ToLowerInvariant();
 
     /// <summary>"2 platinum, 2 gold, 1 silver and 4 copper" → total copper.</summary>
     public static long ParseCoins(string money)
@@ -194,7 +213,22 @@ public sealed class LootTracker
         {
             if (!File.Exists(_path)) return;
             var entries = JsonSerializer.Deserialize<List<LootEntry>>(File.ReadAllText(_path), JsonOpts);
-            if (entries is not null) _entries.AddRange(entries.OrderByDescending(e => e.When));
+            if (entries is null) return;
+            _entries.AddRange(entries
+                .Select(e =>
+                {
+                    // Pre-2.4 kept stacks embedded the count in the name.
+                    if (e.Kind != LootKind.Kept || e.Count != 1) return e;
+                    var stack = Regex.Match(e.Item, @"^(?<n>\d+) (?<rest>.+)$");
+                    return stack.Success
+                        ? e with
+                        {
+                            Count = int.Parse(stack.Groups["n"].Value, CultureInfo.InvariantCulture),
+                            Item = stack.Groups["rest"].Value,
+                        }
+                        : e;
+                })
+                .OrderByDescending(e => e.When));
         }
         catch { /* corrupt file -> start empty rather than crash */ }
     }

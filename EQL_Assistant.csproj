@@ -49,6 +49,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="data\spell-library.json" />
+    <!-- Plane of Sky Test quests (same source/license as the spell library). -->
+    <None Update="data\sky-quests.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <EmbeddedResource Include="data\sky-quests.json" />
   </ItemGroup>
 
 </Project>
