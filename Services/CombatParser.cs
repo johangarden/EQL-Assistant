@@ -185,6 +185,40 @@ public sealed class CombatParser
         _events.Add(new PendingEvent(time, ability, amount, stream, crit, miss, resist));
     }
 
+    // ---- death recap ------------------------------------------------------------
+    // Rolling window of the last hits/heals on YOU, snapshotted when a death
+    // line appears so the recap window can show what killed you.
+
+    public sealed record RecapEntry(DateTime When, string Source, string Ability,
+        double Amount, bool Heal, bool Crit, bool Miss = false);
+
+    public sealed record DeathEvent(DateTime When, string Killer, IReadOnlyList<RecapEntry> Events);
+
+    /// <summary>Raised on "You died." / "You have been slain by X!" (caller's thread).</summary>
+    public event Action<DeathEvent>? PlayerDied;
+
+    private const int RecapCapacity = 40;
+    private readonly List<RecapEntry> _recap = new();
+    private DateTime _lastDeathAt = DateTime.MinValue;
+
+    private void RecapNote(DateTime when, string source, string ability, double amount,
+        bool heal, bool crit, bool miss = false)
+    {
+        _recap.Add(new RecapEntry(when, source, ability, amount, heal, crit, miss));
+        if (_recap.Count > RecapCapacity) _recap.RemoveAt(0);
+    }
+
+    /// <summary>"You died." and "You have been slain by X!" can both appear for one
+    /// death — the first one within a few seconds wins.</summary>
+    private void FireDeath(DateTime time, string killer)
+    {
+        if (Math.Abs((time - _lastDeathAt).TotalSeconds) < 5) return;
+        _lastDeathAt = time;
+        var snapshot = _recap.ToList();
+        _recap.Clear();
+        PlayerDied?.Invoke(new DeathEvent(time, killer, snapshot));
+    }
+
     /// <summary>The zone we're in, from "You have entered <zone>." lines.</summary>
     public string CurrentZone { get; private set; } = "";
 
@@ -351,6 +385,11 @@ public sealed class CombatParser
         @"^You have improved (?<ab>.+?) at a cost of (?<n>\d+) ability points?\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Confirmed forms: "You died." and "You have been slain by a wan ghoul knight!"
+    private static readonly Regex SlainYouRx = new(
+        @"^You have been slain by (?<mob>.+?)!",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -369,6 +408,14 @@ public sealed class CombatParser
         if (body.StartsWith(ZonePrefix, StringComparison.Ordinal) && body.EndsWith('.'))
         {
             CurrentZone = body[ZonePrefix.Length..^1];
+            return;
+        }
+
+        if (body.StartsWith("You died.", StringComparison.Ordinal)) { FireDeath(time, ""); return; }
+        if (body.StartsWith("You have been slain", StringComparison.Ordinal)
+            && SlainYouRx.Match(body) is { Success: true } slain)
+        {
+            FireDeath(time, slain.Groups["mob"].Value);
             return;
         }
 
@@ -632,6 +679,7 @@ public sealed class CombatParser
             _incomingSelf += amount;
             StatIn(_incomingSelfAbility, ability).Land(amount, crit);
             Note(time, ability, amount, FightStream.SelfIn, crit);
+            RecapNote(time, attacker, ability, amount, heal: false, crit);
             SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, flavor, crit));
         }
         else if (IsPet(target))
@@ -666,6 +714,7 @@ public sealed class CombatParser
         _incomingSelf += amount;
         StatIn(_incomingSelfAbility, ability).Land(amount, crit);
         Note(time, ability, amount, FightStream.SelfIn, crit);
+        RecapNote(time, "", ability, amount, heal: false, crit);
         SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, SctFlavor.Spell, crit));
     }
 
@@ -677,7 +726,11 @@ public sealed class CombatParser
         Touch(time);
 
         Stat(attacker, ability).Misses++;
-        if (IsSelf(target)) StatIn(_incomingSelfAbility, ability).Misses++;
+        if (IsSelf(target))
+        {
+            StatIn(_incomingSelfAbility, ability).Misses++;
+            RecapNote(time, attacker, ability, 0, heal: false, crit: false, miss: true);
+        }
         else if (IsPet(target)) StatIn(_incomingPetAbility, ability).Misses++;
 
         if (IsSelf(attacker))
@@ -728,6 +781,8 @@ public sealed class CombatParser
         if (IsReflexive(target)) target = healer;
         Touch(time);
         Bump(_healing, healer, amount);
+
+        if (IsSelf(target)) RecapNote(time, healer, spell, amount, heal: true, crit);
 
         if (IsSelf(healer))
         {

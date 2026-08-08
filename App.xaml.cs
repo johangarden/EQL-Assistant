@@ -82,6 +82,18 @@ public partial class App : Application
                 new RaidKills(cs), new SpellLibrary(cs), new CombatParser(), _ => { });
             mgr.Show();
             mgr.Close();
+
+            // Death recap window builds from a real-log-shaped death.
+            var cp = new CombatParser();
+            CombatParser.DeathEvent? death = null;
+            cp.PlayerDied += d => death = d;
+            cp.ProcessLine("[Sat Aug 08 23:21:35 2026] A bok ghoul knight hits YOU for 16 points of damage.");
+            cp.ProcessLine("[Sat Aug 08 23:21:37 2026] A zol ghoul knight hits YOU for 49 points of damage.");
+            cp.ProcessLine("[Sat Aug 08 23:21:37 2026] You have been slain by a bok ghoul knight!");
+            if (death is null) throw new InvalidOperationException("death recap event did not fire");
+            var recap = new Views.DeathRecapWindow(death);
+            recap.Show();
+            recap.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
             Environment.ExitCode = 0;
         }
@@ -250,6 +262,30 @@ public partial class App : Application
                 new Models.AppConfig().EffectiveCatchUpMode() == "ask");
             Check("catch-up: explicit off beats legacy",
                 new Models.AppConfig { CatchUpOnStart = true, CatchUpMode = "off" }.EffectiveCatchUpMode() == "off");
+
+            // Death recap: incoming hits/misses/heals buffer up; a death line
+            // snapshots them, fires once, and the twin death lines dedupe.
+            var cp = new CombatParser();
+            var deaths = new List<CombatParser.DeathEvent>();
+            cp.PlayerDied += d => deaths.Add(d);
+            cp.ProcessLine("[Sat Aug 08 23:21:34 2026] A zol ghoul knight hits YOU for 42 points of damage.");
+            cp.ProcessLine("[Sat Aug 08 23:21:34 2026] A zol ghoul knight tries to hit YOU, but misses!");
+            cp.ProcessLine("[Sat Aug 08 23:21:35 2026] Nurse heals you for 50 hit points by Minor Healing.");
+            cp.ProcessLine("[Sat Aug 08 23:21:37 2026] A bok ghoul knight hits YOU for 24 points of damage.");
+            cp.ProcessLine("[Sat Aug 08 23:21:37 2026] You have been slain by a bok ghoul knight!");
+            Check("recap: slain line fires with killer",
+                deaths.Count == 1 && deaths[0].Killer == "a bok ghoul knight");
+            Check("recap: events captured in order",
+                deaths.Count == 1 && deaths[0].Events.Count == 4
+                && deaths[0].Events[0] is { Amount: 42, Heal: false, Source: "A zol ghoul knight" }
+                && deaths[0].Events[1].Miss
+                && deaths[0].Events[2] is { Heal: true, Amount: 50 }
+                && deaths[0].Events[3].Amount == 24);
+            cp.ProcessLine("[Sat Aug 08 23:21:38 2026] You died.");
+            Check("recap: twin death line within 5s is ignored", deaths.Count == 1);
+            cp.ProcessLine("[Sat Aug 08 23:25:00 2026] You died.");
+            Check("recap: later plain death fires fresh and empty",
+                deaths.Count == 2 && deaths[1].Killer == "" && deaths[1].Events.Count == 0);
 
             // A speak phrase with no timing defaults to the expiry alert.
             var mute = new Models.TriggerDefinition

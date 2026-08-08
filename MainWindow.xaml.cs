@@ -107,6 +107,7 @@ public partial class MainWindow : Window
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
         _combat.SctEvent += OnSctEvent;
+        _combat.PlayerDied += OnPlayerDied;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
@@ -982,6 +983,37 @@ public partial class MainWindow : Window
         BringToFront(_lootWindow);
     }
 
+    private Views.DeathRecapWindow? _recapWindow;
+    private CombatParser.DeathEvent? _lastDeath;
+
+    /// <summary>A death line appeared — remember it and (optionally) pop the recap.
+    /// Catch-up replay records the death quietly instead of popping old news.</summary>
+    private void OnPlayerDied(CombatParser.DeathEvent death)
+    {
+        _lastDeath = death;
+        Log.Info($"Player died ({(death.Killer.Length > 0 ? death.Killer : "no killer line")}), " +
+                 $"recap events={death.Events.Count}");
+        if (_suppressSct || !_config.Overlay.DeathRecapAuto) return;
+        OpenDeathRecap(activate: false); // appear over the game without stealing focus
+    }
+
+    private void OpenDeathRecap(bool activate = true)
+    {
+        if (_lastDeath is null)
+        {
+            _vm.Flash("No deaths this session — long may it last.");
+            return;
+        }
+        if (_recapWindow is null)
+        {
+            _recapWindow = new Views.DeathRecapWindow(_lastDeath);
+            _recapWindow.Closed += (_, _) => _recapWindow = null;
+            _recapWindow.Show();
+        }
+        else _recapWindow.Update(_lastDeath);
+        if (activate) BringToFront(_recapWindow);
+    }
+
     private Views.SkyWindow? _skyWindow;
 
     private void OpenSkyQuests()
@@ -1105,6 +1137,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
         menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
+        menu.Items.Add("Death recap…", null, (_, _) => OpenDeathRecap());
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 

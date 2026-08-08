@@ -586,6 +586,7 @@ public partial class TriggerManagerWindow : Window
         MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
+        DeathRecapCheck.IsChecked = _config.Overlay.DeathRecapAuto;
         StartWithWindowsCheck.IsChecked = IsAutoStartEnabled();
         CatchUpModeBox.SelectedValue = _config.EffectiveCatchUpMode();
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
@@ -695,6 +696,7 @@ public partial class TriggerManagerWindow : Window
                 ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
                 StartLocked = StartLockedCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
+                DeathRecapAuto = DeathRecapCheck.IsChecked == true,
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,

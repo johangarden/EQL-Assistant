@@ -327,6 +327,8 @@
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
                             <CheckBox x:Name="MuteCheck" Content="Mute all alerts" Margin="0,6,0,0"/>
+                            <CheckBox x:Name="DeathRecapCheck" Margin="0,6,0,0"
+                                      Content="Pop a death recap window when you die (last hits and heals on you)"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Session" Style="{StaticResource SectionTitle}"/>
