@@ -867,7 +867,8 @@ public partial class MainWindow : Window
         ApplySelfName();
 
         bool wasLocked = _vm.Locked;
-        _engine.Reset();
+        // No Reset here: UpdateConfig prunes what the new config dropped but
+        // keeps running bars and active matrix timers alive across a save.
         _engine.UpdateConfig(cfg);
 
         // Rebuild the VM so sizing/header changes take effect immediately.

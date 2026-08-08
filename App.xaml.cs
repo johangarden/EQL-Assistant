@@ -172,6 +172,40 @@ public partial class App : Application
             Check("reducer: unrelated line cuts nothing",
                 Math.Abs((endBefore - htBar.EndTimeLocal).TotalSeconds - 120) < 0.01);
 
+            // Saving in the Manager re-applies config WITHOUT Reset: running
+            // bars and active matrix timers must survive; only triggers the
+            // new config dropped get pruned.
+            var buff = new Models.TriggerDefinition
+            {
+                Id = "aego", Name = "Aegolism", Panel = Models.Panels.SelfBuffs,
+                StartPattern = @"You feel the aura of the faithful\.",
+                DurationSeconds = 3600,
+            };
+            ConfigService.CompileOne(buff);
+            cfg.Triggers.Add(buff);
+            engine.UpdateConfig(cfg); // pick up the new matrix trigger
+            engine.ProcessLine($"[{now}] You feel the aura of the faithful.");
+            var aego = engine.SelfCells.First(c => c.Key == "aego");
+            Check("save-preserve: matrix cell active before save", aego.IsActive);
+            int barsBefore = engine.Bars.Count;
+
+            engine.UpdateConfig(cfg); // what a Manager save now does
+            Check("save-preserve: running bars survive a settings save",
+                engine.Bars.Count == barsBefore
+                && engine.Bars.Any(b => b.Name == "Harm Touch")
+                && engine.Bars.Any(b => b.Name == "HoT — Bob"));
+            var aego2 = engine.SelfCells.First(c => c.Key == "aego");
+            Check("save-preserve: matrix timer survives a settings save",
+                aego2.IsActive
+                && Math.Abs((aego2.EndTimeLocal - aego.EndTimeLocal).TotalSeconds) < 0.01);
+
+            cfg.Triggers.Remove(ht);
+            engine.UpdateConfig(cfg);
+            Check("save-preserve: deleted trigger's bar is pruned",
+                engine.Bars.All(b => b.Name != "Harm Touch")
+                && engine.Bars.Any(b => b.Name == "HoT — Bob"));
+            cfg.Triggers.Add(ht);
+
             // Loot line parsing (all three real forms from the log).
             Check("loot: upgrade form", LootTracker.TryParseLoot(
                 "You looted a Platinum Ring +1 from Gynok Moltor's corpse to create a Platinum Ring +4",

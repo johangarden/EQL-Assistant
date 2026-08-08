@@ -80,7 +80,35 @@ public sealed class TriggerEngine
         _triggers = config.Triggers;
         _warnSeconds = config.Overlay.WarnSeconds;
         _remindInterval = config.Overlay.RemindIntervalSeconds;
+
+        // Carry running matrix timers across the rebuild — saving in the
+        // Manager must not blank an active buff (same idea as the repop fix).
+        var running = new Dictionary<string, (DateTime End, bool FadeFired)>();
+        foreach (var cell in SelfCells.Concat(TargetCells))
+            if (cell.IsActive) running[cell.Key] = (cell.EndTimeLocal, cell.FadeAlertFired);
+
         BuildMatrices();
+
+        foreach (var cell in SelfCells.Concat(TargetCells))
+        {
+            if (!running.TryGetValue(cell.Key, out var state)) continue;
+            cell.Activate(state.End);
+            cell.FadeAlertFired = state.FadeFired;
+        }
+
+        // Drop running bars whose trigger was deleted, disabled, or moved off
+        // the bars panel; everything else keeps counting down untouched.
+        var barIds = _triggers
+            .Where(t => t.Enabled && t.Panel == Panels.Bars)
+            .Select(t => t.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var key in _active.Keys.ToList())
+        {
+            if (key.StartsWith("__demo", StringComparison.Ordinal)) continue;
+            int pipe = key.IndexOf('|');
+            string id = pipe < 0 ? key : key[..pipe];
+            if (!barIds.Contains(id)) Remove(key);
+        }
 
         // Drop missing indicators whose trigger no longer wants them.
         foreach (var id in _missing.Keys.ToList())
