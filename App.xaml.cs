@@ -216,6 +216,27 @@ public partial class App : Application
                 new Models.AppConfig().EffectiveCatchUpMode() == "ask");
             Check("catch-up: explicit off beats legacy",
                 new Models.AppConfig { CatchUpOnStart = true, CatchUpMode = "off" }.EffectiveCatchUpMode() == "off");
+
+            // Friendly durations (trigger/respawn fields + repop prompts).
+            Check("duration: parses all the friendly forms",
+                DurationText.Parse("660") == 660
+                && DurationText.Parse("11m") == 660
+                && DurationText.Parse("9m12s") == 552
+                && DurationText.Parse("9:12") == 552
+                && DurationText.Parse("1h20m5s") == 4805
+                && DurationText.Parse("1:20:05") == 4805
+                && DurationText.Parse("90s") == 90);
+            Check("duration: junk is rejected",
+                DurationText.Parse("") is null
+                && DurationText.Parse("banana") is null
+                && DurationText.Parse("9:75") is null
+                && DurationText.Parse("0") is null);
+            Check("duration: compact round-trip",
+                DurationText.Compact(660) == "11m"
+                && DurationText.Compact(552) == "9m12s"
+                && DurationText.Compact(45) == "45s"
+                && DurationText.Compact(4805) == "1h20m5s"
+                && DurationText.Parse(DurationText.Compact(1200)) == 1200);
         }
         catch (Exception ex)
         {

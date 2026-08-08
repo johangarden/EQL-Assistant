@@ -113,7 +113,7 @@ public partial class TimerWindow : Window
 
     public void PromptSet()
     {
-        string? input = PromptDialog.Show(this, "Repop timer", "Duration — m:ss, 90s, or 6m:", _lastText);
+        string? input = PromptDialog.Show(this, "Repop timer", "Duration — m:ss, 90s, 6m or 9m12s:", _lastText);
         if (input is null) return;
         double? sec = ParseDuration(input);
         if (sec is not > 0) return;
@@ -307,7 +307,7 @@ public partial class TimerWindow : Window
     private void PromptAddRespawn(string name, string zone)
     {
         string? input = PromptDialog.Show(this, "Add respawn",
-            $"Respawn time for '{name}' — m:ss, 900s, or 15m:");
+            $"Respawn time for '{name}' — m:ss, 900s, 15m or 6m40s:");
         if (input is null) return;
         double? sec = ParseDuration(input);
         if (sec is not > 0) return;
@@ -475,30 +475,8 @@ public partial class TimerWindow : Window
             : $"{ts.Minutes}:{ts.Seconds:00}";
     }
 
-    /// <summary>Parse "m:ss", "90s", "6m", or a plain number (seconds).</summary>
-    public static double? ParseDuration(string text)
-    {
-        text = text.Trim().ToLowerInvariant();
-        if (text.Length == 0) return null;
-
-        if (text.Contains(':'))
-        {
-            var parts = text.Split(':');
-            if (parts.Length == 2
-                && int.TryParse(parts[0], out int m) && m >= 0
-                && int.TryParse(parts[1], out int s) && s is >= 0 and < 60)
-                return m * 60 + s;
-            return null;
-        }
-
-        double mult = 1;
-        if (text.EndsWith('m')) { mult = 60; text = text[..^1]; }
-        else if (text.EndsWith('s')) { text = text[..^1]; }
-
-        return double.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out double n) && n > 0
-            ? n * mult
-            : null;
-    }
+    /// <summary>Parse "m:ss", "90s", "6m", "9m12s", or a plain number (seconds).</summary>
+    public static double? ParseDuration(string text) => Services.DurationText.Parse(text);
 
     private static Brush Freeze(Color c)
     {

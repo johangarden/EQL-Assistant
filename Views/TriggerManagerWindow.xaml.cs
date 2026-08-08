@@ -554,7 +554,7 @@ public partial class TriggerManagerWindow : Window
         WarnGroup.Visibility = V(bars || matrix);
         SpeakSoundGroup.Visibility = V(bars || matrix);
 
-        DurationLabel.Text = timer ? "Respawn time (seconds)" : "Duration (seconds)";
+        DurationLabel.Text = timer ? "Respawn time" : "Duration";
         StartLabel.Text = timer ? "Death line (regex — starts the repop timer)"
             : flash ? "Pattern (regex — fires the flash)"
             : matrix ? "Start pattern (regex — turns the cell green)"

@@ -175,8 +175,9 @@
                                 </StackPanel>
 
                                 <StackPanel x:Name="DurationGroup">
-                                    <TextBlock x:Name="DurationLabel" Text="Duration (seconds)" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox Text="{Binding DurationSeconds}" Width="120" HorizontalAlignment="Left"/>
+                                    <TextBlock x:Name="DurationLabel" Text="Duration" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox Text="{Binding DurationText}" Width="120" HorizontalAlignment="Left"
+                                             ToolTip="660, 11m, 9m12s or 9:12"/>
                                 </StackPanel>
 
                                 <StackPanel x:Name="ColorGroup">
@@ -481,8 +482,9 @@
                                 <TextBlock Text="Zone (groups the list — filled in automatically)" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding Zone, UpdateSourceTrigger=PropertyChanged}" Width="260" HorizontalAlignment="Left"/>
 
-                                <TextBlock Text="Respawn time (seconds)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding Seconds}" Width="120" HorizontalAlignment="Left"/>
+                                <TextBlock Text="Respawn time" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding SecondsText}" Width="120" HorizontalAlignment="Left"
+                                         ToolTip="400, 15m, 6m40s or 6:40"/>
 
                                 <TextBlock Text="Death line (regex — optional)" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}"

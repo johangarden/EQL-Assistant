@@ -16,7 +16,24 @@ public sealed class RespawnViewModel : ViewModelBase
     public double Seconds
     {
         get => _seconds;
-        set { if (SetField(ref _seconds, value)) OnPropertyChanged(nameof(Display)); }
+        set
+        {
+            if (!SetField(ref _seconds, value)) return;
+            OnPropertyChanged(nameof(Display));
+            OnPropertyChanged(nameof(SecondsText));
+        }
+    }
+
+    /// <summary>Friendly face of <see cref="Seconds"/>: shows "6m40s",
+    /// accepts "400", "15m", "6m40s" or "6:40". Invalid input snaps back.</summary>
+    public string SecondsText
+    {
+        get => Services.DurationText.Compact(Seconds);
+        set
+        {
+            if (Services.DurationText.Parse(value) is double s) Seconds = s;
+            OnPropertyChanged(nameof(SecondsText)); // normalize ("400" -> "6m40s") or snap back
+        }
     }
 
     private string _zone = "";
