@@ -251,6 +251,22 @@ public partial class App : Application
             Check("catch-up: explicit off beats legacy",
                 new Models.AppConfig { CatchUpOnStart = true, CatchUpMode = "off" }.EffectiveCatchUpMode() == "off");
 
+            // A speak phrase with no timing defaults to the expiry alert.
+            var mute = new Models.TriggerDefinition
+            {
+                Id = "qk", Name = "Quickness", StartPattern = "x",
+                Alert = new Models.AlertConfig { Speak = "Quickness faded" },
+            };
+            ConfigService.CompileOne(mute);
+            Check("alert: speak with no timing fires on expire", mute.Alert!.OnExpire);
+            var timed = new Models.TriggerDefinition
+            {
+                Id = "qk2", Name = "Quickness", StartPattern = "x",
+                Alert = new Models.AlertConfig { Speak = "fading", AtSeconds = 20 },
+            };
+            ConfigService.CompileOne(timed);
+            Check("alert: timed speak is left alone", !timed.Alert!.OnExpire);
+
             // Friendly durations (trigger/respawn fields + repop prompts).
             Check("duration: parses all the friendly forms",
                 DurationText.Parse("660") == 660

@@ -81,6 +81,7 @@ public partial class MainWindow : Window
             LoadActiveLoadoutInto(_config);
             Log.Info($"Config loaded. loadout='{_config.ActiveLoadout}', triggers={_config.Triggers.Count}, " +
                      $"logDir='{_config.Log.Directory}', startLocked={_config.Overlay.StartLocked}");
+            Log.Info($"Config dir: {_configService.ConfigDirectory}");
         }
         catch (Exception ex)
         {
