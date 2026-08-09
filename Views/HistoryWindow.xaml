@@ -57,6 +57,9 @@
                     <Button Content="Loot" Click="Loot_Click" Style="{StaticResource ToolBtn}"
                             AutomationProperties.AutomationId="HistoryLootBtn"
                             ToolTip="Loot history — upgrades, kept items and vendored drops"/>
+                    <Button Content="Sky" Click="Sky_Click" Style="{StaticResource ToolBtn}"
+                            AutomationProperties.AutomationId="HistorySkyBtn"
+                            ToolTip="Plane of Sky quest tracker — have/need per Test quest"/>
                     <Button Content="Timeline" Click="Timeline_Click" Style="{StaticResource ToolBtn}"
                             AutomationProperties.AutomationId="HistoryTimelineBtn"
                             ToolTip="Second-by-second timeline of the selected fight — a lane per ability with every hit, miss, crit and resist"/>

@@ -33,7 +33,28 @@ public sealed class TriggerEditViewModel : ViewModelBase
     public string EndPattern { get => _endPattern; set => SetField(ref _endPattern, value); }
 
     private double _durationSeconds = 60;
-    public double DurationSeconds { get => _durationSeconds; set { if (SetField(ref _durationSeconds, value)) OnPropertyChanged(nameof(Display)); } }
+    public double DurationSeconds
+    {
+        get => _durationSeconds;
+        set
+        {
+            if (!SetField(ref _durationSeconds, value)) return;
+            OnPropertyChanged(nameof(Display));
+            OnPropertyChanged(nameof(DurationText));
+        }
+    }
+
+    /// <summary>Friendly face of <see cref="DurationSeconds"/>: shows "9m12s",
+    /// accepts "660", "11m", "9m12s" or "9:12". Invalid input snaps back.</summary>
+    public string DurationText
+    {
+        get => Services.DurationText.Compact(DurationSeconds);
+        set
+        {
+            if (Services.DurationText.Parse(value) is double s) DurationSeconds = s;
+            OnPropertyChanged(nameof(DurationText)); // normalize ("660" -> "11m") or snap back
+        }
+    }
 
     private string _color = "#4FC3F7";
     public string Color
@@ -84,7 +105,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
                 Panels.Flash => "Flash",
                 _ => Category,
             };
-            string dur = Panel == Panels.Flash ? "" : $"  ·  {DurationSeconds:0}s";
+            string dur = Panel == Panels.Flash ? "" : $"  ·  {Services.DurationText.Compact(DurationSeconds)}";
             return $"{(Enabled ? "" : "○ ")}{Name}  ·  {kind}{dur}";
         }
     }

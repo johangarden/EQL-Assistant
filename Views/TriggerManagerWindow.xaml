@@ -175,8 +175,9 @@
                                 </StackPanel>
 
                                 <StackPanel x:Name="DurationGroup">
-                                    <TextBlock x:Name="DurationLabel" Text="Duration (seconds)" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox Text="{Binding DurationSeconds}" Width="120" HorizontalAlignment="Left"/>
+                                    <TextBlock x:Name="DurationLabel" Text="Duration" Style="{StaticResource FieldLabel}"/>
+                                    <TextBox Text="{Binding DurationText}" Width="120" HorizontalAlignment="Left"
+                                             ToolTip="660, 11m, 9m12s or 9:12"/>
                                 </StackPanel>
 
                                 <StackPanel x:Name="ColorGroup">
@@ -326,6 +327,8 @@
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
                             <CheckBox x:Name="MuteCheck" Content="Mute all alerts" Margin="0,6,0,0"/>
+                            <CheckBox x:Name="DeathRecapCheck" Margin="0,6,0,0"
+                                      Content="Pop a death recap window when you die (last hits and heals on you)"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Session" Style="{StaticResource SectionTitle}"/>
@@ -481,8 +484,9 @@
                                 <TextBlock Text="Zone (groups the list — filled in automatically)" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding Zone, UpdateSourceTrigger=PropertyChanged}" Width="260" HorizontalAlignment="Left"/>
 
-                                <TextBlock Text="Respawn time (seconds)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding Seconds}" Width="120" HorizontalAlignment="Left"/>
+                                <TextBlock Text="Respawn time" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Text="{Binding SecondsText}" Width="120" HorizontalAlignment="Left"
+                                         ToolTip="400, 15m, 6m40s or 6:40"/>
 
                                 <TextBlock Text="Death line (regex — optional)" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}"

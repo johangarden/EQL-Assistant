@@ -109,6 +109,9 @@ public sealed class OverlayConfig
     /// <summary>Whether the flash-alert area is shown (flash triggers stay quiet when off).</summary>
     public bool FlashVisible { get; set; } = true;
 
+    /// <summary>Pop the death recap window automatically when you die.</summary>
+    public bool DeathRecapAuto { get; set; } = true;
+
     /// <summary>Font size of screen flash alerts.</summary>
     public double FlashFontSize { get; set; } = 54;
 

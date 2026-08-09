@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private readonly CombatParser _combat = new();
     private RaidKills _raids = null!;
     private LootTracker _loot = null!;
+    private SkyQuests _skyQuests = null!;
     private SpellLibrary _spellLib = null!;
     private RaidKillsWindow? _raidsWindow;
     private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
@@ -80,6 +81,7 @@ public partial class MainWindow : Window
             LoadActiveLoadoutInto(_config);
             Log.Info($"Config loaded. loadout='{_config.ActiveLoadout}', triggers={_config.Triggers.Count}, " +
                      $"logDir='{_config.Log.Directory}', startLocked={_config.Overlay.StartLocked}");
+            Log.Info($"Config dir: {_configService.ConfigDirectory}");
         }
         catch (Exception ex)
         {
@@ -92,6 +94,9 @@ public partial class MainWindow : Window
         _alerts.Muted = _config.Overlay.Muted;
         _raids = new RaidKills(_configService);
         _loot = new LootTracker(_configService);
+        _skyQuests = new SkyQuests(_configService, _loot);
+        _skyQuests.QuestCompleted += q =>
+            OnFlashRequested($"Sky quest complete — {q.Reward}!", "#FFD54F");
         _spellLib = new SpellLibrary(_configService);
         Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
         _timerHidden = !_config.Overlay.TimerVisible;
@@ -102,6 +107,7 @@ public partial class MainWindow : Window
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
         _combat.SctEvent += OnSctEvent;
+        _combat.PlayerDied += OnPlayerDied;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
@@ -266,6 +272,7 @@ public partial class MainWindow : Window
                 _combat.Replay(line);
                 _raids.ProcessLine(line, t);
                 _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
+                _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 NoteLineSeen(t);
                 lines++;
@@ -507,7 +514,8 @@ public partial class MainWindow : Window
     private void RebuildMeterWindow()
     {
         if (_meter is not null) { try { _meter.Close(); } catch { /* ignore */ } }
-        _meter = new MeterWindow(_configService, _combat, _raids, _loot, _config.Overlay.Opacity,
+        _meter = new MeterWindow(_configService, _combat, _raids, _loot, _skyQuests,
+            _config.Overlay.Opacity,
             _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible);
         _meter.Show();
         UpdateMeterVisibility();
@@ -603,6 +611,7 @@ public partial class MainWindow : Window
                 _combat.ProcessLine(line);
                 _raids.ProcessLine(line);
                 _loot.ProcessLine(line);
+                _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
@@ -860,7 +869,8 @@ public partial class MainWindow : Window
         ApplySelfName();
 
         bool wasLocked = _vm.Locked;
-        _engine.Reset();
+        // No Reset here: UpdateConfig prunes what the new config dropped but
+        // keeps running bars and active matrix timers alive across a save.
         _engine.UpdateConfig(cfg);
 
         // Rebuild the VM so sizing/header changes take effect immediately.
@@ -973,6 +983,50 @@ public partial class MainWindow : Window
         BringToFront(_lootWindow);
     }
 
+    private Views.DeathRecapWindow? _recapWindow;
+    private CombatParser.DeathEvent? _lastDeath;
+
+    /// <summary>A death line appeared — remember it and (optionally) pop the recap.
+    /// Catch-up replay records the death quietly instead of popping old news.</summary>
+    private void OnPlayerDied(CombatParser.DeathEvent death)
+    {
+        _lastDeath = death;
+        Log.Info($"Player died ({(death.Killer.Length > 0 ? death.Killer : "no killer line")}), " +
+                 $"recap events={death.Events.Count}");
+        if (_suppressSct || !_config.Overlay.DeathRecapAuto) return;
+        OpenDeathRecap(activate: false); // appear over the game without stealing focus
+    }
+
+    private void OpenDeathRecap(bool activate = true)
+    {
+        if (_lastDeath is null)
+        {
+            _vm.Flash("No deaths this session — long may it last.");
+            return;
+        }
+        if (_recapWindow is null)
+        {
+            _recapWindow = new Views.DeathRecapWindow(_lastDeath);
+            _recapWindow.Closed += (_, _) => _recapWindow = null;
+            _recapWindow.Show();
+        }
+        else _recapWindow.Update(_lastDeath);
+        if (activate) BringToFront(_recapWindow);
+    }
+
+    private Views.SkyWindow? _skyWindow;
+
+    private void OpenSkyQuests()
+    {
+        if (_skyWindow is null)
+        {
+            _skyWindow = new Views.SkyWindow(_skyQuests);
+            _skyWindow.Closed += (_, _) => _skyWindow = null;
+            _skyWindow.Show();
+        }
+        BringToFront(_skyWindow);
+    }
+
     private void OpenConfigFolder()
     {
         try
@@ -1082,6 +1136,8 @@ public partial class MainWindow : Window
 
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
+        menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
+        menu.Items.Add("Death recap…", null, (_, _) => OpenDeathRecap());
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 

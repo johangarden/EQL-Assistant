@@ -14,6 +14,7 @@ gives you:
 - **Scrolling combat text** in movable lanes
 - A **raid kill tracker** and a persistent **loot history** (upgrades, kept
   items, vendor income)
+- A **death recap** popup — the last hits and heals on you when you die
 - **Flash alerts** + Windows text-to-speech / sound alerts
 
 Everything renders in transparent, always-on-top, click-through panels over the
@@ -207,6 +208,16 @@ misses/resists/max in the tooltip. Counts accumulate across fights — only the
 section's **⟲** button resets them. Spell resists count as failed attempts.
 Toggle from the tray.
 
+## Plane of Sky quest tracker
+
+Every class's Test quests (~95 quests) with **have/need chips per turn-in
+item**, counted automatically from your loot history. Open it from the tray
+(*Sky quests…*) or the Fight History window (*Sky*). Filter by class or
+search; quests sort **closest-to-done**; hover an item for who drops it and
+where, hover the reward for its full stats. A quest **checks itself off when
+its reward item appears in the log** (with a celebration flash) — or tick it
+manually. Progress persists in `sky-progress.json`.
+
 ## Raid kills and loot history
 
 Both open from the Fight History window (and raid kills from the tray):
@@ -220,6 +231,17 @@ Both open from the Fight History window (and raid kills from the tray):
   the "+N → +M" chain), **kept** items, and auto-**vendored** drops with their
   sale price. Search by item/mob/zone, filter by kind, and watch the running
   totals ("251 upgrades · vendored 217p 8g 6s 6c").
+
+## Death recap
+
+When a death line appears ("You have been slain by …" / "You died."), a recap
+window pops up over the game (without stealing focus) showing the last 15
+things that happened **to you**: hits with attacker + ability + amount, misses
+dimmed, heals in green — each with the time offset back from the moment of
+death. The biggest hit is tinted, and the header sums damage taken (and
+healing received) over the visible window. Reopen the latest recap any time
+from the tray (**Death recap…**); the auto-popup can be turned off on the
+Manager's General page.
 
 ## Scrolling combat text
 
@@ -243,13 +265,16 @@ text page. Master toggle: Ctrl+Alt+C.
 | `fights.json` | ★-kept fights (including their timelines) |
 | `raid-kills.json` / `raid-targets.json` | raid progression / target list |
 | `loot.json` | loot history |
+| `sky-progress.json` | Plane of Sky item counts + completed quests |
 | `seen-spells.json` | which library spells appeared in your log |
 | `window-*.json` | panel positions |
 
 ## Credits
 
 The spell library (`data\spell-library.json` — names, cast/wear-off messages,
-class levels and durations) is converted from
+class levels and durations) and the Plane of Sky quest data
+(`data\sky-quests.json` — quests, turn-in items, droppers and reward stats)
+are converted from
 [jmoyers/everquest-companion](https://github.com/jmoyers/everquest-companion)
 (MIT License, Copyright 2026 Josh Moyers), whose data was in turn sourced from
 eqlwiki.com and wiki.project1999.com. Thanks!

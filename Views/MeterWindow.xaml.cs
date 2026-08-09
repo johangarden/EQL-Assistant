@@ -24,6 +24,7 @@ public partial class MeterWindow : Window
     private readonly ConfigService _config;
     private readonly RaidKills _raids;
     private readonly LootTracker _loot;
+    private readonly SkyQuests _sky;
     private readonly PanelPlacement _placement;
     private readonly DispatcherTimer _tick;
     private readonly ObservableCollection<MeterRowViewModel> _rows = new();
@@ -54,7 +55,7 @@ public partial class MeterWindow : Window
     };
 
     public MeterWindow(ConfigService config, CombatParser parser, RaidKills raids, LootTracker loot,
-        double opacity, IEnumerable<string> skills, bool skillsVisible)
+        SkyQuests sky, double opacity, IEnumerable<string> skills, bool skillsVisible)
     {
         InitializeComponent();
 
@@ -62,6 +63,7 @@ public partial class MeterWindow : Window
         _config = config;
         _raids = raids;
         _loot = loot;
+        _sky = sky;
         _skillNames = CleanSkills(skills);
         _skillsVisible = skillsVisible;
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
@@ -149,7 +151,7 @@ public partial class MeterWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_parser, _config, _raids, _loot);
+            _historyWindow = new HistoryWindow(_parser, _config, _raids, _loot, _sky);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

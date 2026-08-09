@@ -32,6 +32,9 @@ public sealed class MatrixCellViewModel : ViewModelBase
 
     private DateTime _endTimeLocal;
 
+    /// <summary>When the buff runs out (used to carry state across a config reload).</summary>
+    public DateTime EndTimeLocal => _endTimeLocal;
+
     private bool _isActive;
     public bool IsActive
     {

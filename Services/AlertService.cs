@@ -24,6 +24,7 @@ public sealed class AlertService
         {
             _voice = null; // no TTS available; sound-only still works
         }
+        if (_voice is null) Log.Warn("TTS unavailable: SAPI.SpVoice could not be created.");
     }
 
     /// <summary>Fire an alert: play the sound (if any) and speak the phrase (if any).</summary>
@@ -36,9 +37,18 @@ public sealed class AlertService
 
     public void Speak(string text)
     {
-        if (Muted || _voice is null || string.IsNullOrWhiteSpace(text)) return;
-        try { _voice.Speak(text, 1u /* SVSFlagsAsync */); }
-        catch { /* ignore TTS hiccups */ }
+        if (string.IsNullOrWhiteSpace(text)) return;
+        if (Muted) { Log.Info($"Speak suppressed (muted): '{text}'"); return; }
+        if (_voice is null) { Log.Warn($"Speak skipped (no TTS voice): '{text}'"); return; }
+        try
+        {
+            _voice.Speak(text, 1u /* SVSFlagsAsync */);
+            Log.Info($"Speak: '{text}'");
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Speak failed: '{text}'", ex);
+        }
     }
 
     private void PlayFile(string path)

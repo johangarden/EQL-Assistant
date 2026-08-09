@@ -108,6 +108,7 @@ public sealed class ConfigService
     public void SaveSettings(AppConfig config)
     {
         File.WriteAllText(ConfigPath, JsonSerializer.Serialize(config, WriteOptions));
+        Log.Info($"Settings saved -> {ConfigPath} (activeLoadout='{config.ActiveLoadout}')");
     }
 
     // ---- loadouts (loadouts/*.json) ----------------------------------------
@@ -168,6 +169,7 @@ public sealed class ConfigService
         string path = Path.Combine(LoadoutsDirectory, Slug(loadout.Name) + ".json");
         loadout.FilePath = path;
         File.WriteAllText(path, JsonSerializer.Serialize(loadout, WriteOptions));
+        Log.Info($"Loadout saved -> {path} ({loadout.Triggers.Count} triggers)");
     }
 
     /// <summary>Delete any loadout file whose name isn't in <paramref name="keepNames"/>.</summary>
@@ -211,6 +213,15 @@ public sealed class ConfigService
         t.ReduceRegex = string.IsNullOrWhiteSpace(t.ReducePattern)
             ? null
             : new Regex(t.ReducePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        // A speak/sound with no timing would never fire — a phrase like
+        // "Quickness faded" clearly means "say it when the bar runs out",
+        // so default it to the expiry alert.
+        if (t.Alert is { } a && a.AtSeconds <= 0 && !a.OnExpire
+            && (!string.IsNullOrWhiteSpace(a.Speak) || !string.IsNullOrWhiteSpace(a.Sound)))
+        {
+            a.OnExpire = true;
+        }
     }
 
     private List<TriggerDefinition>? TryReadLegacyTriggers()

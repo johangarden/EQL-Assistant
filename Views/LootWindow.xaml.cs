@@ -70,11 +70,12 @@ public partial class LootWindow : Window
         string zone = e.Zone.Length > 0 ? $" · {e.Zone}" : "";
         string detail = $"{when} · from {e.Mob}{zone}";
 
+        string item = e.Count > 1 ? $"{e.Count}× {e.Item}" : e.Item;
         return e.Kind switch
         {
-            LootTracker.LootKind.Upgrade => new RowVm(e.Item, detail, $"→ {e.Result}", UpgradeFg),
-            LootTracker.LootKind.Sold => new RowVm(e.Item, detail, $"+{LootTracker.FormatCoins(e.Copper)}", SoldFg),
-            _ => new RowVm(e.Item, detail, "kept", KeptFg),
+            LootTracker.LootKind.Upgrade => new RowVm(item, detail, $"→ {e.Result}", UpgradeFg),
+            LootTracker.LootKind.Sold => new RowVm(item, detail, $"+{LootTracker.FormatCoins(e.Copper)}", SoldFg),
+            _ => new RowVm(item, detail, "kept", KeptFg),
         };
     }
 
