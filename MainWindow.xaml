@@ -125,19 +125,11 @@
                                 Style="{StaticResource AccentBtn}" Margin="6,0,0,0"
                                 ToolTip="Open Trigger Manager"/>
 
-                        <Button DockPanel.Dock="Right" Click="OnRepop" Style="{StaticResource IconBtn}"
-                                Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE916;"
-                                ToolTip="Show / hide the repop timer (Ctrl+Alt+R)"/>
-
-                        <Button DockPanel.Dock="Right" Click="OnMeter" Style="{StaticResource IconBtn}"
-                                Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE9D9;"
-                                AutomationProperties.AutomationId="MeterToggleBtn"
-                                ToolTip="Show / hide the DPS meter (Ctrl+Alt+D)"/>
-
-                        <Button DockPanel.Dock="Right" Click="OnSct" Style="{StaticResource IconBtn}"
-                                Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE945;"
-                                AutomationProperties.AutomationId="SctToggleBtn"
-                                ToolTip="Show / hide scrolling combat text (Ctrl+Alt+C)"/>
+                        <!-- One menu, same as the tray: panels, histories, updates — everything. -->
+                        <Button DockPanel.Dock="Right" Click="OnMainMenu" Style="{StaticResource IconBtn}"
+                                Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE700;"
+                                AutomationProperties.AutomationId="MainMenuBtn"
+                                ToolTip="Menu — panels, histories, updates (same as the tray)"/>
 
                         <!-- fill: loadout dropdown, truncates to fit -->
                         <Button Click="OnLoadoutMenu" Style="{StaticResource ToolBtn}"

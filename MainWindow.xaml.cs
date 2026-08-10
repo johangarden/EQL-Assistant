@@ -1030,11 +1030,14 @@ public partial class MainWindow : Window
 
     // ---- repop / respawn timer ----------------------------------------------
 
-    private void OnRepop(object sender, RoutedEventArgs e) => ToggleTimer();
-
-    private void OnMeter(object sender, RoutedEventArgs e) => ToggleMeter();
-
-    private void OnSct(object sender, RoutedEventArgs e) => ToggleSct();
+    /// <summary>Toolbar ☰ — show the SAME menu as the tray icon (one source of
+    /// truth: panels with checkmarks, histories, updates, everything).</summary>
+    private void OnMainMenu(object sender, RoutedEventArgs e)
+    {
+        var menu = _tray?.ContextMenuStrip;
+        if (menu is null) return;
+        menu.Show(System.Windows.Forms.Cursor.Position);
+    }
 
     /// <summary>A "timerAuto" trigger matched (e.g. a named mob death) — start the watch.</summary>
     private void OnTimerRequested(double seconds, string name)
