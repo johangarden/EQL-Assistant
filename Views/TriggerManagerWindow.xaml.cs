@@ -45,6 +45,28 @@ public partial class TriggerManagerWindow : Window
     /// <summary>Set by MainWindow: wipes derived data files, then reparses.</summary>
     public Func<string>? ResetAndRebuildRequested { get; set; }
 
+    /// <summary>Set by MainWindow: reparse a PICKED file (e.g. another PC's log).</summary>
+    public Func<string, string>? ReparseOtherRequested { get; set; }
+
+    private void ReparseOther_Click(object sender, RoutedEventArgs e)
+    {
+        if (ReparseOtherRequested is null)
+        {
+            Status("Reparse isn't available right now.");
+            return;
+        }
+        var dlg = new OpenFileDialog
+        {
+            Title = "Pick a log file to merge in",
+            Filter = "Log files (*.txt)|*.txt|All files (*.*)|*.*",
+        };
+        if (dlg.ShowDialog(this) != true) return;
+
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+        try { Status(ReparseOtherRequested(dlg.FileName)); }
+        finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+    }
+
     private void ResetRebuild_Click(object sender, RoutedEventArgs e)
     {
         if (ResetAndRebuildRequested is null)
@@ -66,6 +88,7 @@ public partial class TriggerManagerWindow : Window
         System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
         try { Status(ResetAndRebuildRequested()); }
         finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+        UpdateDurationUx();
     }
 
     private void Reparse_Click(object sender, RoutedEventArgs e)
@@ -85,6 +108,7 @@ public partial class TriggerManagerWindow : Window
         System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
         try { Status(ReparseFullLogRequested()); }
         finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+        UpdateDurationUx(); // learned-duration hint may have new samples now
     }
 
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
@@ -119,6 +143,7 @@ public partial class TriggerManagerWindow : Window
         }
 
         LoadoutCombo.ItemsSource = _order;
+        LoadoutsList.ItemsSource = _order;
         _currentName = _order.Contains(config.ActiveLoadout) ? config.ActiveLoadout : _order[0];
 
         // Log feed.
@@ -154,7 +179,13 @@ public partial class TriggerManagerWindow : Window
         {
             Interval = TimeSpan.FromSeconds(2)
         };
-        _deathsTick.Tick += (_, _) => { RefreshRecentDeaths(); RefreshSeenSkills(); UpdateCharInfo(); };
+        _deathsTick.Tick += (_, _) =>
+        {
+            RefreshRecentDeaths();
+            RefreshSeenSkills();
+            UpdateCharInfo();
+            UpdateDurationUx(); // live play mints samples while the editor is open
+        };
         _deathsTick.Start();
         Closed += (_, _) => _deathsTick.Stop();
 
@@ -361,6 +392,27 @@ public partial class TriggerManagerWindow : Window
         TriggerList.ItemsSource = CurrentList;
         if (CurrentList.Count > 0) TriggerList.SelectedIndex = 0;
         else { DetailsScroller.DataContext = null; DetailsScroller.IsEnabled = false; }
+
+        // The Loadouts page's list is a second face of the same selector.
+        if (LoadoutsList is not null && !Equals(LoadoutsList.SelectedItem, name))
+            LoadoutsList.SelectedItem = name;
+        UpdateLoadoutsInfo();
+    }
+
+    private void LoadoutsList_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_initializing) return;
+        if (LoadoutsList.SelectedItem is string name && name != _currentName)
+            LoadoutCombo.SelectedItem = name; // routes through ShowLoadout
+    }
+
+    private void UpdateLoadoutsInfo()
+    {
+        if (LoadoutsInfoText is null) return;
+        LoadoutsInfoText.Text =
+            $"Editing: {_currentName} ({CurrentList.Count} trigger(s)) · " +
+            $"Active in overlay: {_config.ActiveLoadout} — Save makes the edited one active.";
     }
 
     private void NewLoadout_Click(object sender, RoutedEventArgs e)
@@ -445,7 +497,7 @@ public partial class TriggerManagerWindow : Window
     {
         DetailsScroller.DataContext = Selected;
         DetailsScroller.IsEnabled = Selected != null;
-        UpdateLearnedHint();
+        UpdateDurationUx();
     }
 
     /// <summary>Title bar carries version + the auto-detected character (+ pet).</summary>
@@ -459,21 +511,26 @@ public partial class TriggerManagerWindow : Window
         if (Title != title) Title = title;
     }
 
-    /// <summary>"Learned so far: 9m53s (9 samples)" under the duration field.</summary>
-    private void UpdateLearnedHint()
+    private void DurationAuto_Changed(object sender, RoutedEventArgs e) => UpdateDurationUx();
+
+    /// <summary>Auto-learn owns the duration: the field is disabled and the
+    /// currently-learned value shows beside it. Manual re-enables the field.</summary>
+    private void UpdateDurationUx()
     {
-        if (DurationLearnedText is null) return;
-        var learned = Selected is { } s ? _durations?.LearnedMaxSeconds(s.Name) : null;
-        if (learned is double sec && Selected is not null)
+        if (DurationBox is null || DurationEffectiveText is null) return;
+
+        bool auto = DurationAutoCheck.IsChecked == true
+                    && DurationAutoCheck.Visibility == Visibility.Visible;
+        DurationBox.IsEnabled = !auto;
+
+        if (!auto || Selected is null)
         {
-            DurationLearnedText.Text =
-                $"Learned so far: {DurationText.Compact(sec)} ({_durations!.SampleCount(Selected.Name)} sample(s) from your log).";
-            DurationLearnedText.Visibility = Visibility.Visible;
+            DurationEffectiveText.Text = "";
+            return;
         }
-        else
-        {
-            DurationLearnedText.Visibility = Visibility.Collapsed;
-        }
+        DurationEffectiveText.Text = _durations?.LearnedMaxSeconds(Selected.Name) is double sec
+            ? $"learning → currently {DurationText.Compact(sec)} ({_durations!.SampleCount(Selected.Name)} samples)"
+            : "learning → nothing observed yet, starts from this value";
     }
 
     // ---- trigger list buttons ----------------------------------------------
@@ -486,16 +543,6 @@ public partial class TriggerManagerWindow : Window
         TriggerList.ScrollIntoView(t);
     }
 
-    private void Duplicate_Click(object sender, RoutedEventArgs e)
-    {
-        if (Selected is null) return;
-        var copy = TriggerEditViewModel.FromDefinition(Selected.ToDefinition());
-        copy.Id = "";
-        copy.Name += " copy";
-        int i = CurrentList.IndexOf(Selected);
-        CurrentList.Insert(i + 1, copy);
-        TriggerList.SelectedItem = copy;
-    }
 
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
@@ -605,6 +652,7 @@ public partial class TriggerManagerWindow : Window
         var byTitle = new Dictionary<string, System.Windows.FrameworkElement>(StringComparer.OrdinalIgnoreCase)
         {
             ["Triggers"] = TriggersPage,
+            ["Loadouts"] = LoadoutsPage,
             ["Bars & matrices"] = BarsPage,
             ["Repop timer"] = TimerPage,
             ["DPS & Skills"] = MeterPage,
@@ -655,8 +703,12 @@ public partial class TriggerManagerWindow : Window
         // Auto-learn is a spell-duration concept — respawn timers don't learn.
         DurationAutoCheck.Visibility = V(bars || matrix);
         DurationAutoHint.Visibility = V(bars || matrix);
-        if (timer) DurationLearnedText.Visibility = Visibility.Collapsed;
-        else UpdateLearnedHint();
+
+        // Reordering only matters for matrix triggers (cells lay out in list
+        // order); bars always sort themselves by time left.
+        MoveUpBtn.Visibility = V(matrix);
+        MoveDownBtn.Visibility = V(matrix);
+        UpdateDurationUx();
         StartLabel.Text = timer ? "Death line (regex — starts the repop timer)"
             : flash ? "Pattern (regex — fires the flash)"
             : matrix ? "Start pattern (regex — turns the cell green)"

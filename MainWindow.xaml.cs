@@ -353,7 +353,13 @@ public partial class MainWindow : Window
         string? path = _watcher?.CurrentPath;
         if (path is null || !File.Exists(path))
             return "Reparse: no log file is being followed yet.";
+        return ReparseFile(path);
+    }
 
+    /// <summary>Reparse ANY log file (e.g. one carried over from another PC) —
+    /// same retroactive pipeline, same dedupes, so histories merge safely.</summary>
+    private string ReparseFile(string path)
+    {
         int lootBefore = _loot.Entries.Count;
         int killsBefore = 0, durBefore = 0;
         Action<string, DateTime> onKill = (_, _) => killsBefore++;      // counts NEW kills
@@ -913,6 +919,7 @@ public partial class MainWindow : Window
             _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations)
             {
                 ReparseFullLogRequested = ReparseFullLog,
+                ReparseOtherRequested = ReparseFile,
                 ResetAndRebuildRequested = ResetAndRebuild,
             };
             _manager.Closed += (_, _) => _manager = null;
