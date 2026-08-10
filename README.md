@@ -16,6 +16,8 @@ gives you:
   items, vendor income)
 - A **death recap** popup — the last hits and heals on you when you die
 - **Flash alerts** + Windows text-to-speech / sound alerts
+- **Self-updating** — one prompt when a new release is out, and it swaps
+  itself in place
 
 Everything renders in transparent, always-on-top, click-through panels over the
 game.
@@ -252,6 +254,16 @@ adjustments teal/red by sign with the faction name, and AA points float big.
 Melee, spells/DoTs and procs get distinct colors per lane; crits render big
 with a "!". Big-hit threshold, number size and lane sizes are on the Combat
 text page. Master toggle: Ctrl+Alt+C.
+
+## Updates
+
+The app checks [GitHub Releases](https://github.com/johangarden/EQL-Assistant/releases)
+shortly after startup (and on tray → **Check for updates…**). When a newer
+version exists it asks once — accept, and it downloads the new exe, restarts
+itself, and swaps the file in place. Settings, triggers, history and panel
+positions are untouched (they live in the config folder, not the exe). If
+anything goes wrong, grab the exe manually from the releases page — the app
+never updates without asking.
 
 ## Config folder
 

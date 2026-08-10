@@ -11,6 +11,21 @@ public partial class App : Application
 {
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Self-update finisher: this process IS the freshly downloaded exe in
+        // %TEMP%. Overwrite the real exe once the old app exits, relaunch it, die.
+        int fu = Array.IndexOf(e.Args, "--finish-update");
+        if (fu >= 0 && fu + 2 < e.Args.Length)
+        {
+            string? err = Services.UpdateService.FinishUpdate(e.Args[fu + 1], e.Args[fu + 2]);
+            if (err is not null)
+                MessageBox.Show(
+                    $"Update failed:\n{err}\n\nGrab the new version manually from\n" +
+                    $"github.com/{Services.UpdateService.Repo}/releases",
+                    "EQL Assistant updater", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Shutdown();
+            return;
+        }
+
         // Gated smoke test: construct the manager window (forces XAML parse) and
         // exit. Used to verify the build without a human clicking. Not user-facing.
         if (e.Args.Contains("--selftest"))
@@ -63,6 +78,7 @@ public partial class App : Application
         Log.Info($"===== EQL Assistant v{ver} starting =====");
         Log.Info($"exe: {Environment.ProcessPath}");
         Log.Info($"log: {Log.Path}");
+        UpdateService.CleanupTempUpdaters();
 
         base.OnStartup(e);
 
@@ -302,6 +318,32 @@ public partial class App : Application
             };
             ConfigService.CompileOne(timed);
             Check("alert: timed speak is left alone", !timed.Alert!.OnExpire);
+
+            // Self-update: tag parsing, release-JSON asset picking, compare, copy-swap.
+            Check("update: tags parse normalized",
+                UpdateService.TryParseVersion("v2.4.0", out var uv) && uv == new Version(2, 4, 0, 0)
+                && UpdateService.TryParseVersion("2.10", out var uv2) && uv2 == new Version(2, 10, 0, 0)
+                && !UpdateService.TryParseVersion("beta", out _)
+                && !UpdateService.TryParseVersion("", out _));
+            var rel = UpdateService.ParseRelease(
+                """{"tag_name":"v9.9.0","html_url":"https://x/rel","assets":[{"name":"notes.txt","size":5,"browser_download_url":"https://x/n"},{"name":"EQL_Assistant-v9.9.exe","size":123,"browser_download_url":"https://x/e"}]}""");
+            Check("update: release json picks the exe asset",
+                rel is { AssetName: "EQL_Assistant-v9.9.exe", AssetSize: 123, Tag: "v9.9.0" }
+                && rel.Version == new Version(9, 9, 0, 0));
+            Check("update: exe-less release is rejected",
+                UpdateService.ParseRelease("""{"tag_name":"v9.9.0","assets":[{"name":"a.zip","size":1,"browser_download_url":"u"}]}""") is null);
+            Check("update: newer/equal compare",
+                UpdateService.IsNewer(new Version(99, 0, 0, 0))
+                && !UpdateService.IsNewer(UpdateService.CurrentVersion));
+            string swapSrc = Path.Combine(Path.GetTempPath(), "eql_swap_src.txt");
+            string swapDst = Path.Combine(Path.GetTempPath(), "eql_swap_dst.txt");
+            File.WriteAllText(swapSrc, "NEW");
+            File.WriteAllText(swapDst, "OLD");
+            Check("update: copy-swap overwrites in place",
+                UpdateService.CopyWithRetry(swapSrc, swapDst) is null
+                && File.ReadAllText(swapDst) == "NEW");
+            File.Delete(swapSrc);
+            File.Delete(swapDst);
 
             // Friendly durations (trigger/respawn fields + repop prompts).
             Check("duration: parses all the friendly forms",
