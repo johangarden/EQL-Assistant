@@ -81,6 +81,7 @@
                     <ListBoxItem Content="Skill tracker"/>
                     <ListBoxItem Content="Combat text"/>
                         <ListBoxItem Content="Flash alerts"/>
+                    <ListBoxItem Content="Shortcuts"/>
                     </ListBox>
                 </DockPanel>
             </Border>
@@ -616,6 +617,49 @@
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <ScrollViewer x:Name="ShortcutsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <TextBlock Text="Keyboard shortcuts" Style="{StaticResource PageTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,12"
+                                       Text="Global hotkeys — they work even while the game has focus."/>
+
+                            <StackPanel>
+                                <StackPanel.Resources>
+                                    <Style x:Key="KeyBadge" TargetType="Border">
+                                        <Setter Property="Background" Value="{StaticResource Brush.Card}"/>
+                                        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="CornerRadius" Value="4"/>
+                                        <Setter Property="Padding" Value="8,3"/>
+                                        <Setter Property="Width" Value="110"/>
+                                        <Setter Property="Margin" Value="0,0,10,6"/>
+                                    </Style>
+                                    <Style x:Key="KeyText" TargetType="TextBlock">
+                                        <Setter Property="FontFamily" Value="Consolas"/>
+                                        <Setter Property="FontSize" Value="12"/>
+                                        <Setter Property="Foreground" Value="{StaticResource Brush.TextDim}"/>
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                    </Style>
+                                    <Style x:Key="KeyDesc" TargetType="TextBlock">
+                                        <Setter Property="FontSize" Value="12"/>
+                                        <Setter Property="Foreground" Value="{StaticResource Brush.Text}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                        <Setter Property="Margin" Value="0,0,0,6"/>
+                                    </Style>
+                                </StackPanel.Resources>
+
+                                <DockPanel><Border Style="{StaticResource KeyBadge}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl+Alt+L"/></Border><TextBlock Style="{StaticResource KeyDesc}" Text="Lock / unlock all panels (click-through when locked)"/></DockPanel>
+                                <DockPanel><Border Style="{StaticResource KeyBadge}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl+Alt+H"/></Border><TextBlock Style="{StaticResource KeyDesc}" Text="Hide / show the whole overlay"/></DockPanel>
+                                <DockPanel><Border Style="{StaticResource KeyBadge}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl+Alt+S"/></Border><TextBlock Style="{StaticResource KeyDesc}" Text="Mute / unmute all sound and spoken alerts"/></DockPanel>
+                                <DockPanel><Border Style="{StaticResource KeyBadge}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl+Alt+R"/></Border><TextBlock Style="{StaticResource KeyDesc}" Text="Show / hide the repop timer"/></DockPanel>
+                                <DockPanel><Border Style="{StaticResource KeyBadge}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl+Alt+D"/></Border><TextBlock Style="{StaticResource KeyDesc}" Text="Show / hide the DPS meter"/></DockPanel>
+                                <DockPanel><Border Style="{StaticResource KeyBadge}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl+Alt+C"/></Border><TextBlock Style="{StaticResource KeyDesc}" Text="Show / hide scrolling combat text"/></DockPanel>
+                                <DockPanel><Border Style="{StaticResource KeyBadge}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl+Alt+T"/></Border><TextBlock Style="{StaticResource KeyDesc}" Text="Test — demo bars, combat text floats and a flash"/></DockPanel>
+                                <DockPanel><Border Style="{StaticResource KeyBadge}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl+Alt+Q"/></Border><TextBlock Style="{StaticResource KeyDesc}" Text="Quit EQL Assistant"/></DockPanel>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

@@ -524,7 +524,7 @@ public partial class TriggerManagerWindow : Window
     {
         if (FlashPage is null) return; // still initializing
         var pages = new System.Windows.FrameworkElement[]
-            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SkillsPage, SctPage, FlashPage };
+            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SkillsPage, SctPage, FlashPage, ShortcutsPage };
         int idx = Math.Clamp(NavList.SelectedIndex, 0, pages.Length - 1);
         for (int i = 0; i < pages.Length; i++)
             pages[i].Visibility = i == idx ? Visibility.Visible : Visibility.Collapsed;

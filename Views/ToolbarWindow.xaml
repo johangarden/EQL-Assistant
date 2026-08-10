@@ -25,6 +25,9 @@
                 <Button DockPanel.Dock="Left" Content="✕" Click="OnQuit" Style="{StaticResource CloseBtn}"
                         ToolTip="Quit EQL Assistant"/>
 
+                <TextBlock DockPanel.Dock="Left" Text="{Binding Version}" Foreground="#6E7C93"
+                           FontSize="10" VerticalAlignment="Center" Margin="7,0,0,0"/>
+
                 <Button DockPanel.Dock="Right" Click="OnLock" Margin="6,0,0,0"
                         FontFamily="Segoe MDL2 Assets"
                         AutomationProperties.AutomationId="LockBtn"
@@ -41,16 +44,22 @@
                     </Button.Style>
                 </Button>
 
-                <Border DockPanel.Dock="Right" Width="22" Height="22" CornerRadius="4"
-                        Background="#2A3346" Margin="8,0,0,0"
-                        ToolTip="Alerts muted — Ctrl+Alt+S to unmute"
-                        Visibility="{Binding Muted, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="&#xE74F;" FontFamily="Segoe MDL2 Assets" FontSize="12"
-                               Foreground="#FFB74D" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Border>
-
-                <TextBlock DockPanel.Dock="Right" Text="{Binding Version}" Foreground="#6E7C93"
-                           FontSize="10" VerticalAlignment="Center" Margin="7,0,0,0"/>
+                <Button DockPanel.Dock="Right" Click="OnMute" Margin="6,0,0,0"
+                        FontFamily="Segoe MDL2 Assets"
+                        AutomationProperties.AutomationId="MuteBtn"
+                        ToolTip="Mute / unmute alerts (Ctrl+Alt+S)">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
+                            <Setter Property="Content" Value="&#xE767;"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Muted}" Value="True">
+                                    <Setter Property="Content" Value="&#xE74F;"/>
+                                    <Setter Property="Foreground" Value="#FFB74D"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
 
                 <Button DockPanel.Dock="Right" Content="Manage" Click="OnManage"
                         Style="{StaticResource AccentBtn}" Margin="6,0,0,0"
@@ -70,9 +79,6 @@
             </DockPanel>
             <TextBlock Text="{Binding Status}" Foreground="#7F93AD"
                        FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap"/>
-            <TextBlock Text="Ctrl+Alt+ L lock · R timer · D meter · C text · T test · H hide · S mute · Q quit"
-                       Foreground="#5C6B82" FontSize="10" Margin="0,3,0,0" TextWrapping="Wrap"
-                       Visibility="{Binding IsUnlocked, Converter={StaticResource BoolToVis}}"/>
         </StackPanel>
     </Border>
 </Window>

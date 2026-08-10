@@ -1065,6 +1065,7 @@ public partial class MainWindow : Window
             DataContext = _vm,
             QuitRequested = Close,
             LockRequested = ToggleLock,
+            MuteRequested = ToggleMute,
             ManageRequested = () => OpenManager(),
             MenuRequested = ShowMainMenu,
             LoadoutMenuRequested = el => OnLoadoutMenu(el, new RoutedEventArgs()),

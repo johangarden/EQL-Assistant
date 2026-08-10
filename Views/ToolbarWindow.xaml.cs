@@ -18,6 +18,7 @@ public partial class ToolbarWindow : Window
 
     public Action? QuitRequested { get; set; }
     public Action? LockRequested { get; set; }
+    public Action? MuteRequested { get; set; }
     public Action? ManageRequested { get; set; }
     public Action? MenuRequested { get; set; }
     public Action<object>? LoadoutMenuRequested { get; set; }
@@ -43,6 +44,7 @@ public partial class ToolbarWindow : Window
 
     private void OnQuit(object sender, RoutedEventArgs e) => QuitRequested?.Invoke();
     private void OnLock(object sender, RoutedEventArgs e) => LockRequested?.Invoke();
+    private void OnMute(object sender, RoutedEventArgs e) => MuteRequested?.Invoke();
     private void OnManage(object sender, RoutedEventArgs e) => ManageRequested?.Invoke();
     private void OnMenu(object sender, RoutedEventArgs e) => MenuRequested?.Invoke();
     private void OnLoadout(object sender, RoutedEventArgs e) => LoadoutMenuRequested?.Invoke(sender);
