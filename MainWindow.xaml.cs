@@ -142,11 +142,19 @@ public partial class MainWindow : Window
         lastSeenTick.Tick += (_, _) => SaveLastSeen();
         lastSeenTick.Start();
 
+        // Startup flow: update check FIRST — catching up a log for an app we're
+        // about to replace would be wasted work. Catch-up only runs when no
+        // update was taken (none available, declined, or GitHub unreachable).
         string catchUpMode = _config.EffectiveCatchUpMode();
-        if (catchUpMode != "off")
+        var startupFlow = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        startupFlow.Tick += async (_, _) =>
         {
+            startupFlow.Stop();
+            await CheckForUpdates(manual: false);
+            if (_updateHandoff || catchUpMode == "off") return;
+
             // Give the watcher a moment to resolve which log file to follow.
-            var once = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            var once = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             once.Tick += (_, _) =>
             {
                 once.Stop();
@@ -154,26 +162,18 @@ public partial class MainWindow : Window
                 else OfferCatchUp();
             };
             once.Start();
-        }
-
-        // Update check, well after startup so it never collides with the
-        // catch-up prompt. Only speaks up when a newer release exists.
-        var updateOnce = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
-        updateOnce.Tick += (_, _) =>
-        {
-            updateOnce.Stop();
-            CheckForUpdates(manual: false);
         };
-        updateOnce.Start();
+        startupFlow.Start();
     }
 
     // ---- self-update ----------------------------------------------------------
 
     private bool _updateBusy;
+    private bool _updateHandoff; // true once we've handed off to the new exe
 
     /// <summary>Check GitHub for a newer release; offer to download + restart.
     /// Manual checks (tray) also report "up to date" / failures.</summary>
-    private async void CheckForUpdates(bool manual)
+    private async Task CheckForUpdates(bool manual)
     {
         if (_updateBusy) return;
         _updateBusy = true;
@@ -243,6 +243,7 @@ public partial class MainWindow : Window
         progress.SetStatus("Restarting…");
         string target = Environment.ProcessPath!;
         Log.Info($"Update: handing off to '{tempExe}' -> '{target}'.");
+        _updateHandoff = true;
         UpdateService.LaunchFinisher(tempExe, target);
         Close(); // normal quit path: saves state, disposes tray, releases the exe
     }
@@ -1231,7 +1232,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
-        menu.Items.Add("Check for updates…", null, (_, _) => CheckForUpdates(manual: true));
+        menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdates(manual: true));
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
         menu.Items.Add("Reset position", null, (_, _) => ResetPosition());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
