@@ -112,6 +112,9 @@ public sealed class OverlayConfig
     /// <summary>Pop the death recap window automatically when you die.</summary>
     public bool DeathRecapAuto { get; set; } = true;
 
+    /// <summary>Whether the detached toolbar (command strip) is shown.</summary>
+    public bool ToolbarVisible { get; set; } = true;
+
     /// <summary>Font size of screen flash alerts.</summary>
     public double FlashFontSize { get; set; } = 54;
 

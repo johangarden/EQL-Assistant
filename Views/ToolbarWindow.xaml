@@ -1,0 +1,78 @@
+<Window x:Class="EQLOverlay.Views.ToolbarWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="EQL Assistant — Toolbar"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <!-- The app's command strip: always visible and clickable, locked or not.
+         The padlock governs the OTHER panels; hide this one via ☰/tray → Panels. -->
+    <Border Background="#E01B2130" CornerRadius="5" Padding="8,5" Width="320"
+            MouseLeftButtonDown="Root_DragMove">
+        <StackPanel>
+            <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Left" Content="✕" Click="OnQuit" Style="{StaticResource CloseBtn}"
+                        ToolTip="Quit EQL Assistant"/>
+
+                <Button DockPanel.Dock="Right" Click="OnLock" Margin="6,0,0,0"
+                        FontFamily="Segoe MDL2 Assets"
+                        AutomationProperties.AutomationId="LockBtn"
+                        ToolTip="Lock / unlock all panels (Ctrl+Alt+L)">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
+                            <Setter Property="Content" Value="&#xE785;"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsUnlocked}" Value="True">
+                                    <Setter Property="Content" Value="&#xE72E;"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <Border DockPanel.Dock="Right" Width="22" Height="22" CornerRadius="4"
+                        Background="#2A3346" Margin="8,0,0,0"
+                        ToolTip="Alerts muted — Ctrl+Alt+S to unmute"
+                        Visibility="{Binding Muted, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="&#xE74F;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                               Foreground="#FFB74D" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+
+                <TextBlock DockPanel.Dock="Right" Text="{Binding Version}" Foreground="#6E7C93"
+                           FontSize="10" VerticalAlignment="Center" Margin="7,0,0,0"/>
+
+                <Button DockPanel.Dock="Right" Content="Manage" Click="OnManage"
+                        Style="{StaticResource AccentBtn}" Margin="6,0,0,0"
+                        ToolTip="Open Trigger Manager"/>
+
+                <Button DockPanel.Dock="Right" Click="OnMenu" Style="{StaticResource IconBtn}"
+                        Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE700;"
+                        AutomationProperties.AutomationId="MainMenuBtn"
+                        ToolTip="Menu — panels, histories, updates (same as the tray)"/>
+
+                <!-- fill: loadout dropdown, truncates to fit -->
+                <Button Click="OnLoadout" Style="{StaticResource ToolBtn}"
+                        Margin="8,0,0,0" HorizontalContentAlignment="Left" ToolTip="Switch loadout">
+                    <TextBlock Text="{Binding LoadoutName, StringFormat='{}{0}  ▾'}"
+                               TextTrimming="CharacterEllipsis"/>
+                </Button>
+            </DockPanel>
+            <TextBlock Text="{Binding Status}" Foreground="#7F93AD"
+                       FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="Ctrl+Alt+ L lock · R timer · D meter · C text · T test · H hide · S mute · Q quit"
+                       Foreground="#5C6B82" FontSize="10" Margin="0,3,0,0" TextWrapping="Wrap"
+                       Visibility="{Binding IsUnlocked, Converter={StaticResource BoolToVis}}"/>
+        </StackPanel>
+    </Border>
+</Window>

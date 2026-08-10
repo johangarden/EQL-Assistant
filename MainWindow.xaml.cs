@@ -104,6 +104,7 @@ public partial class MainWindow : Window
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
         _flashHidden = !_config.Overlay.FlashVisible;
         _sctHidden = !_config.Overlay.SctVisible;
+        _toolbarHidden = !_config.Overlay.ToolbarVisible;
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
         _combat.SctEvent += OnSctEvent;
@@ -136,6 +137,7 @@ public partial class MainWindow : Window
         RebuildMeterWindow();
         RebuildFlashWindow();
         RebuildSctLanes();
+        BuildToolbarWindow();
 
         // Crash-tolerant last-seen marker: persisted every minute while lines flow.
         var lastSeenTick = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
@@ -837,6 +839,7 @@ public partial class MainWindow : Window
         UpdateMeterVisibility();
         UpdateSctVisibility();
         UpdateFlashVisibility();
+        UpdateToolbarVisibility();
     }
 
     /// <summary>
@@ -869,11 +872,15 @@ public partial class MainWindow : Window
         _timer?.ResetPosition();
         _meter?.ResetPosition();
         _flash?.ResetPosition();
+        _toolbarWin?.ResetPosition();
         foreach (var lane in _sctLanes.Values) lane.ResetPosition();
+        _toolbarHidden = false; // recovery must reveal the command strip too
+        _config.Overlay.ToolbarVisible = true;
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
         UpdateMeterVisibility();
         UpdateSctVisibility();
+        UpdateToolbarVisibility();
         _vm?.Flash("Panels reset — overlay unlocked.");
     }
 
@@ -966,6 +973,7 @@ public partial class MainWindow : Window
         _skillsHidden = !cfg.Overlay.SkillTrackerVisible;
         _flashHidden = !cfg.Overlay.FlashVisible;
         _sctHidden = !cfg.Overlay.SctVisible;
+        _toolbarHidden = !cfg.Overlay.ToolbarVisible;
         _combat.PetName = cfg.Overlay.PetName;
         ApplySelfName();
 
@@ -1003,6 +1011,12 @@ public partial class MainWindow : Window
 
         RebuildFlashWindow();
         RebuildSctLanes();
+        if (_toolbarWin is not null)
+        {
+            _toolbarWin.DataContext = _vm; // rebound: the VM was rebuilt above
+            _toolbarWin.ReloadPlacement();
+            UpdateToolbarVisibility();
+        }
         _vm.Flash("Settings applied.");
         Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
                  $"selfCells={_engine.SelfCells.Count}");
@@ -1030,9 +1044,46 @@ public partial class MainWindow : Window
 
     // ---- repop / respawn timer ----------------------------------------------
 
+    // ---- detached toolbar (command strip) -------------------------------------
+
+    private Views.ToolbarWindow? _toolbarWin;
+    private bool _toolbarHidden;
+
+    /// <summary>The command strip lives in its own always-clickable window; the
+    /// padlock only governs the other panels. Hide it via ☰/tray → Panels.</summary>
+    private void BuildToolbarWindow()
+    {
+        _toolbarWin = new Views.ToolbarWindow(_configService)
+        {
+            DataContext = _vm,
+            QuitRequested = Close,
+            LockRequested = ToggleLock,
+            ManageRequested = () => OpenManager(),
+            MenuRequested = ShowMainMenu,
+            LoadoutMenuRequested = el => OnLoadoutMenu(el, new RoutedEventArgs()),
+        };
+        _toolbarWin.Show();
+        UpdateToolbarVisibility();
+    }
+
+    private void UpdateToolbarVisibility()
+    {
+        if (_toolbarWin is not null)
+            _toolbarWin.Visibility = !_hidden && !_toolbarHidden
+                ? Visibility.Visible : Visibility.Hidden;
+    }
+
+    private void ToggleToolbar()
+    {
+        _toolbarHidden = !_toolbarHidden;
+        _config.Overlay.ToolbarVisible = !_toolbarHidden;
+        _configService.SaveSettings(_config);
+        UpdateToolbarVisibility();
+    }
+
     /// <summary>Toolbar ☰ — show the SAME menu as the tray icon (one source of
     /// truth: panels with checkmarks, histories, updates, everything).</summary>
-    private void OnMainMenu(object sender, RoutedEventArgs e)
+    private void ShowMainMenu()
     {
         var menu = _tray?.ContextMenuStrip;
         if (menu is null) return;
@@ -1152,9 +1203,6 @@ public partial class MainWindow : Window
             DragMove();
     }
 
-    private void OnManage(object sender, RoutedEventArgs e) => OpenManager();
-    private void OnLock(object sender, RoutedEventArgs e) => ToggleLock();
-    private void OnQuit(object sender, RoutedEventArgs e) => Close();
 
     /// <summary>Test hook: add a demo bar so a self-test can force the bar template to render.</summary>
     internal void AddDemoForTest() => _engine?.AddDemoTimer();
@@ -1208,10 +1256,12 @@ public partial class MainWindow : Window
         var panelSkills = new System.Windows.Forms.ToolStripMenuItem("DPS meter · skills section", null, (_, _) => ToggleSkills());
         var panelSct = new System.Windows.Forms.ToolStripMenuItem("Combat text", null, (_, _) => ToggleSct());
         var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
+        var panelToolbar = new System.Windows.Forms.ToolStripMenuItem("Toolbar", null, (_, _) => ToggleToolbar());
         panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
-            { panelTimer, panelMeter, panelSkills, panelSct, panelFlash });
+            { panelToolbar, panelTimer, panelMeter, panelSkills, panelSct, panelFlash });
         panelsItem.DropDownOpening += (_, _) =>
         {
+            panelToolbar.Checked = !_toolbarHidden;
             panelTimer.Checked = !_timerHidden;
             panelMeter.Checked = !_meterHidden;
             panelSkills.Checked = !_skillsHidden;
@@ -1311,6 +1361,7 @@ public partial class MainWindow : Window
         try { _timer?.Close(); } catch { /* ignore */ }
         try { _meter?.Close(); } catch { /* ignore */ }
         try { _flash?.Close(); } catch { /* ignore */ }
+        try { _toolbarWin?.Close(); } catch { /* ignore */ }
         try { _raidsWindow?.Close(); } catch { /* ignore */ }
         foreach (var lane in _sctLanes.Values) { try { lane.Close(); } catch { /* ignore */ } }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }

@@ -39,13 +39,13 @@ public sealed class OverlayViewModel : ViewModelBase
     public double FontSize { get; }
     public bool ShowCategoryHeaders { get; }
 
-    /// <summary>Build version shown in the toolbar, e.g. "v1.0".</summary>
+    /// <summary>Build version shown in the toolbar, e.g. "v2.5.1" (matches the Manager).</summary>
     public string Version { get; } = FormatVersion();
 
     private static string FormatVersion()
     {
         var v = Assembly.GetExecutingAssembly().GetName().Version;
-        return v is null ? "" : $"v{v.Major}.{v.Minor}";
+        return v is null ? "" : $"v{v.Major}.{v.Minor}.{v.Build}";
     }
 
     private bool _locked;
