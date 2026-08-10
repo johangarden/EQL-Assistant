@@ -155,6 +155,96 @@ public partial class MainWindow : Window
             };
             once.Start();
         }
+
+        // Update check, well after startup so it never collides with the
+        // catch-up prompt. Only speaks up when a newer release exists.
+        var updateOnce = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        updateOnce.Tick += (_, _) =>
+        {
+            updateOnce.Stop();
+            CheckForUpdates(manual: false);
+        };
+        updateOnce.Start();
+    }
+
+    // ---- self-update ----------------------------------------------------------
+
+    private bool _updateBusy;
+
+    /// <summary>Check GitHub for a newer release; offer to download + restart.
+    /// Manual checks (tray) also report "up to date" / failures.</summary>
+    private async void CheckForUpdates(bool manual)
+    {
+        if (_updateBusy) return;
+        _updateBusy = true;
+        try
+        {
+            ReleaseInfo? rel;
+            try
+            {
+                rel = await UpdateService.CheckLatestAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("Update check failed: " + ex.Message);
+                if (manual) _vm.Flash("Update check failed — GitHub not reachable?");
+                return;
+            }
+            if (rel is null)
+            {
+                if (manual) _vm.Flash("Update check: no downloadable release found.");
+                return;
+            }
+            if (!UpdateService.IsNewer(rel.Version))
+            {
+                Log.Info($"Update check: up to date (latest is {rel.Tag}).");
+                if (manual) _vm.Flash($"You're up to date (v{UpdateService.CurrentVersion.ToString(3)}).");
+                return;
+            }
+
+            Log.Info($"Update available: {rel.Tag} ({rel.AssetName}, {rel.AssetSize / (1024 * 1024)} MB).");
+            bool yes = ConfirmDialog.Show(null, "Update available",
+                $"EQL Assistant {rel.Tag} is available — you have v{UpdateService.CurrentVersion.ToString(3)}.\n\n" +
+                "Update now? The new version is downloaded, the app restarts itself, " +
+                "and all your settings and history are untouched.",
+                yesText: "Update now", noText: "Later");
+            if (yes) await RunUpdateAsync(rel);
+        }
+        finally
+        {
+            _updateBusy = false;
+        }
+    }
+
+    /// <summary>Download the release and hand off to the temp exe (see UpdateService).</summary>
+    private async Task RunUpdateAsync(ReleaseInfo rel)
+    {
+        var progress = new Views.UpdateProgressDialog(rel.Tag);
+        progress.Show();
+        string tempExe;
+        try
+        {
+            tempExe = await UpdateService.DownloadAsync(rel,
+                new Progress<double>(progress.SetProgress), progress.Cancellation);
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Info("Update cancelled by user.");
+            return;
+        }
+        catch (Exception ex)
+        {
+            progress.Close();
+            Log.Error("Update download failed", ex);
+            _vm.Flash("Update download failed — see the log file.");
+            return;
+        }
+
+        progress.SetStatus("Restarting…");
+        string target = Environment.ProcessPath!;
+        Log.Info($"Update: handing off to '{tempExe}' -> '{target}'.");
+        UpdateService.LaunchFinisher(tempExe, target);
+        Close(); // normal quit path: saves state, disposes tray, releases the exe
     }
 
     // ---- catch-up (started the app mid-session) -------------------------------
@@ -1141,6 +1231,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
+        menu.Items.Add("Check for updates…", null, (_, _) => CheckForUpdates(manual: true));
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
         menu.Items.Add("Reset position", null, (_, _) => ResetPosition());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
