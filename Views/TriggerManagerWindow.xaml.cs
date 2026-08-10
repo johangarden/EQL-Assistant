@@ -489,7 +489,7 @@ public partial class TriggerManagerWindow : Window
     {
         DetailsScroller.DataContext = Selected;
         DetailsScroller.IsEnabled = Selected != null;
-        UpdateLearnedHint();
+        UpdateDurationUx();
     }
 
     /// <summary>Title bar carries version + the auto-detected character (+ pet).</summary>
@@ -503,21 +503,26 @@ public partial class TriggerManagerWindow : Window
         if (Title != title) Title = title;
     }
 
-    /// <summary>"Learned so far: 9m53s (9 samples)" under the duration field.</summary>
-    private void UpdateLearnedHint()
+    private void DurationAuto_Changed(object sender, RoutedEventArgs e) => UpdateDurationUx();
+
+    /// <summary>Auto-learn owns the duration: the field is disabled and the
+    /// currently-learned value shows beside it. Manual re-enables the field.</summary>
+    private void UpdateDurationUx()
     {
-        if (DurationLearnedText is null) return;
-        var learned = Selected is { } s ? _durations?.LearnedMaxSeconds(s.Name) : null;
-        if (learned is double sec && Selected is not null)
+        if (DurationBox is null || DurationEffectiveText is null) return;
+
+        bool auto = DurationAutoCheck.IsChecked == true
+                    && DurationAutoCheck.Visibility == Visibility.Visible;
+        DurationBox.IsEnabled = !auto;
+
+        if (!auto || Selected is null)
         {
-            DurationLearnedText.Text =
-                $"Learned so far: {DurationText.Compact(sec)} ({_durations!.SampleCount(Selected.Name)} sample(s) from your log).";
-            DurationLearnedText.Visibility = Visibility.Visible;
+            DurationEffectiveText.Text = "";
+            return;
         }
-        else
-        {
-            DurationLearnedText.Visibility = Visibility.Collapsed;
-        }
+        DurationEffectiveText.Text = _durations?.LearnedMaxSeconds(Selected.Name) is double sec
+            ? $"learning → currently {DurationText.Compact(sec)} ({_durations!.SampleCount(Selected.Name)} samples)"
+            : "learning → nothing observed yet, starts from this value";
     }
 
     // ---- trigger list buttons ----------------------------------------------
@@ -695,8 +700,7 @@ public partial class TriggerManagerWindow : Window
         // order); bars always sort themselves by time left.
         MoveUpBtn.Visibility = V(matrix);
         MoveDownBtn.Visibility = V(matrix);
-        if (timer) DurationLearnedText.Visibility = Visibility.Collapsed;
-        else UpdateLearnedHint();
+        UpdateDurationUx();
         StartLabel.Text = timer ? "Death line (regex — starts the repop timer)"
             : flash ? "Pattern (regex — fires the flash)"
             : matrix ? "Start pattern (regex — turns the cell green)"
