@@ -45,6 +45,28 @@ public partial class TriggerManagerWindow : Window
     /// <summary>Set by MainWindow: wipes derived data files, then reparses.</summary>
     public Func<string>? ResetAndRebuildRequested { get; set; }
 
+    /// <summary>Set by MainWindow: reparse a PICKED file (e.g. another PC's log).</summary>
+    public Func<string, string>? ReparseOtherRequested { get; set; }
+
+    private void ReparseOther_Click(object sender, RoutedEventArgs e)
+    {
+        if (ReparseOtherRequested is null)
+        {
+            Status("Reparse isn't available right now.");
+            return;
+        }
+        var dlg = new OpenFileDialog
+        {
+            Title = "Pick a log file to merge in",
+            Filter = "Log files (*.txt)|*.txt|All files (*.*)|*.*",
+        };
+        if (dlg.ShowDialog(this) != true) return;
+
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+        try { Status(ReparseOtherRequested(dlg.FileName)); }
+        finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+    }
+
     private void ResetRebuild_Click(object sender, RoutedEventArgs e)
     {
         if (ResetAndRebuildRequested is null)
