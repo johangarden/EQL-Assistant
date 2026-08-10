@@ -653,7 +653,6 @@ public partial class TriggerManagerWindow : Window
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
         DeathRecapCheck.IsChecked = _config.Overlay.DeathRecapAuto;
         StartWithWindowsCheck.IsChecked = IsAutoStartEnabled();
-        CatchUpModeBox.SelectedValue = _config.EffectiveCatchUpMode();
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
         MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
         SkillsVisibleCheck.IsChecked = _config.Overlay.SkillTrackerVisible;
@@ -736,8 +735,6 @@ public partial class TriggerManagerWindow : Window
         {
             CharacterName = CharNameBox.Text.Trim(),
             ActiveLoadout = _currentName,
-            CatchUpMode = (CatchUpModeBox.SelectedValue as string) ?? "ask",
-            CatchUpOnStart = (CatchUpModeBox.SelectedValue as string) == "auto", // legacy mirror
             Log =
             {
                 Directory = LogDirBox.Text.Trim(),

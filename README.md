@@ -68,13 +68,10 @@ copied file carries everything.
    on the General page if needed; set a **Pet name** there too if you run one).
 2. Recommended, also on the General page:
    - **Start with Windows** — so you never forget to launch it.
-   - **Catch up from today's log on startup** — if the app starts late, it can
-     rebuild today's fight history, raid kills, loot and seen spells from the
-     log. By default it **asks first**, showing the log's last line time, how
-     far the app had parsed before, and the gap between them — and it stays
-     quiet entirely after a quick restart where nothing was missed. Set it to
-     automatic or off on the General page (also on demand: tray → *Catch up
-     from today's log*).
+   - **Catch-up is automatic** — on every start the app silently rebuilds
+     today's fight history, raid kills, loot and seen spells from the log
+     (alerts and combat text stay quiet for old lines; everything dedupes).
+     Re-run any time: tray → *Catch up from today's log*.
    - **Reparse entire log file** (General page) — replays your *whole* log
      through loot history, raid kills + drops, Sky quests, seen spells and
      duration learning. Run it after an update adds a new log-based feature
@@ -137,8 +134,9 @@ everything else is **GLOBAL**.
   picker) that auto-starts the repop watch on death lines.
 
 **APP**
-- **General** — log source, character/pet names, opacity, start locked,
-  start with Windows, catch-up on start, full-log reparse.
+- **General** — start with Windows, log source (auto-follows the newest
+  character log), character/pet overrides, overlay basics, and the
+  full-log reparse under Maintenance.
 - **Shortcuts** — the global hotkey reference.
 
 Panels stick to their chosen screen corner and grow away from it (Bottom-left

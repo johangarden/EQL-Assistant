@@ -276,26 +276,7 @@ public partial class App : Application
             Check("loot: item key strips +N", LootTracker.ItemKey("Sphinx Claw +2") == "sphinx claw"
                 && LootTracker.ItemKey("Bone Chips") == "bone chips");
 
-            // Tail reader for the catch-up prompt: last parseable line stamp wins,
-            // trailing junk is skipped, only the file tail is read.
-            string tailFile = Path.Combine(Path.GetTempPath(), "eql_tailtest.txt");
-            File.WriteAllLines(tailFile, new[]
-            {
-                "[Thu Aug 06 10:00:00 2026] You slash a rat for 5 points of damage.",
-                "[Thu Aug 06 10:41:03 2026] You gain experience! (1.0%)",
-                "no timestamp on this trailing line",
-            });
-            Check("catch-up: tail reader finds the last stamped line",
-                EQLOverlay.MainWindow.ReadLastLineTime(tailFile) == new DateTime(2026, 8, 6, 10, 41, 3));
-            File.Delete(tailFile);
-
-            // Catch-up mode resolution (off / ask / auto, legacy bool migrates).
-            Check("catch-up: legacy auto migrates",
-                new Models.AppConfig { CatchUpOnStart = true }.EffectiveCatchUpMode() == "auto");
-            Check("catch-up: fresh config asks",
-                new Models.AppConfig().EffectiveCatchUpMode() == "ask");
-            Check("catch-up: explicit off beats legacy",
-                new Models.AppConfig { CatchUpOnStart = true, CatchUpMode = "off" }.EffectiveCatchUpMode() == "off");
+            // (Catch-up prompt/mode checks removed in 2.7 — catch-up always runs.)
 
             // Death recap: incoming hits/misses/heals buffer up; a death line
             // snapshots them, fires once, and the twin death lines dedupe.

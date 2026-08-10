@@ -152,23 +152,22 @@ public partial class MainWindow : Window
         lastSeenTick.Start();
 
         // Startup flow: update check FIRST — catching up a log for an app we're
-        // about to replace would be wasted work. Catch-up only runs when no
-        // update was taken (none available, declined, or GitHub unreachable).
-        string catchUpMode = _config.EffectiveCatchUpMode();
+        // about to replace would be wasted work. Then catch-up ALWAYS runs:
+        // log data is the app's foundation, every consumer dedupes, and alerts
+        // stay quiet for old lines, so there is no reason to ask.
         var startupFlow = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         startupFlow.Tick += async (_, _) =>
         {
             startupFlow.Stop();
             await CheckForUpdates(manual: false);
-            if (_updateHandoff || catchUpMode == "off") return;
+            if (_updateHandoff) return;
 
             // Give the watcher a moment to resolve which log file to follow.
             var once = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             once.Tick += (_, _) =>
             {
                 once.Stop();
-                if (catchUpMode == "auto") CatchUpToday();
-                else OfferCatchUp();
+                CatchUpToday();
             };
             once.Start();
         };
@@ -265,75 +264,6 @@ public partial class MainWindow : Window
         _updateHandoff = true;
         UpdateService.LaunchFinisher(tempExe, target);
         Close(); // normal quit path: saves state, disposes tray, releases the exe
-    }
-
-    // ---- catch-up (started the app mid-session) -------------------------------
-
-    /// <summary>Ask-first mode: only speaks up when the followed log actually has
-    /// lines from today that the app hasn't parsed yet — and shows exactly what's
-    /// missing (log end vs. last parsed, and the gap between them).</summary>
-    private void OfferCatchUp()
-    {
-        string? path = _watcher?.CurrentPath;
-        if (path is null || !File.Exists(path)) return;
-
-        DateTime logEnd = ReadLastLineTime(path) ?? File.GetLastWriteTime(path);
-        if (logEnd.Date != DateTime.Today) return; // nothing from today — stay quiet
-
-        var prev = _configService.LoadLastSeen();
-        DateTime? seen = prev is not null
-            && prev.File.Equals(Path.GetFileName(path), StringComparison.OrdinalIgnoreCase)
-            ? prev.Time : null;
-
-        // Quick restart: the app already parsed (nearly) everything — don't nag.
-        if (seen is not null && (logEnd - seen.Value).TotalMinutes < 2) return;
-
-        string seenText = seen is null
-            ? "never (first run with this log)"
-            : FmtTime(seen.Value);
-        string gapText = seen is null || seen.Value.Date != DateTime.Today
-            ? "all of today"
-            : $"~{FmtGap(logEnd - seen.Value)}";
-
-        bool yes = Views.ConfirmDialog.Show(this, "EQL Assistant — Catch up?",
-            $"{Path.GetFileName(path)}\n\n" +
-            $"Log ends at:\t{FmtTime(logEnd)}\n" +
-            $"Last parsed:\t{seenText}\n" +
-            $"Missing:\t{gapText}\n\n" +
-            "Parse today's log now to rebuild fight history, raid kills, loot and seen " +
-            "spells? Alerts and combat text won't fire for old lines.",
-            yesText: "Catch up", noText: "Skip");
-        if (yes) CatchUpToday();
-    }
-
-    private static string FmtTime(DateTime t) =>
-        t.Date == DateTime.Today ? $"{t:HH:mm} today" : $"{t:ddd HH:mm}";
-
-    private static string FmtGap(TimeSpan gap)
-    {
-        if (gap < TimeSpan.Zero) gap = TimeSpan.Zero;
-        return gap.TotalHours >= 1
-            ? $"{(int)gap.TotalHours}h {gap.Minutes}m"
-            : $"{Math.Max(1, (int)gap.TotalMinutes)} min";
-    }
-
-    /// <summary>Timestamp of the last parseable line — reads only the file's tail.</summary>
-    internal static DateTime? ReadLastLineTime(string path)
-    {
-        try
-        {
-            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete);
-            fs.Seek(Math.Max(0, fs.Length - 64 * 1024), SeekOrigin.Begin);
-            using var reader = new StreamReader(fs);
-            string tail = reader.ReadToEnd();
-            var lines = tail.Split('\n');
-            for (int i = lines.Length - 1; i >= 0; i--)
-                if (TryParseLineTime(lines[i].TrimEnd('\r'), out var t))
-                    return t;
-        }
-        catch { /* unreadable tail -> caller falls back to the write time */ }
-        return null;
     }
 
     // ---- last-seen marker (how far the app has parsed) ------------------------

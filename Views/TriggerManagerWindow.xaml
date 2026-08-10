@@ -347,7 +347,16 @@
                                        Text="App-wide basics. Each overlay feature has its own page in the sidebar."/>
 
                             <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Startup" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Launch with Windows so a forgotten start never costs you data. On every start the app automatically catches up today's log lines (loot, kills, fights, seen spells — alerts stay quiet for old lines); tray → 'Catch up from today's log' re-runs it any time."/>
+
+                            <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows (this exe)" Margin="0,10,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Log source" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="The newest eqlog_*.txt in the folder is followed — log into another character and the app hops to their file automatically. Your character name is read from that filename."/>
 
                             <TextBlock Text="Log folder (newest eqlog_*.txt is followed)" Style="{StaticResource FieldLabel}"/>
                             <StackPanel Orientation="Horizontal">
@@ -368,13 +377,13 @@
                                       Margin="0,10,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
-                            <TextBlock Text="Character" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Text="Character &amp; pet (overrides)" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="Used by the DPS meter, fight history and combat text to recognize you and your pet in log lines."/>
+                                       Text="Normally leave both empty. The character name comes from the log filename automatically; only override it if that ever detects wrong. A pet name enables the pet rows/lanes — a wrong or stale value here is harmless (it just matches nothing), unless it happens to be a real player's name."/>
 
-                            <TextBlock Text="Character name (leave empty to auto-detect from the log filename)" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Text="Character name override (normally auto-detected — leave empty)" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="CharNameBox" Width="220" HorizontalAlignment="Left"/>
-                            <TextBlock Text="Pet name (optional)" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Text="Pet name (optional — enables pet damage rows and lanes)" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="PetNameBox" Width="220" HorizontalAlignment="Left"/>
 
                             <Border Style="{StaticResource PageSep}"/>
@@ -389,26 +398,12 @@
                                       Content="Pop a death recap window when you die (last hits and heals on you)"/>
 
                             <Border Style="{StaticResource PageSep}"/>
-                            <TextBlock Text="Session" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Text="Maintenance" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="So a forgotten start never costs you data: launch with Windows, and rebuild today's fight history, raid kills, loot and seen spells from the log when the app starts late (also on demand: tray → 'Catch up from today's log')."/>
-
-                            <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows (this exe)" Margin="0,10,0,0"/>
-
-                            <TextBlock Text="Catch up from today's log on startup" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox x:Name="CatchUpModeBox" Width="300" HorizontalAlignment="Left" SelectedValuePath="Tag">
-                                <ComboBoxItem Content="Do nothing" Tag="off"/>
-                                <ComboBoxItem Content="Ask me when the log has lines from today" Tag="ask"/>
-                                <ComboBoxItem Content="Catch up automatically" Tag="auto"/>
-                            </ComboBox>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="'Ask me' names the log file and its last-write time, so you can skip it after e.g. a quick restart."/>
-
-                            <TextBlock Text="Reparse the entire log" Style="{StaticResource FieldLabel}"/>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="Replays the WHOLE followed log file (not just today) through loot history, raid kills + their drops, Sky quests, seen spells and duration learning. Useful after an update adds a new log-based feature — your history is picked up retroactively. Everything dedupes, so running it twice never double-counts. Fight history and alerts are not touched."/>
-                            <Button x:Name="ReparseBtn" Content="Reparse entire log file" Click="Reparse_Click"
-                                    HorizontalAlignment="Left" Margin="0,6,0,0"/>
+                                       Text="Replays the WHOLE followed log file (not just today) through loot history, raid kills + their drops, Sky quests, seen spells and duration learning. Useful after an update adds a new log-based feature — your history is picked up retroactively. Everything dedupes, so running it twice never double-counts. Fight history and alerts are not touched. A typical log takes a few seconds."/>
+                            <Button x:Name="ReparseBtn" Content="⚠ Reparse entire log file" Click="Reparse_Click"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0"
+                                    Background="#3A2E14" Foreground="#FFB74D" BorderBrush="#7A5B22"/>
                         </StackPanel>
                     </ScrollViewer>
 
