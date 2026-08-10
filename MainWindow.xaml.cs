@@ -171,6 +171,16 @@ public partial class MainWindow : Window
     private bool _updateBusy;
     private bool _updateHandoff; // true once we've handed off to the new exe
 
+    /// <summary>Answer where the question was asked: a Windows notification from
+    /// the tray icon (the overlay flash is invisible from the tray corner).</summary>
+    private void TrayNotify(string text)
+    {
+        if (_tray is null) { _vm.Flash(text); return; }
+        _tray.BalloonTipTitle = "EQL Assistant";
+        _tray.BalloonTipText = text;
+        _tray.ShowBalloonTip(4000);
+    }
+
     /// <summary>Check GitHub for a newer release; offer to download + restart.
     /// Manual checks (tray) also report "up to date" / failures.</summary>
     private async Task CheckForUpdates(bool manual)
@@ -187,18 +197,18 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 Log.Warn("Update check failed: " + ex.Message);
-                if (manual) _vm.Flash("Update check failed — GitHub not reachable?");
+                if (manual) TrayNotify("Update check failed — GitHub not reachable?");
                 return;
             }
             if (rel is null)
             {
-                if (manual) _vm.Flash("Update check: no downloadable release found.");
+                if (manual) TrayNotify("Update check: no downloadable release found.");
                 return;
             }
             if (!UpdateService.IsNewer(rel.Version))
             {
                 Log.Info($"Update check: up to date (latest is {rel.Tag}).");
-                if (manual) _vm.Flash($"You're up to date (v{UpdateService.CurrentVersion.ToString(3)}).");
+                if (manual) TrayNotify($"You're up to date (v{UpdateService.CurrentVersion.ToString(3)} is the latest).");
                 return;
             }
 
