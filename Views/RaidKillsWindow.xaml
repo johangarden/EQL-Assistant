@@ -44,7 +44,9 @@
                                 <ItemsControl ItemsSource="{Binding Rows}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <DockPanel Margin="2,2">
+                                            <DockPanel Margin="2,2" ToolTip="{Binding Tip}"
+                                                       ToolTipService.ShowDuration="60000"
+                                                       Background="Transparent">
                                                 <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}"
                                                            Foreground="#8FA6C4" FontSize="11" Margin="8,0,0,0"
                                                            VerticalAlignment="Center"/>

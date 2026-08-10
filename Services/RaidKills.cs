@@ -18,8 +18,20 @@ public sealed class RaidKills
         public List<string> Targets { get; set; } = new();
     }
 
-    /// <summary>One recorded kill: when, and at which zone difficulty (D0–D4).</summary>
-    public sealed record Kill(DateTime When, int D);
+    /// <summary>One item looted off a raid kill's corpse.</summary>
+    public sealed class KillItem
+    {
+        public string Item { get; set; } = "";
+        public int Count { get; set; } = 1;
+        public string Kind { get; set; } = "";  // Upgrade / Kept / Sold
+    }
+
+    /// <summary>One recorded kill: when, at which zone difficulty (D0–D4), and
+    /// what it dropped (attributed by mob name; old files load with it empty).</summary>
+    public sealed record Kill(DateTime When, int D)
+    {
+        public List<KillItem> Items { get; init; } = new();
+    }
 
     public sealed record TargetView(string Name, int Count, DateTime? Last, IReadOnlySet<int> Tiers);
     public sealed record TierView(string Name, List<TargetView> Targets)
@@ -78,10 +90,10 @@ public sealed class RaidKills
         AllowTrailingCommas = true,
     };
 
-    public RaidKills(ConfigService config)
+    public RaidKills(ConfigService config, string? killsPathOverride = null)
     {
         _targetsPath = Path.Combine(config.ConfigDirectory, "raid-targets.json");
-        _killsPath = Path.Combine(config.ConfigDirectory, "raid-kills.json");
+        _killsPath = killsPathOverride ?? Path.Combine(config.ConfigDirectory, "raid-kills.json");
         LoadTargets();
         LoadKills();
     }
@@ -129,6 +141,63 @@ public sealed class RaidKills
         SaveKills();
         Log.Info($"Raid target down: {canonical} (D{ParseDifficulty(_zone)})");
         KillRecorded?.Invoke(canonical, t);
+    }
+
+    // ---- loot attribution ------------------------------------------------------
+    // Loot lines name the corpse ("from Lady Vox's corpse"), so a loot entry is
+    // pinned to the most recent kill of that raid target within a window — long
+    // enough to loot at leisure, short enough not to bleed into the next clear.
+
+    private const double LootWindowMinutes = 30;
+
+    /// <summary>All recorded kills of one target, newest first (empty if none).</summary>
+    public IReadOnlyList<Kill> KillsFor(string target) =>
+        _kills.TryGetValue(target, out var list)
+            ? list.OrderByDescending(k => k.When).ToList()
+            : Array.Empty<Kill>();
+
+    /// <summary>Attach a loot entry to the raid kill it came from (no-op for
+    /// non-target mobs or loot outside the window). Returns true when attached.</summary>
+    public bool AttributeLoot(LootTracker.LootEntry e) => AttributeLoot(e, save: true);
+
+    private bool AttributeLoot(LootTracker.LootEntry e, bool save)
+    {
+        if (!_targetSet.TryGetValue(e.Mob, out string? canonical)) return false;
+        if (!_kills.TryGetValue(canonical, out var list)) return false;
+
+        var kill = list
+            .Where(k => e.When >= k.When.AddMinutes(-1)          // clock skew tolerance
+                     && e.When <= k.When.AddMinutes(LootWindowMinutes))
+            .OrderByDescending(k => k.When)
+            .FirstOrDefault();
+        if (kill is null) return false;
+
+        string kind = e.Kind.ToString();
+        var existing = kill.Items.FirstOrDefault(i =>
+            i.Kind == kind && i.Item.Equals(e.Item, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null) existing.Count += Math.Max(1, e.Count);
+        else kill.Items.Add(new KillItem { Item = e.Item, Count = Math.Max(1, e.Count), Kind = kind });
+
+        if (save) SaveKills();
+        return true;
+    }
+
+    /// <summary>One-time upgrade backfill: attribute the existing loot history to
+    /// the existing kill history (both carry timestamps). Only runs while every
+    /// recorded kill is item-less, so it can never double-count.</summary>
+    public void BackfillLoot(IEnumerable<LootTracker.LootEntry> history)
+    {
+        if (_kills.Values.SelectMany(l => l).Any(k => k.Items.Count > 0)) return;
+
+        int attached = 0;
+        foreach (var e in history.OrderBy(x => x.When))
+            if (AttributeLoot(e, save: false)) attached++;
+
+        if (attached > 0)
+        {
+            SaveKills();
+            Log.Info($"Raid loot backfill: attributed {attached} loot entries to past kills.");
+        }
     }
 
     /// <summary>Extract the victim from a death line ("(17)" level suffixes stripped).</summary>

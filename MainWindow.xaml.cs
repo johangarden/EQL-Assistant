@@ -94,6 +94,8 @@ public partial class MainWindow : Window
         _alerts.Muted = _config.Overlay.Muted;
         _raids = new RaidKills(_configService);
         _loot = new LootTracker(_configService);
+        _loot.Added += e => _raids.AttributeLoot(e);   // pin drops to raid kills
+        _raids.BackfillLoot(_loot.Entries);            // one-time: history -> past kills
         _skyQuests = new SkyQuests(_configService, _loot);
         _skyQuests.QuestCompleted += q =>
             OnFlashRequested($"Sky quest complete — {q.Reward}!", "#FFD54F");

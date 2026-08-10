@@ -303,6 +303,33 @@ public partial class App : Application
             Check("recap: later plain death fires fresh and empty",
                 deaths.Count == 2 && deaths[1].Killer == "" && deaths[1].Events.Count == 0);
 
+            // Loot-per-kill: drops pin to the most recent kill of their mob
+            // within the window; strangers/late loot don't; backfill is guarded.
+            string rkPath = Path.Combine(Path.GetTempPath(), "eql_rk_test.json");
+            File.Delete(rkPath);
+            var rk2 = new RaidKills(new ConfigService(), rkPath);
+            var killAt = new DateTime(2026, 8, 9, 21, 0, 0);
+            rk2.ProcessLine("[x] Lady Vox has been slain by Johan!", killAt);
+            Check("kill loot: kept drop attaches to the kill",
+                rk2.AttributeLoot(new LootTracker.LootEntry(killAt.AddMinutes(2),
+                    "Mystic Cloak", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept))
+                && rk2.KillsFor("Lady Vox")[0].Items is [{ Item: "Mystic Cloak", Count: 1 }]);
+            Check("kill loot: same item aggregates its count",
+                rk2.AttributeLoot(new LootTracker.LootEntry(killAt.AddMinutes(3),
+                    "Mystic Cloak", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept))
+                && rk2.KillsFor("Lady Vox")[0].Items is [{ Count: 2 }]);
+            Check("kill loot: unlisted mob is ignored",
+                !rk2.AttributeLoot(new LootTracker.LootEntry(killAt.AddMinutes(2),
+                    "Bone Chips", "a rat", "Permafrost", LootTracker.LootKind.Kept)));
+            Check("kill loot: loot outside the window is ignored",
+                !rk2.AttributeLoot(new LootTracker.LootEntry(killAt.AddHours(2),
+                    "Late Item", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept)));
+            rk2.BackfillLoot(new[] { new LootTracker.LootEntry(killAt.AddMinutes(4),
+                "Backfill Item", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept) });
+            Check("kill loot: backfill skips once items exist",
+                rk2.KillsFor("Lady Vox")[0].Items.All(i => i.Item != "Backfill Item"));
+            File.Delete(rkPath);
+
             // A speak phrase with no timing defaults to the expiry alert.
             var mute = new Models.TriggerDefinition
             {

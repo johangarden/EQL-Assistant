@@ -14,7 +14,7 @@ public partial class RaidKillsWindow : Window
 {
     public sealed record BadgeVm(string Text, Brush Bg, Brush Fg);
     public sealed record KillRow(string Name, string Detail, Brush NameBrush, FontWeight Weight,
-        List<BadgeVm> Badges);
+        List<BadgeVm> Badges, string? Tip);
     public sealed record TierRow(string Title, Visibility ClearedVisibility, List<KillRow> Rows);
 
     private readonly RaidKills _raids;
@@ -48,19 +48,56 @@ public partial class RaidKillsWindow : Window
         TiersControl.ItemsSource = _raids.GetView().Select(t => new TierRow(
             $"{t.Name}  ({t.Killed}/{t.Targets.Count})",
             t.Cleared ? Visibility.Visible : Visibility.Collapsed,
-            t.Targets.Select(x => new KillRow(
-                x.Name,
-                x.Count > 0
-                    ? $"{x.Count}× · last {x.Last:dd MMM yyyy}"
-                    : "—",
-                x.Count > 0 ? KilledFg : UnkilledFg,
-                x.Count > 0 ? FontWeights.SemiBold : FontWeights.Normal,
-                x.Count > 0
-                    ? Enumerable.Range(0, 5).Select(d => new BadgeVm($"D{d}",
-                        x.Tiers.Contains(d) ? BadgeOnBg : BadgeOffBg,
-                        x.Tiers.Contains(d) ? BadgeOnFg : BadgeOffFg)).ToList()
-                    : new List<BadgeVm>())).ToList()
+            t.Targets.Select(x =>
+            {
+                int drops = x.Count > 0
+                    ? _raids.KillsFor(x.Name).Sum(k => k.Items.Sum(i => i.Count)) : 0;
+                return new KillRow(
+                    x.Name,
+                    x.Count > 0
+                        ? $"{x.Count}× · last {x.Last:dd MMM yyyy}{(drops > 0 ? $" · {drops} drops" : "")}"
+                        : "—",
+                    x.Count > 0 ? KilledFg : UnkilledFg,
+                    x.Count > 0 ? FontWeights.SemiBold : FontWeights.Normal,
+                    x.Count > 0
+                        ? Enumerable.Range(0, 5).Select(d => new BadgeVm($"D{d}",
+                            x.Tiers.Contains(d) ? BadgeOnBg : BadgeOffBg,
+                            x.Tiers.Contains(d) ? BadgeOnFg : BadgeOffFg)).ToList()
+                        : new List<BadgeVm>(),
+                    BuildLootTip(x.Name));
+            }).ToList()
         )).ToList();
+    }
+
+    /// <summary>Hover a killed target — every recorded kill with what it dropped.</summary>
+    private string? BuildLootTip(string name)
+    {
+        var kills = _raids.KillsFor(name);
+        if (kills.Count == 0) return null;
+
+        const int maxKills = 12;
+        var sb = new System.Text.StringBuilder();
+        int shown = 0;
+        foreach (var k in kills)
+        {
+            if (shown++ == maxKills)
+            {
+                sb.Append($"… and {kills.Count - maxKills} earlier kill(s)");
+                break;
+            }
+            sb.Append($"{k.When:dd MMM yyyy HH:mm} · D{k.D}");
+            if (k.Items.Count == 0)
+            {
+                sb.AppendLine(" — no drops recorded");
+            }
+            else
+            {
+                sb.AppendLine();
+                foreach (var i in k.Items)
+                    sb.AppendLine($"   • {i.Item}{(i.Count > 1 ? $" ×{i.Count}" : "")}  ({i.Kind.ToLowerInvariant()})");
+            }
+        }
+        return sb.ToString().TrimEnd();
     }
 
     private static Brush Freeze(Color c)
