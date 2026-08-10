@@ -108,7 +108,7 @@
                     <ListBoxItem Content="PANELS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="Bars &amp; matrices"/>
                     <ListBoxItem Content="Repop timer"/>
-                    <ListBoxItem Content="DPS meter"/>
+                    <ListBoxItem Content="DPS &amp; Skills"/>
                     <ListBoxItem Content="Combat text"/>
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
@@ -116,6 +116,7 @@
                     <ListBoxItem Content="Respawns"/>
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
+                    <ListBoxItem Content="Data"/>
                     <ListBoxItem Content="Shortcuts"/>
                     </ListBox>
                 </DockPanel>
@@ -369,13 +370,34 @@
                                       Margin="0,10,0,0"/>
                             <CheckBox x:Name="MuteCheck" Content="Mute all alerts" Margin="0,6,0,0"/>
 
-                            <Border Style="{StaticResource PageSep}"/>
-                            <TextBlock Text="Maintenance" Style="{StaticResource SectionTitle}"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ============================ DATA ============================ -->
+                    <ScrollViewer x:Name="DataPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Data" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="Replays the WHOLE followed log file (not just today) through loot history, raid kills + their drops, Sky quests, seen spells and duration learning. Useful after an update adds a new log-based feature — your history is picked up retroactively. Everything dedupes, so running it twice never double-counts. Fight history and alerts are not touched. A typical log takes a few seconds."/>
+                                       Text="Everything the app knows — loot history, raid kills + drops, Sky progress, seen spells, learned durations — is DERIVED from your log file and stored as JSON in the config folder. These tools rebuild that data from the source."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Reparse entire log file" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="ADDITIVE: replays the whole followed log (not just today) through loot history, raid kills + their drops, Sky quests, seen spells and duration learning. Run it after an update adds a new log-based feature — history is picked up retroactively. Everything dedupes, so it never double-counts. A typical log takes a few seconds."/>
                             <Button x:Name="ReparseBtn" Content="⚠ Reparse entire log file" Click="Reparse_Click"
                                     HorizontalAlignment="Left" Margin="0,6,0,0"
                                     Background="#3A2E14" Foreground="#FFB74D" BorderBrush="#7A5B22"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Reset data files &amp; rebuild" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="DESTRUCTIVE: wipes all the derived data files above, then rebuilds them with a full reparse — a clean slate built purely from what the current log contains. Use it if data ever looks wrong or double-counted. Settings, triggers/loadouts, respawns, raid targets, ★-kept fights and panel positions are never touched."/>
+                            <Button x:Name="ResetRebuildBtn" Content="🗑 Reset data files &amp; rebuild from log" Click="ResetRebuild_Click"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0"
+                                    Background="#3A1B1E" Foreground="#FF8A80" BorderBrush="#7A2E33"/>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -569,7 +591,7 @@
                     <ScrollViewer x:Name="MeterPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="DPS meter" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="DPS &amp; Skills" Style="{StaticResource PageTitle}"/>
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"

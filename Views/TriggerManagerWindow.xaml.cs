@@ -42,6 +42,32 @@ public partial class TriggerManagerWindow : Window
     /// services and returns a one-line summary for the status bar.</summary>
     public Func<string>? ReparseFullLogRequested { get; set; }
 
+    /// <summary>Set by MainWindow: wipes derived data files, then reparses.</summary>
+    public Func<string>? ResetAndRebuildRequested { get; set; }
+
+    private void ResetRebuild_Click(object sender, RoutedEventArgs e)
+    {
+        if (ResetAndRebuildRequested is null)
+        {
+            Status("Reset isn't available right now.");
+            return;
+        }
+        if (!ConfirmDialog.Show(this, "Reset data files & rebuild",
+                "This WIPES all log-derived data — loot history, raid kills + drops, " +
+                "Plane of Sky progress, seen spells and learned durations — and rebuilds " +
+                "everything from a full reparse of the current log file.\n\n" +
+                "NOT touched: settings, triggers/loadouts, respawns, raid targets, " +
+                "★-kept fights and panel positions.\n\n" +
+                "Anything the current log no longer contains (a rotated/deleted old log) " +
+                "is lost for good. Continue?",
+                yesText: "Reset & rebuild", noText: "Cancel"))
+            return;
+
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+        try { Status(ResetAndRebuildRequested()); }
+        finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+    }
+
     private void Reparse_Click(object sender, RoutedEventArgs e)
     {
         if (ReparseFullLogRequested is null)
@@ -581,12 +607,13 @@ public partial class TriggerManagerWindow : Window
             ["Triggers"] = TriggersPage,
             ["Bars & matrices"] = BarsPage,
             ["Repop timer"] = TimerPage,
-            ["DPS meter"] = MeterPage,
+            ["DPS & Skills"] = MeterPage,
             ["Combat text"] = SctPage,
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Respawns"] = RespawnsPage,
             ["General"] = GeneralPage,
+            ["Data"] = DataPage,
             ["Shortcuts"] = ShortcutsPage,
         };
         if (NavList.SelectedItem is not System.Windows.Controls.ListBoxItem item

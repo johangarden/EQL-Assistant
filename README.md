@@ -124,7 +124,7 @@ everything else is **GLOBAL**.
   (columns, anchors), and the **rebuff reminders** timing (warn threshold +
   repeat interval for triggers marked "remind when missing").
 - **Repop timer** — visibility and anchor of the watch panel.
-- **DPS meter** — visibility, anchor, the **pet name**, and the meter's
+- **DPS & Skills** — meter visibility, anchor, the **pet name**, and the
   **skills section** (which skills to grind-track, with the picker).
 - **Combat text** — which lanes exist, sizes, big-hit threshold.
 - **Flash alerts** — text size, area width, anchor.
@@ -136,8 +136,12 @@ everything else is **GLOBAL**.
 
 **APP**
 - **General** — start with Windows, log source (auto-follows the newest
-  character log), overlay basics, and the full-log reparse under
-  Maintenance.
+  character log), overlay basics.
+- **Data** — everything the app knows is derived from your log: **Reparse
+  entire log file** (additive backfill after updates add new log-based
+  features) and **Reset data files & rebuild** (wipe the derived files and
+  rebuild them cleanly from the current log — settings, loadouts, respawns
+  and ★-kept fights are never touched).
 - **Shortcuts** — the global hotkey reference.
 
 Panels stick to their chosen screen corner and grow away from it (Bottom-left

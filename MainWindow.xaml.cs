@@ -99,7 +99,10 @@ public partial class MainWindow : Window
         _raids.BackfillLoot(_loot.Entries);            // one-time: history -> past kills
         _skyQuests = new SkyQuests(_configService, _loot);
         _skyQuests.QuestCompleted += q =>
-            OnFlashRequested($"Sky quest complete — {q.Reward}!", "#FFD54F");
+        {
+            if (!_suppressSct) // replay/reparse re-completions shouldn't flash-spam
+                OnFlashRequested($"Sky quest complete — {q.Reward}!", "#FFD54F");
+        };
         _spellLib = new SpellLibrary(_configService);
         Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
         _durations = new SpellDurations(_configService, _spellLib);
@@ -395,6 +398,21 @@ public partial class MainWindow : Window
             $"+{lootNew} loot, +{killsBefore} raid kills, +{durBefore} duration samples.";
         Log.Info(summary);
         return summary;
+    }
+
+    /// <summary>Data page's "Reset & rebuild": wipe every log-DERIVED data file
+    /// (loot, raid kills, Sky progress, seen spells, learned durations), then
+    /// rebuild them all with a full reparse. Config, loadouts, respawns, raid
+    /// targets, kept fights and window positions are untouched.</summary>
+    private string ResetAndRebuild()
+    {
+        Log.Info("Data reset: wiping derived data files before full reparse.");
+        _loot.ResetAll();
+        _raids.ResetKills();
+        _skyQuests.ResetProgress();
+        _spellLib.ResetSeen();
+        _durations.ResetAll();
+        return "Data files reset. " + ReparseFullLog();
     }
 
     private static readonly string[] LineTimeFormats =
@@ -895,6 +913,7 @@ public partial class MainWindow : Window
             _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations)
             {
                 ReparseFullLogRequested = ReparseFullLog,
+                ResetAndRebuildRequested = ResetAndRebuild,
             };
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();

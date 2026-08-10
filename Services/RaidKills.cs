@@ -200,6 +200,13 @@ public sealed class RaidKills
         }
     }
 
+    /// <summary>Wipe recorded kills + their loot (targets list stays; Data page reset).</summary>
+    public void ResetKills()
+    {
+        _kills.Clear();
+        SaveKills();
+    }
+
     /// <summary>Extract the victim from a death line ("(17)" level suffixes stripped).</summary>
     public static bool TryParseKill(string body, out string mob)
     {

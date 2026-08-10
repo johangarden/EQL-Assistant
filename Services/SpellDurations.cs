@@ -186,6 +186,15 @@ public sealed class SpellDurations
         }
     }
 
+    /// <summary>Wipe all learned samples (Data page reset).</summary>
+    public void ResetAll()
+    {
+        _byKey.Clear();
+        _open.Clear();
+        _pending = null;
+        Save();
+    }
+
     // ---- persistence ---------------------------------------------------------
 
     private static readonly JsonSerializerOptions JsonOpts = new()
