@@ -75,6 +75,11 @@ copied file carries everything.
      quiet entirely after a quick restart where nothing was missed. Set it to
      automatic or off on the General page (also on demand: tray → *Catch up
      from today's log*).
+   - **Reparse entire log file** (General page) — replays your *whole* log
+     through loot history, raid kills + drops, Sky quests, seen spells and
+     duration learning. Run it after an update adds a new log-based feature
+     and your history is picked up retroactively; everything dedupes, so it's
+     always safe to run again.
 3. Add triggers (easiest: the **Library…** button — see below), then **lock**
    the overlay (padlock or Ctrl+Alt+L) and play.
 
@@ -92,13 +97,19 @@ copied file carries everything.
 | **Ctrl+Alt+Q** | Quit |
 
 **System tray icon:** right-click for **Manage settings** (top), Show/Hide,
-Lock/Unlock, Mute, a **Panels ▸** submenu (repop timer / DPS meter / skill
-tracker / combat text), **Loadout ▸**, Raid kills, Catch up from today's log,
-Open config folder, **Reset position** (also unlocks and unhides everything —
-the fixer if a panel is lost off-screen), and Quit.
+Lock/Unlock, Mute, a **Panels ▸** submenu with checkmarks (toolbar / buff bars
+/ repop timer / DPS meter / skill tracker / combat text / flash alerts),
+**Loadout ▸**, Raid kills, Loot history, Sky quests, Death recap, Catch up
+from today's log, Check for updates, Open config folder, **Reset position**
+(also unlocks and unhides everything — the fixer if a panel is lost
+off-screen), and Quit.
 
-**Toolbar** (visible while unlocked): ✕ quit · **Loadout ▾** picker · panel
-toggles · **Manage** · version · 🔒 lock. Drag it to move the bars panel.
+**Toolbar** — a detached command strip that stays visible and clickable even
+while locked: ✕ quit · version · **Loadout ▾** picker · **☰ menu** (mirrors
+the tray menu exactly) · **Manage** · 🔊 mute · 🔒 padlock (governs all other
+panels; glows accent-blue while unlocked as a "lock me before playing"
+reminder). Drag to place it; hide it via ☰ → Panels if you want a clean
+screen.
 
 ## The Manager
 

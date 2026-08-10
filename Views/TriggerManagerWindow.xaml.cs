@@ -38,6 +38,29 @@ public partial class TriggerManagerWindow : Window
 
     private readonly SpellDurations? _durations;
 
+    /// <summary>Set by MainWindow: replays the whole log through the retroactive
+    /// services and returns a one-line summary for the status bar.</summary>
+    public Func<string>? ReparseFullLogRequested { get; set; }
+
+    private void Reparse_Click(object sender, RoutedEventArgs e)
+    {
+        if (ReparseFullLogRequested is null)
+        {
+            Status("Reparse isn't available right now.");
+            return;
+        }
+        if (!ConfirmDialog.Show(this, "Reparse entire log",
+                "Replay the whole log file through loot history, raid kills, Sky quests, " +
+                "seen spells and duration learning?\n\nEverything dedupes — nothing is " +
+                "counted twice. A large log can take a little while.",
+                yesText: "Reparse", noText: "Cancel"))
+            return;
+
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+        try { Status(ReparseFullLogRequested()); }
+        finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+    }
+
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
         LogBus bus, AlertService alerts, RaidKills raids, SpellLibrary spellLibrary,
         CombatParser combat, Action<string> onApplied, SpellDurations? durations = null)

@@ -354,6 +354,12 @@
                             </ComboBox>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="'Ask me' names the log file and its last-write time, so you can skip it after e.g. a quick restart."/>
+
+                            <TextBlock Text="Reparse the entire log" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Replays the WHOLE followed log file (not just today) through loot history, raid kills + their drops, Sky quests, seen spells and duration learning. Useful after an update adds a new log-based feature — your history is picked up retroactively. Everything dedupes, so running it twice never double-counts. Fight history and alerts are not touched."/>
+                            <Button x:Name="ReparseBtn" Content="Reparse entire log file" Click="Reparse_Click"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0"/>
                         </StackPanel>
                     </ScrollViewer>
 

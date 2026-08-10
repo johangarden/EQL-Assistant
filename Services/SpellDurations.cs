@@ -173,6 +173,7 @@ public sealed class SpellDurations
 
                 if (!_byKey.TryGetValue(key, out var rec))
                     _byKey[key] = rec = new SpellRec { Name = spell.Name };
+                if (rec.Samples.Any(s => s.Ts == time)) return; // replayed line (full reparse)
                 rec.Name = spell.Name; // latest rank's display name wins
                 rec.Samples.Add(new Sample(time, seconds));
                 if (rec.Samples.Count > MaxSamplesStored) rec.Samples.RemoveAt(0);

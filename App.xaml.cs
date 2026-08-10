@@ -385,6 +385,11 @@ public partial class App : Application
             var dur2 = new SpellDurations(new ConfigService(), lib2, durPath);
             Check("durations: samples persist across restarts",
                 dur2.LearnedMaxSeconds("Spirit of Wolf") is double d3 && Math.Abs(d3 - 2400) < 0.01);
+            dur2.ProcessLine($"[{T(0)}] You begin casting Spirit of Wolf.");
+            dur2.ProcessLine($"[{T(3)}] You feel the spirit of wolf enter you.");
+            dur2.ProcessLine($"[{T(2403)}] The spirit of wolf leaves you.");
+            Check("durations: a replayed line never double-counts (reparse-safe)",
+                dur2.SampleCount("Spirit of Wolf") == 2);
             File.Delete(durPath);
 
             // Engine: a learned duration EXTENDS a bar; the configured value is a floor.

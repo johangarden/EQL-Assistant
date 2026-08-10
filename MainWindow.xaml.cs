@@ -407,6 +407,66 @@ public partial class MainWindow : Window
         Log.Info($"Catch-up: {lines} lines replayed from {Path.GetFileName(path)}, {fights} fights.");
     }
 
+    /// <summary>
+    /// Full-history reparse (Manager → General): the WHOLE log through the
+    /// retroactive services — loot, raid kills (+drop attribution via
+    /// loot.Added), Sky quests, seen spells, duration learning. NOT the combat
+    /// parser: ancient fights would pollute the session's fight history. Every
+    /// consumer dedupes (loot exact, kills 10-min window, duration samples by
+    /// timestamp), so running this twice never double-counts.
+    /// </summary>
+    private string ReparseFullLog()
+    {
+        string? path = _watcher?.CurrentPath;
+        if (path is null || !File.Exists(path))
+            return "Reparse: no log file is being followed yet.";
+
+        int lootBefore = _loot.Entries.Count;
+        int killsBefore = 0, durBefore = 0;
+        Action<string, DateTime> onKill = (_, _) => killsBefore++;      // counts NEW kills
+        Action<string, double, int> onSample = (_, _, _) => durBefore++; // counts NEW samples
+        _raids.KillRecorded += onKill;
+        _durations.SampleLearned += onSample;
+
+        int lines = 0;
+        _suppressSct = true;
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(fs);
+            string? line;
+            while ((line = reader.ReadLine()) is not null)
+            {
+                if (!TryParseLineTime(line, out var t)) continue;
+                _raids.ProcessLine(line, t);
+                _loot.ProcessLine(line);
+                _skyQuests.ProcessLine(line);
+                _spellLib.MarkSeenFromLine(line);
+                _durations.ProcessLine(line);
+                lines++;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Full reparse failed: " + ex.Message);
+            return "Reparse failed — see the log file.";
+        }
+        finally
+        {
+            _suppressSct = false;
+            _raids.KillRecorded -= onKill;
+            _durations.SampleLearned -= onSample;
+        }
+
+        _spellLib.SaveSeenIfDirty();
+        int lootNew = Math.Max(0, _loot.Entries.Count - lootBefore);
+        string summary = $"Reparsed {lines:N0} lines from {Path.GetFileName(path)}: " +
+            $"+{lootNew} loot, +{killsBefore} raid kills, +{durBefore} duration samples.";
+        Log.Info(summary);
+        return summary;
+    }
+
     private static readonly string[] LineTimeFormats =
     {
         "ddd MMM d HH:mm:ss yyyy",
@@ -902,7 +962,10 @@ public partial class MainWindow : Window
     {
         if (_manager is null)
         {
-            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations);
+            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations)
+            {
+                ReparseFullLogRequested = ReparseFullLog,
+            };
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
         }
