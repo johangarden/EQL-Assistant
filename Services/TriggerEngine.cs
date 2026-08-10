@@ -50,14 +50,20 @@ public sealed class TriggerEngine
     public event Action<string, double>? BarReduced;
 
     /// <summary>Optional observed-duration lookup (SpellDurations): returns the
-    /// learned max for a trigger name, or null. The configured duration is a
-    /// FLOOR — a learned value only ever EXTENDS a bar, never shortens it.</summary>
+    /// learned recent-window max for a trigger name, or null.</summary>
     public Func<string, double?>? LearnedDuration { get; set; }
 
+    /// <summary>Auto-learn triggers run on the learned estimate once samples
+    /// exist (the configured value is only the starting point — the estimate
+    /// may correct in EITHER direction, e.g. level-scaled durations shorter
+    /// than the library's max-level number). Manual triggers enforce the
+    /// configured duration exactly.</summary>
     private double EffectiveDuration(TriggerDefinition trigger)
     {
-        double d = trigger.DurationSeconds;
-        return LearnedDuration?.Invoke(trigger.Name) is double learned && learned > d ? learned : d;
+        if (!trigger.DurationAuto) return trigger.DurationSeconds;
+        return LearnedDuration?.Invoke(trigger.Name) is double learned && learned > 1
+            ? learned
+            : trigger.DurationSeconds;
     }
 
     private static readonly Regex TimestampPrefix =

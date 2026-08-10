@@ -181,6 +181,12 @@
                                     <TextBlock x:Name="DurationLabel" Text="Duration" Style="{StaticResource FieldLabel}"/>
                                     <TextBox Text="{Binding DurationText}" Width="120" HorizontalAlignment="Left"
                                              ToolTip="660, 11m, 9m12s or 9:12"/>
+                                    <CheckBox x:Name="DurationAutoCheck" IsChecked="{Binding DurationAuto}"
+                                              Content="Auto-learn the real duration from the log" Margin="0,8,0,0"/>
+                                    <TextBlock x:Name="DurationLearnedText" Style="{StaticResource Hint}" Margin="0,3,0,0"
+                                               Visibility="Collapsed"/>
+                                    <TextBlock x:Name="DurationAutoHint" Style="{StaticResource Hint}" Margin="0,3,0,0"
+                                               Text="Auto-learn: the duration above is only the starting point (library/base value) — every clean cast-to-fade your log shows refines it, in either direction. Untick to enforce the exact time; learning still runs in the background so you can turn it back on later."/>
                                 </StackPanel>
 
                                 <StackPanel x:Name="ColorGroup">

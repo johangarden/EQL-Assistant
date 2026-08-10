@@ -303,6 +303,41 @@ public partial class App : Application
             Check("recap: later plain death fires fresh and empty",
                 deaths.Count == 2 && deaths[1].Killer == "" && deaths[1].Events.Count == 0);
 
+            // Trigger duration modes: auto-learn follows the estimate in EITHER
+            // direction; manual enforces the configured value exactly.
+            var modeCfg = new Models.AppConfig();
+            modeCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "qk4", Name = "Quickness", StartPattern = @"^Your step quickens\.",
+                DurationSeconds = 660, DurationAuto = true,
+            });
+            modeCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "qk5", Name = "Ironwill", StartPattern = @"^Your will hardens\.",
+                DurationSeconds = 60, DurationAuto = false,
+            });
+            foreach (var t in modeCfg.Triggers) ConfigService.CompileOne(t);
+            string ModeTs() => DateTime.Now.ToString("ddd MMM dd HH:mm:ss yyyy",
+                System.Globalization.CultureInfo.InvariantCulture);
+            var modeEngine = new TriggerEngine(modeCfg, new AlertService())
+            {
+                LearnedDuration = name => name switch
+                {
+                    "Quickness" => 590,  // learned BELOW the configured 660
+                    "Ironwill" => 300,   // learned above the configured 60
+                    _ => null,
+                },
+            };
+            modeEngine.ProcessLine($"[{ModeTs()}] Your step quickens.");
+            Check("auto-learn trigger follows the estimate down",
+                modeEngine.Bars.Count == 1 && modeEngine.Bars[0].RemainingSeconds is > 580 and < 595);
+            modeEngine.ProcessLine($"[{ModeTs()}] Your will hardens.");
+            Check("manual trigger enforces its configured time",
+                modeEngine.Bars.Count == 2
+                && modeEngine.Bars.First(b => b.Name == "Ironwill").RemainingSeconds is > 55 and <= 61);
+            Check("triggers default to auto-learn",
+                new Models.TriggerDefinition().DurationAuto);
+
             // Duration learning: cast-anchored landing -> wear-off mints a sample;
             // unanchored broadcasts don't; early breaks never lower the estimate;
             // death contaminates; ranks pool; samples persist across restarts.
@@ -369,11 +404,11 @@ public partial class App : Application
             learnEngine.ProcessLine($"[{NowTs()}] Your feet move faster.");
             Check("engine: learned duration extends the bar",
                 learnEngine.Bars.Count == 1 && learnEngine.Bars[0].RemainingSeconds > 80);
-            learnEngine.LearnedDuration = _ => 30; // shorter than configured
+            learnEngine.LearnedDuration = _ => 30; // estimate corrected downward
             learnEngine.ProcessLine($"[{NowTs()}] Your feet move faster.");
             double restartRemaining = (learnEngine.Bars[0].EndTimeLocal - DateTime.Now).TotalSeconds;
-            Check("engine: configured duration is a floor",
-                restartRemaining is > 50 and <= 61);
+            Check("engine: auto-learn refresh follows a corrected estimate",
+                restartRemaining is > 25 and <= 31);
 
             // Loot-per-kill: drops pin to the most recent kill of their mob
             // within the window; strangers/late loot don't; backfill is guarded.

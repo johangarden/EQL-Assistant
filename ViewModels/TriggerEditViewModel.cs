@@ -56,6 +56,9 @@ public sealed class TriggerEditViewModel : ViewModelBase
         }
     }
 
+    private bool _durationAuto = true;
+    public bool DurationAuto { get => _durationAuto; set => SetField(ref _durationAuto, value); }
+
     private string _color = "#4FC3F7";
     public string Color
     {
@@ -129,6 +132,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
         StartPattern = d.StartPattern,
         EndPattern = d.EndPattern ?? "",
         DurationSeconds = d.DurationSeconds,
+        DurationAuto = d.DurationAuto,
         Color = d.Color,
         RefreshOnRetrigger = d.RefreshOnRetrigger,
         AlertSpeak = d.Alert?.Speak ?? "",
@@ -159,6 +163,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
             StartPattern = StartPattern,
             EndPattern = string.IsNullOrWhiteSpace(EndPattern) ? null : EndPattern,
             DurationSeconds = DurationSeconds,
+            DurationAuto = DurationAuto,
             Color = Color,
             RefreshOnRetrigger = RefreshOnRetrigger,
             RemindWhenMissing = RemindWhenMissing,

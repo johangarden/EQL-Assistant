@@ -244,12 +244,18 @@ The app learns your spells' real durations from the log (an idea borrowed from
 sample is the span from a cast-anchored landing ("You begin casting X." then
 its landing line) to its wear-off line — so only *your own* casts teach, and
 anything that contaminates a cycle (death, zoning, an external re-buff, your
-own re-cast) discards it instead of recording a wrong number. Bars then run on
-**max(configured duration, recent observed max)** — the configured value is a
-floor, so learning only ever *extends* a bar (AA/focus-extended durations get
-picked up automatically; early clicks and breaks never shorten anything).
+own re-cast) discards it instead of recording a wrong number. Early clicks and
+breaks can never drag the estimate down (it's a max over recent clean samples),
+while real corrections in either direction — AA/focus extensions *or*
+level-scaled durations shorter than the library's number — win once observed.
+
+Each bar/matrix trigger chooses its mode in the editor: **Auto-learn**
+(default) starts from the configured/library duration and follows the learned
+estimate as samples arrive — the editor shows "Learned so far: 9m53s (9
+samples)" under the field. **Manual** (untick) enforces the exact configured
+time; learning still runs in the background so you can switch back any time.
 Ranks pool ("Quickness II" teaches "Quickness III"), and samples persist in
-`spell-durations.json`. It's fully automatic — play, and the bars get truer.
+`spell-durations.json`.
 
 ## Death recap
 

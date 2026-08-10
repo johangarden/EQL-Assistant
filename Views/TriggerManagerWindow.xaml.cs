@@ -36,10 +36,13 @@ public partial class TriggerManagerWindow : Window
         "#64B5F6", "#4DB6AC", "#FFD54F", "#A1887F", "#9575CD", "#E53935",
     };
 
+    private readonly SpellDurations? _durations;
+
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
         LogBus bus, AlertService alerts, RaidKills raids, SpellLibrary spellLibrary,
-        CombatParser combat, Action<string> onApplied)
+        CombatParser combat, Action<string> onApplied, SpellDurations? durations = null)
     {
+        _durations = durations;
         InitializeComponent();
         WindowTheme.ApplyDark(this);
 
@@ -395,6 +398,24 @@ public partial class TriggerManagerWindow : Window
     {
         DetailsScroller.DataContext = Selected;
         DetailsScroller.IsEnabled = Selected != null;
+        UpdateLearnedHint();
+    }
+
+    /// <summary>"Learned so far: 9m53s (9 samples)" under the duration field.</summary>
+    private void UpdateLearnedHint()
+    {
+        if (DurationLearnedText is null) return;
+        var learned = Selected is { } s ? _durations?.LearnedMaxSeconds(s.Name) : null;
+        if (learned is double sec && Selected is not null)
+        {
+            DurationLearnedText.Text =
+                $"Learned so far: {DurationText.Compact(sec)} ({_durations!.SampleCount(Selected.Name)} sample(s) from your log).";
+            DurationLearnedText.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            DurationLearnedText.Visibility = Visibility.Collapsed;
+        }
     }
 
     // ---- trigger list buttons ----------------------------------------------
@@ -559,6 +580,11 @@ public partial class TriggerManagerWindow : Window
         SpeakSoundGroup.Visibility = V(bars || matrix);
 
         DurationLabel.Text = timer ? "Respawn time" : "Duration";
+        // Auto-learn is a spell-duration concept — respawn timers don't learn.
+        DurationAutoCheck.Visibility = V(bars || matrix);
+        DurationAutoHint.Visibility = V(bars || matrix);
+        if (timer) DurationLearnedText.Visibility = Visibility.Collapsed;
+        else UpdateLearnedHint();
         StartLabel.Text = timer ? "Death line (regex — starts the repop timer)"
             : flash ? "Pattern (regex — fires the flash)"
             : matrix ? "Start pattern (regex — turns the cell green)"

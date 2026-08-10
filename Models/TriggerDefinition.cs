@@ -41,8 +41,15 @@ public sealed class TriggerDefinition
     /// <summary>Optional regex to END the timer early. Empty = only expires by time.</summary>
     public string? EndPattern { get; set; }
 
-    /// <summary>How long the bar counts down, in seconds.</summary>
+    /// <summary>How long the bar counts down, in seconds. With
+    /// <see cref="DurationAuto"/> this is the STARTING value (library/base);
+    /// observed fades refine it. Without, it is enforced exactly.</summary>
     public double DurationSeconds { get; set; } = 60;
+
+    /// <summary>Auto-learn the duration from observed fades in the log
+    /// (default). Off = enforce DurationSeconds exactly; learning still
+    /// happens in the background either way.</summary>
+    public bool DurationAuto { get; set; } = true;
 
     /// <summary>Bar fill color, any WPF color string ("#3FA9F5", "DodgerBlue").</summary>
     public string Color { get; set; } = "#3FA9F5";
