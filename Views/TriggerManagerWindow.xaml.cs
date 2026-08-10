@@ -88,6 +88,7 @@ public partial class TriggerManagerWindow : Window
         System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
         try { Status(ResetAndRebuildRequested()); }
         finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+        UpdateDurationUx();
     }
 
     private void Reparse_Click(object sender, RoutedEventArgs e)
@@ -107,6 +108,7 @@ public partial class TriggerManagerWindow : Window
         System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
         try { Status(ReparseFullLogRequested()); }
         finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+        UpdateDurationUx(); // learned-duration hint may have new samples now
     }
 
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
@@ -177,7 +179,13 @@ public partial class TriggerManagerWindow : Window
         {
             Interval = TimeSpan.FromSeconds(2)
         };
-        _deathsTick.Tick += (_, _) => { RefreshRecentDeaths(); RefreshSeenSkills(); UpdateCharInfo(); };
+        _deathsTick.Tick += (_, _) =>
+        {
+            RefreshRecentDeaths();
+            RefreshSeenSkills();
+            UpdateCharInfo();
+            UpdateDurationUx(); // live play mints samples while the editor is open
+        };
         _deathsTick.Start();
         Closed += (_, _) => _deathsTick.Stop();
 
