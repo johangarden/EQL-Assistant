@@ -9,6 +9,8 @@ namespace EQLOverlay;
 
 public partial class App : Application
 {
+    private Mutex? _instanceMutex; // held for the app's lifetime (single-instance guard)
+
     protected override void OnStartup(StartupEventArgs e)
     {
         // Self-update finisher: this process IS the freshly downloaded exe in
@@ -70,6 +72,22 @@ public partial class App : Application
         if (replayIdx >= 0 && replayIdx + 1 < e.Args.Length)
         {
             RunReplay(e.Args[replayIdx + 1]);
+            return;
+        }
+
+        // Single instance per exe path — a double-click race otherwise gives two
+        // overlays fighting over the same config files. (Keyed on the path so a
+        // dev build and a separate copied exe can still run side by side.)
+        // NB: not string.GetHashCode — that's randomized per process in .NET.
+        string mutexKey = "EQL_Assistant_" + (Environment.ProcessPath ?? "unknown")
+            .ToLowerInvariant().Replace('\\', '_').Replace(':', '_').Replace('/', '_');
+        _instanceMutex = new Mutex(true, mutexKey, out bool firstInstance);
+        if (!firstInstance)
+        {
+            MessageBox.Show(
+                "EQL Assistant is already running — look for it in the system tray.",
+                "EQL Assistant", MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
             return;
         }
 
