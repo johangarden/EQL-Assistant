@@ -32,7 +32,12 @@ public static class PromptDialog
         WindowTheme.ApplyDark(win);
 
         var panel = new StackPanel { Margin = new Thickness(14) };
-        panel.Children.Add(new TextBlock { Text = prompt, Margin = new Thickness(0, 0, 0, 8) });
+        panel.Children.Add(new TextBlock
+        {
+            Text = prompt,
+            Margin = new Thickness(0, 0, 0, 8),
+            Foreground = (Brush)win.Resources["Brush.Text"],
+        });
 
         var box = new TextBox { Text = initial };
         panel.Children.Add(box);

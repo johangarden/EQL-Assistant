@@ -35,7 +35,12 @@ public static class ConfirmDialog
         WindowTheme.ApplyDark(win);
 
         var panel = new StackPanel { Margin = new Thickness(16) };
-        panel.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)win.Resources["Brush.Text"],
+        });
 
         var buttons = new StackPanel
         {

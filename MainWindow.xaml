@@ -93,64 +93,14 @@
             Padding="6">
         <StackPanel x:Name="SizerHost" Width="320">
 
-            <!-- Toolbar: only when unlocked. Also the drag handle. -->
+            <!-- Slim drag header: only when unlocked (the command strip is its
+                 own always-visible ToolbarWindow now). -->
             <Border x:Name="Toolbar"
                     Visibility="{Binding IsUnlocked, Converter={StaticResource BoolToVis}}"
-                    Background="#E01B2130" CornerRadius="5" Padding="8,5" Margin="0,0,0,6"
+                    Background="#E01B2130" CornerRadius="5" Padding="8,4" Margin="0,0,0,6"
                     MouseLeftButtonDown="Toolbar_DragMove">
-                <StackPanel>
-                    <!-- Header: right-side controls dock first (always visible); the loadout
-                         button is the fill child, so a long name just truncates into the gap
-                         and can never push ✕/Manage/version/mute/lock off. -->
-                    <DockPanel LastChildFill="True">
-                        <Button DockPanel.Dock="Left" Content="✕" Click="OnQuit" Style="{StaticResource CloseBtn}"
-                                ToolTip="Quit EQL Assistant"/>
-
-                        <Button DockPanel.Dock="Right" Click="OnLock" Style="{StaticResource IconBtn}" Margin="6,0,0,0"
-                                FontFamily="Segoe MDL2 Assets" Content="&#xE72E;"
-                                ToolTip="Lock overlay — click-through (Ctrl+Alt+L)"/>
-
-                        <Border DockPanel.Dock="Right" Width="22" Height="22" CornerRadius="4"
-                                Background="#2A3346" Margin="8,0,0,0"
-                                ToolTip="Alerts muted — Ctrl+Alt+S to unmute"
-                                Visibility="{Binding Muted, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="&#xE74F;" FontFamily="Segoe MDL2 Assets" FontSize="12"
-                                       Foreground="#FFB74D" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding Version}" Foreground="#6E7C93"
-                                   FontSize="10" VerticalAlignment="Center" Margin="7,0,0,0"/>
-
-                        <Button DockPanel.Dock="Right" Content="Manage" Click="OnManage"
-                                Style="{StaticResource AccentBtn}" Margin="6,0,0,0"
-                                ToolTip="Open Trigger Manager"/>
-
-                        <Button DockPanel.Dock="Right" Click="OnRepop" Style="{StaticResource IconBtn}"
-                                Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE916;"
-                                ToolTip="Show / hide the repop timer (Ctrl+Alt+R)"/>
-
-                        <Button DockPanel.Dock="Right" Click="OnMeter" Style="{StaticResource IconBtn}"
-                                Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE9D9;"
-                                AutomationProperties.AutomationId="MeterToggleBtn"
-                                ToolTip="Show / hide the DPS meter (Ctrl+Alt+D)"/>
-
-                        <Button DockPanel.Dock="Right" Click="OnSct" Style="{StaticResource IconBtn}"
-                                Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE945;"
-                                AutomationProperties.AutomationId="SctToggleBtn"
-                                ToolTip="Show / hide scrolling combat text (Ctrl+Alt+C)"/>
-
-                        <!-- fill: loadout dropdown, truncates to fit -->
-                        <Button Click="OnLoadoutMenu" Style="{StaticResource ToolBtn}"
-                                Margin="8,0,0,0" HorizontalContentAlignment="Left" ToolTip="Switch loadout">
-                            <TextBlock Text="{Binding LoadoutName, StringFormat='{}{0}  ▾'}"
-                                       TextTrimming="CharacterEllipsis"/>
-                        </Button>
-                    </DockPanel>
-                    <TextBlock Text="{Binding Status}" Foreground="#7F93AD"
-                               FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap"/>
-                    <TextBlock Text="Ctrl+Alt+ L lock · R timer · D meter · C text · T test · H hide · S mute · Q quit"
-                               Foreground="#5C6B82" FontSize="10" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                </StackPanel>
+                <TextBlock Text="Buff bars — drag to move" Foreground="#8FA6C4"
+                           FontSize="11" FontWeight="Bold"/>
             </Border>
 
             <!-- The bars, grouped by category. -->

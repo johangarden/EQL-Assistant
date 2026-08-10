@@ -74,6 +74,10 @@ public partial class TriggerManagerWindow : Window
         RecentList.ItemsSource = _recent;
         _bus.LineReceived += OnLine;
 
+        string ver = $"v{UpdateService.CurrentVersion.ToString(3)}";
+        VersionText.Text = ver;
+        Title = $"EQL Assistant — Manager · {ver}";
+
         BuildSwatches();
         LoadSettingsFields();
         MuteCheck.IsChecked = _alerts.Muted;
@@ -520,7 +524,7 @@ public partial class TriggerManagerWindow : Window
     {
         if (FlashPage is null) return; // still initializing
         var pages = new System.Windows.FrameworkElement[]
-            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SkillsPage, SctPage, FlashPage };
+            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SkillsPage, SctPage, FlashPage, ShortcutsPage };
         int idx = Math.Clamp(NavList.SelectedIndex, 0, pages.Length - 1);
         for (int i = 0; i < pages.Length; i++)
             pages[i].Visibility = i == idx ? Visibility.Visible : Visibility.Collapsed;
@@ -697,6 +701,8 @@ public partial class TriggerManagerWindow : Window
                 StartLocked = StartLockedCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
                 DeathRecapAuto = DeathRecapCheck.IsChecked == true,
+                ToolbarVisible = _config.Overlay.ToolbarVisible, // tray-toggled — carried through
+                BarsVisible = _config.Overlay.BarsVisible,       // tray-toggled — carried through
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,
