@@ -658,7 +658,7 @@ public partial class MainWindow : Window
             MergeGlobalRespawns(_config);
             _vm.Flash($"Respawn added: {name} ({seconds:0}s).");
         };
-        _timer.ManageRespawnsRequested = () => OpenManager("Repop timer");
+        _timer.ManageRespawnsRequested = () => OpenManager("Respawns");
         _timer.Show();
         UpdateTimerVisibility();
     }

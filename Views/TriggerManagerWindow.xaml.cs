@@ -567,11 +567,23 @@ public partial class TriggerManagerWindow : Window
         System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (FlashPage is null) return; // still initializing
-        var pages = new System.Windows.FrameworkElement[]
-            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SkillsPage, SctPage, FlashPage, ShortcutsPage };
-        int idx = Math.Clamp(NavList.SelectedIndex, 0, pages.Length - 1);
-        for (int i = 0; i < pages.Length; i++)
-            pages[i].Visibility = i == idx ? Visibility.Visible : Visibility.Collapsed;
+        var byTitle = new Dictionary<string, System.Windows.FrameworkElement>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Triggers"] = TriggersPage,
+            ["Bars & matrices"] = BarsPage,
+            ["Repop timer"] = TimerPage,
+            ["DPS meter"] = MeterPage,
+            ["Combat text"] = SctPage,
+            ["Flash alerts"] = FlashPage,
+            ["Respawns"] = RespawnsPage,
+            ["General"] = GeneralPage,
+            ["Shortcuts"] = ShortcutsPage,
+        };
+        if (NavList.SelectedItem is not System.Windows.Controls.ListBoxItem item
+            || !byTitle.TryGetValue(item.Content as string ?? "", out var page))
+            return;
+        foreach (var p in byTitle.Values) p.Visibility = Visibility.Collapsed;
+        page.Visibility = Visibility.Visible;
     }
 
     // ---- contextual details form ---------------------------------------------

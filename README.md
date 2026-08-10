@@ -113,20 +113,33 @@ screen.
 
 ## The Manager
 
-**Manage** opens a sidebar window with one page per feature:
+**Manage** opens a sidebar window, grouped into sections. Every page carries a
+scope chip: triggers are **PER LOADOUT** (switching loadouts switches the set),
+everything else is **GLOBAL**.
 
+**TRIGGERS**
 - **Triggers** — the trigger editor (list, details form, live log capture).
   Click a line in the live feed → **→ Start pattern** to build a regex from the
   real log line. **Test matches** checks a pasted line against all triggers.
-- **General** — log source, character/pet names, opacity, start locked,
-  start with Windows, catch-up on start.
-- **Buff bars** — bar sizes, warn/reminder timings, screen anchor; plus the
-  buff/debuff **matrix** settings (columns, anchors).
-- **Repop timer** — visibility, anchor, and **global named respawns**.
-- **DPS meter** — visibility and anchor.
-- **Skill tracker** — the meter's SKILLS section and the skill list to watch.
+
+**PANELS**
+- **Bars & matrices** — countdown-bar sizes, the buff/debuff matrix settings
+  (columns, anchors), and the **rebuff reminders** timing (warn threshold +
+  repeat interval for triggers marked "remind when missing").
+- **Repop timer** — visibility and anchor of the watch panel.
+- **DPS meter** — visibility, anchor, and the meter's **skills section**
+  (which skills to grind-track, with the seen-in-your-log picker).
 - **Combat text** — which lanes exist, sizes, big-hit threshold.
 - **Flash alerts** — text size, area width, anchor.
+
+**KNOWLEDGE**
+- **Respawns** — the global named-respawn list (zone-grouped, recent-kills
+  picker) that auto-starts the repop watch on death lines.
+
+**APP**
+- **General** — log source, character/pet names, opacity, start locked,
+  start with Windows, catch-up on start, full-log reparse.
+- **Shortcuts** — the global hotkey reference.
 
 Panels stick to their chosen screen corner and grow away from it (Bottom-left
 keeps a panel above your hotbar, growing upward). Fine-tune by dragging while
