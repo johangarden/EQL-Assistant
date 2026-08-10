@@ -143,6 +143,16 @@ public sealed class SkyQuests
         }
     }
 
+    /// <summary>Wipe item counts + completions (Data page reset — a following
+    /// reparse rebuilds counts from the loot events it replays).</summary>
+    public void ResetProgress()
+    {
+        _counts.Clear();
+        _completed.Clear();
+        SaveProgress();
+        Changed?.Invoke();
+    }
+
     public int HeldCount(SkyItem item) =>
         _counts.GetValueOrDefault(LootTracker.ItemKey(item.Name));
 

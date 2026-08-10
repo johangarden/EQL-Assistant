@@ -9,6 +9,8 @@ namespace EQLOverlay;
 
 public partial class App : Application
 {
+    private Mutex? _instanceMutex; // held for the app's lifetime (single-instance guard)
+
     protected override void OnStartup(StartupEventArgs e)
     {
         // Self-update finisher: this process IS the freshly downloaded exe in
@@ -70,6 +72,22 @@ public partial class App : Application
         if (replayIdx >= 0 && replayIdx + 1 < e.Args.Length)
         {
             RunReplay(e.Args[replayIdx + 1]);
+            return;
+        }
+
+        // Single instance per exe path — a double-click race otherwise gives two
+        // overlays fighting over the same config files. (Keyed on the path so a
+        // dev build and a separate copied exe can still run side by side.)
+        // NB: not string.GetHashCode — that's randomized per process in .NET.
+        string mutexKey = "EQL_Assistant_" + (Environment.ProcessPath ?? "unknown")
+            .ToLowerInvariant().Replace('\\', '_').Replace(':', '_').Replace('/', '_');
+        _instanceMutex = new Mutex(true, mutexKey, out bool firstInstance);
+        if (!firstInstance)
+        {
+            MessageBox.Show(
+                "EQL Assistant is already running — look for it in the system tray.",
+                "EQL Assistant", MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
             return;
         }
 
@@ -258,26 +276,7 @@ public partial class App : Application
             Check("loot: item key strips +N", LootTracker.ItemKey("Sphinx Claw +2") == "sphinx claw"
                 && LootTracker.ItemKey("Bone Chips") == "bone chips");
 
-            // Tail reader for the catch-up prompt: last parseable line stamp wins,
-            // trailing junk is skipped, only the file tail is read.
-            string tailFile = Path.Combine(Path.GetTempPath(), "eql_tailtest.txt");
-            File.WriteAllLines(tailFile, new[]
-            {
-                "[Thu Aug 06 10:00:00 2026] You slash a rat for 5 points of damage.",
-                "[Thu Aug 06 10:41:03 2026] You gain experience! (1.0%)",
-                "no timestamp on this trailing line",
-            });
-            Check("catch-up: tail reader finds the last stamped line",
-                EQLOverlay.MainWindow.ReadLastLineTime(tailFile) == new DateTime(2026, 8, 6, 10, 41, 3));
-            File.Delete(tailFile);
-
-            // Catch-up mode resolution (off / ask / auto, legacy bool migrates).
-            Check("catch-up: legacy auto migrates",
-                new Models.AppConfig { CatchUpOnStart = true }.EffectiveCatchUpMode() == "auto");
-            Check("catch-up: fresh config asks",
-                new Models.AppConfig().EffectiveCatchUpMode() == "ask");
-            Check("catch-up: explicit off beats legacy",
-                new Models.AppConfig { CatchUpOnStart = true, CatchUpMode = "off" }.EffectiveCatchUpMode() == "off");
+            // (Catch-up prompt/mode checks removed in 2.7 — catch-up always runs.)
 
             // Death recap: incoming hits/misses/heals buffer up; a death line
             // snapshots them, fires once, and the twin death lines dedupe.
@@ -302,6 +301,145 @@ public partial class App : Application
             cp.ProcessLine("[Sat Aug 08 23:25:00 2026] You died.");
             Check("recap: later plain death fires fresh and empty",
                 deaths.Count == 2 && deaths[1].Killer == "" && deaths[1].Events.Count == 0);
+
+            // Trigger duration modes: auto-learn follows the estimate in EITHER
+            // direction; manual enforces the configured value exactly.
+            var modeCfg = new Models.AppConfig();
+            modeCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "qk4", Name = "Quickness", StartPattern = @"^Your step quickens\.",
+                DurationSeconds = 660, DurationAuto = true,
+            });
+            modeCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "qk5", Name = "Ironwill", StartPattern = @"^Your will hardens\.",
+                DurationSeconds = 60, DurationAuto = false,
+            });
+            foreach (var t in modeCfg.Triggers) ConfigService.CompileOne(t);
+            string ModeTs() => DateTime.Now.ToString("ddd MMM dd HH:mm:ss yyyy",
+                System.Globalization.CultureInfo.InvariantCulture);
+            var modeEngine = new TriggerEngine(modeCfg, new AlertService())
+            {
+                LearnedDuration = name => name switch
+                {
+                    "Quickness" => 590,  // learned BELOW the configured 660
+                    "Ironwill" => 300,   // learned above the configured 60
+                    _ => null,
+                },
+            };
+            modeEngine.ProcessLine($"[{ModeTs()}] Your step quickens.");
+            Check("auto-learn trigger follows the estimate down",
+                modeEngine.Bars.Count == 1 && modeEngine.Bars[0].RemainingSeconds is > 580 and < 595);
+            modeEngine.ProcessLine($"[{ModeTs()}] Your will hardens.");
+            Check("manual trigger enforces its configured time",
+                modeEngine.Bars.Count == 2
+                && modeEngine.Bars.First(b => b.Name == "Ironwill").RemainingSeconds is > 55 and <= 61);
+            Check("triggers default to auto-learn",
+                new Models.TriggerDefinition().DurationAuto);
+
+            // Duration learning: cast-anchored landing -> wear-off mints a sample;
+            // unanchored broadcasts don't; early breaks never lower the estimate;
+            // death contaminates; ranks pool; samples persist across restarts.
+            string durPath = Path.Combine(Path.GetTempPath(), "eql_dur_test.json");
+            File.Delete(durPath);
+            var lib2 = new SpellLibrary(new ConfigService());
+            var dur = new SpellDurations(new ConfigService(), lib2, durPath);
+            Check("durations: rank suffix pools",
+                SpellDurations.BaseKey("Mesmerization VII") == "mesmerization"
+                && SpellDurations.BaseKey("Quickness II") == SpellDurations.BaseKey("Quickness"));
+            string T(int s) => new DateTime(2026, 8, 9, 20, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            dur.ProcessLine($"[{T(0)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(3)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(2403)}] The spirit of wolf leaves you.");
+            Check("durations: full cycle mints a 2400s sample",
+                dur.LearnedMaxSeconds("Spirit of Wolf") is double d1 && Math.Abs(d1 - 2400) < 0.01);
+            dur.ProcessLine($"[{T(3000)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(3003)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(3100)}] The spirit of wolf leaves you.");
+            Check("durations: an early break never lowers the estimate",
+                dur.LearnedMaxSeconds("Spirit of Wolf") is double d2 && Math.Abs(d2 - 2400) < 0.01);
+            dur.ProcessLine($"[{T(4000)}] You feel the spirit of wolf enter you."); // no cast anchor
+            dur.ProcessLine($"[{T(4100)}] The spirit of wolf leaves you.");
+            Check("durations: unanchored broadcast teaches nothing",
+                dur.SampleCount("Spirit of Wolf") == 2);
+            dur.ProcessLine($"[{T(5000)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(5003)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(5050)}] You died.");
+            dur.ProcessLine($"[{T(5100)}] The spirit of wolf leaves you.");
+            Check("durations: death contaminates the open cycle",
+                dur.SampleCount("Spirit of Wolf") == 2);
+            dur.ProcessLine($"[{T(6000)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(6003)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(6050)}] LOADING, PLEASE WAIT...");
+            dur.ProcessLine($"[{T(9000)}] The spirit of wolf leaves you.");
+            Check("durations: zoning contaminates (buff timers pause while zoning)",
+                dur.SampleCount("Spirit of Wolf") == 2);
+            dur.ProcessLine($"[{T(10000)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(10003)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(10500)}] You feel the spirit of wolf enter you."); // external re-haste
+            dur.ProcessLine($"[{T(12403)}] The spirit of wolf leaves you.");
+            Check("durations: an external re-land contaminates the cycle",
+                dur.SampleCount("Spirit of Wolf") == 2);
+            var dur2 = new SpellDurations(new ConfigService(), lib2, durPath);
+            Check("durations: samples persist across restarts",
+                dur2.LearnedMaxSeconds("Spirit of Wolf") is double d3 && Math.Abs(d3 - 2400) < 0.01);
+            dur2.ProcessLine($"[{T(0)}] You begin casting Spirit of Wolf.");
+            dur2.ProcessLine($"[{T(3)}] You feel the spirit of wolf enter you.");
+            dur2.ProcessLine($"[{T(2403)}] The spirit of wolf leaves you.");
+            Check("durations: a replayed line never double-counts (reparse-safe)",
+                dur2.SampleCount("Spirit of Wolf") == 2);
+            File.Delete(durPath);
+
+            // Engine: a learned duration EXTENDS a bar; the configured value is a floor.
+            var learnCfg = new Models.AppConfig();
+            learnCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "qk3", Name = "Quickness", Category = "Buffs",
+                StartPattern = @"^Your feet move faster\.", DurationSeconds = 60,
+            });
+            foreach (var t in learnCfg.Triggers) ConfigService.CompileOne(t);
+            var learnEngine = new TriggerEngine(learnCfg, new AlertService())
+            {
+                LearnedDuration = name => name == "Quickness" ? 90 : null,
+            };
+            string NowTs() => DateTime.Now.ToString("ddd MMM dd HH:mm:ss yyyy",
+                System.Globalization.CultureInfo.InvariantCulture);
+            learnEngine.ProcessLine($"[{NowTs()}] Your feet move faster.");
+            Check("engine: learned duration extends the bar",
+                learnEngine.Bars.Count == 1 && learnEngine.Bars[0].RemainingSeconds > 80);
+            learnEngine.LearnedDuration = _ => 30; // estimate corrected downward
+            learnEngine.ProcessLine($"[{NowTs()}] Your feet move faster.");
+            double restartRemaining = (learnEngine.Bars[0].EndTimeLocal - DateTime.Now).TotalSeconds;
+            Check("engine: auto-learn refresh follows a corrected estimate",
+                restartRemaining is > 25 and <= 31);
+
+            // Loot-per-kill: drops pin to the most recent kill of their mob
+            // within the window; strangers/late loot don't; backfill is guarded.
+            string rkPath = Path.Combine(Path.GetTempPath(), "eql_rk_test.json");
+            File.Delete(rkPath);
+            var rk2 = new RaidKills(new ConfigService(), rkPath);
+            var killAt = new DateTime(2026, 8, 9, 21, 0, 0);
+            rk2.ProcessLine("[x] Lady Vox has been slain by Johan!", killAt);
+            Check("kill loot: kept drop attaches to the kill",
+                rk2.AttributeLoot(new LootTracker.LootEntry(killAt.AddMinutes(2),
+                    "Mystic Cloak", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept))
+                && rk2.KillsFor("Lady Vox")[0].Items is [{ Item: "Mystic Cloak", Count: 1 }]);
+            Check("kill loot: same item aggregates its count",
+                rk2.AttributeLoot(new LootTracker.LootEntry(killAt.AddMinutes(3),
+                    "Mystic Cloak", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept))
+                && rk2.KillsFor("Lady Vox")[0].Items is [{ Count: 2 }]);
+            Check("kill loot: unlisted mob is ignored",
+                !rk2.AttributeLoot(new LootTracker.LootEntry(killAt.AddMinutes(2),
+                    "Bone Chips", "a rat", "Permafrost", LootTracker.LootKind.Kept)));
+            Check("kill loot: loot outside the window is ignored",
+                !rk2.AttributeLoot(new LootTracker.LootEntry(killAt.AddHours(2),
+                    "Late Item", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept)));
+            rk2.BackfillLoot(new[] { new LootTracker.LootEntry(killAt.AddMinutes(4),
+                "Backfill Item", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept) });
+            Check("kill loot: backfill skips once items exist",
+                rk2.KillsFor("Lady Vox")[0].Items.All(i => i.Item != "Backfill Item"));
+            File.Delete(rkPath);
 
             // A speak phrase with no timing defaults to the expiry alert.
             var mute = new Models.TriggerDefinition
@@ -853,6 +991,14 @@ public partial class App : Application
             var sctCounts = new Dictionary<CombatParser.SctKind, int>();
             p.SctEvent += hit => sctCounts[hit.Kind] = 1 + sctCounts.GetValueOrDefault(hit.Kind);
 
+            // Duration learner dry-run against the real log (throwaway store).
+            string durReplayPath = Path.Combine(Path.GetTempPath(), "eql_replay_durations.json");
+            File.Delete(durReplayPath);
+            var replayCs = new ConfigService();
+            var replayDur = new SpellDurations(replayCs, new SpellLibrary(replayCs), durReplayPath);
+            var learned = new List<string>();
+            replayDur.SampleLearned += (spell, sec, n) => learned.Add($"{spell}: {sec:0}s (sample {n})");
+
             int lines = 0;
             int lootUp = 0, lootKept = 0, lootSold = 0;
             long lootCopper = 0;
@@ -860,6 +1006,7 @@ public partial class App : Application
             foreach (var line in File.ReadLines(path))
             {
                 p.Replay(line);
+                replayDur.ProcessLine(line);
                 lines++;
                 if (LootTracker.TryParseLoot(tsRx.Replace(line, "", 1), out var lk, out _, out _, out _, out long lc, out _))
                 {
@@ -871,6 +1018,9 @@ public partial class App : Application
             p.Tick(DateTime.MaxValue);
 
             report.AppendLine($"lines: {lines}   fights: {p.History.Count}   self: {p.SelfName}");
+            report.AppendLine($"--- learned durations ({learned.Count} samples) ---");
+            foreach (var l in learned) report.AppendLine("  " + l);
+            File.Delete(durReplayPath);
             report.AppendLine("SCT events: " + string.Join("  ",
                 sctCounts.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}")));
 

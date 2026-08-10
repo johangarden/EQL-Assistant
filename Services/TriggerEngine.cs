@@ -49,6 +49,23 @@ public sealed class TriggerEngine
     /// <summary>Raised when a cooldown reducer cuts a running bar: (triggerName, seconds).</summary>
     public event Action<string, double>? BarReduced;
 
+    /// <summary>Optional observed-duration lookup (SpellDurations): returns the
+    /// learned recent-window max for a trigger name, or null.</summary>
+    public Func<string, double?>? LearnedDuration { get; set; }
+
+    /// <summary>Auto-learn triggers run on the learned estimate once samples
+    /// exist (the configured value is only the starting point — the estimate
+    /// may correct in EITHER direction, e.g. level-scaled durations shorter
+    /// than the library's max-level number). Manual triggers enforce the
+    /// configured duration exactly.</summary>
+    private double EffectiveDuration(TriggerDefinition trigger)
+    {
+        if (!trigger.DurationAuto) return trigger.DurationSeconds;
+        return LearnedDuration?.Invoke(trigger.Name) is double learned && learned > 1
+            ? learned
+            : trigger.DurationSeconds;
+    }
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -238,7 +255,7 @@ public sealed class TriggerEngine
         }
     }
 
-    private static void ProcessMatrixLine(Dictionary<string, MatrixCellViewModel> byId,
+    private void ProcessMatrixLine(Dictionary<string, MatrixCellViewModel> byId,
         TriggerDefinition trigger, string body, DateTime eventTime)
     {
         if (!byId.TryGetValue(trigger.Id, out var cell)) return;
@@ -247,7 +264,7 @@ public sealed class TriggerEngine
             cell.Deactivate();
 
         if (trigger.StartRegex is { } startRx && startRx.IsMatch(body))
-            cell.Activate(eventTime.AddSeconds(trigger.DurationSeconds));
+            cell.Activate(eventTime.AddSeconds(EffectiveDuration(trigger)));
     }
 
     private void StartOrRefresh(TriggerDefinition trigger, Match match, DateTime eventTime)
@@ -255,13 +272,14 @@ public sealed class TriggerEngine
         _seen.Add(trigger.Id);
 
         string key = BuildKey(trigger, match);
-        DateTime end = eventTime.AddSeconds(trigger.DurationSeconds);
+        double duration = EffectiveDuration(trigger);
+        DateTime end = eventTime.AddSeconds(duration);
 
         if (_active.TryGetValue(key, out var existing))
         {
             if (trigger.RefreshOnRetrigger)
             {
-                existing.Restart(trigger.DurationSeconds, end);
+                existing.Restart(duration, end);
                 Reposition(existing);
             }
             return;
@@ -269,7 +287,7 @@ public sealed class TriggerEngine
 
         var vm = TimerBarViewModel.CreateTimer(
             key, BuildLabel(trigger, match), trigger.Category,
-            trigger.DurationSeconds, end, MakeBrush(trigger.Color),
+            duration, end, MakeBrush(trigger.Color),
             trigger.Alert?.AtSeconds ?? 0,
             trigger.Alert?.OnExpire ?? false,
             trigger.Alert?.Speak,

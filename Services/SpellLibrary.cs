@@ -128,6 +128,14 @@ public sealed class SpellLibrary
                 _seenDirty = true;
     }
 
+    /// <summary>Wipe the seen-spells set (Data page reset).</summary>
+    public void ResetSeen()
+    {
+        _seen.Clear();
+        _seenDirty = true;
+        SaveSeenIfDirty();
+    }
+
     public void SaveSeenIfDirty()
     {
         if (!_seenDirty) return;

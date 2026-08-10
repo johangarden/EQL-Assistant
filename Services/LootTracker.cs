@@ -233,6 +233,14 @@ public sealed class LootTracker
         catch { /* corrupt file -> start empty rather than crash */ }
     }
 
+    /// <summary>Wipe the loot history (Data page reset — followed by a reparse).</summary>
+    public void ResetAll()
+    {
+        _entries.Clear();
+        Save();
+        Changed?.Invoke();
+    }
+
     private void Save()
     {
         try { File.WriteAllText(_path, JsonSerializer.Serialize(_entries, JsonOpts)); }

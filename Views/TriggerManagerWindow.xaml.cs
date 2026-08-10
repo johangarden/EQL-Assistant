@@ -36,10 +36,62 @@ public partial class TriggerManagerWindow : Window
         "#64B5F6", "#4DB6AC", "#FFD54F", "#A1887F", "#9575CD", "#E53935",
     };
 
+    private readonly SpellDurations? _durations;
+
+    /// <summary>Set by MainWindow: replays the whole log through the retroactive
+    /// services and returns a one-line summary for the status bar.</summary>
+    public Func<string>? ReparseFullLogRequested { get; set; }
+
+    /// <summary>Set by MainWindow: wipes derived data files, then reparses.</summary>
+    public Func<string>? ResetAndRebuildRequested { get; set; }
+
+    private void ResetRebuild_Click(object sender, RoutedEventArgs e)
+    {
+        if (ResetAndRebuildRequested is null)
+        {
+            Status("Reset isn't available right now.");
+            return;
+        }
+        if (!ConfirmDialog.Show(this, "Reset data files & rebuild",
+                "This WIPES all log-derived data — loot history, raid kills + drops, " +
+                "Plane of Sky progress, seen spells and learned durations — and rebuilds " +
+                "everything from a full reparse of the current log file.\n\n" +
+                "NOT touched: settings, triggers/loadouts, respawns, raid targets, " +
+                "★-kept fights and panel positions.\n\n" +
+                "Anything the current log no longer contains (a rotated/deleted old log) " +
+                "is lost for good. Continue?",
+                yesText: "Reset & rebuild", noText: "Cancel"))
+            return;
+
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+        try { Status(ResetAndRebuildRequested()); }
+        finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+    }
+
+    private void Reparse_Click(object sender, RoutedEventArgs e)
+    {
+        if (ReparseFullLogRequested is null)
+        {
+            Status("Reparse isn't available right now.");
+            return;
+        }
+        if (!ConfirmDialog.Show(this, "Reparse entire log",
+                "Replay the whole log file through loot history, raid kills, Sky quests, " +
+                "seen spells and duration learning?\n\nEverything dedupes — nothing is " +
+                "counted twice. A large log can take a little while.",
+                yesText: "Reparse", noText: "Cancel"))
+            return;
+
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+        try { Status(ReparseFullLogRequested()); }
+        finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+    }
+
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
         LogBus bus, AlertService alerts, RaidKills raids, SpellLibrary spellLibrary,
-        CombatParser combat, Action<string> onApplied)
+        CombatParser combat, Action<string> onApplied, SpellDurations? durations = null)
     {
+        _durations = durations;
         InitializeComponent();
         WindowTheme.ApplyDark(this);
 
@@ -74,9 +126,7 @@ public partial class TriggerManagerWindow : Window
         RecentList.ItemsSource = _recent;
         _bus.LineReceived += OnLine;
 
-        string ver = $"v{UpdateService.CurrentVersion.ToString(3)}";
-        VersionText.Text = ver;
-        Title = $"EQL Assistant — Manager · {ver}";
+        UpdateCharInfo();
 
         BuildSwatches();
         LoadSettingsFields();
@@ -104,7 +154,7 @@ public partial class TriggerManagerWindow : Window
         {
             Interval = TimeSpan.FromSeconds(2)
         };
-        _deathsTick.Tick += (_, _) => { RefreshRecentDeaths(); RefreshSeenSkills(); };
+        _deathsTick.Tick += (_, _) => { RefreshRecentDeaths(); RefreshSeenSkills(); UpdateCharInfo(); };
         _deathsTick.Start();
         Closed += (_, _) => _deathsTick.Stop();
 
@@ -395,6 +445,35 @@ public partial class TriggerManagerWindow : Window
     {
         DetailsScroller.DataContext = Selected;
         DetailsScroller.IsEnabled = Selected != null;
+        UpdateLearnedHint();
+    }
+
+    /// <summary>Title bar carries version + the auto-detected character (+ pet).</summary>
+    private void UpdateCharInfo()
+    {
+        string title = $"EQL Assistant — Manager · v{UpdateService.CurrentVersion.ToString(3)}";
+        string self = _combat.SelfName;
+        if (!string.IsNullOrEmpty(self) && self != "You") title += $" · Character: {self}";
+        string pet = _config.Overlay.PetName;
+        if (!string.IsNullOrWhiteSpace(pet)) title += $" · Pet: {pet}";
+        if (Title != title) Title = title;
+    }
+
+    /// <summary>"Learned so far: 9m53s (9 samples)" under the duration field.</summary>
+    private void UpdateLearnedHint()
+    {
+        if (DurationLearnedText is null) return;
+        var learned = Selected is { } s ? _durations?.LearnedMaxSeconds(s.Name) : null;
+        if (learned is double sec && Selected is not null)
+        {
+            DurationLearnedText.Text =
+                $"Learned so far: {DurationText.Compact(sec)} ({_durations!.SampleCount(Selected.Name)} sample(s) from your log).";
+            DurationLearnedText.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            DurationLearnedText.Visibility = Visibility.Collapsed;
+        }
     }
 
     // ---- trigger list buttons ----------------------------------------------
@@ -523,11 +602,25 @@ public partial class TriggerManagerWindow : Window
         System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (FlashPage is null) return; // still initializing
-        var pages = new System.Windows.FrameworkElement[]
-            { TriggersPage, GeneralPage, BarsPage, TimerPage, MeterPage, SkillsPage, SctPage, FlashPage, ShortcutsPage };
-        int idx = Math.Clamp(NavList.SelectedIndex, 0, pages.Length - 1);
-        for (int i = 0; i < pages.Length; i++)
-            pages[i].Visibility = i == idx ? Visibility.Visible : Visibility.Collapsed;
+        var byTitle = new Dictionary<string, System.Windows.FrameworkElement>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Triggers"] = TriggersPage,
+            ["Bars & matrices"] = BarsPage,
+            ["Repop timer"] = TimerPage,
+            ["DPS & Skills"] = MeterPage,
+            ["Combat text"] = SctPage,
+            ["Flash alerts"] = FlashPage,
+            ["Death recap"] = DeathPage,
+            ["Respawns"] = RespawnsPage,
+            ["General"] = GeneralPage,
+            ["Data"] = DataPage,
+            ["Shortcuts"] = ShortcutsPage,
+        };
+        if (NavList.SelectedItem is not System.Windows.Controls.ListBoxItem item
+            || !byTitle.TryGetValue(item.Content as string ?? "", out var page))
+            return;
+        foreach (var p in byTitle.Values) p.Visibility = Visibility.Collapsed;
+        page.Visibility = Visibility.Visible;
     }
 
     // ---- contextual details form ---------------------------------------------
@@ -559,6 +652,11 @@ public partial class TriggerManagerWindow : Window
         SpeakSoundGroup.Visibility = V(bars || matrix);
 
         DurationLabel.Text = timer ? "Respawn time" : "Duration";
+        // Auto-learn is a spell-duration concept — respawn timers don't learn.
+        DurationAutoCheck.Visibility = V(bars || matrix);
+        DurationAutoHint.Visibility = V(bars || matrix);
+        if (timer) DurationLearnedText.Visibility = Visibility.Collapsed;
+        else UpdateLearnedHint();
         StartLabel.Text = timer ? "Death line (regex — starts the repop timer)"
             : flash ? "Pattern (regex — fires the flash)"
             : matrix ? "Start pattern (regex — turns the cell green)"
@@ -578,8 +676,6 @@ public partial class TriggerManagerWindow : Window
     {
         LogDirBox.Text = _config.Log.Directory;
         FilePatternBox.Text = _config.Log.FilePattern;
-        ExplicitFileBox.Text = _config.Log.ExplicitFile;
-        StartAtEndCheck.IsChecked = _config.Log.StartAtEndOfFile;
 
         WidthBox.Text = _config.Overlay.Width.ToString(CultureInfo.InvariantCulture);
         BarHeightBox.Text = _config.Overlay.BarHeight.ToString(CultureInfo.InvariantCulture);
@@ -592,7 +688,6 @@ public partial class TriggerManagerWindow : Window
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
         DeathRecapCheck.IsChecked = _config.Overlay.DeathRecapAuto;
         StartWithWindowsCheck.IsChecked = IsAutoStartEnabled();
-        CatchUpModeBox.SelectedValue = _config.EffectiveCatchUpMode();
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
         MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
         SkillsVisibleCheck.IsChecked = _config.Overlay.SkillTrackerVisible;
@@ -600,7 +695,6 @@ public partial class TriggerManagerWindow : Window
         SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
         SctProgressCheck.IsChecked = _config.Overlay.SctProgress;
         FlashVisibleCheck.IsChecked = _config.Overlay.FlashVisible;
-        CharNameBox.Text = _config.CharacterName;
         PetNameBox.Text = _config.Overlay.PetName;
         FlashFontBox.Text = _config.Overlay.FlashFontSize.ToString(CultureInfo.InvariantCulture);
         FlashWidthBox.Text = _config.Overlay.FlashWidth.ToString(CultureInfo.InvariantCulture);
@@ -637,12 +731,6 @@ public partial class TriggerManagerWindow : Window
         if (dlg.ShowDialog(this) == true) LogDirBox.Text = dlg.FolderName;
     }
 
-    private void BrowseFile_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new OpenFileDialog { Filter = "Log files (*.txt)|*.txt|All files (*.*)|*.*" };
-        if (dlg.ShowDialog(this) == true) ExplicitFileBox.Text = dlg.FileName;
-    }
-
     // ---- save ---------------------------------------------------------------
 
     private void Save_Click(object sender, RoutedEventArgs e)
@@ -673,16 +761,12 @@ public partial class TriggerManagerWindow : Window
 
         var cfg = new AppConfig
         {
-            CharacterName = CharNameBox.Text.Trim(),
+            CharacterName = _config.CharacterName, // auto-detected; hand-editable in config.json only
             ActiveLoadout = _currentName,
-            CatchUpMode = (CatchUpModeBox.SelectedValue as string) ?? "ask",
-            CatchUpOnStart = (CatchUpModeBox.SelectedValue as string) == "auto", // legacy mirror
             Log =
             {
                 Directory = LogDirBox.Text.Trim(),
                 FilePattern = string.IsNullOrWhiteSpace(FilePatternBox.Text) ? "eqlog_*.txt" : FilePatternBox.Text.Trim(),
-                ExplicitFile = ExplicitFileBox.Text.Trim(),
-                StartAtEndOfFile = StartAtEndCheck.IsChecked == true,
                 PollIntervalMs = _config.Log.PollIntervalMs,
             },
             Overlay =

@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private LootTracker _loot = null!;
     private SkyQuests _skyQuests = null!;
     private SpellLibrary _spellLib = null!;
+    private SpellDurations _durations = null!;
     private RaidKillsWindow? _raidsWindow;
     private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
     private PanelPlacement? _mainPlacement;
@@ -94,11 +95,17 @@ public partial class MainWindow : Window
         _alerts.Muted = _config.Overlay.Muted;
         _raids = new RaidKills(_configService);
         _loot = new LootTracker(_configService);
+        _loot.Added += e => _raids.AttributeLoot(e);   // pin drops to raid kills
+        _raids.BackfillLoot(_loot.Entries);            // one-time: history -> past kills
         _skyQuests = new SkyQuests(_configService, _loot);
         _skyQuests.QuestCompleted += q =>
-            OnFlashRequested($"Sky quest complete — {q.Reward}!", "#FFD54F");
+        {
+            if (!_suppressSct) // replay/reparse re-completions shouldn't flash-spam
+                OnFlashRequested($"Sky quest complete — {q.Reward}!", "#FFD54F");
+        };
         _spellLib = new SpellLibrary(_configService);
         Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
+        _durations = new SpellDurations(_configService, _spellLib);
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
@@ -111,6 +118,7 @@ public partial class MainWindow : Window
         _combat.SctEvent += OnSctEvent;
         _combat.PlayerDied += OnPlayerDied;
         _engine = new TriggerEngine(_config, _alerts);
+        _engine.LearnedDuration = name => _durations.LearnedMaxSeconds(name);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
         _engine.BarReduced += OnBarReduced;
@@ -147,23 +155,22 @@ public partial class MainWindow : Window
         lastSeenTick.Start();
 
         // Startup flow: update check FIRST — catching up a log for an app we're
-        // about to replace would be wasted work. Catch-up only runs when no
-        // update was taken (none available, declined, or GitHub unreachable).
-        string catchUpMode = _config.EffectiveCatchUpMode();
+        // about to replace would be wasted work. Then catch-up ALWAYS runs:
+        // log data is the app's foundation, every consumer dedupes, and alerts
+        // stay quiet for old lines, so there is no reason to ask.
         var startupFlow = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         startupFlow.Tick += async (_, _) =>
         {
             startupFlow.Stop();
             await CheckForUpdates(manual: false);
-            if (_updateHandoff || catchUpMode == "off") return;
+            if (_updateHandoff) return;
 
             // Give the watcher a moment to resolve which log file to follow.
             var once = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
             once.Tick += (_, _) =>
             {
                 once.Stop();
-                if (catchUpMode == "auto") CatchUpToday();
-                else OfferCatchUp();
+                CatchUpToday();
             };
             once.Start();
         };
@@ -262,75 +269,6 @@ public partial class MainWindow : Window
         Close(); // normal quit path: saves state, disposes tray, releases the exe
     }
 
-    // ---- catch-up (started the app mid-session) -------------------------------
-
-    /// <summary>Ask-first mode: only speaks up when the followed log actually has
-    /// lines from today that the app hasn't parsed yet — and shows exactly what's
-    /// missing (log end vs. last parsed, and the gap between them).</summary>
-    private void OfferCatchUp()
-    {
-        string? path = _watcher?.CurrentPath;
-        if (path is null || !File.Exists(path)) return;
-
-        DateTime logEnd = ReadLastLineTime(path) ?? File.GetLastWriteTime(path);
-        if (logEnd.Date != DateTime.Today) return; // nothing from today — stay quiet
-
-        var prev = _configService.LoadLastSeen();
-        DateTime? seen = prev is not null
-            && prev.File.Equals(Path.GetFileName(path), StringComparison.OrdinalIgnoreCase)
-            ? prev.Time : null;
-
-        // Quick restart: the app already parsed (nearly) everything — don't nag.
-        if (seen is not null && (logEnd - seen.Value).TotalMinutes < 2) return;
-
-        string seenText = seen is null
-            ? "never (first run with this log)"
-            : FmtTime(seen.Value);
-        string gapText = seen is null || seen.Value.Date != DateTime.Today
-            ? "all of today"
-            : $"~{FmtGap(logEnd - seen.Value)}";
-
-        bool yes = Views.ConfirmDialog.Show(this, "EQL Assistant — Catch up?",
-            $"{Path.GetFileName(path)}\n\n" +
-            $"Log ends at:\t{FmtTime(logEnd)}\n" +
-            $"Last parsed:\t{seenText}\n" +
-            $"Missing:\t{gapText}\n\n" +
-            "Parse today's log now to rebuild fight history, raid kills, loot and seen " +
-            "spells? Alerts and combat text won't fire for old lines.",
-            yesText: "Catch up", noText: "Skip");
-        if (yes) CatchUpToday();
-    }
-
-    private static string FmtTime(DateTime t) =>
-        t.Date == DateTime.Today ? $"{t:HH:mm} today" : $"{t:ddd HH:mm}";
-
-    private static string FmtGap(TimeSpan gap)
-    {
-        if (gap < TimeSpan.Zero) gap = TimeSpan.Zero;
-        return gap.TotalHours >= 1
-            ? $"{(int)gap.TotalHours}h {gap.Minutes}m"
-            : $"{Math.Max(1, (int)gap.TotalMinutes)} min";
-    }
-
-    /// <summary>Timestamp of the last parseable line — reads only the file's tail.</summary>
-    internal static DateTime? ReadLastLineTime(string path)
-    {
-        try
-        {
-            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete);
-            fs.Seek(Math.Max(0, fs.Length - 64 * 1024), SeekOrigin.Begin);
-            using var reader = new StreamReader(fs);
-            string tail = reader.ReadToEnd();
-            var lines = tail.Split('\n');
-            for (int i = lines.Length - 1; i >= 0; i--)
-                if (TryParseLineTime(lines[i].TrimEnd('\r'), out var t))
-                    return t;
-        }
-        catch { /* unreadable tail -> caller falls back to the write time */ }
-        return null;
-    }
-
     // ---- last-seen marker (how far the app has parsed) ------------------------
 
     private DateTime _lastLineSeen;
@@ -379,6 +317,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
                 _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
+                _durations.ProcessLine(line);
                 NoteLineSeen(t);
                 lines++;
             }
@@ -399,6 +338,81 @@ public partial class MainWindow : Window
         int fights = _combat.History.Count - fightsBefore + (_combat.InCombat ? 1 : 0);
         _vm.Flash($"Caught up: {lines:N0} lines, {fights} fight(s) from today's log.");
         Log.Info($"Catch-up: {lines} lines replayed from {Path.GetFileName(path)}, {fights} fights.");
+    }
+
+    /// <summary>
+    /// Full-history reparse (Manager → General): the WHOLE log through the
+    /// retroactive services — loot, raid kills (+drop attribution via
+    /// loot.Added), Sky quests, seen spells, duration learning. NOT the combat
+    /// parser: ancient fights would pollute the session's fight history. Every
+    /// consumer dedupes (loot exact, kills 10-min window, duration samples by
+    /// timestamp), so running this twice never double-counts.
+    /// </summary>
+    private string ReparseFullLog()
+    {
+        string? path = _watcher?.CurrentPath;
+        if (path is null || !File.Exists(path))
+            return "Reparse: no log file is being followed yet.";
+
+        int lootBefore = _loot.Entries.Count;
+        int killsBefore = 0, durBefore = 0;
+        Action<string, DateTime> onKill = (_, _) => killsBefore++;      // counts NEW kills
+        Action<string, double, int> onSample = (_, _, _) => durBefore++; // counts NEW samples
+        _raids.KillRecorded += onKill;
+        _durations.SampleLearned += onSample;
+
+        int lines = 0;
+        _suppressSct = true;
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(fs);
+            string? line;
+            while ((line = reader.ReadLine()) is not null)
+            {
+                if (!TryParseLineTime(line, out var t)) continue;
+                _raids.ProcessLine(line, t);
+                _loot.ProcessLine(line);
+                _skyQuests.ProcessLine(line);
+                _spellLib.MarkSeenFromLine(line);
+                _durations.ProcessLine(line);
+                lines++;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Full reparse failed: " + ex.Message);
+            return "Reparse failed — see the log file.";
+        }
+        finally
+        {
+            _suppressSct = false;
+            _raids.KillRecorded -= onKill;
+            _durations.SampleLearned -= onSample;
+        }
+
+        _spellLib.SaveSeenIfDirty();
+        int lootNew = Math.Max(0, _loot.Entries.Count - lootBefore);
+        string summary = $"Reparsed {lines:N0} lines from {Path.GetFileName(path)}: " +
+            $"+{lootNew} loot, +{killsBefore} raid kills, +{durBefore} duration samples.";
+        Log.Info(summary);
+        return summary;
+    }
+
+    /// <summary>Data page's "Reset & rebuild": wipe every log-DERIVED data file
+    /// (loot, raid kills, Sky progress, seen spells, learned durations), then
+    /// rebuild them all with a full reparse. Config, loadouts, respawns, raid
+    /// targets, kept fights and window positions are untouched.</summary>
+    private string ResetAndRebuild()
+    {
+        Log.Info("Data reset: wiping derived data files before full reparse.");
+        _loot.ResetAll();
+        _raids.ResetKills();
+        _skyQuests.ResetProgress();
+        _spellLib.ResetSeen();
+        _durations.ResetAll();
+        return "Data files reset. " + ReparseFullLog();
     }
 
     private static readonly string[] LineTimeFormats =
@@ -592,7 +606,7 @@ public partial class MainWindow : Window
             MergeGlobalRespawns(_config);
             _vm.Flash($"Respawn added: {name} ({seconds:0}s).");
         };
-        _timer.ManageRespawnsRequested = () => OpenManager("Repop timer");
+        _timer.ManageRespawnsRequested = () => OpenManager("Respawns");
         _timer.Show();
         UpdateTimerVisibility();
     }
@@ -718,6 +732,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line);
                 _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
+                _durations.ProcessLine(line);
                 if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
             }),
@@ -895,7 +910,11 @@ public partial class MainWindow : Window
     {
         if (_manager is null)
         {
-            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied);
+            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations)
+            {
+                ReparseFullLogRequested = ReparseFullLog,
+                ResetAndRebuildRequested = ResetAndRebuild,
+            };
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
         }

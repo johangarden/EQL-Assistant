@@ -64,17 +64,19 @@ copied file carries everything.
 1. Open **Manage** (toolbar button or tray) → **General** page → **Browse** to
    your log folder (e.g. `…\EverQuest Legends\Logs`) and **Save**. The newest
    `eqlog_*.txt` is followed automatically, so it works across characters — and
-   your **character name is auto-detected from the log filename** (override it
-   on the General page if needed; set a **Pet name** there too if you run one).
+   your **character name is auto-detected from the log filename** (shown in the
+   Manager's sidebar; set a **Pet name** on the DPS meter page if you run one).
 2. Recommended, also on the General page:
    - **Start with Windows** — so you never forget to launch it.
-   - **Catch up from today's log on startup** — if the app starts late, it can
-     rebuild today's fight history, raid kills, loot and seen spells from the
-     log. By default it **asks first**, showing the log's last line time, how
-     far the app had parsed before, and the gap between them — and it stays
-     quiet entirely after a quick restart where nothing was missed. Set it to
-     automatic or off on the General page (also on demand: tray → *Catch up
-     from today's log*).
+   - **Catch-up is automatic** — on every start the app silently rebuilds
+     today's fight history, raid kills, loot and seen spells from the log
+     (alerts and combat text stay quiet for old lines; everything dedupes).
+     Re-run any time: tray → *Catch up from today's log*.
+   - **Reparse entire log file** (General page) — replays your *whole* log
+     through loot history, raid kills + drops, Sky quests, seen spells and
+     duration learning. Run it after an update adds a new log-based feature
+     and your history is picked up retroactively; everything dedupes, so it's
+     always safe to run again.
 3. Add triggers (easiest: the **Library…** button — see below), then **lock**
    the overlay (padlock or Ctrl+Alt+L) and play.
 
@@ -92,30 +94,55 @@ copied file carries everything.
 | **Ctrl+Alt+Q** | Quit |
 
 **System tray icon:** right-click for **Manage settings** (top), Show/Hide,
-Lock/Unlock, Mute, a **Panels ▸** submenu (repop timer / DPS meter / skill
-tracker / combat text), **Loadout ▸**, Raid kills, Catch up from today's log,
-Open config folder, **Reset position** (also unlocks and unhides everything —
-the fixer if a panel is lost off-screen), and Quit.
+Lock/Unlock, Mute, a **Panels ▸** submenu with checkmarks (toolbar / buff bars
+/ repop timer / DPS meter / skill tracker / combat text / flash alerts),
+**Loadout ▸**, Raid kills, Loot history, Sky quests, Death recap, Catch up
+from today's log, Check for updates, Open config folder, **Reset position**
+(also unlocks and unhides everything — the fixer if a panel is lost
+off-screen), and Quit.
 
-**Toolbar** (visible while unlocked): ✕ quit · **Loadout ▾** picker · panel
-toggles · **Manage** · version · 🔒 lock. Drag it to move the bars panel.
+**Toolbar** — a detached command strip that stays visible and clickable even
+while locked: ✕ quit · version · **Loadout ▾** picker · **☰ menu** (mirrors
+the tray menu exactly) · **Manage** · 🔊 mute · 🔒 padlock (governs all other
+panels; glows accent-blue while unlocked as a "lock me before playing"
+reminder). Drag to place it; hide it via ☰ → Panels if you want a clean
+screen.
 
 ## The Manager
 
-**Manage** opens a sidebar window with one page per feature:
+**Manage** opens a sidebar window, grouped into sections. Every page carries a
+scope chip: triggers are **PER LOADOUT** (switching loadouts switches the set),
+everything else is **GLOBAL**.
 
+**TRIGGERS**
 - **Triggers** — the trigger editor (list, details form, live log capture).
   Click a line in the live feed → **→ Start pattern** to build a regex from the
   real log line. **Test matches** checks a pasted line against all triggers.
-- **General** — log source, character/pet names, opacity, start locked,
-  start with Windows, catch-up on start.
-- **Buff bars** — bar sizes, warn/reminder timings, screen anchor; plus the
-  buff/debuff **matrix** settings (columns, anchors).
-- **Repop timer** — visibility, anchor, and **global named respawns**.
-- **DPS meter** — visibility and anchor.
-- **Skill tracker** — the meter's SKILLS section and the skill list to watch.
+
+**PANELS**
+- **Bars & matrices** — countdown-bar sizes, the buff/debuff matrix settings
+  (columns, anchors), and the **rebuff reminders** timing (warn threshold +
+  repeat interval for triggers marked "remind when missing").
+- **Repop timer** — visibility and anchor of the watch panel.
+- **DPS & Skills** — meter visibility, anchor, the **pet name**, and the
+  **skills section** (which skills to grind-track, with the picker).
 - **Combat text** — which lanes exist, sizes, big-hit threshold.
 - **Flash alerts** — text size, area width, anchor.
+- **Death recap** — the auto-popup toggle.
+
+**KNOWLEDGE**
+- **Respawns** — the global named-respawn list (zone-grouped, recent-kills
+  picker) that auto-starts the repop watch on death lines.
+
+**APP**
+- **General** — start with Windows, log source (auto-follows the newest
+  character log), overlay basics.
+- **Data** — everything the app knows is derived from your log: **Reparse
+  entire log file** (additive backfill after updates add new log-based
+  features) and **Reset data files & rebuild** (wipe the derived files and
+  rebuild them cleanly from the current log — settings, loadouts, respawns
+  and ★-kept fights are never touched).
+- **Shortcuts** — the global hotkey reference.
 
 Panels stick to their chosen screen corner and grow away from it (Bottom-left
 keeps a panel above your hotbar, growing upward). Fine-tune by dragging while
@@ -229,10 +256,33 @@ Both open from the Fight History window (and raid kills from the tray):
   lines and remembered forever. Each killed target shows **D0–D4 badges** for
   the zone difficulties you've beaten it at (difficulty is read from the zone
   name — "Befallen 4 (Refined)" = D4; kills recorded before v2.3 count as D0).
+  Every kill also records **what it dropped** (loot lines name the corpse) —
+  hover a killed target for the per-kill drop list, and past loot history is
+  stitched onto past kills automatically on first run.
 - **Loot** — every item you loot, persisted forever: **upgrades** (gold, with
   the "+N → +M" chain), **kept** items, and auto-**vendored** drops with their
   sale price. Search by item/mob/zone, filter by kind, and watch the running
   totals ("251 upgrades · vendored 217p 8g 6s 6c").
+
+## Learned buff durations
+
+The app learns your spells' real durations from the log (an idea borrowed from
+[everquest-companion](https://github.com/jmoyers/everquest-companion)): a
+sample is the span from a cast-anchored landing ("You begin casting X." then
+its landing line) to its wear-off line — so only *your own* casts teach, and
+anything that contaminates a cycle (death, zoning, an external re-buff, your
+own re-cast) discards it instead of recording a wrong number. Early clicks and
+breaks can never drag the estimate down (it's a max over recent clean samples),
+while real corrections in either direction — AA/focus extensions *or*
+level-scaled durations shorter than the library's number — win once observed.
+
+Each bar/matrix trigger chooses its mode in the editor: **Auto-learn**
+(default) starts from the configured/library duration and follows the learned
+estimate as samples arrive — the editor shows "Learned so far: 9m53s (9
+samples)" under the field. **Manual** (untick) enforces the exact configured
+time; learning still runs in the background so you can switch back any time.
+Ranks pool ("Quickness II" teaches "Quickness III"), and samples persist in
+`spell-durations.json`.
 
 ## Death recap
 

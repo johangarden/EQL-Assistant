@@ -15,19 +15,9 @@ public sealed class AppConfig
     /// <summary>Name of the loadout to load on startup.</summary>
     public string ActiveLoadout { get; set; } = "Default";
 
-    /// <summary>Legacy toggle (pre-2.1) — kept so old configs migrate; superseded
-    /// by <see cref="CatchUpMode"/>.</summary>
-    public bool CatchUpOnStart { get; set; } = false;
-
-    /// <summary>What to do about today's log on startup: "off", "ask" (prompt with
-    /// the log name when it has lines from today) or "auto" (parse silently).</summary>
-    public string CatchUpMode { get; set; } = "";
-
-    /// <summary>Resolved mode — legacy CatchUpOnStart=true becomes "auto"; new
-    /// configs default to "ask".</summary>
-    public string EffectiveCatchUpMode() => CatchUpMode is "off" or "ask" or "auto"
-        ? CatchUpMode
-        : CatchUpOnStart ? "auto" : "ask";
+    // (Catch-up modes removed in 2.7: today's log is ALWAYS caught up on start —
+    // log data is the app's foundation and every consumer dedupes. Old configs'
+    // catchUpMode/catchUpOnStart JSON properties are simply ignored on load.)
 
     /// <summary>
     /// The active loadout's triggers, loaded at runtime from a loadout file.
@@ -38,17 +28,16 @@ public sealed class AppConfig
 
 public sealed class LogConfig
 {
-    /// <summary>Folder that holds eqlog_*.txt files. Leave empty to use ExplicitFile.</summary>
+    /// <summary>Folder that holds eqlog_*.txt files.</summary>
     public string Directory { get; set; } = "";
 
     /// <summary>Glob-ish pattern; the newest matching file is followed automatically.</summary>
     public string FilePattern { get; set; } = "eqlog_*.txt";
 
-    /// <summary>If set, this exact file is followed and Directory/FilePattern are ignored.</summary>
+    /// <summary>LEGACY (pre-2.7): an exact file to follow. On load its folder is
+    /// migrated into <see cref="Directory"/> — newest-file following covers it,
+    /// and auto-catch-up made "start at end of file" moot too.</summary>
     public string ExplicitFile { get; set; } = "";
-
-    /// <summary>Start at the end of the file (ignore history) on launch.</summary>
-    public bool StartAtEndOfFile { get; set; } = true;
 
     /// <summary>How often to poll the log for new lines.</summary>
     public int PollIntervalMs { get; set; } = 200;

@@ -100,6 +100,16 @@ public sealed class ConfigService
                 $"config.json couldn't be parsed:\n{ex.Message}\n\nFile: {ConfigPath}");
         }
 
+        // Pre-2.7 migration: an explicit-file config becomes its folder, so
+        // newest-file following takes over seamlessly.
+        if (!string.IsNullOrWhiteSpace(config.Log.ExplicitFile))
+        {
+            if (string.IsNullOrWhiteSpace(config.Log.Directory))
+                config.Log.Directory =
+                    Path.GetDirectoryName(config.Log.ExplicitFile) ?? "";
+            config.Log.ExplicitFile = "";
+        }
+
         ApplyWindowState(config.Overlay);
         return config;
     }

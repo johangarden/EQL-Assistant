@@ -40,6 +40,44 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+
+            <!-- Sidebar section headers (not selectable). -->
+            <Style TargetType="ListBoxItem" x:Key="NavHeader">
+                <Setter Property="IsEnabled" Value="False"/>
+                <Setter Property="Focusable" Value="False"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <TextBlock Text="{TemplateBinding Content}"
+                                       Foreground="{StaticResource Brush.TextFaint}"
+                                       FontSize="10" FontWeight="Bold" Margin="10,12,0,4"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Scope chips beside page titles: what a page's settings apply to. -->
+            <Style TargetType="Border" x:Key="ScopeChip">
+                <Setter Property="Background" Value="{StaticResource Brush.Card}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="3"/>
+                <Setter Property="Padding" Value="6,2"/>
+                <Setter Property="Margin" Value="10,0,0,0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+            <Style TargetType="TextBlock" x:Key="ScopeChipText">
+                <Setter Property="FontSize" Value="9"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Foreground" Value="{StaticResource Brush.TextHint}"/>
+            </Style>
+            <Style TargetType="Border" x:Key="LoadoutChip" BasedOn="{StaticResource ScopeChip}">
+                <Setter Property="Background" Value="{StaticResource Brush.Accent}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.AccentBorder}"/>
+            </Style>
+            <Style TargetType="TextBlock" x:Key="LoadoutChipText" BasedOn="{StaticResource ScopeChipText}">
+                <Setter Property="Foreground" Value="White"/>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
@@ -62,25 +100,23 @@
             <Border DockPanel.Dock="Left" Background="{StaticResource Brush.Sunken}" CornerRadius="6" Padding="6"
                     Margin="0,0,8,0" Width="168">
                 <DockPanel>
-                    <!-- App identity header above the navigation. -->
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,4,4,10">
-                        <Image Source="/assets/eqloverlay.ico" Width="18" Height="18" VerticalAlignment="Center"/>
-                        <TextBlock Text="EQL Assistant" Foreground="White" FontWeight="Bold"
-                                   FontSize="13" VerticalAlignment="Center" Margin="7,0,0,0"/>
-                        <TextBlock x:Name="VersionText" Foreground="{StaticResource Brush.TextHint}"
-                                   FontSize="11" VerticalAlignment="Center" Margin="7,1,0,0"/>
-                    </StackPanel>
                     <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
                              ItemContainerStyle="{StaticResource NavItem}"
                              SelectionChanged="NavList_SelectionChanged">
+                    <ListBoxItem Content="TRIGGERS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="Triggers" IsSelected="True"/>
-                    <ListBoxItem Content="General"/>
-                    <ListBoxItem Content="Buff bars"/>
+                    <ListBoxItem Content="PANELS" Style="{StaticResource NavHeader}"/>
+                    <ListBoxItem Content="Bars &amp; matrices"/>
                     <ListBoxItem Content="Repop timer"/>
-                    <ListBoxItem Content="DPS meter"/>
-                    <ListBoxItem Content="Skill tracker"/>
+                    <ListBoxItem Content="DPS &amp; Skills"/>
                     <ListBoxItem Content="Combat text"/>
-                        <ListBoxItem Content="Flash alerts"/>
+                    <ListBoxItem Content="Flash alerts"/>
+                    <ListBoxItem Content="Death recap"/>
+                    <ListBoxItem Content="KNOWLEDGE" Style="{StaticResource NavHeader}"/>
+                    <ListBoxItem Content="Respawns"/>
+                    <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
+                    <ListBoxItem Content="General"/>
+                    <ListBoxItem Content="Data"/>
                     <ListBoxItem Content="Shortcuts"/>
                     </ListBox>
                 </DockPanel>
@@ -107,6 +143,10 @@
                             <DockPanel>
                                 <TextBlock Text="Loadout:" FontWeight="Bold" VerticalAlignment="Center"
                                            Margin="0,0,8,0"/>
+                                <Border DockPanel.Dock="Right" Style="{StaticResource LoadoutChip}" Margin="8,0,0,0"
+                                        ToolTip="Triggers belong to the selected loadout — switching loadouts switches the whole set. Everything else in the Manager is global.">
+                                    <TextBlock Style="{StaticResource LoadoutChipText}" Text="PER LOADOUT"/>
+                                </Border>
                                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                                     <Button Content="New"       Click="NewLoadout_Click"       Width="56" Margin="4,0,0,0"/>
                                     <Button Content="Rename"    Click="RenameLoadout_Click"    Width="64" Margin="4,0,0,0"/>
@@ -181,6 +221,12 @@
                                     <TextBlock x:Name="DurationLabel" Text="Duration" Style="{StaticResource FieldLabel}"/>
                                     <TextBox Text="{Binding DurationText}" Width="120" HorizontalAlignment="Left"
                                              ToolTip="660, 11m, 9m12s or 9:12"/>
+                                    <CheckBox x:Name="DurationAutoCheck" IsChecked="{Binding DurationAuto}"
+                                              Content="Auto-learn the real duration from the log" Margin="0,8,0,0"/>
+                                    <TextBlock x:Name="DurationLearnedText" Style="{StaticResource Hint}" Margin="0,3,0,0"
+                                               Visibility="Collapsed"/>
+                                    <TextBlock x:Name="DurationAutoHint" Style="{StaticResource Hint}" Margin="0,3,0,0"
+                                               Text="Auto-learn: the duration above is only the starting point (library/base value) — every clean cast-to-fade your log shows refines it, in either direction. Untick to enforce the exact time; learning still runs in the background so you can turn it back on later."/>
                                 </StackPanel>
 
                                 <StackPanel x:Name="ColorGroup">
@@ -287,12 +333,24 @@
                     <!-- ============================ GENERAL ============================ -->
                     <ScrollViewer x:Name="GeneralPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
-                            <TextBlock Text="General" Style="{StaticResource PageTitle}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="General" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="App-wide basics. Each overlay feature has its own page in the sidebar."/>
 
                             <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Startup" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Launch with Windows so a forgotten start never costs you data. On every start the app automatically catches up today's log lines (loot, kills, fights, seen spells — alerts stay quiet for old lines); tray → 'Catch up from today's log' re-runs it any time."/>
+
+                            <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows (this exe)" Margin="0,10,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Log source" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="The newest eqlog_*.txt in the folder is followed — log into another character and the app hops to their file automatically. Your character name is read from that filename."/>
 
                             <TextBlock Text="Log folder (newest eqlog_*.txt is followed)" Style="{StaticResource FieldLabel}"/>
                             <StackPanel Orientation="Horizontal">
@@ -303,25 +361,6 @@
                             <TextBlock Text="File pattern" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="FilePatternBox" Width="220" HorizontalAlignment="Left"/>
 
-                            <TextBlock Text="Or one explicit file (overrides folder+pattern)" Style="{StaticResource FieldLabel}"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBox x:Name="ExplicitFileBox" Width="440"/>
-                                <Button Content="Browse" Click="BrowseFile_Click" Width="66" Margin="8,0,0,0"/>
-                            </StackPanel>
-
-                            <CheckBox x:Name="StartAtEndCheck" Content="Start at end of file (ignore old history)"
-                                      Margin="0,10,0,0"/>
-
-                            <Border Style="{StaticResource PageSep}"/>
-                            <TextBlock Text="Character" Style="{StaticResource SectionTitle}"/>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="Used by the DPS meter, fight history and combat text to recognize you and your pet in log lines."/>
-
-                            <TextBlock Text="Character name (leave empty to auto-detect from the log filename)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox x:Name="CharNameBox" Width="220" HorizontalAlignment="Left"/>
-                            <TextBlock Text="Pet name (optional)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox x:Name="PetNameBox" Width="220" HorizontalAlignment="Left"/>
-
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Overlay" Style="{StaticResource SectionTitle}"/>
 
@@ -330,33 +369,50 @@
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
                             <CheckBox x:Name="MuteCheck" Content="Mute all alerts" Margin="0,6,0,0"/>
-                            <CheckBox x:Name="DeathRecapCheck" Margin="0,6,0,0"
-                                      Content="Pop a death recap window when you die (last hits and heals on you)"/>
 
-                            <Border Style="{StaticResource PageSep}"/>
-                            <TextBlock Text="Session" Style="{StaticResource SectionTitle}"/>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="So a forgotten start never costs you data: launch with Windows, and rebuild today's fight history, raid kills, loot and seen spells from the log when the app starts late (also on demand: tray → 'Catch up from today's log')."/>
-
-                            <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows (this exe)" Margin="0,10,0,0"/>
-
-                            <TextBlock Text="Catch up from today's log on startup" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox x:Name="CatchUpModeBox" Width="300" HorizontalAlignment="Left" SelectedValuePath="Tag">
-                                <ComboBoxItem Content="Do nothing" Tag="off"/>
-                                <ComboBoxItem Content="Ask me when the log has lines from today" Tag="ask"/>
-                                <ComboBoxItem Content="Catch up automatically" Tag="auto"/>
-                            </ComboBox>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="'Ask me' names the log file and its last-write time, so you can skip it after e.g. a quick restart."/>
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- ============================ BUFF BARS + MATRICES ============================ -->
+                    <!-- ============================ DATA ============================ -->
+                    <ScrollViewer x:Name="DataPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Data" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Everything the app knows — loot history, raid kills + drops, Sky progress, seen spells, learned durations — is DERIVED from your log file and stored as JSON in the config folder. These tools rebuild that data from the source."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Reparse entire log file" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="ADDITIVE: replays the whole followed log (not just today) through loot history, raid kills + their drops, Sky quests, seen spells and duration learning. Run it after an update adds a new log-based feature — history is picked up retroactively. Everything dedupes, so it never double-counts. A typical log takes a few seconds."/>
+                            <Button x:Name="ReparseBtn" Content="⚠ Reparse entire log file" Click="Reparse_Click"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0"
+                                    Background="#3A2E14" Foreground="#FFB74D" BorderBrush="#7A5B22"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Reset data files &amp; rebuild" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="DESTRUCTIVE: wipes all the derived data files above, then rebuilds them with a full reparse — a clean slate built purely from what the current log contains. Use it if data ever looks wrong or double-counted. Settings, triggers/loadouts, respawns, raid targets, ★-kept fights and panel positions are never touched."/>
+                            <Button x:Name="ResetRebuildBtn" Content="🗑 Reset data files &amp; rebuild from log" Click="ResetRebuild_Click"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0"
+                                    Background="#3A1B1E" Foreground="#FF8A80" BorderBrush="#7A2E33"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ============================ BARS & MATRICES ============================ -->
                     <ScrollViewer x:Name="BarsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
-                            <TextBlock Text="Buff bars" Style="{StaticResource PageTitle}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Bars &amp; matrices" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="The countdown-bar panel. Bar triggers are created under Triggers → 'Bars'."/>
+                                       Text="Buff/debuff countdown bars and the present/missing cell matrices. The triggers themselves are created under Triggers ('Bars', 'Self buffs', 'Target debuffs')."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Countdown bars" Style="{StaticResource SectionTitle}"/>
 
                             <TextBlock Text="Width" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="WidthBox" Width="120" HorizontalAlignment="Left"/>
@@ -364,10 +420,6 @@
                             <TextBox x:Name="BarHeightBox" Width="120" HorizontalAlignment="Left"/>
                             <TextBlock Text="Font size" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="FontSizeBox" Width="120" HorizontalAlignment="Left"/>
-                            <TextBlock Text="Warn seconds (bar flashes under this)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox x:Name="WarnBox" Width="120" HorizontalAlignment="Left"/>
-                            <TextBlock Text="Missing-buff reminder interval (seconds)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox x:Name="RemindBox" Width="120" HorizontalAlignment="Left"/>
                             <CheckBox x:Name="ShowHeadersCheck" Content="Show category headers" Margin="0,10,0,0"/>
 
                             <TextBlock Text="Screen anchor" Style="{StaticResource FieldLabel}"/>
@@ -403,15 +455,28 @@
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Rebuff reminders" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Nagging for buffs that dropped: tick 'Remind me when this buff is missing' on a trigger (in the Triggers editor) and a pulsing REBUFF bar + spoken nudge appear once the buff has been seen and is gone. The timings below apply to all of them."/>
+
+                            <TextBlock Text="Warn seconds (bar flashes under this)" Style="{StaticResource FieldLabel}"/>
+                            <TextBox x:Name="WarnBox" Width="120" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Reminder repeat interval (seconds)" Style="{StaticResource FieldLabel}"/>
+                            <TextBox x:Name="RemindBox" Width="120" HorizontalAlignment="Left"/>
                         </StackPanel>
                     </ScrollViewer>
 
                     <!-- ============================ REPOP TIMER ============================ -->
                     <ScrollViewer x:Name="TimerPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
-                            <TextBlock Text="Repop timer" Style="{StaticResource PageTitle}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Repop timer" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="The circular respawn watch. Toggle in game: ⏱ toolbar button, tray, or Ctrl+Alt+R."/>
+                                       Text="The circular respawn watch panel. Toggle in game: ☰/tray → Panels, or Ctrl+Alt+R. The mobs it watches live on the Respawns page (KNOWLEDGE)."/>
 
                             <CheckBox x:Name="TimerVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
 
@@ -422,11 +487,33 @@
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
+                        </StackPanel>
+                    </ScrollViewer>
 
-                            <Border Style="{StaticResource PageSep}"/>
-                            <TextBlock Text="Named respawns" Style="{StaticResource SectionTitle}"/>
+                    <!-- ============================ DEATH RECAP ============================ -->
+                    <ScrollViewer x:Name="DeathPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Death recap" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="Global — these work no matter which loadout is active. When the mob's death line appears in the log, the watch auto-starts with its respawn time (and the mob shows in the watch's ☰ menu)."/>
+                                       Text="When you die, a popup shows the last 15 things that happened to you — hits with attacker and amount, misses dimmed, heals in green — each with the time offset back from the moment of death, and the biggest hit highlighted. Reopen the latest any time: ☰/tray → Death recap…"/>
+
+                            <CheckBox x:Name="DeathRecapCheck" Margin="0,12,0,0"
+                                      Content="Pop the recap window automatically when you die"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ============================ RESPAWNS (KNOWLEDGE) ============================ -->
+                    <ScrollViewer x:Name="RespawnsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Named respawns" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="World knowledge, independent of loadouts: when a mob's death line appears in the log, the repop watch auto-starts with its respawn time (and the mob shows in the watch's ☰ menu). Quick-add in game: the watch's ➕ button."/>
 
                             <Grid Margin="0,10,0,0">
                                 <Grid.ColumnDefinitions>
@@ -500,12 +587,15 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- ============================ DPS METER ============================ -->
+                    <!-- ============================ DPS METER (incl. skills section) ============================ -->
                     <ScrollViewer x:Name="MeterPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
-                            <TextBlock Text="DPS meter" Style="{StaticResource PageTitle}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="DPS &amp; Skills" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="Live rankings with the incoming-damage footer. Fight history, comparisons and raid kills open from the meter's buttons. Character and pet names: General page. Toggle in game: 📊 toolbar button, tray, or Ctrl+Alt+D."/>
+                                       Text="Live rankings with the incoming-damage footer. Fight history, comparisons and raid kills open from the meter's buttons. Character and pet names: General page. Toggle in game: ☰/tray → Panels, or Ctrl+Alt+D."/>
 
                             <CheckBox x:Name="MeterVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
 
@@ -516,15 +606,18 @@
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
-                        </StackPanel>
-                    </ScrollViewer>
 
-                    <!-- ============================ SKILL TRACKER ============================ -->
-                    <ScrollViewer x:Name="SkillsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
-                            <TextBlock Text="Skill tracker" Style="{StaticResource PageTitle}"/>
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Pet" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="A SKILLS section under the DPS meter — one bar per skill you're grinding, session-wide hits/attempts, hit % and crit %, colored red → amber → green as the land rate climbs. Counts accumulate across fights; the section's ⟲ button resets them. Toggle from the tray."/>
+                                       Text="A pet name enables the pet damage row here and the pet combat-text lanes. Your own name is auto-detected from the log filename — this is the one name the log can't tell us (yet). A stale value is harmless: it just matches nothing."/>
+                            <TextBlock Text="Pet name" Style="{StaticResource FieldLabel}"/>
+                            <TextBox x:Name="PetNameBox" Width="220" HorizontalAlignment="Left"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Skills section" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A SKILLS section under the meter — one bar per skill you're grinding: session-wide hits/attempts, hit % and crit %, colored red → amber → green as the land rate climbs. The section's ⟲ button resets the counts."/>
 
                             <CheckBox x:Name="SkillsVisibleCheck" Content="Show the skills section on the DPS meter" Margin="0,12,0,0"/>
 
@@ -565,7 +658,10 @@
                     <!-- ============================ COMBAT TEXT ============================ -->
                     <ScrollViewer x:Name="SctPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
-                            <TextBlock Text="Scrolling combat text" Style="{StaticResource PageTitle}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Scrolling combat text" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="Floating numbers in fixed lanes — each lane is its own movable panel (unlock with Ctrl+Alt+L to drag them). Master toggle in game: ⚡ toolbar button, tray, or Ctrl+Alt+C. Pet lanes need a Pet name (General page)."/>
 
@@ -599,7 +695,10 @@
                     <!-- ============================ FLASH ALERTS ============================ -->
                     <ScrollViewer x:Name="FlashPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
-                            <TextBlock Text="Flash alerts" Style="{StaticResource PageTitle}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Flash alerts" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="The screen-flash area. Flash triggers (and per-trigger flash text) are created under Triggers. Unlock the overlay (Ctrl+Alt+L) to see and drag the area."/>
 
