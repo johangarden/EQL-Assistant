@@ -91,9 +91,6 @@ public sealed class LogWatcher : IDisposable
 
     private string? ResolveTargetFile()
     {
-        if (!string.IsNullOrWhiteSpace(_config.ExplicitFile))
-            return File.Exists(_config.ExplicitFile) ? _config.ExplicitFile : null;
-
         if (string.IsNullOrWhiteSpace(_config.Directory) || !Directory.Exists(_config.Directory))
             return null;
 
@@ -118,9 +115,9 @@ public sealed class LogWatcher : IDisposable
         long length = 0;
         try { length = new FileInfo(path).Length; } catch { /* ignore */ }
 
-        // On first attach honor StartAtEndOfFile; on a later switch we also jump
-        // to the end so we don't replay an entire existing log.
-        _position = _config.StartAtEndOfFile ? length : 0;
+        // Always tail from the end — history is the auto-catch-up's job, and
+        // replaying a whole log through the LIVE pipeline would fire alerts.
+        _position = length;
 
         _onStatus($"Following {Path.GetFileName(path)}");
         Log.Info($"Following log file: {path}");

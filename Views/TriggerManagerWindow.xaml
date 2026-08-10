@@ -108,6 +108,10 @@
                         <TextBlock x:Name="VersionText" Foreground="{StaticResource Brush.TextHint}"
                                    FontSize="11" VerticalAlignment="Center" Margin="7,1,0,0"/>
                     </StackPanel>
+                    <!-- Detected character (and pet) — informational only. -->
+                    <TextBlock x:Name="CharInfoText" DockPanel.Dock="Top"
+                               Foreground="{StaticResource Brush.TextHint}" FontSize="11"
+                               Margin="8,0,4,8" TextTrimming="CharacterEllipsis"/>
                     <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
                              ItemContainerStyle="{StaticResource NavItem}"
                              SelectionChanged="NavList_SelectionChanged">
@@ -119,6 +123,7 @@
                     <ListBoxItem Content="DPS meter"/>
                     <ListBoxItem Content="Combat text"/>
                     <ListBoxItem Content="Flash alerts"/>
+                    <ListBoxItem Content="Death recap"/>
                     <ListBoxItem Content="KNOWLEDGE" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="Respawns"/>
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
@@ -367,25 +372,6 @@
                             <TextBlock Text="File pattern" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="FilePatternBox" Width="220" HorizontalAlignment="Left"/>
 
-                            <TextBlock Text="Or one explicit file (overrides folder+pattern)" Style="{StaticResource FieldLabel}"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBox x:Name="ExplicitFileBox" Width="440"/>
-                                <Button Content="Browse" Click="BrowseFile_Click" Width="66" Margin="8,0,0,0"/>
-                            </StackPanel>
-
-                            <CheckBox x:Name="StartAtEndCheck" Content="Start at end of file (ignore old history)"
-                                      Margin="0,10,0,0"/>
-
-                            <Border Style="{StaticResource PageSep}"/>
-                            <TextBlock Text="Character &amp; pet (overrides)" Style="{StaticResource SectionTitle}"/>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="Normally leave both empty. The character name comes from the log filename automatically; only override it if that ever detects wrong. A pet name enables the pet rows/lanes — a wrong or stale value here is harmless (it just matches nothing), unless it happens to be a real player's name."/>
-
-                            <TextBlock Text="Character name override (normally auto-detected — leave empty)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox x:Name="CharNameBox" Width="220" HorizontalAlignment="Left"/>
-                            <TextBlock Text="Pet name (optional — enables pet damage rows and lanes)" Style="{StaticResource FieldLabel}"/>
-                            <TextBox x:Name="PetNameBox" Width="220" HorizontalAlignment="Left"/>
-
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Overlay" Style="{StaticResource SectionTitle}"/>
 
@@ -394,8 +380,6 @@
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
                             <CheckBox x:Name="MuteCheck" Content="Mute all alerts" Margin="0,6,0,0"/>
-                            <CheckBox x:Name="DeathRecapCheck" Margin="0,6,0,0"
-                                      Content="Pop a death recap window when you die (last hits and heals on you)"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Maintenance" Style="{StaticResource SectionTitle}"/>
@@ -493,6 +477,21 @@
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ============================ DEATH RECAP ============================ -->
+                    <ScrollViewer x:Name="DeathPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Death recap" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="When you die, a popup shows the last 15 things that happened to you — hits with attacker and amount, misses dimmed, heals in green — each with the time offset back from the moment of death, and the biggest hit highlighted. Reopen the latest any time: ☰/tray → Death recap…"/>
+
+                            <CheckBox x:Name="DeathRecapCheck" Margin="0,12,0,0"
+                                      Content="Pop the recap window automatically when you die"/>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -597,6 +596,13 @@
                                 <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Pet" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A pet name enables the pet damage row here and the pet combat-text lanes. Your own name is auto-detected from the log filename — this is the one name the log can't tell us (yet). A stale value is harmless: it just matches nothing."/>
+                            <TextBlock Text="Pet name" Style="{StaticResource FieldLabel}"/>
+                            <TextBox x:Name="PetNameBox" Width="220" HorizontalAlignment="Left"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Skills section" Style="{StaticResource SectionTitle}"/>

@@ -103,6 +103,7 @@ public partial class TriggerManagerWindow : Window
         string ver = $"v{UpdateService.CurrentVersion.ToString(3)}";
         VersionText.Text = ver;
         Title = $"EQL Assistant — Manager · {ver}";
+        UpdateCharInfo();
 
         BuildSwatches();
         LoadSettingsFields();
@@ -130,7 +131,7 @@ public partial class TriggerManagerWindow : Window
         {
             Interval = TimeSpan.FromSeconds(2)
         };
-        _deathsTick.Tick += (_, _) => { RefreshRecentDeaths(); RefreshSeenSkills(); };
+        _deathsTick.Tick += (_, _) => { RefreshRecentDeaths(); RefreshSeenSkills(); UpdateCharInfo(); };
         _deathsTick.Start();
         Closed += (_, _) => _deathsTick.Stop();
 
@@ -424,6 +425,19 @@ public partial class TriggerManagerWindow : Window
         UpdateLearnedHint();
     }
 
+    /// <summary>Sidebar info line: the auto-detected character (+ pet if set).</summary>
+    private void UpdateCharInfo()
+    {
+        if (CharInfoText is null) return;
+        string self = _combat.SelfName;
+        string text = string.IsNullOrEmpty(self) || self == "You"
+            ? "character: auto-detects from the log"
+            : self;
+        string pet = _config.Overlay.PetName;
+        if (!string.IsNullOrWhiteSpace(pet)) text += $" · pet: {pet}";
+        CharInfoText.Text = text;
+    }
+
     /// <summary>"Learned so far: 9m53s (9 samples)" under the duration field.</summary>
     private void UpdateLearnedHint()
     {
@@ -575,6 +589,7 @@ public partial class TriggerManagerWindow : Window
             ["DPS meter"] = MeterPage,
             ["Combat text"] = SctPage,
             ["Flash alerts"] = FlashPage,
+            ["Death recap"] = DeathPage,
             ["Respawns"] = RespawnsPage,
             ["General"] = GeneralPage,
             ["Shortcuts"] = ShortcutsPage,
@@ -639,8 +654,6 @@ public partial class TriggerManagerWindow : Window
     {
         LogDirBox.Text = _config.Log.Directory;
         FilePatternBox.Text = _config.Log.FilePattern;
-        ExplicitFileBox.Text = _config.Log.ExplicitFile;
-        StartAtEndCheck.IsChecked = _config.Log.StartAtEndOfFile;
 
         WidthBox.Text = _config.Overlay.Width.ToString(CultureInfo.InvariantCulture);
         BarHeightBox.Text = _config.Overlay.BarHeight.ToString(CultureInfo.InvariantCulture);
@@ -660,7 +673,6 @@ public partial class TriggerManagerWindow : Window
         SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
         SctProgressCheck.IsChecked = _config.Overlay.SctProgress;
         FlashVisibleCheck.IsChecked = _config.Overlay.FlashVisible;
-        CharNameBox.Text = _config.CharacterName;
         PetNameBox.Text = _config.Overlay.PetName;
         FlashFontBox.Text = _config.Overlay.FlashFontSize.ToString(CultureInfo.InvariantCulture);
         FlashWidthBox.Text = _config.Overlay.FlashWidth.ToString(CultureInfo.InvariantCulture);
@@ -697,12 +709,6 @@ public partial class TriggerManagerWindow : Window
         if (dlg.ShowDialog(this) == true) LogDirBox.Text = dlg.FolderName;
     }
 
-    private void BrowseFile_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new OpenFileDialog { Filter = "Log files (*.txt)|*.txt|All files (*.*)|*.*" };
-        if (dlg.ShowDialog(this) == true) ExplicitFileBox.Text = dlg.FileName;
-    }
-
     // ---- save ---------------------------------------------------------------
 
     private void Save_Click(object sender, RoutedEventArgs e)
@@ -733,14 +739,12 @@ public partial class TriggerManagerWindow : Window
 
         var cfg = new AppConfig
         {
-            CharacterName = CharNameBox.Text.Trim(),
+            CharacterName = _config.CharacterName, // auto-detected; hand-editable in config.json only
             ActiveLoadout = _currentName,
             Log =
             {
                 Directory = LogDirBox.Text.Trim(),
                 FilePattern = string.IsNullOrWhiteSpace(FilePatternBox.Text) ? "eqlog_*.txt" : FilePatternBox.Text.Trim(),
-                ExplicitFile = ExplicitFileBox.Text.Trim(),
-                StartAtEndOfFile = StartAtEndCheck.IsChecked == true,
                 PollIntervalMs = _config.Log.PollIntervalMs,
             },
             Overlay =

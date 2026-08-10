@@ -64,8 +64,8 @@ copied file carries everything.
 1. Open **Manage** (toolbar button or tray) → **General** page → **Browse** to
    your log folder (e.g. `…\EverQuest Legends\Logs`) and **Save**. The newest
    `eqlog_*.txt` is followed automatically, so it works across characters — and
-   your **character name is auto-detected from the log filename** (override it
-   on the General page if needed; set a **Pet name** there too if you run one).
+   your **character name is auto-detected from the log filename** (shown in the
+   Manager's sidebar; set a **Pet name** on the DPS meter page if you run one).
 2. Recommended, also on the General page:
    - **Start with Windows** — so you never forget to launch it.
    - **Catch-up is automatic** — on every start the app silently rebuilds
@@ -124,10 +124,11 @@ everything else is **GLOBAL**.
   (columns, anchors), and the **rebuff reminders** timing (warn threshold +
   repeat interval for triggers marked "remind when missing").
 - **Repop timer** — visibility and anchor of the watch panel.
-- **DPS meter** — visibility, anchor, and the meter's **skills section**
-  (which skills to grind-track, with the seen-in-your-log picker).
+- **DPS meter** — visibility, anchor, the **pet name**, and the meter's
+  **skills section** (which skills to grind-track, with the picker).
 - **Combat text** — which lanes exist, sizes, big-hit threshold.
 - **Flash alerts** — text size, area width, anchor.
+- **Death recap** — the auto-popup toggle.
 
 **KNOWLEDGE**
 - **Respawns** — the global named-respawn list (zone-grouped, recent-kills
@@ -135,8 +136,8 @@ everything else is **GLOBAL**.
 
 **APP**
 - **General** — start with Windows, log source (auto-follows the newest
-  character log), character/pet overrides, overlay basics, and the
-  full-log reparse under Maintenance.
+  character log), overlay basics, and the full-log reparse under
+  Maintenance.
 - **Shortcuts** — the global hotkey reference.
 
 Panels stick to their chosen screen corner and grow away from it (Bottom-left

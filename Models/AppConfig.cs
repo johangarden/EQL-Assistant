@@ -28,17 +28,16 @@ public sealed class AppConfig
 
 public sealed class LogConfig
 {
-    /// <summary>Folder that holds eqlog_*.txt files. Leave empty to use ExplicitFile.</summary>
+    /// <summary>Folder that holds eqlog_*.txt files.</summary>
     public string Directory { get; set; } = "";
 
     /// <summary>Glob-ish pattern; the newest matching file is followed automatically.</summary>
     public string FilePattern { get; set; } = "eqlog_*.txt";
 
-    /// <summary>If set, this exact file is followed and Directory/FilePattern are ignored.</summary>
+    /// <summary>LEGACY (pre-2.7): an exact file to follow. On load its folder is
+    /// migrated into <see cref="Directory"/> — newest-file following covers it,
+    /// and auto-catch-up made "start at end of file" moot too.</summary>
     public string ExplicitFile { get; set; } = "";
-
-    /// <summary>Start at the end of the file (ignore history) on launch.</summary>
-    public bool StartAtEndOfFile { get; set; } = true;
 
     /// <summary>How often to poll the log for new lines.</summary>
     public int PollIntervalMs { get; set; } = 200;
