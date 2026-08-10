@@ -105,6 +105,7 @@ public partial class MainWindow : Window
         _flashHidden = !_config.Overlay.FlashVisible;
         _sctHidden = !_config.Overlay.SctVisible;
         _toolbarHidden = !_config.Overlay.ToolbarVisible;
+        _barsHidden = !_config.Overlay.BarsVisible;
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
         _combat.SctEvent += OnSctEvent;
@@ -138,6 +139,7 @@ public partial class MainWindow : Window
         RebuildFlashWindow();
         RebuildSctLanes();
         BuildToolbarWindow();
+        UpdateBarsVisibility(); // bars may start hidden (Panels toggle persisted)
 
         // Crash-tolerant last-seen marker: persisted every minute while lines flow.
         var lastSeenTick = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
@@ -833,7 +835,7 @@ public partial class MainWindow : Window
     private void ToggleHide()
     {
         _hidden = !_hidden;
-        Visibility = _hidden ? Visibility.Hidden : Visibility.Visible;
+        UpdateBarsVisibility();
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
         UpdateMeterVisibility();
@@ -874,8 +876,11 @@ public partial class MainWindow : Window
         _flash?.ResetPosition();
         _toolbarWin?.ResetPosition();
         foreach (var lane in _sctLanes.Values) lane.ResetPosition();
-        _toolbarHidden = false; // recovery must reveal the command strip too
+        _toolbarHidden = false; // recovery must reveal everything
         _config.Overlay.ToolbarVisible = true;
+        _barsHidden = false;
+        _config.Overlay.BarsVisible = true;
+        UpdateBarsVisibility();
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
         UpdateMeterVisibility();
@@ -974,6 +979,7 @@ public partial class MainWindow : Window
         _flashHidden = !cfg.Overlay.FlashVisible;
         _sctHidden = !cfg.Overlay.SctVisible;
         _toolbarHidden = !cfg.Overlay.ToolbarVisible;
+        _barsHidden = !cfg.Overlay.BarsVisible;
         _combat.PetName = cfg.Overlay.PetName;
         ApplySelfName();
 
@@ -1017,6 +1023,7 @@ public partial class MainWindow : Window
             _toolbarWin.ReloadPlacement();
             UpdateToolbarVisibility();
         }
+        UpdateBarsVisibility();
         _vm.Flash("Settings applied.");
         Log.Info($"Settings applied from manager. loadout='{cfg.ActiveLoadout}', triggers={cfg.Triggers.Count}, " +
                  $"selfCells={_engine.SelfCells.Count}");
@@ -1079,6 +1086,21 @@ public partial class MainWindow : Window
         _config.Overlay.ToolbarVisible = !_toolbarHidden;
         _configService.SaveSettings(_config);
         UpdateToolbarVisibility();
+    }
+
+    // ---- buff bars panel (this window) ----------------------------------------
+
+    private bool _barsHidden;
+
+    private void UpdateBarsVisibility() =>
+        Visibility = !_hidden && !_barsHidden ? Visibility.Visible : Visibility.Hidden;
+
+    private void ToggleBars()
+    {
+        _barsHidden = !_barsHidden;
+        _config.Overlay.BarsVisible = !_barsHidden;
+        _configService.SaveSettings(_config);
+        UpdateBarsVisibility();
     }
 
     /// <summary>Toolbar ☰ — show the SAME menu as the tray icon (one source of
@@ -1257,11 +1279,13 @@ public partial class MainWindow : Window
         var panelSct = new System.Windows.Forms.ToolStripMenuItem("Combat text", null, (_, _) => ToggleSct());
         var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
         var panelToolbar = new System.Windows.Forms.ToolStripMenuItem("Toolbar", null, (_, _) => ToggleToolbar());
+        var panelBars = new System.Windows.Forms.ToolStripMenuItem("Buff bars", null, (_, _) => ToggleBars());
         panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
-            { panelToolbar, panelTimer, panelMeter, panelSkills, panelSct, panelFlash });
+            { panelToolbar, panelBars, panelTimer, panelMeter, panelSkills, panelSct, panelFlash });
         panelsItem.DropDownOpening += (_, _) =>
         {
             panelToolbar.Checked = !_toolbarHidden;
+            panelBars.Checked = !_barsHidden;
             panelTimer.Checked = !_timerHidden;
             panelMeter.Checked = !_meterHidden;
             panelSkills.Checked = !_skillsHidden;

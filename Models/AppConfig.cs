@@ -115,6 +115,9 @@ public sealed class OverlayConfig
     /// <summary>Whether the detached toolbar (command strip) is shown.</summary>
     public bool ToolbarVisible { get; set; } = true;
 
+    /// <summary>Whether the buff-bars panel is shown.</summary>
+    public bool BarsVisible { get; set; } = true;
+
     /// <summary>Font size of screen flash alerts.</summary>
     public double FlashFontSize { get; set; } = 54;
 

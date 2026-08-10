@@ -702,6 +702,7 @@ public partial class TriggerManagerWindow : Window
                 Muted = MuteCheck.IsChecked == true,
                 DeathRecapAuto = DeathRecapCheck.IsChecked == true,
                 ToolbarVisible = _config.Overlay.ToolbarVisible, // tray-toggled — carried through
+                BarsVisible = _config.Overlay.BarsVisible,       // tray-toggled — carried through
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,
