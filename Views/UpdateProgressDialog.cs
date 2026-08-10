@@ -34,7 +34,11 @@ public sealed class UpdateProgressDialog : Window
         WindowTheme.ApplyDark(this);
 
         var panel = new StackPanel { Margin = new Thickness(16) };
-        _status = new TextBlock { Text = "Starting download…" };
+        _status = new TextBlock
+        {
+            Text = "Starting download…",
+            Foreground = (Brush)Resources["Brush.Text"],
+        };
         _bar = new ProgressBar
         {
             Height = 10,

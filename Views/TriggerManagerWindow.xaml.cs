@@ -74,6 +74,10 @@ public partial class TriggerManagerWindow : Window
         RecentList.ItemsSource = _recent;
         _bus.LineReceived += OnLine;
 
+        string ver = $"v{UpdateService.CurrentVersion.ToString(3)}";
+        VersionText.Text = ver;
+        Title = $"EQL Assistant — Manager · {ver}";
+
         BuildSwatches();
         LoadSettingsFields();
         MuteCheck.IsChecked = _alerts.Muted;

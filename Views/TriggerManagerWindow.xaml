@@ -67,6 +67,8 @@
                         <Image Source="/assets/eqloverlay.ico" Width="18" Height="18" VerticalAlignment="Center"/>
                         <TextBlock Text="EQL Assistant" Foreground="White" FontWeight="Bold"
                                    FontSize="13" VerticalAlignment="Center" Margin="7,0,0,0"/>
+                        <TextBlock x:Name="VersionText" Foreground="{StaticResource Brush.TextHint}"
+                                   FontSize="11" VerticalAlignment="Center" Margin="7,1,0,0"/>
                     </StackPanel>
                     <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
                              ItemContainerStyle="{StaticResource NavItem}"
