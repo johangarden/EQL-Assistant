@@ -303,6 +303,78 @@ public partial class App : Application
             Check("recap: later plain death fires fresh and empty",
                 deaths.Count == 2 && deaths[1].Killer == "" && deaths[1].Events.Count == 0);
 
+            // Duration learning: cast-anchored landing -> wear-off mints a sample;
+            // unanchored broadcasts don't; early breaks never lower the estimate;
+            // death contaminates; ranks pool; samples persist across restarts.
+            string durPath = Path.Combine(Path.GetTempPath(), "eql_dur_test.json");
+            File.Delete(durPath);
+            var lib2 = new SpellLibrary(new ConfigService());
+            var dur = new SpellDurations(new ConfigService(), lib2, durPath);
+            Check("durations: rank suffix pools",
+                SpellDurations.BaseKey("Mesmerization VII") == "mesmerization"
+                && SpellDurations.BaseKey("Quickness II") == SpellDurations.BaseKey("Quickness"));
+            string T(int s) => new DateTime(2026, 8, 9, 20, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            dur.ProcessLine($"[{T(0)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(3)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(2403)}] The spirit of wolf leaves you.");
+            Check("durations: full cycle mints a 2400s sample",
+                dur.LearnedMaxSeconds("Spirit of Wolf") is double d1 && Math.Abs(d1 - 2400) < 0.01);
+            dur.ProcessLine($"[{T(3000)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(3003)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(3100)}] The spirit of wolf leaves you.");
+            Check("durations: an early break never lowers the estimate",
+                dur.LearnedMaxSeconds("Spirit of Wolf") is double d2 && Math.Abs(d2 - 2400) < 0.01);
+            dur.ProcessLine($"[{T(4000)}] You feel the spirit of wolf enter you."); // no cast anchor
+            dur.ProcessLine($"[{T(4100)}] The spirit of wolf leaves you.");
+            Check("durations: unanchored broadcast teaches nothing",
+                dur.SampleCount("Spirit of Wolf") == 2);
+            dur.ProcessLine($"[{T(5000)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(5003)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(5050)}] You died.");
+            dur.ProcessLine($"[{T(5100)}] The spirit of wolf leaves you.");
+            Check("durations: death contaminates the open cycle",
+                dur.SampleCount("Spirit of Wolf") == 2);
+            dur.ProcessLine($"[{T(6000)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(6003)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(6050)}] LOADING, PLEASE WAIT...");
+            dur.ProcessLine($"[{T(9000)}] The spirit of wolf leaves you.");
+            Check("durations: zoning contaminates (buff timers pause while zoning)",
+                dur.SampleCount("Spirit of Wolf") == 2);
+            dur.ProcessLine($"[{T(10000)}] You begin casting Spirit of Wolf.");
+            dur.ProcessLine($"[{T(10003)}] You feel the spirit of wolf enter you.");
+            dur.ProcessLine($"[{T(10500)}] You feel the spirit of wolf enter you."); // external re-haste
+            dur.ProcessLine($"[{T(12403)}] The spirit of wolf leaves you.");
+            Check("durations: an external re-land contaminates the cycle",
+                dur.SampleCount("Spirit of Wolf") == 2);
+            var dur2 = new SpellDurations(new ConfigService(), lib2, durPath);
+            Check("durations: samples persist across restarts",
+                dur2.LearnedMaxSeconds("Spirit of Wolf") is double d3 && Math.Abs(d3 - 2400) < 0.01);
+            File.Delete(durPath);
+
+            // Engine: a learned duration EXTENDS a bar; the configured value is a floor.
+            var learnCfg = new Models.AppConfig();
+            learnCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "qk3", Name = "Quickness", Category = "Buffs",
+                StartPattern = @"^Your feet move faster\.", DurationSeconds = 60,
+            });
+            foreach (var t in learnCfg.Triggers) ConfigService.CompileOne(t);
+            var learnEngine = new TriggerEngine(learnCfg, new AlertService())
+            {
+                LearnedDuration = name => name == "Quickness" ? 90 : null,
+            };
+            string NowTs() => DateTime.Now.ToString("ddd MMM dd HH:mm:ss yyyy",
+                System.Globalization.CultureInfo.InvariantCulture);
+            learnEngine.ProcessLine($"[{NowTs()}] Your feet move faster.");
+            Check("engine: learned duration extends the bar",
+                learnEngine.Bars.Count == 1 && learnEngine.Bars[0].RemainingSeconds > 80);
+            learnEngine.LearnedDuration = _ => 30; // shorter than configured
+            learnEngine.ProcessLine($"[{NowTs()}] Your feet move faster.");
+            double restartRemaining = (learnEngine.Bars[0].EndTimeLocal - DateTime.Now).TotalSeconds;
+            Check("engine: configured duration is a floor",
+                restartRemaining is > 50 and <= 61);
+
             // Loot-per-kill: drops pin to the most recent kill of their mob
             // within the window; strangers/late loot don't; backfill is guarded.
             string rkPath = Path.Combine(Path.GetTempPath(), "eql_rk_test.json");
@@ -880,6 +952,14 @@ public partial class App : Application
             var sctCounts = new Dictionary<CombatParser.SctKind, int>();
             p.SctEvent += hit => sctCounts[hit.Kind] = 1 + sctCounts.GetValueOrDefault(hit.Kind);
 
+            // Duration learner dry-run against the real log (throwaway store).
+            string durReplayPath = Path.Combine(Path.GetTempPath(), "eql_replay_durations.json");
+            File.Delete(durReplayPath);
+            var replayCs = new ConfigService();
+            var replayDur = new SpellDurations(replayCs, new SpellLibrary(replayCs), durReplayPath);
+            var learned = new List<string>();
+            replayDur.SampleLearned += (spell, sec, n) => learned.Add($"{spell}: {sec:0}s (sample {n})");
+
             int lines = 0;
             int lootUp = 0, lootKept = 0, lootSold = 0;
             long lootCopper = 0;
@@ -887,6 +967,7 @@ public partial class App : Application
             foreach (var line in File.ReadLines(path))
             {
                 p.Replay(line);
+                replayDur.ProcessLine(line);
                 lines++;
                 if (LootTracker.TryParseLoot(tsRx.Replace(line, "", 1), out var lk, out _, out _, out _, out long lc, out _))
                 {
@@ -898,6 +979,9 @@ public partial class App : Application
             p.Tick(DateTime.MaxValue);
 
             report.AppendLine($"lines: {lines}   fights: {p.History.Count}   self: {p.SelfName}");
+            report.AppendLine($"--- learned durations ({learned.Count} samples) ---");
+            foreach (var l in learned) report.AppendLine("  " + l);
+            File.Delete(durReplayPath);
             report.AppendLine("SCT events: " + string.Join("  ",
                 sctCounts.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}={kv.Value}")));
 

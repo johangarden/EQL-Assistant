@@ -229,10 +229,27 @@ Both open from the Fight History window (and raid kills from the tray):
   lines and remembered forever. Each killed target shows **D0–D4 badges** for
   the zone difficulties you've beaten it at (difficulty is read from the zone
   name — "Befallen 4 (Refined)" = D4; kills recorded before v2.3 count as D0).
+  Every kill also records **what it dropped** (loot lines name the corpse) —
+  hover a killed target for the per-kill drop list, and past loot history is
+  stitched onto past kills automatically on first run.
 - **Loot** — every item you loot, persisted forever: **upgrades** (gold, with
   the "+N → +M" chain), **kept** items, and auto-**vendored** drops with their
   sale price. Search by item/mob/zone, filter by kind, and watch the running
   totals ("251 upgrades · vendored 217p 8g 6s 6c").
+
+## Learned buff durations
+
+The app learns your spells' real durations from the log (an idea borrowed from
+[everquest-companion](https://github.com/jmoyers/everquest-companion)): a
+sample is the span from a cast-anchored landing ("You begin casting X." then
+its landing line) to its wear-off line — so only *your own* casts teach, and
+anything that contaminates a cycle (death, zoning, an external re-buff, your
+own re-cast) discards it instead of recording a wrong number. Bars then run on
+**max(configured duration, recent observed max)** — the configured value is a
+floor, so learning only ever *extends* a bar (AA/focus-extended durations get
+picked up automatically; early clicks and breaks never shorten anything).
+Ranks pool ("Quickness II" teaches "Quickness III"), and samples persist in
+`spell-durations.json`. It's fully automatic — play, and the bars get truer.
 
 ## Death recap
 

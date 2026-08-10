@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private LootTracker _loot = null!;
     private SkyQuests _skyQuests = null!;
     private SpellLibrary _spellLib = null!;
+    private SpellDurations _durations = null!;
     private RaidKillsWindow? _raidsWindow;
     private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
     private PanelPlacement? _mainPlacement;
@@ -101,6 +102,7 @@ public partial class MainWindow : Window
             OnFlashRequested($"Sky quest complete — {q.Reward}!", "#FFD54F");
         _spellLib = new SpellLibrary(_configService);
         Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
+        _durations = new SpellDurations(_configService, _spellLib);
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
@@ -113,6 +115,7 @@ public partial class MainWindow : Window
         _combat.SctEvent += OnSctEvent;
         _combat.PlayerDied += OnPlayerDied;
         _engine = new TriggerEngine(_config, _alerts);
+        _engine.LearnedDuration = name => _durations.LearnedMaxSeconds(name);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
         _engine.BarReduced += OnBarReduced;
@@ -381,6 +384,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
                 _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
+                _durations.ProcessLine(line);
                 NoteLineSeen(t);
                 lines++;
             }
@@ -720,6 +724,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line);
                 _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
+                _durations.ProcessLine(line);
                 if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
             }),
