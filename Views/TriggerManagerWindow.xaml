@@ -100,18 +100,6 @@
             <Border DockPanel.Dock="Left" Background="{StaticResource Brush.Sunken}" CornerRadius="6" Padding="6"
                     Margin="0,0,8,0" Width="168">
                 <DockPanel>
-                    <!-- App identity header above the navigation. -->
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,4,4,10">
-                        <Image Source="/assets/eqloverlay.ico" Width="18" Height="18" VerticalAlignment="Center"/>
-                        <TextBlock Text="EQL Assistant" Foreground="White" FontWeight="Bold"
-                                   FontSize="13" VerticalAlignment="Center" Margin="7,0,0,0"/>
-                        <TextBlock x:Name="VersionText" Foreground="{StaticResource Brush.TextHint}"
-                                   FontSize="11" VerticalAlignment="Center" Margin="7,1,0,0"/>
-                    </StackPanel>
-                    <!-- Detected character (and pet) — informational only. -->
-                    <TextBlock x:Name="CharInfoText" DockPanel.Dock="Top"
-                               Foreground="{StaticResource Brush.TextHint}" FontSize="11"
-                               Margin="8,0,4,8" TextTrimming="CharacterEllipsis"/>
                     <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
                              ItemContainerStyle="{StaticResource NavItem}"
                              SelectionChanged="NavList_SelectionChanged">

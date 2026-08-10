@@ -100,9 +100,6 @@ public partial class TriggerManagerWindow : Window
         RecentList.ItemsSource = _recent;
         _bus.LineReceived += OnLine;
 
-        string ver = $"v{UpdateService.CurrentVersion.ToString(3)}";
-        VersionText.Text = ver;
-        Title = $"EQL Assistant — Manager · {ver}";
         UpdateCharInfo();
 
         BuildSwatches();
@@ -425,17 +422,15 @@ public partial class TriggerManagerWindow : Window
         UpdateLearnedHint();
     }
 
-    /// <summary>Sidebar info line: the auto-detected character (+ pet if set).</summary>
+    /// <summary>Title bar carries version + the auto-detected character (+ pet).</summary>
     private void UpdateCharInfo()
     {
-        if (CharInfoText is null) return;
+        string title = $"EQL Assistant — Manager · v{UpdateService.CurrentVersion.ToString(3)}";
         string self = _combat.SelfName;
-        string text = string.IsNullOrEmpty(self) || self == "You"
-            ? "character: auto-detects from the log"
-            : self;
+        if (!string.IsNullOrEmpty(self) && self != "You") title += $" · Character: {self}";
         string pet = _config.Overlay.PetName;
-        if (!string.IsNullOrWhiteSpace(pet)) text += $" · pet: {pet}";
-        CharInfoText.Text = text;
+        if (!string.IsNullOrWhiteSpace(pet)) title += $" · Pet: {pet}";
+        if (Title != title) Title = title;
     }
 
     /// <summary>"Learned so far: 9m53s (9 samples)" under the duration field.</summary>
