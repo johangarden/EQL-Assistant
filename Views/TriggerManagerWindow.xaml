@@ -105,6 +105,7 @@
                              SelectionChanged="NavList_SelectionChanged">
                     <ListBoxItem Content="TRIGGERS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="Triggers" IsSelected="True"/>
+                    <ListBoxItem Content="Loadouts"/>
                     <ListBoxItem Content="PANELS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="Bars &amp; matrices"/>
                     <ListBoxItem Content="Repop timer"/>
@@ -144,15 +145,9 @@
                                 <TextBlock Text="Loadout:" FontWeight="Bold" VerticalAlignment="Center"
                                            Margin="0,0,8,0"/>
                                 <Border DockPanel.Dock="Right" Style="{StaticResource LoadoutChip}" Margin="8,0,0,0"
-                                        ToolTip="Triggers belong to the selected loadout — switching loadouts switches the whole set. Everything else in the Manager is global.">
+                                        ToolTip="Triggers belong to the selected loadout — switching loadouts switches the whole set. Everything else in the Manager is global. Create/rename/delete loadouts on the Loadouts page.">
                                     <TextBlock Style="{StaticResource LoadoutChipText}" Text="PER LOADOUT"/>
                                 </Border>
-                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                                    <Button Content="New"       Click="NewLoadout_Click"       Width="56" Margin="4,0,0,0"/>
-                                    <Button Content="Rename"    Click="RenameLoadout_Click"    Width="64" Margin="4,0,0,0"/>
-                                    <Button Content="Duplicate" Click="DuplicateLoadout_Click" Width="76" Margin="4,0,0,0"/>
-                                    <Button Content="Delete"    Click="DeleteLoadout_Click"    Width="60" Margin="4,0,0,0"/>
-                                </StackPanel>
                                 <ComboBox x:Name="LoadoutCombo" SelectionChanged="LoadoutCombo_SelectionChanged"
                                           MinWidth="220" HorizontalAlignment="Left"/>
                             </DockPanel>
@@ -329,6 +324,25 @@
                             </DockPanel>
                         </GroupBox>
                     </Grid>
+
+                    <!-- ============================ LOADOUTS ============================ -->
+                    <ScrollViewer x:Name="LoadoutsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <TextBlock Text="Loadouts" Style="{StaticResource PageTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A loadout is a complete trigger set — one per class, character or situation. The overlay runs ONE active loadout at a time (switch in game: toolbar Loadout ▾ or tray); the Triggers page edits whichever loadout is selected here. Respawns, panels and everything else are global and unaffected by switching."/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,6">
+                                <Button Content="New"       Click="NewLoadout_Click"       Width="56"/>
+                                <Button Content="Rename"    Click="RenameLoadout_Click"    Width="64" Margin="4,0,0,0"/>
+                                <Button Content="Duplicate" Click="DuplicateLoadout_Click" Width="76" Margin="4,0,0,0"/>
+                                <Button Content="Delete"    Click="DeleteLoadout_Click"    Width="60" Margin="4,0,0,0"/>
+                            </StackPanel>
+                            <ListBox x:Name="LoadoutsList" Height="220" Width="300" HorizontalAlignment="Left"
+                                     SelectionChanged="LoadoutsList_SelectionChanged"/>
+                            <TextBlock x:Name="LoadoutsInfoText" Style="{StaticResource Hint}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
 
                     <!-- ============================ GENERAL ============================ -->
                     <ScrollViewer x:Name="GeneralPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">

@@ -118,6 +118,9 @@ everything else is **GLOBAL**.
 - **Triggers** — the trigger editor (list, details form, live log capture).
   Click a line in the live feed → **→ Start pattern** to build a regex from the
   real log line. **Test matches** checks a pasted line against all triggers.
+- **Loadouts** — create/rename/duplicate/delete trigger sets; the Triggers
+  page edits whichever one is selected (switch the *active* one in game via
+  the toolbar's Loadout ▾ or the tray).
 
 **PANELS**
 - **Bars & matrices** — countdown-bar sizes, the buff/debuff matrix settings

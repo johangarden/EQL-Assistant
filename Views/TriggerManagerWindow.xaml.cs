@@ -141,6 +141,7 @@ public partial class TriggerManagerWindow : Window
         }
 
         LoadoutCombo.ItemsSource = _order;
+        LoadoutsList.ItemsSource = _order;
         _currentName = _order.Contains(config.ActiveLoadout) ? config.ActiveLoadout : _order[0];
 
         // Log feed.
@@ -383,6 +384,27 @@ public partial class TriggerManagerWindow : Window
         TriggerList.ItemsSource = CurrentList;
         if (CurrentList.Count > 0) TriggerList.SelectedIndex = 0;
         else { DetailsScroller.DataContext = null; DetailsScroller.IsEnabled = false; }
+
+        // The Loadouts page's list is a second face of the same selector.
+        if (LoadoutsList is not null && !Equals(LoadoutsList.SelectedItem, name))
+            LoadoutsList.SelectedItem = name;
+        UpdateLoadoutsInfo();
+    }
+
+    private void LoadoutsList_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_initializing) return;
+        if (LoadoutsList.SelectedItem is string name && name != _currentName)
+            LoadoutCombo.SelectedItem = name; // routes through ShowLoadout
+    }
+
+    private void UpdateLoadoutsInfo()
+    {
+        if (LoadoutsInfoText is null) return;
+        LoadoutsInfoText.Text =
+            $"Editing: {_currentName} ({CurrentList.Count} trigger(s)) · " +
+            $"Active in overlay: {_config.ActiveLoadout} — Save makes the edited one active.";
     }
 
     private void NewLoadout_Click(object sender, RoutedEventArgs e)
@@ -627,6 +649,7 @@ public partial class TriggerManagerWindow : Window
         var byTitle = new Dictionary<string, System.Windows.FrameworkElement>(StringComparer.OrdinalIgnoreCase)
         {
             ["Triggers"] = TriggersPage,
+            ["Loadouts"] = LoadoutsPage,
             ["Bars & matrices"] = BarsPage,
             ["Repop timer"] = TimerPage,
             ["DPS & Skills"] = MeterPage,
