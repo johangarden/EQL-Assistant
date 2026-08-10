@@ -530,16 +530,6 @@ public partial class TriggerManagerWindow : Window
         TriggerList.ScrollIntoView(t);
     }
 
-    private void Duplicate_Click(object sender, RoutedEventArgs e)
-    {
-        if (Selected is null) return;
-        var copy = TriggerEditViewModel.FromDefinition(Selected.ToDefinition());
-        copy.Id = "";
-        copy.Name += " copy";
-        int i = CurrentList.IndexOf(Selected);
-        CurrentList.Insert(i + 1, copy);
-        TriggerList.SelectedItem = copy;
-    }
 
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
@@ -700,6 +690,11 @@ public partial class TriggerManagerWindow : Window
         // Auto-learn is a spell-duration concept — respawn timers don't learn.
         DurationAutoCheck.Visibility = V(bars || matrix);
         DurationAutoHint.Visibility = V(bars || matrix);
+
+        // Reordering only matters for matrix triggers (cells lay out in list
+        // order); bars always sort themselves by time left.
+        MoveUpBtn.Visibility = V(matrix);
+        MoveDownBtn.Visibility = V(matrix);
         if (timer) DurationLearnedText.Visibility = Visibility.Collapsed;
         else UpdateLearnedHint();
         StartLabel.Text = timer ? "Death line (regex — starts the repop timer)"

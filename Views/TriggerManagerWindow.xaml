@@ -156,15 +156,19 @@
                         <!-- Trigger list -->
                         <DockPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,0">
                             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
-                                <Button Content="Add"       Click="Add_Click"       Width="46" Margin="0,0,4,0"/>
-                                <Button Content="Library…"  Click="Library_Click"   Width="64" Margin="0,0,4,0"
+                                <Button Content="Library…"  Click="Library_Click"   Width="70" Margin="0,0,4,0"
                                         Style="{StaticResource PrimaryBtn}"
                                         AutomationProperties.AutomationId="LibraryBtn"
                                         ToolTip="Add ready-made triggers from the ~1400-spell library"/>
-                                <Button Content="Duplicate" Click="Duplicate_Click" Width="66" Margin="0,0,4,0"/>
+                                <Button Content="Add"       Click="Add_Click"       Width="46" Margin="0,0,4,0"
+                                        ToolTip="Add a blank trigger to fill in manually"/>
                                 <Button Content="Delete"    Click="Delete_Click"    Width="52" Margin="0,0,4,0"/>
-                                <Button Content="↑"         Click="MoveUp_Click"    Width="26" Margin="0,0,4,0"/>
-                                <Button Content="↓"         Click="MoveDown_Click"  Width="26"/>
+                                <!-- Reordering only matters for matrix triggers (cells lay out in
+                                     list order); bars always sort by time left. Shown contextually. -->
+                                <Button x:Name="MoveUpBtn" Content="↑" Click="MoveUp_Click" Width="26" Margin="0,0,4,0"
+                                        Visibility="Collapsed" ToolTip="Move up — matrix cells lay out in this order"/>
+                                <Button x:Name="MoveDownBtn" Content="↓" Click="MoveDown_Click" Width="26"
+                                        Visibility="Collapsed" ToolTip="Move down — matrix cells lay out in this order"/>
                             </StackPanel>
                             <ListBox x:Name="TriggerList" SelectionChanged="TriggerList_SelectionChanged">
                                 <ListBox.ItemTemplate>
