@@ -33,11 +33,16 @@
                         AutomationProperties.AutomationId="LockBtn"
                         ToolTip="Lock / unlock all panels (Ctrl+Alt+L)">
                     <Button.Style>
+                        <!-- The glyph mirrors the CURRENT state: closed lock when
+                             locked, open lock when unlocked — with an accent CTA
+                             background reminding you to lock before playing. -->
                         <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
-                            <Setter Property="Content" Value="&#xE785;"/>
+                            <Setter Property="Content" Value="&#xE72E;"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsUnlocked}" Value="True">
-                                    <Setter Property="Content" Value="&#xE72E;"/>
+                                    <Setter Property="Content" Value="&#xE785;"/>
+                                    <Setter Property="Background" Value="{StaticResource Brush.Accent}"/>
+                                    <Setter Property="Foreground" Value="White"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
