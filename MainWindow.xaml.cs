@@ -119,6 +119,7 @@ public partial class MainWindow : Window
         _combat.PlayerDied += OnPlayerDied;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.LearnedDuration = name => _durations.LearnedMaxSeconds(name);
+        _engine.IsSharedLanding = pattern => _spellLib.IsSharedLanding(pattern);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
         _engine.BarReduced += OnBarReduced;

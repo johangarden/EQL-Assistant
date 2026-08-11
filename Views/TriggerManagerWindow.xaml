@@ -249,6 +249,14 @@
                                 <TextBlock Style="{StaticResource Hint}"
                                            Text="Tip: select a line in the log below and click '→ Start pattern' to fill this."/>
 
+                                <StackPanel x:Name="AnchorGroup">
+                                    <CheckBox x:Name="CastAnchorCheck" Margin="0,8,0,0"
+                                              Checked="CastAnchor_Changed" Unchecked="CastAnchor_Changed"
+                                              Content="Only my own cast starts it (cast-anchored)"/>
+                                    <TextBlock x:Name="CastAnchorHint" Style="{StaticResource Hint}" Margin="0,3,0,0"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
                                 <StackPanel x:Name="EndGroup">
                                     <TextBlock Text="End pattern (regex — clears it early, optional)" Style="{StaticResource FieldLabel}"/>
                                     <TextBox Text="{Binding EndPattern, UpdateSourceTrigger=PropertyChanged}"

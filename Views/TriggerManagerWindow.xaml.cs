@@ -498,6 +498,7 @@ public partial class TriggerManagerWindow : Window
         DetailsScroller.DataContext = Selected;
         DetailsScroller.IsEnabled = Selected != null;
         UpdateDurationUx();
+        UpdateAnchorUx();
     }
 
     /// <summary>Title bar carries version + the auto-detected character (+ pet).</summary>
@@ -512,6 +513,44 @@ public partial class TriggerManagerWindow : Window
     }
 
     private void DurationAuto_Changed(object sender, RoutedEventArgs e) => UpdateDurationUx();
+
+    private bool _anchorUxLoading;
+
+    private void CastAnchor_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_anchorUxLoading || Selected is null) return;
+        Selected.CastAnchored = CastAnchorCheck.IsChecked == true; // explicit from here on
+        UpdateAnchorUx();
+    }
+
+    /// <summary>The cast-anchor checkbox shows the EFFECTIVE state: an untouched
+    /// trigger is on auto (library triggers whose landing sentence is shared by
+    /// several spells anchor themselves — all hastes print "You feel much
+    /// faster."); clicking it stores an explicit choice.</summary>
+    private void UpdateAnchorUx()
+    {
+        if (CastAnchorCheck is null || CastAnchorHint is null) return;
+        if (Selected is null) { CastAnchorHint.Text = ""; return; }
+
+        bool shared = _spellLibrary.IsSharedLanding(Selected.StartPattern);
+        bool effective = Selected.CastAnchored
+            ?? (Selected.Id.StartsWith("lib-", StringComparison.Ordinal) && shared);
+
+        _anchorUxLoading = true;
+        CastAnchorCheck.IsChecked = effective;
+        _anchorUxLoading = false;
+
+        string castLine = $"\"You begin casting {Selected.Name}.\"";
+        CastAnchorHint.Text = Selected.CastAnchored is null
+            ? shared && effective
+                ? $"Auto: ON — several spells print this exact landing text (all hastes say the same line), so the bar only starts right after your own {castLine} Untick to fire on any match."
+                : shared
+                    ? $"Several spells print this exact landing text — tick to only start the bar right after your own {castLine}"
+                    : $"Off — this start text is unambiguous; any match starts the bar. Tick to require your own {castLine} first."
+            : effective
+                ? $"On — the bar only starts within 15s of your own {castLine}"
+                : "Off — any matching line starts the bar.";
+    }
 
     /// <summary>Auto-learn owns the duration: the field is disabled and the
     /// currently-learned value shows beside it. Manual re-enables the field.</summary>
@@ -703,6 +742,11 @@ public partial class TriggerManagerWindow : Window
         // Auto-learn is a spell-duration concept — respawn timers don't learn.
         DurationAutoCheck.Visibility = V(bars || matrix);
         DurationAutoHint.Visibility = V(bars || matrix);
+
+        // Cast-anchoring is likewise a spell concept: repop death lines and
+        // flash patterns fire on any match.
+        AnchorGroup.Visibility = V(bars || matrix);
+        UpdateAnchorUx();
 
         // Reordering only matters for matrix triggers (cells lay out in list
         // order); bars always sort themselves by time left.

@@ -114,6 +114,20 @@ public sealed class SpellLibrary
         }
     }
 
+    /// <summary>True when a trigger's start pattern is a landing sentence that
+    /// SEVERAL different spells print (e.g. "You feel much faster." is
+    /// Quickness, Alacrity, Celerity AND Swift Like The Wind) — the case where
+    /// an unanchored bar would be a coin flip. Ranks of one spell don't count
+    /// as different. Non-escaped custom regexes simply return false.</summary>
+    public bool IsSharedLanding(string startPattern)
+    {
+        if (string.IsNullOrEmpty(startPattern)) return false;
+        string body;
+        try { body = Regex.Unescape(startPattern); } catch { return false; }
+        return _byCastOnYou.TryGetValue(body, out var hits)
+            && hits.Select(s => SpellDurations.BaseKey(s.Name)).Distinct().Count() > 1;
+    }
+
     public bool IsSeen(Spell s) => _seen.Contains(s.Name);
 
     /// <summary>O(1) exact-message check on every log line to build the "seen in your log" set.</summary>

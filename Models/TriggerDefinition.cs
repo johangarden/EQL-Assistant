@@ -51,6 +51,14 @@ public sealed class TriggerDefinition
     /// happens in the background either way.</summary>
     public bool DurationAuto { get; set; } = true;
 
+    /// <summary>Cast-anchor: the start pattern only counts when it follows YOUR
+    /// own "You begin casting &lt;Name&gt;." within a few seconds — the fix for
+    /// landing sentences shared by several spells (Quickness, Alacrity, Celerity
+    /// and Swift Like The Wind all print "You feel much faster."). null = auto:
+    /// library triggers whose landing text is shared anchor themselves; every
+    /// other trigger fires on any match.</summary>
+    public bool? CastAnchored { get; set; }
+
     /// <summary>Bar fill color, any WPF color string ("#3FA9F5", "DodgerBlue").</summary>
     public string Color { get; set; } = "#3FA9F5";
 

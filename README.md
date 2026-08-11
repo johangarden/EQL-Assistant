@@ -287,6 +287,19 @@ time; learning still runs in the background so you can switch back any time.
 Ranks pool ("Quickness II" teaches "Quickness III"), and samples persist in
 `spell-durations.json`.
 
+### Cast-anchored triggers (shared landing lines)
+
+Several spells print the *same* landing sentence — Quickness, Alacrity,
+Celerity and Swift Like The Wind all say "You feel much faster." A plain
+pattern trigger can't tell them apart, so casting Alacrity would restart your
+Quickness bar with the wrong duration. Triggers therefore support a **cast
+anchor** (same ruling as the Companion's): the start pattern only counts when
+it follows *your own* "You begin casting &lt;spell&gt;." within 15 seconds,
+and an ambiguous landing with no anchor starts **nothing** — a bar that
+guesses which haste landed would lie about the time left. Library-added
+triggers whose landing text is shared anchor themselves automatically; the
+checkbox under the start pattern overrides it either way.
+
 ## Death recap
 
 When a death line appears ("You have been slain by …" / "You died."), a recap

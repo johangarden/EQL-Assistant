@@ -59,6 +59,11 @@ public sealed class TriggerEditViewModel : ViewModelBase
     private bool _durationAuto = true;
     public bool DurationAuto { get => _durationAuto; set => SetField(ref _durationAuto, value); }
 
+    private bool? _castAnchored;
+    /// <summary>null = automatic (library triggers with a shared landing sentence
+    /// anchor themselves); true/false = the user's explicit choice.</summary>
+    public bool? CastAnchored { get => _castAnchored; set => SetField(ref _castAnchored, value); }
+
     private string _color = "#4FC3F7";
     public string Color
     {
@@ -133,6 +138,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
         EndPattern = d.EndPattern ?? "",
         DurationSeconds = d.DurationSeconds,
         DurationAuto = d.DurationAuto,
+        CastAnchored = d.CastAnchored,
         Color = d.Color,
         RefreshOnRetrigger = d.RefreshOnRetrigger,
         AlertSpeak = d.Alert?.Speak ?? "",
@@ -164,6 +170,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
             EndPattern = string.IsNullOrWhiteSpace(EndPattern) ? null : EndPattern,
             DurationSeconds = DurationSeconds,
             DurationAuto = DurationAuto,
+            CastAnchored = CastAnchored,
             Color = Color,
             RefreshOnRetrigger = RefreshOnRetrigger,
             RemindWhenMissing = RemindWhenMissing,

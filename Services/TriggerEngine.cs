@@ -53,6 +53,35 @@ public sealed class TriggerEngine
     /// learned recent-window max for a trigger name, or null.</summary>
     public Func<string, double?>? LearnedDuration { get; set; }
 
+    /// <summary>Optional lookup (SpellLibrary): is this start pattern a landing
+    /// sentence that several different spells print? Drives the AUTO half of
+    /// the cast-anchor rule.</summary>
+    public Func<string, bool>? IsSharedLanding { get; set; }
+
+    private const double CastAnchorWindowSec = 15;   // begin-cast -> landing (same as SpellDurations)
+    private (string Key, DateTime At)? _lastOwnCast; // rank-stripped, from "You begin casting X."
+
+    private static readonly Regex BeginCastRx = new(
+        @"^You begin (?:casting|singing) (?<s>.+?)\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>The cast-anchor gate (the Companion's ruling): an anchored
+    /// trigger's start pattern only counts when it follows YOUR own
+    /// "You begin casting &lt;Name&gt;." within the window — an unanchored
+    /// ambiguous landing draws nothing, because a bar that guesses which of
+    /// four hastes just landed would lie about the duration. Auto (null)
+    /// anchors library triggers whose landing sentence is shared.</summary>
+    private bool AnchorAllows(TriggerDefinition trigger, DateTime eventTime)
+    {
+        bool anchored = trigger.CastAnchored
+            ?? (trigger.Id.StartsWith("lib-", StringComparison.Ordinal)
+                && (IsSharedLanding?.Invoke(trigger.StartPattern) ?? false));
+        if (!anchored) return true;
+        return _lastOwnCast is { } c
+            && c.Key == SpellDurations.BaseKey(trigger.Name)
+            && (eventTime - c.At).TotalSeconds is >= 0 and <= CastAnchorWindowSec;
+    }
+
     /// <summary>Auto-learn triggers run on the learned estimate once samples
     /// exist (the configured value is only the starting point — the estimate
     /// may correct in EITHER direction, e.g. level-scaled durations shorter
@@ -179,6 +208,10 @@ public sealed class TriggerEngine
     {
         DateTime eventTime = ExtractTimestamp(rawLine, out string body);
 
+        var cast = BeginCastRx.Match(body);
+        if (cast.Success)
+            _lastOwnCast = (SpellDurations.BaseKey(cast.Groups["s"].Value), eventTime);
+
         foreach (var trigger in _triggers)
         {
             if (!trigger.Enabled) continue;
@@ -232,7 +265,8 @@ public sealed class TriggerEngine
             if (trigger.StartRegex is { } startRx)
             {
                 var m = startRx.Match(body);
-                if (m.Success) StartOrRefresh(trigger, m, eventTime);
+                if (m.Success && AnchorAllows(trigger, eventTime))
+                    StartOrRefresh(trigger, m, eventTime);
             }
 
             // Cooldown reducer: each match cuts time off this trigger's RUNNING
@@ -263,7 +297,8 @@ public sealed class TriggerEngine
         if (trigger.EndRegex is { } endRx && endRx.IsMatch(body))
             cell.Deactivate();
 
-        if (trigger.StartRegex is { } startRx && startRx.IsMatch(body))
+        if (trigger.StartRegex is { } startRx && startRx.IsMatch(body)
+            && AnchorAllows(trigger, eventTime))
             cell.Activate(eventTime.AddSeconds(EffectiveDuration(trigger)));
     }
 

@@ -337,12 +337,90 @@ public partial class App : Application
             Check("triggers default to auto-learn",
                 new Models.TriggerDefinition().DurationAuto);
 
+            // Cast-anchored triggers (the Companion's landing gate): four hastes
+            // all print "You feel much faster.", so a shared landing only starts
+            // the bar whose own begin-cast line it follows — and an unanchored
+            // ambiguous landing starts NOTHING (a guessed bar lies about the
+            // duration). Auto anchors library (lib-*) triggers with shared text.
+            static string Esc(string s) => System.Text.RegularExpressions.Regex.Escape(s);
+            string AT(int s) => new DateTime(2026, 8, 10, 23, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            var ancCfg = new Models.AppConfig();
+            ancCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-quickness", Name = "Quickness", DurationAuto = false,
+                StartPattern = Esc("You feel much faster."),
+                EndPattern = Esc("Your speed returns to normal."), DurationSeconds = 660,
+            });
+            ancCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-alacrity", Name = "Alacrity", DurationAuto = false,
+                StartPattern = Esc("You feel much faster."),
+                EndPattern = Esc("Your speed returns to normal."), DurationSeconds = 660,
+            });
+            foreach (var t in ancCfg.Triggers) ConfigService.CompileOne(t);
+            var anc = new TriggerEngine(ancCfg, new AlertService())
+            {
+                IsSharedLanding = _ => true, // the haste line IS shared
+            };
+            anc.ProcessLine($"[{AT(0)}] You feel much faster.");
+            Check("anchor: unanchored shared landing draws nothing", anc.Bars.Count == 0);
+            anc.ProcessLine($"[{AT(10)}] You begin casting Quickness.");
+            anc.ProcessLine($"[{AT(13)}] You feel much faster.");
+            Check("anchor: own cast resolves the shared landing",
+                anc.Bars.Count == 1 && anc.Bars[0].Name == "Quickness");
+            anc.ProcessLine($"[{AT(100)}] You begin casting Alacrity.");
+            anc.ProcessLine($"[{AT(103)}] Your speed returns to normal.");
+            anc.ProcessLine($"[{AT(103)}] You feel much faster.");
+            Check("anchor: overwriting haste starts the NEW spell's bar only",
+                anc.Bars.Count == 1 && anc.Bars[0].Name == "Alacrity");
+            anc.ProcessLine($"[{AT(200)}] You begin casting Quickness II.");
+            anc.ProcessLine($"[{AT(203)}] You feel much faster.");
+            Check("anchor: cast rank pools onto the base-named trigger",
+                anc.Bars.Any(b => b.Name == "Quickness"));
+            anc.ProcessLine($"[{AT(300)}] You begin casting Celerity.");
+            anc.ProcessLine($"[{AT(340)}] You feel much faster."); // wrong spell AND stale (>15s)
+            Check("anchor: stale or foreign cast starts nothing", anc.Bars.Count == 2);
+
+            var offCfg = new Models.AppConfig();
+            offCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-quickness", Name = "Quickness", DurationSeconds = 660,
+                StartPattern = Esc("You feel much faster."), CastAnchored = false,
+            });
+            ConfigService.CompileOne(offCfg.Triggers[0]);
+            var offEng = new TriggerEngine(offCfg, new AlertService()) { IsSharedLanding = _ => true };
+            offEng.ProcessLine($"[{AT(0)}] You feel much faster.");
+            Check("anchor: explicit untick beats auto", offEng.Bars.Count == 1);
+
+            var freeCfg = new Models.AppConfig();
+            freeCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "custom-haste", Name = "AnyHaste", DurationSeconds = 60,
+                StartPattern = Esc("You feel much faster."),
+            });
+            ConfigService.CompileOne(freeCfg.Triggers[0]);
+            var freeEng = new TriggerEngine(freeCfg, new AlertService()) { IsSharedLanding = _ => true };
+            freeEng.ProcessLine($"[{AT(0)}] You feel much faster.");
+            Check("anchor: custom triggers stay unanchored on auto", freeEng.Bars.Count == 1);
+            freeCfg.Triggers[0].CastAnchored = true;
+            var freeEng2 = new TriggerEngine(freeCfg, new AlertService()) { IsSharedLanding = _ => true };
+            freeEng2.ProcessLine($"[{AT(0)}] You feel much faster.");
+            Check("anchor: explicit tick anchors a custom trigger", freeEng2.Bars.Count == 0);
+            freeEng2.ProcessLine($"[{AT(10)}] You begin casting AnyHaste.");
+            freeEng2.ProcessLine($"[{AT(12)}] You feel much faster.");
+            Check("anchor: anchored custom trigger fires after its own named cast",
+                freeEng2.Bars.Count == 1);
+
             // Duration learning: cast-anchored landing -> wear-off mints a sample;
             // unanchored broadcasts don't; early breaks never lower the estimate;
             // death contaminates; ranks pool; samples persist across restarts.
             string durPath = Path.Combine(Path.GetTempPath(), "eql_dur_test.json");
             File.Delete(durPath);
             var lib2 = new SpellLibrary(new ConfigService());
+            Check("anchor: library flags the shared haste landing as ambiguous",
+                lib2.IsSharedLanding(Esc("You feel much faster."))
+                && !lib2.IsSharedLanding("not a spell line at all"));
             var dur = new SpellDurations(new ConfigService(), lib2, durPath);
             Check("durations: rank suffix pools",
                 SpellDurations.BaseKey("Mesmerization VII") == "mesmerization"
