@@ -644,7 +644,8 @@ public partial class MainWindow : Window
         if (_meter is not null) { try { _meter.Close(); } catch { /* ignore */ } }
         _meter = new MeterWindow(_configService, _combat, _raids, _loot, _skyQuests,
             _config.Overlay.Opacity,
-            _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible);
+            _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible,
+            _config.Overlay.ProcWatcherVisible);
         _meter.Show();
         UpdateMeterVisibility();
     }
@@ -1040,7 +1041,8 @@ public partial class MainWindow : Window
         else
         {
             _meter.ApplySettings(cfg.Overlay.Opacity,
-                cfg.Overlay.SkillTrackerSkills, cfg.Overlay.SkillTrackerVisible);
+                cfg.Overlay.SkillTrackerSkills, cfg.Overlay.SkillTrackerVisible,
+                cfg.Overlay.ProcWatcherVisible);
             UpdateMeterVisibility();
         }
 

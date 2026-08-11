@@ -240,6 +240,22 @@ misses/resists/max in the tooltip. Counts accumulate across fights — only the
 section's **⟲** button resets them. Spell resists count as failed attempts.
 Toggle from the tray.
 
+## Proc watcher
+
+An optional **PROCS section on the DPS meter** (Manage → DPS & Skills) that
+fills itself in — no configuration. A proc is a spell effect of yours that
+lands with **no cast of yours behind it** (detection design from
+[everquest-companion](https://github.com/jmoyers/everquest-companion)'s
+proc-analytics plan, MIT): "You begin casting X." within 12 seconds marks X
+as hand-cast; anything else that lands — weapon procs, poison strikes, buff
+procs like Reaving Strike or Blood Siphon Strike — counts. Each lane shows
+session count, **procs per minute of active combat**, and **procs per 100
+melee swings** (the mechanically-honest rate for chance-on-hit procs), plus
+damage/healing totals. Rates stay blank until there's enough data — 1 proc in
+a 5-second pull is not "12/min". DoT ticks and thorns never count (DoTs are
+cast-detached by construction; thorns rides incoming swings). The skills ⟲
+resets procs too.
+
 ## Plane of Sky quest tracker
 
 Every class's Test quests (~95 quests) with **have/need chips per turn-in

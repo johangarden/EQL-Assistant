@@ -787,6 +787,7 @@ public partial class TriggerManagerWindow : Window
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
         MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
         SkillsVisibleCheck.IsChecked = _config.Overlay.SkillTrackerVisible;
+        ProcsVisibleCheck.IsChecked = _config.Overlay.ProcWatcherVisible;
         SkillListBox.Text = string.Join(", ", _config.Overlay.SkillTrackerSkills);
         SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
         SctProgressCheck.IsChecked = _config.Overlay.SctProgress;
@@ -887,6 +888,7 @@ public partial class TriggerManagerWindow : Window
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,
                 SkillTrackerVisible = SkillsVisibleCheck.IsChecked == true,
+                ProcWatcherVisible = ProcsVisibleCheck.IsChecked == true,
                 SkillTrackerSkills = SkillListBox.Text
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),

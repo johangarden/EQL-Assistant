@@ -1043,6 +1043,41 @@ public partial class App : Application
             Check("progress lines never touch the fight model",
                 p.InCombat == wasActive && Math.Abs(p.DurationSeconds - durBefore) < 0.001);
 
+            // Proc watcher: a spell effect with no own cast behind it is a proc;
+            // a begin-cast within 12s claims it; DoTs and melee never count.
+            var pw = new CombatParser { SelfName = "Johan" };
+            string PTs(int s) => new DateTime(2026, 8, 10, 21, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            pw.ProcessLine($"[{PTs(0)}] Johan hit a gnoll pup for 120 points of fire damage by Smiting Strike.");
+            pw.ProcessLine($"[{PTs(2)}] Johan hit a gnoll pup for 130 points of fire damage by Smiting Strike. (Critical)");
+            Check("procs: cast-less spell damage counts as a proc",
+                pw.SessionProcs.TryGetValue("Smiting Strike", out var lane)
+                && lane.Count == 2 && Math.Abs(lane.Damage - 250) < 0.01
+                && lane.Crits == 1 && Math.Abs(lane.Max - 130) < 0.01);
+            pw.ProcessLine($"[{PTs(4)}] You begin casting Sanity Warp.");
+            pw.ProcessLine($"[{PTs(6)}] Johan hit a gnoll pup for 55 points of magic damage by Sanity Warp.");
+            Check("procs: a hand-cast spell is not a proc", !pw.SessionProcs.ContainsKey("Sanity Warp"));
+            pw.ProcessLine($"[{PTs(30)}] Johan hit a gnoll pup for 55 points of magic damage by Sanity Warp.");
+            Check("procs: the same spell cast-less later IS one (the Spellblade case)",
+                pw.SessionProcs.TryGetValue("Sanity Warp", out var mixed) && mixed.Count == 1);
+            pw.ProcessLine($"[{PTs(32)}] A gnoll pup has taken 40 damage from Ignite by Johan.");
+            Check("procs: DoT ticks never count", !pw.SessionProcs.ContainsKey("Ignite"));
+            pw.ProcessLine($"[{PTs(34)}] You slash a gnoll pup for 15 points of damage.");
+            Check("procs: melee never counts", !pw.SessionProcs.ContainsKey("slash"));
+            pw.ProcessLine($"[{PTs(36)}] Johan healed himself for 60 hit points by Lifetap Strike.");
+            Check("procs: a cast-less heal is a heal proc",
+                pw.SessionProcs.TryGetValue("Lifetap Strike", out var lt)
+                && lt.Count == 1 && Math.Abs(lt.Heal - 60) < 0.01);
+            Check("procs: swings = your melee hits + misses", pw.SessionSwings == 1);
+            double liveActive = pw.SessionActiveSeconds;
+            Check("procs: active time accrues while fighting", liveActive is > 30 and < 45);
+            pw.Tick(new DateTime(2026, 8, 10, 21, 2, 0)); // idle out -> Archive
+            Check("procs: an archived fight keeps its active time exactly once",
+                Math.Abs(pw.SessionActiveSeconds - liveActive) < 0.5);
+            pw.ResetSessionSkills();
+            Check("procs: the session reset clears lanes and active time",
+                pw.SessionProcs.Count == 0 && pw.SessionActiveSeconds == 0 && pw.SessionSwings == 0);
+
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions
             {
@@ -1147,6 +1182,20 @@ public partial class App : Application
             foreach (var kv in incAb.OrderByDescending(kv => kv.Value).Take(8))
                 report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
             report.AppendLine($"--- loot: {lootUp} upgrades, {lootKept} kept, {lootSold} vendored for {LootTracker.FormatCoins(lootCopper)} ---");
+
+            // Proc watcher probe (the Companion's table, on OUR log): lanes with
+            // counts, damage/heal, and both rates over the session denominators.
+            double activeSec = p.SessionActiveSeconds;
+            int swings = p.SessionSwings;
+            report.AppendLine($"--- procs: active {activeSec / 60:0.0} min · {swings:N0} swings ---");
+            foreach (var kv in p.SessionProcs.OrderByDescending(kv => kv.Value.Count).Take(12))
+            {
+                var v = kv.Value;
+                string amounts = v.Damage > 0 ? $"{v.Damage:N0} dmg" : $"{v.Heal:N0} healed";
+                report.AppendLine($"  {kv.Key}: x{v.Count} · {amounts} · " +
+                    $"{(activeSec >= 10 ? $"{v.Count * 60 / activeSec:0.00}/min" : "-")} · " +
+                    $"{(swings >= 20 ? $"{100.0 * v.Count / swings:0.00}/100 swings" : "-")}");
+            }
             Environment.ExitCode = 0;
         }
         catch (Exception ex)

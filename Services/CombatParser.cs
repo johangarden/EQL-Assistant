@@ -160,13 +160,73 @@ public sealed class CombatParser
     /// (the Manager's "seen in your log" skill picker).</summary>
     public IReadOnlyDictionary<string, SkillStat> SessionSkills => _sessionSkills;
 
-    public void ResetSessionSkills() => _sessionSkills.Clear();
+    /// <summary>The meter's ⟲ wipes ALL session stats: skills, procs, active time.</summary>
+    public void ResetSessionSkills()
+    {
+        _sessionSkills.Clear();
+        _sessionProcs.Clear();
+        _archivedActiveSec = 0;
+    }
 
     private SkillStat SessionSkill(string ability)
     {
         if (!_sessionSkills.TryGetValue(ability, out var s))
             _sessionSkills[ability] = s = new SkillStat();
         return s;
+    }
+
+    // ---- session proc watcher ---------------------------------------------------
+    // A proc is a spell-effect damage/heal line of YOURS with no own cast line
+    // behind it (design from jmoyers/everquest-companion's proc-analytics plan):
+    // "You begin casting X." within the window marks X as hand-cast; a spell
+    // that lands without one procced off a weapon, poison or buff. DoT ticks
+    // are never candidates (their lines are cast-detached by construction) and
+    // thorns rides INCOMING swings, so neither belongs in a per-swing proc
+    // rate. Session-scoped like the skill tracker; the ⟲ clears both.
+
+    public sealed class ProcStat
+    {
+        public int Count;
+        public double Damage;
+        public double Heal;
+        public double Max;
+        public int Crits;
+    }
+
+    /// <summary>Begin-cast → landing window. 12s, measured by the Companion on a
+    /// 1.1M-line log: every pure proc scores cast=0, every hand-cast nuke proc=0.</summary>
+    public const double ProcCastWindowSec = 12;
+
+    private readonly Dictionary<string, DateTime> _recentCasts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ProcStat> _sessionProcs = new(StringComparer.OrdinalIgnoreCase);
+    private double _archivedActiveSec;
+
+    /// <summary>Session proc lanes, exactly as the log spells them.</summary>
+    public IReadOnlyDictionary<string, ProcStat> SessionProcs => _sessionProcs;
+
+    /// <summary>Active combat seconds this session (archived fights + the LIVE
+    /// one) — the procs-per-minute denominator. Only an active fight adds its
+    /// running duration; an idled-out fight already counted via Archive().</summary>
+    public double SessionActiveSeconds => _archivedActiveSec + (_active ? DurationSeconds : 0);
+
+    /// <summary>Your melee swing attempts this session (hits + misses) — the
+    /// mechanically-correct denominator for a chance-on-hit proc.</summary>
+    public int SessionSwings => _sessionSkills
+        .Where(kv => IsMeleeAbility(kv.Key))
+        .Sum(kv => kv.Value.Hits + kv.Value.Misses);
+
+    private void NoteProc(string ability, double amount, bool heal, DateTime time, bool crit)
+    {
+        if (_recentCasts.TryGetValue(SpellDurations.BaseKey(ability), out var castAt)
+            && (time - castAt).TotalSeconds is >= 0 and <= ProcCastWindowSec)
+            return; // hand-cast, not a proc
+
+        if (!_sessionProcs.TryGetValue(ability, out var p))
+            _sessionProcs[ability] = p = new ProcStat();
+        p.Count++;
+        if (heal) p.Heal += amount; else p.Damage += amount;
+        if (amount > p.Max) p.Max = amount;
+        if (crit) p.Crits++;
     }
 
     /// <summary>Event cap per fight — a 10-minute raid fight sits well under this.</summary>
@@ -390,6 +450,11 @@ public sealed class CombatParser
         @"^You have been slain by (?<mob>.+?)!",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Own cast lines mark a spell as hand-cast for the proc detector.
+    private static readonly Regex BeginCastRx = new(
+        @"^You begin (?:casting|singing) (?<s>.+?)\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private static readonly Regex TimestampPrefix =
         new(@"^\[(?<ts>.+?)\]\s?", RegexOptions.Compiled);
 
@@ -419,10 +484,18 @@ public sealed class CombatParser
             return;
         }
 
+        // Own casts feed the proc detector: a spell landing WITHOUT one procced.
+        if (body.StartsWith("You begin ", StringComparison.Ordinal)
+            && BeginCastRx.Match(body) is { Success: true } cast)
+        {
+            _recentCasts[SpellDurations.BaseKey(cast.Groups["s"].Value)] = time;
+            return;
+        }
+
         bool crit = body.Contains("(Critical)", StringComparison.Ordinal);
 
         Match m = NonMeleeRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit); return; }
+        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true); return; }
 
         m = DotRx.Match(body);
         if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit); return; }
@@ -434,7 +507,9 @@ public sealed class CombatParser
         if (m.Success)
         {
             string spell = m.Groups["spell"].Success ? m.Groups["spell"].Value : "heal";
-            AddHealing(m.Groups["att"].Value, m.Groups["tgt"].Value, spell, Amount(m, "amt"), time, crit);
+            // Named heals only — a bare "You healed X" line can't identify a proc.
+            AddHealing(m.Groups["att"].Value, m.Groups["tgt"].Value, spell, Amount(m, "amt"), time, crit,
+                procCandidate: m.Groups["spell"].Success);
             return;
         }
 
@@ -579,6 +654,7 @@ public sealed class CombatParser
         };
         _history.Insert(0, rec);
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
+        _archivedActiveSec += rec.DurationSeconds; // session PPM denominator
         FightArchived?.Invoke(rec);
     }
 
@@ -669,7 +745,7 @@ public sealed class CombatParser
     // ---- accumulation ---------------------------------------------------------
 
     private void AddDamage(string attacker, string target, string ability, double amount, DateTime time,
-        SctFlavor flavor = SctFlavor.Melee, bool crit = false)
+        SctFlavor flavor = SctFlavor.Melee, bool crit = false, bool procCandidate = false)
     {
         attacker = Normalize(attacker);
         target = Normalize(target);
@@ -703,6 +779,7 @@ public sealed class CombatParser
             skill.Total += amount;
             if (crit) skill.Crits++;
             if (amount > skill.Max) skill.Max = amount;
+            if (procCandidate) NoteProc(ability, amount, heal: false, time, crit);
             Note(time, ability, amount, FightStream.SelfOut, crit);
             SctEvent?.Invoke(new SctHit(SctKind.OutgoingSelf, ability, amount, flavor, crit));
         }
@@ -780,7 +857,8 @@ public sealed class CombatParser
         return stat;
     }
 
-    private void AddHealing(string healer, string target, string spell, double amount, DateTime time, bool crit)
+    private void AddHealing(string healer, string target, string spell, double amount, DateTime time,
+        bool crit, bool procCandidate = false)
     {
         healer = Normalize(healer);
         target = Normalize(target);
@@ -792,6 +870,7 @@ public sealed class CombatParser
 
         if (IsSelf(healer))
         {
+            if (procCandidate) NoteProc(spell, amount, heal: true, time, crit);
             Note(time, spell, amount, FightStream.HealOut, crit);
             SctEvent?.Invoke(new SctHit(SctKind.HealOut, spell, amount, SctFlavor.Heal, crit));
         }

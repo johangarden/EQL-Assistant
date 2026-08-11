@@ -686,6 +686,13 @@
                                                Text="Every ability you've used this session, busiest first ('Catch up from today's log' fills it after a restart). Double-click to track."/>
                                 </StackPanel>
                             </Grid>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Proc watcher" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A PROCS section under the meter that fills itself in — any spell effect of yours that lands with no cast behind it (weapon, poison and buff procs), with session counts, procs per minute of active combat, and procs per 100 melee swings. Rates stay blank until there's enough data to be honest. Design borrowed from everquest-companion (MIT)."/>
+
+                            <CheckBox x:Name="ProcsVisibleCheck" Content="Show the proc watcher on the DPS meter" Margin="0,12,0,0"/>
                         </StackPanel>
                     </ScrollViewer>
 

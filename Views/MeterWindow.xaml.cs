@@ -32,6 +32,8 @@ public partial class MeterWindow : Window
     private readonly Dictionary<string, Brush> _fillByName = new(StringComparer.OrdinalIgnoreCase);
     private List<string> _skillNames;
     private bool _skillsVisible;
+    private bool _procsVisible;
+    private readonly ObservableCollection<MeterRowViewModel> _procRows = new();
     private bool _showHealing;
     private int _nextColor;
 
@@ -55,7 +57,8 @@ public partial class MeterWindow : Window
     };
 
     public MeterWindow(ConfigService config, CombatParser parser, RaidKills raids, LootTracker loot,
-        SkyQuests sky, double opacity, IEnumerable<string> skills, bool skillsVisible)
+        SkyQuests sky, double opacity, IEnumerable<string> skills, bool skillsVisible,
+        bool procsVisible = false)
     {
         InitializeComponent();
 
@@ -69,9 +72,12 @@ public partial class MeterWindow : Window
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
         _placement = new PanelPlacement(this, config, "meter", Anchor.TopRight, 40, 300);
 
+        _procsVisible = procsVisible;
         RowsControl.ItemsSource = _rows;
         SkillRowsControl.ItemsSource = _skillRows;
+        ProcRowsControl.ItemsSource = _procRows;
         SkillsSection.Visibility = _skillsVisible ? Visibility.Visible : Visibility.Collapsed;
+        ProcsSection.Visibility = _procsVisible ? Visibility.Visible : Visibility.Collapsed;
 
         _tick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(500) };
         _tick.Tick += (_, _) => Refresh();
@@ -97,12 +103,22 @@ public partial class MeterWindow : Window
     public void ResetPosition() => _placement.ResetToDefault();
 
     /// <summary>Apply changed settings live — the fight and any open history window survive.</summary>
-    public void ApplySettings(double opacity, IEnumerable<string> skills, bool skillsVisible)
+    public void ApplySettings(double opacity, IEnumerable<string> skills, bool skillsVisible,
+        bool procsVisible = false)
     {
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
         _skillNames = CleanSkills(skills);
         SetSkillsVisible(skillsVisible);
+        SetProcsVisible(procsVisible);
         _placement.Reload();
+    }
+
+    /// <summary>Show/hide the proc watcher section (Manager page).</summary>
+    public void SetProcsVisible(bool visible)
+    {
+        _procsVisible = visible;
+        ProcsSection.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        if (visible) RefreshProcs();
     }
 
     /// <summary>Show/hide the skills section (tray toggle / Manager page).</summary>
@@ -141,8 +157,9 @@ public partial class MeterWindow : Window
 
     private void OnSkillsReset(object sender, RoutedEventArgs e)
     {
-        _parser.ResetSessionSkills();
+        _parser.ResetSessionSkills(); // clears skills, procs and session active time
         RefreshSkills();
+        RefreshProcs();
     }
 
     private HistoryWindow? _historyWindow;
@@ -234,6 +251,61 @@ public partial class MeterWindow : Window
 
         UpdateIncoming();
         RefreshSkills();
+        RefreshProcs();
+    }
+
+    // Rates hide below these floors rather than lying: 1 proc in a 5-second
+    // pull is not "12/min" (the Companion's law 5 — aggregates lie).
+    private const double MinActiveSecForPpm = 10;
+    private const int MinSwingsForRate = 20;
+    private const int MaxProcRows = 8;
+
+    /// <summary>One row per proc lane, busiest first, with PPM and per-100-swings
+    /// when the denominators are meaningful. Bars scale to the busiest lane.</summary>
+    private void RefreshProcs()
+    {
+        if (!_procsVisible) return;
+
+        var lanes = _parser.SessionProcs
+            .OrderByDescending(kv => kv.Value.Count)
+            .Take(MaxProcRows)
+            .ToList();
+        ProcsHint.Visibility = lanes.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        double activeSec = _parser.SessionActiveSeconds;
+        int swings = _parser.SessionSwings;
+        double maxCount = lanes.Count > 0 ? lanes[0].Value.Count : 1;
+
+        while (_procRows.Count > lanes.Count) _procRows.RemoveAt(_procRows.Count - 1);
+        while (_procRows.Count < lanes.Count) _procRows.Add(new MeterRowViewModel());
+
+        for (int i = 0; i < lanes.Count; i++)
+        {
+            var (name, p) = (lanes[i].Key, lanes[i].Value);
+            var row = _procRows[i];
+            row.Name = name;
+            row.Fraction = p.Count / Math.Max(1, maxCount);
+            row.Fill = FillFor(name);
+
+            string ppm = activeSec >= MinActiveSecForPpm
+                ? $" · {p.Count * 60 / activeSec:0.0}/min" : "";
+            string per100 = swings >= MinSwingsForRate
+                ? $" · {100.0 * p.Count / swings:0.0}/100" : "";
+            row.ValueText = $"×{p.Count}{ppm}{per100}";
+
+            var extra = new List<string>();
+            if (p.Damage > 0) extra.Add($"{FormatNum(p.Damage)} dmg");
+            if (p.Heal > 0) extra.Add($"{FormatNum(p.Heal)} healed");
+            if (p.Crits > 0) extra.Add($"{p.Crits} crit");
+            if (p.Max > 0) extra.Add($"max {p.Max:N0}");
+            row.Detail = string.Join(" · ", extra);
+        }
+
+        int total = _parser.SessionProcs.Sum(kv => kv.Value.Count);
+        ProcsSummary.Text = total == 0 ? "session"
+            : activeSec >= MinActiveSecForPpm
+                ? $"session · {total:N0} procs · {total * 60 / activeSec:0.0}/min"
+                : $"session · {total:N0} procs";
     }
 
     /// <summary>One bar per configured skill, filled and colored by session hit rate.</summary>
