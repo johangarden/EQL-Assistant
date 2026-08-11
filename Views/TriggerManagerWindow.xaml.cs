@@ -156,6 +156,7 @@ public partial class TriggerManagerWindow : Window
 
         UpdateCharInfo();
 
+        PopulateSoundPresets();
         LoadSettingsFields();
         MuteCheck.IsChecked = _alerts.Muted;
         MuteCheck.Click += (_, _) => _alerts.Muted = MuteCheck.IsChecked == true;
@@ -508,6 +509,51 @@ public partial class TriggerManagerWindow : Window
         UpdateDurationUx();
         UpdateAnchorUx();
         UpdateLiveLogUx();
+        UpdateSoundUx();
+    }
+
+    // ---- notification sound picker -------------------------------------------
+    // Windows ships ~40 notification wavs in <windir>\Media on every install —
+    // a ready sound library with nothing to bundle or copy between machines.
+
+    private sealed record SoundPreset(string Name, string Path)
+    {
+        public override string ToString() => Name;
+    }
+
+    private bool _soundUxLoading;
+
+    private void PopulateSoundPresets()
+    {
+        var items = new List<SoundPreset> { new("(no sound)", "") };
+        try
+        {
+            string media = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Media");
+            items.AddRange(System.IO.Directory.GetFiles(media, "*.wav")
+                .Select(f => new SoundPreset(System.IO.Path.GetFileNameWithoutExtension(f), f))
+                .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase));
+        }
+        catch { /* no Media folder — Browse still works */ }
+        SoundPresetBox.ItemsSource = items;
+    }
+
+    private void SoundPreset_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_soundUxLoading || Selected is null) return;
+        if (SoundPresetBox.SelectedItem is SoundPreset p)
+            Selected.AlertSound = p.Path;
+    }
+
+    /// <summary>Sync the picker to the selected trigger: a preset shows by
+    /// name, a custom/browsed path leaves the combo blank.</summary>
+    private void UpdateSoundUx()
+    {
+        if (SoundPresetBox?.ItemsSource is not List<SoundPreset> items) return;
+        _soundUxLoading = true;
+        SoundPresetBox.SelectedItem = items.FirstOrDefault(p =>
+            p.Path.Equals(Selected?.AlertSound ?? "", StringComparison.OrdinalIgnoreCase));
+        _soundUxLoading = false;
     }
 
     /// <summary>The live-log capture panel is manual-trigger tooling — library

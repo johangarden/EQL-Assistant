@@ -296,8 +296,10 @@
                                 <TextBlock Text="Alerts" Style="{StaticResource SectionTitle}"/>
 
                                 <StackPanel x:Name="WarnGroup">
-                                    <TextBlock Text="Warn this many seconds before it drops (0 = off)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="Fire the alert this many seconds before it drops (0 = off)" Style="{StaticResource FieldLabel}"/>
                                     <TextBox Text="{Binding AlertAtSeconds}" Width="120" HorizontalAlignment="Left"/>
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="This is the WHEN, not the what: at this many seconds left, the spoken phrase and/or sound below play. The bar turning amber near the end is separate (the global warn colour)."/>
                                     <CheckBox Content="Alert when it reaches 0 (use for cooldown 'ready')"
                                               IsChecked="{Binding AlertOnExpire}" Margin="0,8,0,0"/>
                                 </StackPanel>
@@ -320,12 +322,18 @@
                                               Content="Voice on"
                                               ToolTip="Off keeps the phrase for later but never speaks it — library triggers arrive with a default fade warning you can simply switch off"/>
 
-                                    <TextBlock Text="Play this .wav file" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="Play a sound" Style="{StaticResource FieldLabel}"/>
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBox Text="{Binding AlertSound, UpdateSourceTrigger=PropertyChanged}" Width="320"/>
-                                        <Button Content="Browse" Click="BrowseSound_Click" Width="66" Margin="8,0,0,0"/>
-                                        <Button Content="Play" Click="PlaySound_Click" Width="50" Margin="4,0,0,0"/>
+                                        <ComboBox x:Name="SoundPresetBox" Width="200" MinHeight="30"
+                                                  SelectionChanged="SoundPreset_Changed"
+                                                  ToolTip="Windows' built-in notification sounds — present on every machine, nothing to copy around"/>
+                                        <Button Content="Play" Click="PlaySound_Click" Width="50" Margin="8,0,0,0"/>
+                                        <Button Content="Browse…" Click="BrowseSound_Click" Width="76" Margin="4,0,0,0"
+                                                ToolTip="Use your own .wav instead"/>
                                     </StackPanel>
+                                    <TextBox Text="{Binding AlertSound, UpdateSourceTrigger=PropertyChanged}" Width="320"
+                                             Margin="0,4,0,0" FontSize="11"
+                                             ToolTip="The file that will play — filled by the picker, editable by hand"/>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
