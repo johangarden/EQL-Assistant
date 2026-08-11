@@ -50,10 +50,14 @@
             </DockPanel>
         </StackPanel>
 
+        <!-- Recycling + IsVirtualizingWhenGrouping is a known WPF combo that
+             silently skips rows while scrolling grouped lists (Sloths Healing
+             vanished from the SHM listing) — Standard mode renders reliably
+             and 250 capped rows cost nothing. -->
         <ListBox x:Name="ResultsList"
                  HorizontalContentAlignment="Stretch"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 VirtualizingPanel.VirtualizationMode="Recycling"
+                 VirtualizingPanel.VirtualizationMode="Standard"
                  VirtualizingPanel.IsVirtualizingWhenGrouping="True">
             <ListBox.GroupStyle>
                 <GroupStyle>
