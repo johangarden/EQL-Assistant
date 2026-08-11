@@ -23,7 +23,7 @@
             <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="#FFD54F"
                        FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
             <TextBlock Foreground="#7F93AD" FontSize="11" TextWrapping="Wrap"
-                       Text="Kills are detected from death lines in the log and remembered forever. Edit raid-targets.json in the config folder to change the target list."/>
+                       Text="Kills are detected from death lines in the log and remembered forever. Click a defeated target to unfold its kill history. Edit raid-targets.json in the config folder to change the target list."/>
         </DockPanel>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -44,34 +44,78 @@
                                 <ItemsControl ItemsSource="{Binding Rows}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <DockPanel Margin="2,2" ToolTip="{Binding Tip}"
-                                                       ToolTipService.ShowDuration="60000"
-                                                       Background="Transparent">
-                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}"
-                                                           Foreground="#8FA6C4" FontSize="11" Margin="8,0,0,0"
-                                                           VerticalAlignment="Center"/>
-                                                <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Badges}"
-                                                              Margin="8,0,0,0" VerticalAlignment="Center">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <StackPanel Orientation="Horizontal"/>
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
+                                            <StackPanel>
+                                                <Border Background="Transparent" Cursor="Hand"
+                                                        Tag="{Binding}" MouseLeftButtonUp="Row_Click">
+                                                    <DockPanel Margin="2,2">
+                                                        <TextBlock Text="{Binding Chevron}" Foreground="#5C6B82"
+                                                                   FontSize="11" Width="14"
+                                                                   VerticalAlignment="Center"/>
+                                                        <Grid Width="22" Height="22" Margin="0,0,8,0"
+                                                              VerticalAlignment="Center"
+                                                              Opacity="{Binding GlyphOpacity}">
+                                                            <Ellipse Fill="{Binding GlyphBg}"
+                                                                     Stroke="{Binding GlyphRing}" StrokeThickness="1"/>
+                                                            <Path Data="{Binding Glyph}" Fill="{Binding GlyphBrush}"
+                                                                  Stretch="Uniform" Margin="4"/>
+                                                            <TextBlock Text="{Binding Monogram}" Foreground="{Binding GlyphBrush}"
+                                                                       FontSize="11" FontWeight="Bold"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}"
+                                                                   Foreground="#8FA6C4" FontSize="11" Margin="8,0,0,0"
+                                                                   VerticalAlignment="Center"/>
+                                                        <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Badges}"
+                                                                      Margin="8,0,0,0" VerticalAlignment="Center">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <StackPanel Orientation="Horizontal"/>
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Border CornerRadius="3" Background="{Binding Bg}"
+                                                                            Padding="4,1" Margin="2,0,0,0">
+                                                                        <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
+                                                                                   FontSize="9" FontWeight="Bold"/>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                        <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}"
+                                                                   FontSize="12" FontWeight="{Binding Weight}"
+                                                                   VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                    </DockPanel>
+                                                </Border>
+                                                <ItemsControl ItemsSource="{Binding Details}"
+                                                              Visibility="{Binding DetailsVisibility}"
+                                                              Margin="16,0,0,4">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Border CornerRadius="3" Background="{Binding Bg}"
-                                                                    Padding="4,1" Margin="2,0,0,0">
-                                                                <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
-                                                                           FontSize="9" FontWeight="Bold"/>
+                                                            <Border Margin="0,2,0,2" Padding="8,5" CornerRadius="5"
+                                                                    Background="#161C29">
+                                                                <DockPanel>
+                                                                    <Button DockPanel.Dock="Right" Content="fight ↗"
+                                                                            FontSize="10" Padding="7,2" Margin="10,0,0,0"
+                                                                            VerticalAlignment="Center"
+                                                                            Visibility="{Binding FightVisibility}"
+                                                                            Tag="{Binding}" Click="Fight_Click"
+                                                                            ToolTip="Open this kill's DPS breakdown in the fight history"/>
+                                                                    <StackPanel>
+                                                                        <TextBlock Text="{Binding Header}" Foreground="#C9D4E3"
+                                                                                   FontSize="11"/>
+                                                                        <TextBlock Text="{Binding ItemsText}"
+                                                                                   Foreground="{Binding ItemsBrush}"
+                                                                                   FontSize="10.5" TextWrapping="Wrap"
+                                                                                   Margin="0,2,0,0"/>
+                                                                    </StackPanel>
+                                                                </DockPanel>
                                                             </Border>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
-                                                <TextBlock Text="{Binding Name}" Foreground="{Binding NameBrush}"
-                                                           FontSize="12" FontWeight="{Binding Weight}"
-                                                           VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                            </DockPanel>
+                                            </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>

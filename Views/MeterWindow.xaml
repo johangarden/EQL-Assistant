@@ -120,6 +120,27 @@
                            Visibility="Collapsed"
                            Text="No skills configured — add some under Manage → Skill tracker."/>
             </StackPanel>
+
+            <!-- Session proc watcher (optional; Manage → DPS &amp; Skills). -->
+            <StackPanel x:Name="ProcsSection" Visibility="Collapsed">
+                <Border BorderBrush="#3A4560" BorderThickness="0,1,0,0" Margin="0,5,0,5"/>
+                <DockPanel Margin="0,0,0,3">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Click="OnSkillsReset"
+                            Width="16" Height="16" FontSize="9"
+                            FontFamily="Segoe MDL2 Assets" Content="&#xE72C;"
+                            ToolTip="Reset the session skill &amp; proc counts"/>
+                    <TextBlock x:Name="ProcsSummary" DockPanel.Dock="Right" Text=""
+                               Foreground="#5C6B82" FontSize="9" VerticalAlignment="Center"
+                               Margin="0,0,6,0"/>
+                    <TextBlock Text="PROCS" Foreground="#5C6B82" FontSize="9" FontWeight="Bold"
+                               Margin="1,0,0,0" VerticalAlignment="Center"
+                               ToolTip="Spell effects that landed with no cast of yours behind them — weapon, poison and buff procs. Rates: per minute of active combat time, and per 100 melee swings (blank until enough data)."/>
+                </DockPanel>
+                <ItemsControl x:Name="ProcRowsControl" ItemTemplate="{StaticResource BarRow}"/>
+                <TextBlock x:Name="ProcsHint" Foreground="#5C6B82" FontSize="10" TextWrapping="Wrap"
+                           Visibility="Collapsed"
+                           Text="No procs seen yet this session — they appear on their own when a weapon or buff proc fires."/>
+            </StackPanel>
         </StackPanel>
     </Border>
 </Window>

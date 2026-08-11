@@ -30,11 +30,6 @@ public partial class TriggerManagerWindow : Window
     private readonly ObservableCollection<string> _recent = new();
 
     private static readonly Regex TimestampPrefix = new(@"^\[.+?\]\s?", RegexOptions.Compiled);
-    private static readonly string[] PresetColors =
-    {
-        "#4FC3F7", "#BA68C8", "#81C784", "#FFB74D", "#E57373", "#F06292",
-        "#64B5F6", "#4DB6AC", "#FFD54F", "#A1887F", "#9575CD", "#E53935",
-    };
 
     private readonly SpellDurations? _durations;
 
@@ -132,8 +127,16 @@ public partial class TriggerManagerWindow : Window
         _configService.EnsureDefaultLoadout();
         foreach (var lo in _configService.ListLoadouts())
         {
+            // Library triggers created before 2.9 only knew Buffs/Debuffs —
+            // re-derive their type (HoTs/DoTs) from the spell data.
+            spellLibrary.HealLibraryTriggers(lo.Triggers);
+
+            // Stable type-sort so the grouped list shows each type once, in a
+            // fixed order (bars types, then matrices, repops, flashes) —
+            // manual matrix ordering survives inside its group.
             _byName[lo.Name] = new ObservableCollection<TriggerEditViewModel>(
-                lo.Triggers.Select(TriggerEditViewModel.FromDefinition));
+                lo.Triggers.Select(TriggerEditViewModel.FromDefinition)
+                    .OrderBy(vm => vm.GroupRank));
             _order.Add(lo.Name);
         }
         if (_order.Count == 0)
@@ -153,7 +156,7 @@ public partial class TriggerManagerWindow : Window
 
         UpdateCharInfo();
 
-        BuildSwatches();
+        PopulateSoundPresets();
         LoadSettingsFields();
         MuteCheck.IsChecked = _alerts.Muted;
         MuteCheck.Click += (_, _) => _alerts.Muted = MuteCheck.IsChecked == true;
@@ -389,7 +392,13 @@ public partial class TriggerManagerWindow : Window
     private void ShowLoadout(string name)
     {
         _currentName = name;
-        TriggerList.ItemsSource = CurrentList;
+        // Grouped by type with live shaping — changing a trigger's panel or
+        // category moves it to the right section immediately.
+        var view = new System.Windows.Data.ListCollectionView(CurrentList) { IsLiveGrouping = true };
+        view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(
+            nameof(TriggerEditViewModel.GroupLabel)));
+        view.LiveGroupingProperties.Add(nameof(TriggerEditViewModel.GroupLabel));
+        TriggerList.ItemsSource = view;
         if (CurrentList.Count > 0) TriggerList.SelectedIndex = 0;
         else { DetailsScroller.DataContext = null; DetailsScroller.IsEnabled = false; }
 
@@ -498,6 +507,64 @@ public partial class TriggerManagerWindow : Window
         DetailsScroller.DataContext = Selected;
         DetailsScroller.IsEnabled = Selected != null;
         UpdateDurationUx();
+        UpdateAnchorUx();
+        UpdateLiveLogUx();
+        UpdateSoundUx();
+    }
+
+    // ---- notification sound picker -------------------------------------------
+    // Windows ships ~40 notification wavs in <windir>\Media on every install —
+    // a ready sound library with nothing to bundle or copy between machines.
+
+    private sealed record SoundPreset(string Name, string Path)
+    {
+        public override string ToString() => Name;
+    }
+
+    private bool _soundUxLoading;
+
+    private void PopulateSoundPresets()
+    {
+        var items = new List<SoundPreset> { new("(no sound)", "") };
+        try
+        {
+            string media = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Media");
+            items.AddRange(System.IO.Directory.GetFiles(media, "*.wav")
+                .Select(f => new SoundPreset(System.IO.Path.GetFileNameWithoutExtension(f), f))
+                .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase));
+        }
+        catch { /* no Media folder — Browse still works */ }
+        SoundPresetBox.ItemsSource = items;
+    }
+
+    private void SoundPreset_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_soundUxLoading || Selected is null) return;
+        if (SoundPresetBox.SelectedItem is SoundPreset p)
+            Selected.AlertSound = p.Path;
+    }
+
+    /// <summary>Sync the picker to the selected trigger: a preset shows by
+    /// name, a custom/browsed path leaves the combo blank.</summary>
+    private void UpdateSoundUx()
+    {
+        if (SoundPresetBox?.ItemsSource is not List<SoundPreset> items) return;
+        _soundUxLoading = true;
+        SoundPresetBox.SelectedItem = items.FirstOrDefault(p =>
+            p.Path.Equals(Selected?.AlertSound ?? "", StringComparison.OrdinalIgnoreCase));
+        _soundUxLoading = false;
+    }
+
+    /// <summary>The live-log capture panel is manual-trigger tooling — library
+    /// adds arrive with correct patterns, so it hides for them (and when
+    /// nothing is selected).</summary>
+    private void UpdateLiveLogUx()
+    {
+        if (LiveLogGroup is null || LiveLogRow is null) return;
+        bool show = Selected is { IsLibrary: false };
+        LiveLogGroup.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        LiveLogRow.Height = new GridLength(show ? 210 : 0);
     }
 
     /// <summary>Title bar carries version + the auto-detected character (+ pet).</summary>
@@ -512,6 +579,44 @@ public partial class TriggerManagerWindow : Window
     }
 
     private void DurationAuto_Changed(object sender, RoutedEventArgs e) => UpdateDurationUx();
+
+    private bool _anchorUxLoading;
+
+    private void CastAnchor_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_anchorUxLoading || Selected is null) return;
+        Selected.CastAnchored = CastAnchorCheck.IsChecked == true; // explicit from here on
+        UpdateAnchorUx();
+    }
+
+    /// <summary>The cast-anchor checkbox shows the EFFECTIVE state: an untouched
+    /// trigger is on auto (library triggers whose landing sentence is shared by
+    /// several spells anchor themselves — all hastes print "You feel much
+    /// faster."); clicking it stores an explicit choice.</summary>
+    private void UpdateAnchorUx()
+    {
+        if (CastAnchorCheck is null || CastAnchorHint is null) return;
+        if (Selected is null) { CastAnchorHint.Text = ""; return; }
+
+        bool shared = _spellLibrary.IsSharedLanding(Selected.StartPattern);
+        bool effective = Selected.CastAnchored
+            ?? (Selected.Id.StartsWith("lib-", StringComparison.Ordinal) && shared);
+
+        _anchorUxLoading = true;
+        CastAnchorCheck.IsChecked = effective;
+        _anchorUxLoading = false;
+
+        string castLine = $"\"You begin casting {Selected.Name}.\"";
+        CastAnchorHint.Text = Selected.CastAnchored is null
+            ? shared && effective
+                ? $"Auto: ON — several spells print this exact landing text (all hastes say the same line), so the bar only starts right after your own {castLine} Untick to fire on any match."
+                : shared
+                    ? $"Several spells print this exact landing text — tick to only start the bar right after your own {castLine}"
+                    : $"Off — this start text is unambiguous; any match starts the bar. Tick to require your own {castLine} first."
+            : effective
+                ? $"On — the bar only starts within 15s of your own {castLine}"
+                : "Off — any matching line starts the bar.";
+    }
 
     /// <summary>Auto-learn owns the duration: the field is disabled and the
     /// currently-learned value shows beside it. Manual re-enables the field.</summary>
@@ -537,7 +642,7 @@ public partial class TriggerManagerWindow : Window
 
     private void Add_Click(object sender, RoutedEventArgs e)
     {
-        var t = new TriggerEditViewModel { Name = "New Trigger", Category = "Buffs", Color = "#4FC3F7", DurationSeconds = 60 };
+        var t = new TriggerEditViewModel { Name = "New Trigger", Category = "Buffs", DurationSeconds = 60 };
         CurrentList.Add(t);
         TriggerList.SelectedItem = t;
         TriggerList.ScrollIntoView(t);
@@ -553,16 +658,19 @@ public partial class TriggerManagerWindow : Window
             TriggerList.SelectedIndex = Math.Min(i, CurrentList.Count - 1);
     }
 
+    // Reorder against the UNDERLYING list (the grouped view's indices differ).
     private void MoveUp_Click(object sender, RoutedEventArgs e)
     {
-        int i = TriggerList.SelectedIndex;
-        if (i > 0) { CurrentList.Move(i, i - 1); TriggerList.SelectedIndex = i - 1; }
+        if (Selected is not { } sel) return;
+        int i = CurrentList.IndexOf(sel);
+        if (i > 0) { CurrentList.Move(i, i - 1); TriggerList.SelectedItem = sel; }
     }
 
     private void MoveDown_Click(object sender, RoutedEventArgs e)
     {
-        int i = TriggerList.SelectedIndex;
-        if (i >= 0 && i < CurrentList.Count - 1) { CurrentList.Move(i, i + 1); TriggerList.SelectedIndex = i + 1; }
+        if (Selected is not { } sel) return;
+        int i = CurrentList.IndexOf(sel);
+        if (i >= 0 && i < CurrentList.Count - 1) { CurrentList.Move(i, i + 1); TriggerList.SelectedItem = sel; }
     }
 
     // ---- pattern capture / test --------------------------------------------
@@ -623,13 +731,6 @@ public partial class TriggerManagerWindow : Window
         if (Selected is null) return;
         if (_alerts.Muted) { Status("Unmute to preview."); return; }
         _alerts.Fire(null, Selected.AlertSound);
-    }
-
-    private void BrowseSound_Click(object sender, RoutedEventArgs e)
-    {
-        if (Selected is null) return;
-        var dlg = new OpenFileDialog { Filter = "WAV files (*.wav)|*.wav|All files (*.*)|*.*" };
-        if (dlg.ShowDialog(this) == true) Selected.AlertSound = dlg.FileName;
     }
 
     /// <summary>Jump to a sidebar page by its title ("Repop timer", "General", …).</summary>
@@ -693,7 +794,6 @@ public partial class TriggerManagerWindow : Window
         static Visibility V(bool show) => show ? Visibility.Visible : Visibility.Collapsed;
         CategoryGroup.Visibility = V(bars);
         DurationGroup.Visibility = V(bars || matrix || timer);
-        ColorGroup.Visibility = V(bars || flash);
         EndGroup.Visibility = V(bars || matrix);
         BarsChecksGroup.Visibility = V(bars);
         WarnGroup.Visibility = V(bars || matrix);
@@ -703,6 +803,11 @@ public partial class TriggerManagerWindow : Window
         // Auto-learn is a spell-duration concept — respawn timers don't learn.
         DurationAutoCheck.Visibility = V(bars || matrix);
         DurationAutoHint.Visibility = V(bars || matrix);
+
+        // Cast-anchoring is likewise a spell concept: repop death lines and
+        // flash patterns fire on any match.
+        AnchorGroup.Visibility = V(bars || matrix);
+        UpdateAnchorUx();
 
         // Reordering only matters for matrix triggers (cells lay out in list
         // order); bars always sort themselves by time left.
@@ -743,6 +848,7 @@ public partial class TriggerManagerWindow : Window
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
         MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
         SkillsVisibleCheck.IsChecked = _config.Overlay.SkillTrackerVisible;
+        ProcsVisibleCheck.IsChecked = _config.Overlay.ProcWatcherVisible;
         SkillListBox.Text = string.Join(", ", _config.Overlay.SkillTrackerSkills);
         SctVisibleCheck.IsChecked = _config.Overlay.SctVisible;
         SctProgressCheck.IsChecked = _config.Overlay.SctProgress;
@@ -843,6 +949,7 @@ public partial class TriggerManagerWindow : Window
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,
                 SkillTrackerVisible = SkillsVisibleCheck.IsChecked == true,
+                ProcWatcherVisible = ProcsVisibleCheck.IsChecked == true,
                 SkillTrackerSkills = SkillListBox.Text
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
@@ -933,27 +1040,4 @@ public partial class TriggerManagerWindow : Window
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private void Status(string msg) => StatusText.Text = msg;
-
-    // ---- color swatches -----------------------------------------------------
-
-    private void BuildSwatches()
-    {
-        foreach (var hex in PresetColors)
-        {
-            var btn = new Button
-            {
-                Width = 18,
-                Height = 18,
-                Margin = new Thickness(0, 0, 3, 3),
-                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)),
-                Tag = hex,
-                ToolTip = hex,
-                BorderBrush = Brushes.Gray,
-                BorderThickness = new Thickness(1),
-                Cursor = System.Windows.Input.Cursors.Hand,
-            };
-            btn.Click += (_, _) => { if (Selected != null) Selected.Color = hex; };
-            SwatchPanel.Children.Add(btn);
-        }
-    }
 }

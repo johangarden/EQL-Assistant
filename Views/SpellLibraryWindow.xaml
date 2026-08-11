@@ -31,7 +31,7 @@
                 <TextBlock Text="Add from the spell library" FontSize="16" FontWeight="Bold" Foreground="White"/>
             </DockPanel>
             <TextBlock Foreground="#7F93AD" FontSize="11" Margin="0,2,0,8" TextWrapping="Wrap"
-                       Text="Real cast and wear-off messages with class levels and buff durations — one click adds a ready-made trigger to the current loadout (editable afterwards like any trigger)."/>
+                       Text="One click adds a ready-made countdown bar with a spoken fade warning to the current loadout — type, color, duration and voice all prefilled, all editable on the trigger afterwards."/>
 
             <DockPanel Margin="0,0,0,8">
                 <ComboBox x:Name="ClassBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0"
@@ -53,21 +53,28 @@
         <ListBox x:Name="ResultsList"
                  HorizontalContentAlignment="Stretch"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 VirtualizingPanel.VirtualizationMode="Recycling">
+                 VirtualizingPanel.VirtualizationMode="Recycling"
+                 VirtualizingPanel.IsVirtualizingWhenGrouping="True">
+            <ListBox.GroupStyle>
+                <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
+                        <DataTemplate>
+                            <DockPanel Margin="2,10,6,3">
+                                <TextBlock Text="{Binding Name}" FontSize="10" FontWeight="Bold"
+                                           Foreground="#5C6B82" VerticalAlignment="Center"/>
+                                <Border Height="1" Background="#2A3347"
+                                        Margin="8,1,0,0" VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+            </ListBox.GroupStyle>
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <DockPanel Margin="2,3">
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="Bar" Margin="0,0,4,0" Click="AddBar_Click"
-                                    IsEnabled="{Binding CanBar}"
-                                    ToolTip="Countdown bar: starts on the cast message, cleared by the wear-off line, correct duration prefilled"/>
-                            <Button Content="Bar + voice" Margin="0,0,4,0" Click="AddBarVoice_Click"
-                                    IsEnabled="{Binding CanBar}"
-                                    ToolTip="Same bar, plus a spoken warning 20 seconds before it runs out"/>
-                            <Button Content="Fade flash" Click="AddFade_Click"
-                                    IsEnabled="{Binding CanFade}"
-                                    ToolTip="Screen flash the moment the wear-off line appears in the log"/>
-                        </StackPanel>
+                        <Button DockPanel.Dock="Right" Content="＋ Add" VerticalAlignment="Center"
+                                Click="Add_Click" IsEnabled="{Binding CanBar}"
+                                ToolTip="Countdown bar with the right type, color and duration, plus a spoken fade warning — toggle the voice off on the trigger if you don't want it"/>
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>

@@ -157,9 +157,12 @@ unlocked; positions survive restarts and resolution changes.
 messages, class levels and durations. Filter by *seen in your log*, buffs,
 debuffs or class, then one click adds:
 
-- **Bar** — countdown with the right duration, cleared early by the wear-off line
-- **Bar + voice** — same, plus a spoken warning 20s before it drops
-- **Fade flash** — screen flash the moment the wear-off line appears
+The list is **grouped by level** (the filtered class's level when one is
+picked, else the lowest class level), alphabetical inside each level. One
+**Add** button per spell: a ready-made countdown bar with the right type,
+color and duration, **plus a spoken fade warning** ("Quickness is fading",
+20s before it drops) — the phrase is editable on the trigger, and a **Voice
+on/off** toggle under it silences it without losing the text.
 
 Added triggers are normal triggers — edit them like any other.
 
@@ -169,6 +172,13 @@ A trigger = *"when a log line matches `startPattern`, do something"* — show a
 countdown bar (with category grouping), a matrix cell, or a screen flash;
 optionally cleared early by `endPattern`. Patterns are .NET regex matched after
 the `[timestamp]` prefix; a `(?<target>...)` capture gives per-target bars.
+
+The trigger list is **grouped by type** with divider headers (Buffs, HoTs,
+DoTs, Debuffs, Cooldowns, then the matrices, repop timers and flash alerts),
+and **each type owns its color** — buffs blue, HoTs green, DoTs red, debuffs
+yellow, cooldowns purple — everywhere the trigger shows up (bars, flash text,
+the list swatch). No per-trigger color picking. Disabled triggers gray out in
+place.
 
 Per-trigger alerts: spoken phrase (Windows TTS) and/or `.wav`, *warn N seconds
 before it drops*, *alert at 0* (cooldown "ready"), *remind me to rebuff when
@@ -240,6 +250,22 @@ misses/resists/max in the tooltip. Counts accumulate across fights — only the
 section's **⟲** button resets them. Spell resists count as failed attempts.
 Toggle from the tray.
 
+## Proc watcher
+
+An optional **PROCS section on the DPS meter** (Manage → DPS & Skills) that
+fills itself in — no configuration. A proc is a spell effect of yours that
+lands with **no cast of yours behind it** (detection design from
+[everquest-companion](https://github.com/jmoyers/everquest-companion)'s
+proc-analytics plan, MIT): "You begin casting X." within 12 seconds marks X
+as hand-cast; anything else that lands — weapon procs, poison strikes, buff
+procs like Reaving Strike or Blood Siphon Strike — counts. Each lane shows
+session count, **procs per minute of active combat**, and **procs per 100
+melee swings** (the mechanically-honest rate for chance-on-hit procs), plus
+damage/healing totals. Rates stay blank until there's enough data — 1 proc in
+a 5-second pull is not "12/min". DoT ticks and thorns never count (DoTs are
+cast-detached by construction; thorns rides incoming swings). The skills ⟲
+resets procs too.
+
 ## Plane of Sky quest tracker
 
 Every class's Test quests (~95 quests) with **have/need chips per turn-in
@@ -256,12 +282,22 @@ Both open from the Fight History window (and raid kills from the tray):
 
 - **Raid kills** — a tiered target list (Open World, Fear, Hate, Sky — edit
   `raid-targets.json` to taste) with kill counts and dates, detected from death
-  lines and remembered forever. Each killed target shows **D0–D4 badges** for
+  lines and remembered forever. Every target wears a **hand-drawn vector badge**
+  (dragon, skull, demon, golem, spiroc, wasp, eye, spirit, claw — original
+  silhouettes, no game assets) in its own tint: full color once defeated, a
+  faded tease while it still lives. Targets you add yourself get a monogram
+  badge automatically. Each killed target shows **D0–D4 badges** for
   the zone difficulties you've beaten it at (difficulty is read from the zone
   name — "Befallen 4 (Refined)" = D4; kills recorded before v2.3 count as D0).
-  Every kill also records **what it dropped** (loot lines name the corpse) —
-  hover a killed target for the per-kill drop list, and past loot history is
-  stitched onto past kills automatically on first run.
+  Every kill also records **what it dropped** (loot lines name the corpse),
+  and past loot history is stitched onto past kills automatically on first run.
+  **Click a defeated target to unfold its kill history** — timestamp, zone,
+  difficulty, time-to-kill and the drops per kill — and hit **fight ↗** to jump
+  straight to that kill's DPS breakdown in the fight history. Raid-target
+  fights are **auto-★-kept forever** the moment they end (no manual Keep
+  needed), which is also what powers the time-to-kill and the fight link;
+  kills merged in from old logs show without them (ancient fights aren't
+  replayed).
 - **Loot** — every item you loot, persisted forever: **upgrades** (gold, with
   the "+N → +M" chain), **kept** items, and auto-**vendored** drops with their
   sale price. Search by item/mob/zone, filter by kind, and watch the running
@@ -286,6 +322,19 @@ samples)" under the field. **Manual** (untick) enforces the exact configured
 time; learning still runs in the background so you can switch back any time.
 Ranks pool ("Quickness II" teaches "Quickness III"), and samples persist in
 `spell-durations.json`.
+
+### Cast-anchored triggers (shared landing lines)
+
+Several spells print the *same* landing sentence — Quickness, Alacrity,
+Celerity and Swift Like The Wind all say "You feel much faster." A plain
+pattern trigger can't tell them apart, so casting Alacrity would restart your
+Quickness bar with the wrong duration. Triggers therefore support a **cast
+anchor** (same ruling as the Companion's): the start pattern only counts when
+it follows *your own* "You begin casting &lt;spell&gt;." within 15 seconds,
+and an ambiguous landing with no anchor starts **nothing** — a bar that
+guesses which haste landed would lie about the time left. Library-added
+triggers whose landing text is shared anchor themselves automatically; the
+checkbox under the start pattern overrides it either way.
 
 ## Death recap
 

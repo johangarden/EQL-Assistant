@@ -1,6 +1,8 @@
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using EQLOverlay.Services;
 using EQLOverlay.Views;
@@ -30,6 +32,23 @@ public partial class App : Application
 
         // Gated smoke test: construct the manager window (forces XAML parse) and
         // exit. Used to verify the build without a human clicking. Not user-facing.
+        int rg = Array.IndexOf(e.Args, "--render-glyphs");
+        if (rg >= 0)
+        {
+            try
+            {
+                RenderGlyphSheet(rg + 1 < e.Args.Length
+                    ? e.Args[rg + 1]
+                    : Path.Combine(Path.GetTempPath(), "eql_glyphs.png"));
+            }
+            catch (Exception ex)
+            {
+                File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_glyphs_error.txt"), ex.ToString());
+            }
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Contains("--selftest"))
         {
             RunSelfTest();
@@ -337,12 +356,134 @@ public partial class App : Application
             Check("triggers default to auto-learn",
                 new Models.TriggerDefinition().DurationAuto);
 
+            // Cast-anchored triggers (the Companion's landing gate): four hastes
+            // all print "You feel much faster.", so a shared landing only starts
+            // the bar whose own begin-cast line it follows — and an unanchored
+            // ambiguous landing starts NOTHING (a guessed bar lies about the
+            // duration). Auto anchors library (lib-*) triggers with shared text.
+            static string Esc(string s) => System.Text.RegularExpressions.Regex.Escape(s);
+            string AT(int s) => new DateTime(2026, 8, 10, 23, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            var ancCfg = new Models.AppConfig();
+            ancCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-quickness", Name = "Quickness", DurationAuto = false,
+                StartPattern = Esc("You feel much faster."),
+                EndPattern = Esc("Your speed returns to normal."), DurationSeconds = 660,
+            });
+            ancCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-alacrity", Name = "Alacrity", DurationAuto = false,
+                StartPattern = Esc("You feel much faster."),
+                EndPattern = Esc("Your speed returns to normal."), DurationSeconds = 660,
+            });
+            foreach (var t in ancCfg.Triggers) ConfigService.CompileOne(t);
+            var anc = new TriggerEngine(ancCfg, new AlertService())
+            {
+                IsSharedLanding = _ => true, // the haste line IS shared
+            };
+            anc.ProcessLine($"[{AT(0)}] You feel much faster.");
+            Check("anchor: unanchored shared landing draws nothing", anc.Bars.Count == 0);
+            anc.ProcessLine($"[{AT(10)}] You begin casting Quickness.");
+            anc.ProcessLine($"[{AT(13)}] You feel much faster.");
+            Check("anchor: own cast resolves the shared landing",
+                anc.Bars.Count == 1 && anc.Bars[0].Name == "Quickness");
+            anc.ProcessLine($"[{AT(100)}] You begin casting Alacrity.");
+            anc.ProcessLine($"[{AT(103)}] Your speed returns to normal.");
+            anc.ProcessLine($"[{AT(103)}] You feel much faster.");
+            Check("anchor: overwriting haste starts the NEW spell's bar only",
+                anc.Bars.Count == 1 && anc.Bars[0].Name == "Alacrity");
+            anc.ProcessLine($"[{AT(200)}] You begin casting Quickness II.");
+            anc.ProcessLine($"[{AT(203)}] You feel much faster.");
+            Check("anchor: cast rank pools onto the base-named trigger",
+                anc.Bars.Any(b => b.Name == "Quickness"));
+            anc.ProcessLine($"[{AT(300)}] You begin casting Celerity.");
+            anc.ProcessLine($"[{AT(340)}] You feel much faster."); // wrong spell AND stale (>15s)
+            Check("anchor: stale or foreign cast starts nothing", anc.Bars.Count == 2);
+
+            var offCfg = new Models.AppConfig();
+            offCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-quickness", Name = "Quickness", DurationSeconds = 660,
+                StartPattern = Esc("You feel much faster."), CastAnchored = false,
+            });
+            ConfigService.CompileOne(offCfg.Triggers[0]);
+            var offEng = new TriggerEngine(offCfg, new AlertService()) { IsSharedLanding = _ => true };
+            offEng.ProcessLine($"[{AT(0)}] You feel much faster.");
+            Check("anchor: explicit untick beats auto", offEng.Bars.Count == 1);
+
+            var freeCfg = new Models.AppConfig();
+            freeCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "custom-haste", Name = "AnyHaste", DurationSeconds = 60,
+                StartPattern = Esc("You feel much faster."),
+            });
+            ConfigService.CompileOne(freeCfg.Triggers[0]);
+            var freeEng = new TriggerEngine(freeCfg, new AlertService()) { IsSharedLanding = _ => true };
+            freeEng.ProcessLine($"[{AT(0)}] You feel much faster.");
+            Check("anchor: custom triggers stay unanchored on auto", freeEng.Bars.Count == 1);
+            freeCfg.Triggers[0].CastAnchored = true;
+            var freeEng2 = new TriggerEngine(freeCfg, new AlertService()) { IsSharedLanding = _ => true };
+            freeEng2.ProcessLine($"[{AT(0)}] You feel much faster.");
+            Check("anchor: explicit tick anchors a custom trigger", freeEng2.Bars.Count == 0);
+            freeEng2.ProcessLine($"[{AT(10)}] You begin casting AnyHaste.");
+            freeEng2.ProcessLine($"[{AT(12)}] You feel much faster.");
+            Check("anchor: anchored custom trigger fires after its own named cast",
+                freeEng2.Bars.Count == 1);
+
             // Duration learning: cast-anchored landing -> wear-off mints a sample;
             // unanchored broadcasts don't; early breaks never lower the estimate;
             // death contaminates; ranks pool; samples persist across restarts.
             string durPath = Path.Combine(Path.GetTempPath(), "eql_dur_test.json");
             File.Delete(durPath);
             var lib2 = new SpellLibrary(new ConfigService());
+
+            // Trigger typing: the wiki type wins, classic landing lines fill
+            // the gaps, the bucket is the fallback — HoTs are not just buffs.
+            string CatOf(string name) => lib2.FindByName(name) is { } sp
+                ? SpellLibrary.TriggerCategory(sp) : "?";
+            Check("typing: Snails Healing is a HoT (wiki type)", CatOf("Snails Healing") == "HoTs");
+            Check("typing: Envenomed Bolt is a DoT (poison landing)", CatOf("Envenomed Bolt") == "DoTs");
+            Check("typing: Boil Blood is a DoT (blood boils)", CatOf("Boil Blood") == "DoTs");
+            Check("typing: Regeneration is a HoT (regenerate landing)", CatOf("Regeneration") == "HoTs");
+            Check("typing: Quickness stays a buff", CatOf("Quickness") == "Buffs");
+            var retype = new[]
+            {
+                new Models.TriggerDefinition { Id = "lib-envenomed-bolt", Name = "Envenomed Bolt", Category = "Debuffs" },
+                new Models.TriggerDefinition { Id = "lib-quickness", Name = "Quickness", Category = "Buffs" },
+                new Models.TriggerDefinition { Id = "lib-snails-healing", Name = "Snails Healing", Category = "MyOwn" },
+                new Models.TriggerDefinition { Id = "custom-1", Name = "Envenomed Bolt", Category = "Debuffs" },
+            };
+            Check("typing: heal fixes lib defaults, spares custom types and ids",
+                lib2.HealLibraryTriggers(retype) == 1
+                && retype[0].Category == "DoTs" && retype[1].Category == "Buffs"
+                && retype[2].Category == "MyOwn" && retype[3].Category == "Debuffs");
+
+            // Junk landing text ("You .") falls back to the begin-cast line —
+            // and already-added broken triggers heal to it on load.
+            Check("junk: detector accepts real text, rejects the stubs",
+                SpellLibrary.JunkMessage("You .") && SpellLibrary.JunkMessage("")
+                && SpellLibrary.JunkMessage("Someone .")
+                && !SpellLibrary.JunkMessage("You feel much faster."));
+            Check("junk: Sloths Healing bar anchors on its begin-cast line",
+                lib2.FindByName("Sloths Healing") is { } sloths
+                && SpellLibrary.BarTrigger(sloths, spokenWarning: true) is { } slothsBar
+                && slothsBar.StartPattern == @"^You begin casting Sloths\ Healing\."
+                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
+                    .IsMatch("You begin casting Sloths Healing."));
+            var broken = new Models.TriggerDefinition
+            {
+                Id = "lib-sloths-healing", Name = "Sloths Healing", Category = "HoTs",
+                StartPattern = System.Text.RegularExpressions.Regex.Escape("You ."),
+            };
+            Check("junk: heal repairs an already-added broken pattern",
+                lib2.HealLibraryTriggers(new[] { broken }) == 1
+                && broken.StartPattern == @"^You begin casting Sloths\ Healing\."
+                && broken.StartRegex is not null);
+
+            Check("anchor: library flags the shared haste landing as ambiguous",
+                lib2.IsSharedLanding(Esc("You feel much faster."))
+                && !lib2.IsSharedLanding("not a spell line at all"));
             var dur = new SpellDurations(new ConfigService(), lib2, durPath);
             Check("durations: rank suffix pools",
                 SpellDurations.BaseKey("Mesmerization VII") == "mesmerization"
@@ -439,7 +580,60 @@ public partial class App : Application
                 "Backfill Item", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept) });
             Check("kill loot: backfill skips once items exist",
                 rk2.KillsFor("Lady Vox")[0].Items.All(i => i.Item != "Backfill Item"));
+
+            // Fight link: an archived raid fight stamps its kill with the
+            // time-to-kill + the history key; "+N" multi-pull labels resolve.
+            Check("fight link: labels resolve raid targets",
+                rk2.IsTarget("Lady Vox") && rk2.IsTarget("Lady Vox +2") && !rk2.IsTarget("a rat"));
+            Check("fight link: fight stamps TTK onto the kill",
+                rk2.AttachFight("Lady Vox +1", killAt.AddSeconds(20), 185)
+                && rk2.KillsFor("Lady Vox")[0] is { FightSeconds: 185, FightLabel: "Lady Vox +1" }
+                && rk2.KillsFor("Lady Vox")[0].FightEndedAt == killAt.AddSeconds(20));
+            Check("fight link: unknown label attaches nothing",
+                !rk2.AttachFight("a rat +1", killAt, 30));
+            Check("fight link: far-away fight attaches nothing",
+                !rk2.AttachFight("Lady Vox", killAt.AddHours(3), 60));
             File.Delete(rkPath);
+
+            // Type-owned colors (2.9): the category keyword decides — and the
+            // order traps matter ("Debuffs" contains "buff", "HoTs" ≠ "DoTs").
+            Check("colors: buffs blue / hots green / dots red / debuffs yellow",
+                TriggerColors.ForCategory("Buffs") == TriggerColors.Buff
+                && TriggerColors.ForCategory("HoTs") == TriggerColors.Heal
+                && TriggerColors.ForCategory("Heals over time") == TriggerColors.Heal
+                && TriggerColors.ForCategory("DoTs") == TriggerColors.Dot
+                && TriggerColors.ForCategory("Debuffs") == TriggerColors.Debuff
+                && TriggerColors.ForCategory("Cooldowns") == TriggerColors.Cooldown
+                && TriggerColors.ForCategory("Whatever") == TriggerColors.Other);
+            Check("colors: panels override — flash amber, repop teal, matrices typed",
+                TriggerColors.For(Models.Panels.Flash, "Buffs") == TriggerColors.Flash
+                && TriggerColors.For(Models.Panels.TimerAuto, "") == TriggerColors.Repop
+                && TriggerColors.For(Models.Panels.SelfBuffs, "") == TriggerColors.Buff
+                && TriggerColors.For(Models.Panels.TargetDebuffs, "") == TriggerColors.Debuff);
+
+            // Voice toggle: off keeps the phrase but the bar never receives it.
+            var vt = new Models.AppConfig();
+            vt.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "v1", Name = "Voiced", StartPattern = @"^A voice\.", DurationSeconds = 30,
+                Alert = new Models.AlertConfig { Speak = "hello", AtSeconds = 5 },
+            });
+            vt.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "v2", Name = "Muted", StartPattern = @"^A silence\.", DurationSeconds = 30,
+                Alert = new Models.AlertConfig { Speak = "hello", AtSeconds = 5, SpeakEnabled = false },
+            });
+            foreach (var t in vt.Triggers) ConfigService.CompileOne(t);
+            var vtEng = new TriggerEngine(vt, new AlertService());
+            vtEng.ProcessLine($"[{AT(0)}] A voice.");
+            vtEng.ProcessLine($"[{AT(0)}] A silence.");
+            Check("voice: toggle gates the spoken phrase, text survives",
+                vtEng.Bars.First(b => b.Name == "Voiced").AlertSpeak == "hello"
+                && vtEng.Bars.First(b => b.Name == "Muted").AlertSpeak is null
+                && vt.Triggers[1].Alert!.Speak == "hello");
+            Check("voice: library adds arrive with a default fade phrase, voice on",
+                SpellLibrary.BarTrigger(lib2.FindByName("Quickness")!, spokenWarning: true) is
+                    { Alert: { Speak: "Quickness is fading", SpeakEnabled: true, AtSeconds: 20 } });
 
             // A speak phrase with no timing defaults to the expiry alert.
             var mute = new Models.TriggerDefinition
@@ -866,8 +1060,12 @@ public partial class App : Application
                 && rk.RecentDeaths[1].Zone == ""); // killed before any zone line
 
             // Idle finalize archives the fight; a new line starts fresh.
+            CombatParser.FightRecord? archived = null;
+            p.FightArchived += r => archived = r;
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
             Check("fight ends after 10s idle", !p.InCombat);
+            Check("FightArchived fires with the frozen record",
+                archived is not null && ReferenceEquals(archived, p.History[0]));
             Check("ended fight archived to history", p.History.Count == 1
                 && p.History[0].Label.StartsWith("a gnoll pup") // multi-enemy pull -> "+N" suffix
                 && Math.Abs(p.History[0].DurationSeconds - 18) < 0.01 // last activity = the Ts(18) line
@@ -947,6 +1145,53 @@ public partial class App : Application
                     Ability: "Mastery of the Past 2", Amount: -4 }));
             Check("progress lines never touch the fight model",
                 p.InCombat == wasActive && Math.Abs(p.DurationSeconds - durBefore) < 0.001);
+
+            // Proc watcher: a spell effect with no own cast behind it is a proc;
+            // a begin-cast within 12s claims it; DoTs and melee never count.
+            var pw = new CombatParser { SelfName = "Johan" };
+            string PTs(int s) => new DateTime(2026, 8, 10, 21, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            pw.ProcessLine($"[{PTs(0)}] Johan hit a gnoll pup for 120 points of fire damage by Smiting Strike.");
+            pw.ProcessLine($"[{PTs(2)}] Johan hit a gnoll pup for 130 points of fire damage by Smiting Strike. (Critical)");
+            Check("procs: cast-less spell damage counts as a proc",
+                pw.SessionProcs.TryGetValue("Smiting Strike", out var lane)
+                && lane.Count == 2 && Math.Abs(lane.Damage - 250) < 0.01
+                && lane.Crits == 1 && Math.Abs(lane.Max - 130) < 0.01);
+            pw.ProcessLine($"[{PTs(4)}] You begin casting Sanity Warp.");
+            pw.ProcessLine($"[{PTs(6)}] Johan hit a gnoll pup for 55 points of magic damage by Sanity Warp.");
+            Check("procs: a hand-cast spell is not a proc", !pw.SessionProcs.ContainsKey("Sanity Warp"));
+            pw.ProcessLine($"[{PTs(30)}] Johan hit a gnoll pup for 55 points of magic damage by Sanity Warp.");
+            Check("procs: the same spell cast-less later IS one (the Spellblade case)",
+                pw.SessionProcs.TryGetValue("Sanity Warp", out var mixed) && mixed.Count == 1);
+            pw.ProcessLine($"[{PTs(32)}] A gnoll pup has taken 40 damage from Ignite by Johan.");
+            Check("procs: DoT ticks never count", !pw.SessionProcs.ContainsKey("Ignite"));
+            pw.ProcessLine($"[{PTs(34)}] You slash a gnoll pup for 15 points of damage.");
+            Check("procs: melee never counts", !pw.SessionProcs.ContainsKey("slash"));
+            pw.ProcessLine($"[{PTs(36)}] Johan healed himself for 60 hit points by Lifetap Strike.");
+            Check("procs: a cast-less heal is a heal proc",
+                pw.SessionProcs.TryGetValue("Lifetap Strike", out var lt)
+                && lt.Count == 1 && Math.Abs(lt.Heal - 60) < 0.01);
+            Check("procs: swings = your melee hits + misses", pw.SessionSwings == 1);
+            double liveActive = pw.SessionActiveSeconds;
+            Check("procs: active time accrues while fighting", liveActive is > 30 and < 45);
+            pw.Tick(new DateTime(2026, 8, 10, 21, 2, 0)); // idle out -> Archive
+            Check("procs: an archived fight keeps its active time exactly once",
+                Math.Abs(pw.SessionActiveSeconds - liveActive) < 0.5);
+            pw.ResetSessionSkills();
+            Check("procs: the session reset clears lanes and active time",
+                pw.SessionProcs.Count == 0 && pw.SessionActiveSeconds == 0 && pw.SessionSwings == 0);
+
+            // Raid badges: every default target resolves to a drawn silhouette;
+            // unknown (user-added) names get a stable monogram fallback.
+            var allTargets = new RaidKills(new ConfigService()).GetView()
+                .SelectMany(t => t.Targets.Select(x => x.Name)).ToList();
+            Check("badges: every default raid target has a silhouette",
+                allTargets.Count > 0 && allTargets.All(Views.RaidGlyphs.HasGlyph));
+            var fb = Views.RaidGlyphs.For("Some Custom Boss");
+            var fb2 = Views.RaidGlyphs.For("a strange mob");
+            Check("badges: unknown targets fall back to a monogram",
+                fb.Glyph is null && fb.Monogram == "S" && fb2.Monogram == "S"
+                && Views.RaidGlyphs.For("Some Custom Boss").Tint == fb.Tint); // stable color
 
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions
@@ -1052,6 +1297,20 @@ public partial class App : Application
             foreach (var kv in incAb.OrderByDescending(kv => kv.Value).Take(8))
                 report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
             report.AppendLine($"--- loot: {lootUp} upgrades, {lootKept} kept, {lootSold} vendored for {LootTracker.FormatCoins(lootCopper)} ---");
+
+            // Proc watcher probe (the Companion's table, on OUR log): lanes with
+            // counts, damage/heal, and both rates over the session denominators.
+            double activeSec = p.SessionActiveSeconds;
+            int swings = p.SessionSwings;
+            report.AppendLine($"--- procs: active {activeSec / 60:0.0} min · {swings:N0} swings ---");
+            foreach (var kv in p.SessionProcs.OrderByDescending(kv => kv.Value.Count).Take(12))
+            {
+                var v = kv.Value;
+                string amounts = v.Damage > 0 ? $"{v.Damage:N0} dmg" : $"{v.Heal:N0} healed";
+                report.AppendLine($"  {kv.Key}: x{v.Count} · {amounts} · " +
+                    $"{(activeSec >= 10 ? $"{v.Count * 60 / activeSec:0.00}/min" : "-")} · " +
+                    $"{(swings >= 20 ? $"{100.0 * v.Count / swings:0.00}/100 swings" : "-")}");
+            }
             Environment.ExitCode = 0;
         }
         catch (Exception ex)
@@ -1061,6 +1320,88 @@ public partial class App : Application
         }
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_replay.txt"), report.ToString());
         Shutdown();
+    }
+
+    /// <summary>Dev tool: render every raid-badge silhouette plus the whole
+    /// default target list to a PNG contact sheet, for eyeballing the vectors
+    /// without launching the app (`--render-glyphs [out.png]`).</summary>
+    private void RenderGlyphSheet(string outPath)
+    {
+        const int cols = 5, cellW = 130, cellH = 128, stripCell = 150, stripRowH = 44;
+        var keys = RaidGlyphs.GlyphKeys.ToList();
+        var targets = new RaidKills(new ConfigService()).GetView()
+            .SelectMany(t => t.Targets.Select(x => x.Name)).ToList();
+
+        int glyphRows = (keys.Count + cols - 1) / cols;
+        int stripCols = 4, stripRows = (targets.Count + stripCols - 1) / stripCols;
+        int width = Math.Max(cols * cellW, stripCols * stripCell);
+        int height = glyphRows * cellH + 40 + stripRows * stripRowH + 30;
+
+        var dv = new DrawingVisual();
+        using (var dc = dv.RenderOpen())
+        {
+            dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x12, 0x17, 0x22)), null,
+                new Rect(0, 0, width, height));
+            var face = new Typeface("Segoe UI");
+
+            for (int i = 0; i < keys.Count; i++)
+            {
+                double cx = i % cols * cellW + cellW / 2.0;
+                double cy = i / cols * cellH + 52;
+                DrawBadge(dc, RaidGlyphs.GlyphFor(keys[i]), Color.FromRgb(0x9F, 0xB6, 0xD4), null, cx, cy, 84);
+                var ft = new FormattedText(keys[i], System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, face, 13, Brushes.LightGray, 1.0);
+                dc.DrawText(ft, new Point(cx - ft.Width / 2, cy + 50));
+            }
+
+            double stripTop = glyphRows * cellH + 40;
+            for (int i = 0; i < targets.Count; i++)
+            {
+                double x = i % stripCols * stripCell + 24;
+                double y = stripTop + i / stripCols * stripRowH + 16;
+                var b = RaidGlyphs.For(targets[i]);
+                DrawBadge(dc, b.Glyph, b.Tint, b.Monogram, x, y, 26);
+                var ft = new FormattedText(targets[i], System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, face, 10, Brushes.Gray, 1.0);
+                dc.DrawText(ft, new Point(x + 18, y - ft.Height / 2));
+            }
+        }
+
+        var bmp = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(dv);
+        var enc = new PngBitmapEncoder();
+        enc.Frames.Add(BitmapFrame.Create(bmp));
+        using var fs = File.Create(outPath);
+        enc.Save(fs);
+    }
+
+    /// <summary>The badge exactly as the Raid Kills window draws it: tinted
+    /// ring + translucent fill, silhouette (or monogram) in full tint.</summary>
+    internal static void DrawBadge(DrawingContext dc, Geometry? glyph, Color tint, string? monogram,
+        double cx, double cy, double d)
+    {
+        var bg = new SolidColorBrush(Color.FromArgb(52, tint.R, tint.G, tint.B));
+        var ring = new Pen(new SolidColorBrush(Color.FromArgb(96, tint.R, tint.G, tint.B)),
+            Math.Max(1, d / 26));
+        dc.DrawEllipse(bg, ring, new Point(cx, cy), d / 2, d / 2);
+
+        if (glyph is not null)
+        {
+            double s = d * 0.72 / 24.0;
+            dc.PushTransform(new TranslateTransform(cx - 12 * s, cy - 12 * s));
+            dc.PushTransform(new ScaleTransform(s, s));
+            dc.DrawGeometry(new SolidColorBrush(tint), null, glyph);
+            dc.Pop();
+            dc.Pop();
+        }
+        else if (monogram is not null)
+        {
+            var ft = new FormattedText(monogram, System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, new Typeface(new FontFamily("Segoe UI"),
+                    FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
+                d * 0.5, new SolidColorBrush(tint), 1.0);
+            dc.DrawText(ft, new Point(cx - ft.Width / 2, cy - ft.Height / 2));
+        }
     }
 
     private void RunRepopSelfTest()

@@ -27,10 +27,17 @@ public sealed class RaidKills
     }
 
     /// <summary>One recorded kill: when, at which zone difficulty (D0–D4), and
-    /// what it dropped (attributed by mob name; old files load with it empty).</summary>
+    /// what it dropped (attributed by mob name; old files load with it empty).
+    /// Live kills also get the fight stamped on (time-to-kill + the key into
+    /// the DPS history) — reparsed historical kills stay fight-less because
+    /// the combat parser never replays ancient fights.</summary>
     public sealed record Kill(DateTime When, int D)
     {
         public List<KillItem> Items { get; init; } = new();
+        public string Zone { get; set; } = "";
+        public double FightSeconds { get; set; }      // time-to-kill (0 = not captured)
+        public DateTime? FightEndedAt { get; set; }   // fight-history link key …
+        public string? FightLabel { get; set; }       // … (EndedAt + Label identify a record)
     }
 
     public sealed record TargetView(string Name, int Count, DateTime? Last, IReadOnlySet<int> Tiers);
@@ -137,7 +144,7 @@ public sealed class RaidKills
         if (!_kills.TryGetValue(canonical, out var list))
             _kills[canonical] = list = new List<Kill>();
         if (list.Any(k => Math.Abs((k.When - t).TotalMinutes) < 10)) return; // replayed line
-        list.Add(new Kill(t, ParseDifficulty(_zone)));
+        list.Add(new Kill(t, ParseDifficulty(_zone)) { Zone = _zone });
         SaveKills();
         Log.Info($"Raid target down: {canonical} (D{ParseDifficulty(_zone)})");
         KillRecorded?.Invoke(canonical, t);
@@ -149,6 +156,37 @@ public sealed class RaidKills
     // enough to loot at leisure, short enough not to bleed into the next clear.
 
     private const double LootWindowMinutes = 30;
+
+    // Fight labels carry a "+N" suffix when adds joined the pull ("Lady Vox +2").
+    private static readonly Regex MultiPullSuffix = new(@"\s\+\d+$", RegexOptions.Compiled);
+
+    /// <summary>Does a fight label ("Lady Vox", "Lady Vox +2") name a raid target?</summary>
+    public bool IsTarget(string fightLabel) =>
+        _targetSet.Contains(MultiPullSuffix.Replace(fightLabel.Trim(), ""));
+
+    /// <summary>Stamp a finished fight onto the kill that ended it: time-to-kill
+    /// plus the history key, so the Raid Kills window can jump straight to the
+    /// DPS breakdown. Idempotent — re-archiving the same fight re-stamps the
+    /// same values.</summary>
+    public bool AttachFight(string fightLabel, DateTime endedAt, double durationSeconds)
+    {
+        string name = MultiPullSuffix.Replace(fightLabel.Trim(), "");
+        if (!_targetSet.TryGetValue(name, out string? canonical)) return false;
+        if (!_kills.TryGetValue(canonical, out var list)) return false;
+
+        var kill = list
+            .Where(k => k.When >= endedAt.AddSeconds(-(durationSeconds + 120))
+                     && k.When <= endedAt.AddMinutes(2))
+            .OrderByDescending(k => k.When)
+            .FirstOrDefault();
+        if (kill is null) return false;
+
+        kill.FightSeconds = durationSeconds;
+        kill.FightEndedAt = endedAt;
+        kill.FightLabel = fightLabel;
+        SaveKills();
+        return true;
+    }
 
     /// <summary>All recorded kills of one target, newest first (empty if none).</summary>
     public IReadOnlyList<Kill> KillsFor(string target) =>

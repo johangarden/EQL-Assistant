@@ -131,7 +131,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
-                            <RowDefinition Height="210"/>
+                            <RowDefinition x:Name="LiveLogRow" Height="210"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="290"/>
@@ -171,12 +171,33 @@
                                         Visibility="Collapsed" ToolTip="Move down — matrix cells lay out in this order"/>
                             </StackPanel>
                             <ListBox x:Name="TriggerList" SelectionChanged="TriggerList_SelectionChanged">
+                                <ListBox.GroupStyle>
+                                    <GroupStyle>
+                                        <GroupStyle.HeaderTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="2,9,4,3">
+                                                    <TextBlock Text="{Binding Name}" FontSize="10" FontWeight="Bold"
+                                                               Foreground="#5C6B82" VerticalAlignment="Center"/>
+                                                    <Border Height="1" Background="#2A3347"
+                                                            Margin="8,1,0,0" VerticalAlignment="Center"/>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </GroupStyle.HeaderTemplate>
+                                    </GroupStyle>
+                                </ListBox.GroupStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
+                                        <StackPanel Orientation="Horizontal" Opacity="{Binding ListOpacity}">
                                             <Border Width="13" Height="13" CornerRadius="2"
                                                     Background="{Binding PreviewBrush}"
-                                                    Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                                    Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <Border Width="14" Height="13" CornerRadius="2" Background="#20293A"
+                                                    Margin="0,0,7,0" VerticalAlignment="Center"
+                                                    ToolTip="L = added from the spell library · M = manually created">
+                                                <TextBlock Text="{Binding SourceBadge}" FontSize="9" FontWeight="Bold"
+                                                           Foreground="#5C6B82" HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
                                             <TextBlock Text="{Binding Display}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </DataTemplate>
@@ -207,13 +228,16 @@
                                            Text="A depleting countdown bar in the bars panel, grouped by category."/>
 
                                 <StackPanel x:Name="CategoryGroup">
-                                    <TextBlock Text="Category (bars grouping)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="Type (grouping — sets the bar color)" Style="{StaticResource FieldLabel}"/>
                                     <ComboBox IsEditable="True" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}">
                                         <ComboBoxItem>Buffs</ComboBoxItem>
                                         <ComboBoxItem>HoTs</ComboBoxItem>
                                         <ComboBoxItem>DoTs</ComboBoxItem>
+                                        <ComboBoxItem>Debuffs</ComboBoxItem>
                                         <ComboBoxItem>Cooldowns</ComboBoxItem>
                                     </ComboBox>
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="Each type owns its color: Buffs blue · HoTs green · DoTs red · Debuffs yellow · Cooldowns purple."/>
                                 </StackPanel>
 
                                 <StackPanel x:Name="DurationGroup">
@@ -231,23 +255,19 @@
                                                Text="Auto-learn: the value above is only the starting point (library/base value) — every clean cast-to-fade your log shows refines it, in either direction. Untick to enter and enforce an exact time; learning still runs in the background so you can turn it back on later."/>
                                 </StackPanel>
 
-                                <StackPanel x:Name="ColorGroup">
-                                    <TextBlock Text="Color" Style="{StaticResource FieldLabel}"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBox Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}"
-                                                 Width="120"/>
-                                        <Border Width="26" Height="20" Margin="8,0,0,0" CornerRadius="3"
-                                                BorderBrush="#5C6B82" BorderThickness="1"
-                                                Background="{Binding PreviewBrush}"/>
-                                        <WrapPanel x:Name="SwatchPanel" Margin="10,0,0,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </StackPanel>
-
                                 <TextBlock x:Name="StartLabel" Text="Start pattern (regex — starts the bar)" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding StartPattern, UpdateSourceTrigger=PropertyChanged}"
                                          FontFamily="Consolas" TextWrapping="Wrap"/>
                                 <TextBlock Style="{StaticResource Hint}"
                                            Text="Tip: select a line in the log below and click '→ Start pattern' to fill this."/>
+
+                                <StackPanel x:Name="AnchorGroup">
+                                    <CheckBox x:Name="CastAnchorCheck" Margin="0,8,0,0"
+                                              Checked="CastAnchor_Changed" Unchecked="CastAnchor_Changed"
+                                              Content="Only my own cast starts it (cast-anchored)"/>
+                                    <TextBlock x:Name="CastAnchorHint" Style="{StaticResource Hint}" Margin="0,3,0,0"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
 
                                 <StackPanel x:Name="EndGroup">
                                     <TextBlock Text="End pattern (regex — clears it early, optional)" Style="{StaticResource FieldLabel}"/>
@@ -276,8 +296,10 @@
                                 <TextBlock Text="Alerts" Style="{StaticResource SectionTitle}"/>
 
                                 <StackPanel x:Name="WarnGroup">
-                                    <TextBlock Text="Warn this many seconds before it drops (0 = off)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="Fire the alert this many seconds before it drops (0 = off)" Style="{StaticResource FieldLabel}"/>
                                     <TextBox Text="{Binding AlertAtSeconds}" Width="120" HorizontalAlignment="Left"/>
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="This is the WHEN, not the what: at this many seconds left, the spoken phrase and/or sound below play. The bar turning amber near the end is separate (the global warn colour)."/>
                                     <CheckBox Content="Alert when it reaches 0 (use for cooldown 'ready')"
                                               IsChecked="{Binding AlertOnExpire}" Margin="0,8,0,0"/>
                                 </StackPanel>
@@ -296,19 +318,24 @@
                                         <TextBox Text="{Binding AlertSpeak, UpdateSourceTrigger=PropertyChanged}" Width="320"/>
                                         <Button Content="Speak" Click="Speak_Click" Width="60" Margin="8,0,0,0"/>
                                     </StackPanel>
+                                    <CheckBox IsChecked="{Binding AlertSpeakEnabled}" Margin="0,6,0,0"
+                                              Content="Voice on"
+                                              ToolTip="Off keeps the phrase for later but never speaks it — library triggers arrive with a default fade warning you can simply switch off"/>
 
-                                    <TextBlock Text="Play this .wav file" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="Play a sound" Style="{StaticResource FieldLabel}"/>
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBox Text="{Binding AlertSound, UpdateSourceTrigger=PropertyChanged}" Width="320"/>
-                                        <Button Content="Browse" Click="BrowseSound_Click" Width="66" Margin="8,0,0,0"/>
-                                        <Button Content="Play" Click="PlaySound_Click" Width="50" Margin="4,0,0,0"/>
+                                        <ComboBox x:Name="SoundPresetBox" Width="220" MinHeight="30"
+                                                  SelectionChanged="SoundPreset_Changed"
+                                                  ToolTip="Windows' built-in notification sounds — present on every machine, nothing to copy around"/>
+                                        <Button Content="Play" Click="PlaySound_Click" Width="50" Margin="8,0,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
 
-                        <!-- Live log capture -->
-                        <GroupBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                        <!-- Live log capture — manual triggers only; library adds
+                             arrive with correct patterns. -->
+                        <GroupBox x:Name="LiveLogGroup" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
                                   Header="Live log — click a line, then send it to a pattern" Margin="0,8,0,0">
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Right" Width="150" Margin="8,0,0,0">
@@ -678,6 +705,13 @@
                                                Text="Every ability you've used this session, busiest first ('Catch up from today's log' fills it after a restart). Double-click to track."/>
                                 </StackPanel>
                             </Grid>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Proc watcher" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A PROCS section under the meter that fills itself in — any spell effect of yours that lands with no cast behind it (weapon, poison and buff procs), with session counts, procs per minute of active combat, and procs per 100 melee swings. Rates stay blank until there's enough data to be honest. Design borrowed from everquest-companion (MIT)."/>
+
+                            <CheckBox x:Name="ProcsVisibleCheck" Content="Show the proc watcher on the DPS meter" Margin="0,12,0,0"/>
                         </StackPanel>
                     </ScrollViewer>
 

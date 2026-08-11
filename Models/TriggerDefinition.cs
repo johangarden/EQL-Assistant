@@ -51,7 +51,16 @@ public sealed class TriggerDefinition
     /// happens in the background either way.</summary>
     public bool DurationAuto { get; set; } = true;
 
-    /// <summary>Bar fill color, any WPF color string ("#3FA9F5", "DodgerBlue").</summary>
+    /// <summary>Cast-anchor: the start pattern only counts when it follows YOUR
+    /// own "You begin casting &lt;Name&gt;." within a few seconds — the fix for
+    /// landing sentences shared by several spells (Quickness, Alacrity, Celerity
+    /// and Swift Like The Wind all print "You feel much faster."). null = auto:
+    /// library triggers whose landing text is shared anchor themselves; every
+    /// other trigger fires on any match.</summary>
+    public bool? CastAnchored { get; set; }
+
+    /// <summary>LEGACY (pre-2.9): colors are derived from the trigger's type
+    /// now (see TriggerColors) — kept only so old config files round-trip.</summary>
     public string Color { get; set; } = "#3FA9F5";
 
     /// <summary>If true, a fresh match resets a running bar to full duration.</summary>
@@ -87,6 +96,10 @@ public sealed class AlertConfig
 {
     /// <summary>Text spoken via Windows TTS when the alert fires. Optional.</summary>
     public string? Speak { get; set; }
+
+    /// <summary>Voice on/off — off keeps the phrase (editable in the Manager)
+    /// but never speaks it. Old configs load as on.</summary>
+    public bool SpeakEnabled { get; set; } = true;
 
     /// <summary>Path to a .wav file played when the alert fires. Optional.</summary>
     public string? Sound { get; set; }

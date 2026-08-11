@@ -462,6 +462,16 @@ public sealed class ConfigService
 
     public string SavedFightsPath => Path.Combine(ConfigDirectory, "fights.json");
 
+    private List<CombatParser.FightRecord>? _savedFights;
+
+    /// <summary>THE kept-fights list — one shared in-memory copy, so the history
+    /// window's ★ Keep and the raid auto-keep write through the same instance
+    /// instead of clobbering each other's file.</summary>
+    public List<CombatParser.FightRecord> SavedFights => _savedFights ??= LoadSavedFights();
+
+    /// <summary>Persist the shared kept-fights list.</summary>
+    public void SaveSavedFights() => SaveSavedFights(SavedFights);
+
     /// <summary>Fights the user chose to keep ("★ Keep" in the history window).</summary>
     public List<CombatParser.FightRecord> LoadSavedFights()
     {
@@ -476,6 +486,7 @@ public sealed class ConfigService
 
     public void SaveSavedFights(List<CombatParser.FightRecord> fights)
     {
+        _savedFights = fights; // whoever saves last defines the shared copy
         try
         {
             File.WriteAllText(SavedFightsPath, JsonSerializer.Serialize(fights, WriteOptions));

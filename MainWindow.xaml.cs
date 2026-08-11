@@ -105,6 +105,8 @@ public partial class MainWindow : Window
         };
         _spellLib = new SpellLibrary(_configService);
         Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
+        int retyped = _spellLib.HealLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
+        if (retyped > 0) Log.Info($"Retyped {retyped} library trigger(s) (HoTs/DoTs split).");
         _durations = new SpellDurations(_configService, _spellLib);
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
@@ -117,8 +119,10 @@ public partial class MainWindow : Window
         _combat.PetName = _config.Overlay.PetName;
         _combat.SctEvent += OnSctEvent;
         _combat.PlayerDied += OnPlayerDied;
+        _combat.FightArchived += OnFightArchived;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.LearnedDuration = name => _durations.LearnedMaxSeconds(name);
+        _engine.IsSharedLanding = pattern => _spellLib.IsSharedLanding(pattern);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
         _engine.BarReduced += OnBarReduced;
@@ -401,7 +405,8 @@ public partial class MainWindow : Window
         _spellLib.SaveSeenIfDirty();
         int lootNew = Math.Max(0, _loot.Entries.Count - lootBefore);
         string summary = $"Reparsed {lines:N0} lines from {Path.GetFileName(path)}: " +
-            $"+{lootNew} loot, +{killsBefore} raid kills, +{durBefore} duration samples.";
+            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples " +
+            "(anything already recorded is skipped, never double-counted).";
         Log.Info(summary);
         return summary;
     }
@@ -641,7 +646,8 @@ public partial class MainWindow : Window
         if (_meter is not null) { try { _meter.Close(); } catch { /* ignore */ } }
         _meter = new MeterWindow(_configService, _combat, _raids, _loot, _skyQuests,
             _config.Overlay.Opacity,
-            _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible);
+            _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible,
+            _config.Overlay.ProcWatcherVisible);
         _meter.Show();
         UpdateMeterVisibility();
     }
@@ -1037,7 +1043,8 @@ public partial class MainWindow : Window
         else
         {
             _meter.ApplySettings(cfg.Overlay.Opacity,
-                cfg.Overlay.SkillTrackerSkills, cfg.Overlay.SkillTrackerVisible);
+                cfg.Overlay.SkillTrackerSkills, cfg.Overlay.SkillTrackerVisible,
+                cfg.Overlay.ProcWatcherVisible);
             UpdateMeterVisibility();
         }
 
@@ -1064,6 +1071,7 @@ public partial class MainWindow : Window
 
         _config.Triggers = lo.Triggers;
         _config.ActiveLoadout = lo.Name;
+        _spellLib.HealLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
         MergeGlobalRespawns(_config);
         _configService.SaveSettings(_config); // remember the choice
 
@@ -1163,11 +1171,42 @@ public partial class MainWindow : Window
         _vm.Flash(_alerts.Muted ? "Alerts muted." : "Alerts on.");
     }
 
+    /// <summary>Raid-target fights are keepers by definition: auto-★ them into
+    /// the persistent history and stamp the kill with time-to-kill + the fight
+    /// link (the Raid Kills window's "fight ↗" button).</summary>
+    private void OnFightArchived(CombatParser.FightRecord rec)
+    {
+        if (!_raids.IsTarget(rec.Label)) return;
+        _raids.AttachFight(rec.Label, rec.EndedAt, rec.DurationSeconds);
+
+        var saved = _configService.SavedFights;
+        if (saved.Any(s => s.EndedAt == rec.EndedAt && s.Label == rec.Label)) return;
+        saved.Add(rec);
+        saved.Sort((a, b) => b.EndedAt.CompareTo(a.EndedAt));
+        _configService.SaveSavedFights();
+        Log.Info($"Raid fight auto-kept: {rec.Label} ({rec.DurationSeconds:0}s).");
+    }
+
+    private HistoryWindow? _historyWindow;
+
+    /// <summary>Open the fight history focused on one fight (raid kill links).</summary>
+    private void OpenFightHistory(DateTime endedAt, string label)
+    {
+        if (_historyWindow is null)
+        {
+            _historyWindow = new HistoryWindow(_combat, _configService, _raids, _loot, _skyQuests);
+            _historyWindow.Closed += (_, _) => _historyWindow = null;
+            _historyWindow.Show();
+        }
+        BringToFront(_historyWindow);
+        _historyWindow.SelectFight(endedAt, label);
+    }
+
     private void OpenRaidKills()
     {
         if (_raidsWindow is null)
         {
-            _raidsWindow = new RaidKillsWindow(_raids);
+            _raidsWindow = new RaidKillsWindow(_raids) { OpenFightRequested = OpenFightHistory };
             _raidsWindow.Closed += (_, _) => _raidsWindow = null;
             _raidsWindow.Show();
         }
