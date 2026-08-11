@@ -157,9 +157,12 @@ unlocked; positions survive restarts and resolution changes.
 messages, class levels and durations. Filter by *seen in your log*, buffs,
 debuffs or class, then one click adds:
 
-- **Bar** — countdown with the right duration, cleared early by the wear-off line
-- **Bar + voice** — same, plus a spoken warning 20s before it drops
-- **Fade flash** — screen flash the moment the wear-off line appears
+The list is **grouped by level** (the filtered class's level when one is
+picked, else the lowest class level), alphabetical inside each level. One
+**Add** button per spell: a ready-made countdown bar with the right type,
+color and duration, **plus a spoken fade warning** ("Quickness is fading",
+20s before it drops) — the phrase is editable on the trigger, and a **Voice
+on/off** toggle under it silences it without losing the text.
 
 Added triggers are normal triggers — edit them like any other.
 

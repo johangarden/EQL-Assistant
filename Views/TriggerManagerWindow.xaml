@@ -309,6 +309,9 @@
                                         <TextBox Text="{Binding AlertSpeak, UpdateSourceTrigger=PropertyChanged}" Width="320"/>
                                         <Button Content="Speak" Click="Speak_Click" Width="60" Margin="8,0,0,0"/>
                                     </StackPanel>
+                                    <CheckBox IsChecked="{Binding AlertSpeakEnabled}" Margin="0,6,0,0"
+                                              Content="Voice on"
+                                              ToolTip="Off keeps the phrase for later but never speaks it — library triggers arrive with a default fade warning you can simply switch off"/>
 
                                     <TextBlock Text="Play this .wav file" Style="{StaticResource FieldLabel}"/>
                                     <StackPanel Orientation="Horizontal">

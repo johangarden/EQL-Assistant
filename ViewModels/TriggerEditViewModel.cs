@@ -126,6 +126,10 @@ public sealed class TriggerEditViewModel : ViewModelBase
     private string _alertSpeak = "";
     public string AlertSpeak { get => _alertSpeak; set => SetField(ref _alertSpeak, value); }
 
+    private bool _alertSpeakEnabled = true;
+    /// <summary>Voice on/off — off keeps the phrase but never speaks it.</summary>
+    public bool AlertSpeakEnabled { get => _alertSpeakEnabled; set => SetField(ref _alertSpeakEnabled, value); }
+
     private string _alertSound = "";
     public string AlertSound { get => _alertSound; set => SetField(ref _alertSound, value); }
 
@@ -184,6 +188,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
         Color = d.Color,
         RefreshOnRetrigger = d.RefreshOnRetrigger,
         AlertSpeak = d.Alert?.Speak ?? "",
+        AlertSpeakEnabled = d.Alert?.SpeakEnabled ?? true,
         AlertSound = d.Alert?.Sound ?? "",
         AlertAtSeconds = d.Alert?.AtSeconds ?? 0,
         AlertOnExpire = d.Alert?.OnExpire ?? false,
@@ -221,6 +226,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
             Alert = hasAlert ? new AlertConfig
             {
                 Speak = string.IsNullOrWhiteSpace(AlertSpeak) ? null : AlertSpeak,
+                SpeakEnabled = AlertSpeakEnabled,
                 Sound = string.IsNullOrWhiteSpace(AlertSound) ? null : AlertSound,
                 AtSeconds = AlertAtSeconds,
                 OnExpire = AlertOnExpire,

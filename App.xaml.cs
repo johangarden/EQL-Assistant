@@ -589,6 +589,30 @@ public partial class App : Application
                 && TriggerColors.For(Models.Panels.SelfBuffs, "") == TriggerColors.Buff
                 && TriggerColors.For(Models.Panels.TargetDebuffs, "") == TriggerColors.Debuff);
 
+            // Voice toggle: off keeps the phrase but the bar never receives it.
+            var vt = new Models.AppConfig();
+            vt.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "v1", Name = "Voiced", StartPattern = @"^A voice\.", DurationSeconds = 30,
+                Alert = new Models.AlertConfig { Speak = "hello", AtSeconds = 5 },
+            });
+            vt.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "v2", Name = "Muted", StartPattern = @"^A silence\.", DurationSeconds = 30,
+                Alert = new Models.AlertConfig { Speak = "hello", AtSeconds = 5, SpeakEnabled = false },
+            });
+            foreach (var t in vt.Triggers) ConfigService.CompileOne(t);
+            var vtEng = new TriggerEngine(vt, new AlertService());
+            vtEng.ProcessLine($"[{AT(0)}] A voice.");
+            vtEng.ProcessLine($"[{AT(0)}] A silence.");
+            Check("voice: toggle gates the spoken phrase, text survives",
+                vtEng.Bars.First(b => b.Name == "Voiced").AlertSpeak == "hello"
+                && vtEng.Bars.First(b => b.Name == "Muted").AlertSpeak is null
+                && vt.Triggers[1].Alert!.Speak == "hello");
+            Check("voice: library adds arrive with a default fade phrase, voice on",
+                SpellLibrary.BarTrigger(lib2.FindByName("Quickness")!, spokenWarning: true) is
+                    { Alert: { Speak: "Quickness is fading", SpeakEnabled: true, AtSeconds: 20 } });
+
             // A speak phrase with no timing defaults to the expiry alert.
             var mute = new Models.TriggerDefinition
             {

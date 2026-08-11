@@ -97,6 +97,10 @@ public sealed class AlertConfig
     /// <summary>Text spoken via Windows TTS when the alert fires. Optional.</summary>
     public string? Speak { get; set; }
 
+    /// <summary>Voice on/off — off keeps the phrase (editable in the Manager)
+    /// but never speaks it. Old configs load as on.</summary>
+    public bool SpeakEnabled { get; set; } = true;
+
     /// <summary>Path to a .wav file played when the alert fires. Optional.</summary>
     public string? Sound { get; set; }
 

@@ -87,6 +87,10 @@ public sealed class TriggerEngine
     /// may correct in EITHER direction, e.g. level-scaled durations shorter
     /// than the library's max-level number). Manual triggers enforce the
     /// configured duration exactly.</summary>
+    /// <summary>The phrase to speak — null when the voice toggle is off.</summary>
+    private static string? SpeakOf(TriggerDefinition t) =>
+        t.Alert is { SpeakEnabled: true } a ? a.Speak : null;
+
     private double EffectiveDuration(TriggerDefinition trigger)
     {
         if (!trigger.DurationAuto) return trigger.DurationSeconds;
@@ -198,7 +202,7 @@ public sealed class TriggerEngine
             if (cells is null || byId is null) continue;
 
             var cell = new MatrixCellViewModel(t.Id, t.Name, t.DurationSeconds,
-                t.Alert?.AtSeconds ?? 0, t.Alert?.OnExpire ?? false, t.Alert?.Speak, t.Alert?.Sound);
+                t.Alert?.AtSeconds ?? 0, t.Alert?.OnExpire ?? false, SpeakOf(t), t.Alert?.Sound);
             byId[t.Id] = cell;
             cells.Add(cell);
         }
@@ -325,7 +329,7 @@ public sealed class TriggerEngine
             duration, end, MakeBrush(TriggerColors.For(trigger)),
             trigger.Alert?.AtSeconds ?? 0,
             trigger.Alert?.OnExpire ?? false,
-            trigger.Alert?.Speak,
+            SpeakOf(trigger),
             trigger.Alert?.Sound);
 
         _active[key] = vm;
