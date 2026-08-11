@@ -206,7 +206,6 @@ public sealed class SpellLibrary
             StartPattern = Regex.Escape(s.CastOnYou),
             EndPattern = s.WearsOff.Length > 0 ? Regex.Escape(s.WearsOff) : null,
             DurationSeconds = s.DurationSec > 0 ? s.DurationSec : 60,
-            Color = s.Bucket == "Debuff" ? "#E57373" : "#4FC3F7",
             RefreshOnRetrigger = true,
             Alert = spokenWarning
                 ? new AlertConfig { AtSeconds = 20, Speak = s.Name + " is fading" }
@@ -227,7 +226,6 @@ public sealed class SpellLibrary
             Panel = Panels.Flash,
             StartPattern = Regex.Escape(s.WearsOff),
             DurationSeconds = 0,
-            Color = "#FFCC33",
             Alert = new AlertConfig { FlashText = s.Name + " FADED!" },
         };
         ConfigService.CompileOne(t);

@@ -13,18 +13,69 @@ public sealed class TriggerEditViewModel : ViewModelBase
     public string Name { get => _name; set { if (SetField(ref _name, value)) OnPropertyChanged(nameof(Display)); } }
 
     private string _category = "Buffs";
-    public string Category { get => _category; set { if (SetField(ref _category, value)) OnPropertyChanged(nameof(Display)); } }
+    public string Category
+    {
+        get => _category;
+        set
+        {
+            if (!SetField(ref _category, value)) return;
+            OnPropertyChanged(nameof(Display));
+            OnPropertyChanged(nameof(PreviewBrush));
+            OnPropertyChanged(nameof(GroupLabel));
+        }
+    }
 
     private string _panel = Panels.Bars;
     /// <summary>"bars", "selfBuffs", "targetDebuffs", "timerAuto", or "flash".</summary>
     public string Panel
     {
         get => _panel;
-        set { if (SetField(ref _panel, value)) OnPropertyChanged(nameof(Display)); }
+        set
+        {
+            if (!SetField(ref _panel, value)) return;
+            OnPropertyChanged(nameof(Display));
+            OnPropertyChanged(nameof(PreviewBrush));
+            OnPropertyChanged(nameof(GroupLabel));
+        }
     }
 
     private bool _enabled = true;
-    public bool Enabled { get => _enabled; set { if (SetField(ref _enabled, value)) OnPropertyChanged(nameof(Display)); } }
+    public bool Enabled
+    {
+        get => _enabled;
+        set { if (SetField(ref _enabled, value)) OnPropertyChanged(nameof(ListOpacity)); }
+    }
+
+    /// <summary>Disabled triggers gray out in the list instead of wearing a "○".</summary>
+    public double ListOpacity => Enabled ? 1.0 : 0.4;
+
+    /// <summary>List group header: the panel for non-bar triggers, the category for bars.</summary>
+    public string GroupLabel => Panel switch
+    {
+        Panels.SelfBuffs => "SELF-BUFF MATRIX",
+        Panels.TargetDebuffs => "TARGET DEBUFFS",
+        Panels.TimerAuto => "REPOP TIMERS",
+        Panels.Flash => "FLASH ALERTS",
+        _ => string.IsNullOrWhiteSpace(Category) ? "BARS" : Category.Trim().ToUpperInvariant(),
+    };
+
+    /// <summary>Stable ordering for the grouped list (bars types first, then panels).</summary>
+    public int GroupRank => Panel switch
+    {
+        Panels.SelfBuffs => 6,
+        Panels.TargetDebuffs => 7,
+        Panels.TimerAuto => 8,
+        Panels.Flash => 9,
+        _ => Services.TriggerColors.ForCategory(Category) switch
+        {
+            Services.TriggerColors.Buff => 0,
+            Services.TriggerColors.Heal => 1,
+            Services.TriggerColors.Dot => 2,
+            Services.TriggerColors.Debuff => 3,
+            Services.TriggerColors.Cooldown => 4,
+            _ => 5,
+        },
+    };
 
     private string _startPattern = "";
     public string StartPattern { get => _startPattern; set => SetField(ref _startPattern, value); }
@@ -65,11 +116,8 @@ public sealed class TriggerEditViewModel : ViewModelBase
     public bool? CastAnchored { get => _castAnchored; set => SetField(ref _castAnchored, value); }
 
     private string _color = "#4FC3F7";
-    public string Color
-    {
-        get => _color;
-        set { if (SetField(ref _color, value)) OnPropertyChanged(nameof(PreviewBrush)); }
-    }
+    /// <summary>Legacy passthrough — colors derive from the type since 2.9.</summary>
+    public string Color { get => _color; set => SetField(ref _color, value); }
 
     private bool _refreshOnRetrigger = true;
     public bool RefreshOnRetrigger { get => _refreshOnRetrigger; set => SetField(ref _refreshOnRetrigger, value); }
@@ -100,29 +148,23 @@ public sealed class TriggerEditViewModel : ViewModelBase
     private double _reduceSeconds;
     public double ReduceSeconds { get => _reduceSeconds; set => SetField(ref _reduceSeconds, value); }
 
-    /// <summary>Label shown in the trigger list ("Vox repop · Repop · 400s").</summary>
-    public string Display
-    {
-        get
-        {
-            string kind = Panel switch
-            {
-                Panels.SelfBuffs => "Self buff",
-                Panels.TargetDebuffs => "Target debuff",
-                Panels.TimerAuto => "Repop",
-                Panels.Flash => "Flash",
-                _ => Category,
-            };
-            string dur = Panel == Panels.Flash ? "" : $"  ·  {Services.DurationText.Compact(DurationSeconds)}";
-            return $"{(Enabled ? "" : "○ ")}{Name}  ·  {kind}{dur}";
-        }
-    }
+    /// <summary>Label shown in the trigger list — just "Name · 9m12s"; the
+    /// type lives in the group header above the row.</summary>
+    public string Display =>
+        Panel == Panels.Flash
+            ? Name
+            : $"{Name}  ·  {Services.DurationText.Compact(DurationSeconds)}";
 
+    /// <summary>The list swatch: the TYPE's fixed color (buff blue, heal green…).</summary>
     public Brush PreviewBrush
     {
         get
         {
-            try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(Color)); }
+            try
+            {
+                return new SolidColorBrush((Color)ColorConverter.ConvertFromString(
+                    Services.TriggerColors.For(Panel, Category)));
+            }
             catch { return Brushes.Gray; }
         }
     }

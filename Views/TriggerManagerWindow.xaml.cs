@@ -30,11 +30,6 @@ public partial class TriggerManagerWindow : Window
     private readonly ObservableCollection<string> _recent = new();
 
     private static readonly Regex TimestampPrefix = new(@"^\[.+?\]\s?", RegexOptions.Compiled);
-    private static readonly string[] PresetColors =
-    {
-        "#4FC3F7", "#BA68C8", "#81C784", "#FFB74D", "#E57373", "#F06292",
-        "#64B5F6", "#4DB6AC", "#FFD54F", "#A1887F", "#9575CD", "#E53935",
-    };
 
     private readonly SpellDurations? _durations;
 
@@ -132,8 +127,12 @@ public partial class TriggerManagerWindow : Window
         _configService.EnsureDefaultLoadout();
         foreach (var lo in _configService.ListLoadouts())
         {
+            // Stable type-sort so the grouped list shows each type once, in a
+            // fixed order (bars types, then matrices, repops, flashes) —
+            // manual matrix ordering survives inside its group.
             _byName[lo.Name] = new ObservableCollection<TriggerEditViewModel>(
-                lo.Triggers.Select(TriggerEditViewModel.FromDefinition));
+                lo.Triggers.Select(TriggerEditViewModel.FromDefinition)
+                    .OrderBy(vm => vm.GroupRank));
             _order.Add(lo.Name);
         }
         if (_order.Count == 0)
@@ -153,7 +152,6 @@ public partial class TriggerManagerWindow : Window
 
         UpdateCharInfo();
 
-        BuildSwatches();
         LoadSettingsFields();
         MuteCheck.IsChecked = _alerts.Muted;
         MuteCheck.Click += (_, _) => _alerts.Muted = MuteCheck.IsChecked == true;
@@ -389,7 +387,13 @@ public partial class TriggerManagerWindow : Window
     private void ShowLoadout(string name)
     {
         _currentName = name;
-        TriggerList.ItemsSource = CurrentList;
+        // Grouped by type with live shaping — changing a trigger's panel or
+        // category moves it to the right section immediately.
+        var view = new System.Windows.Data.ListCollectionView(CurrentList) { IsLiveGrouping = true };
+        view.GroupDescriptions.Add(new System.Windows.Data.PropertyGroupDescription(
+            nameof(TriggerEditViewModel.GroupLabel)));
+        view.LiveGroupingProperties.Add(nameof(TriggerEditViewModel.GroupLabel));
+        TriggerList.ItemsSource = view;
         if (CurrentList.Count > 0) TriggerList.SelectedIndex = 0;
         else { DetailsScroller.DataContext = null; DetailsScroller.IsEnabled = false; }
 
@@ -576,7 +580,7 @@ public partial class TriggerManagerWindow : Window
 
     private void Add_Click(object sender, RoutedEventArgs e)
     {
-        var t = new TriggerEditViewModel { Name = "New Trigger", Category = "Buffs", Color = "#4FC3F7", DurationSeconds = 60 };
+        var t = new TriggerEditViewModel { Name = "New Trigger", Category = "Buffs", DurationSeconds = 60 };
         CurrentList.Add(t);
         TriggerList.SelectedItem = t;
         TriggerList.ScrollIntoView(t);
@@ -592,16 +596,19 @@ public partial class TriggerManagerWindow : Window
             TriggerList.SelectedIndex = Math.Min(i, CurrentList.Count - 1);
     }
 
+    // Reorder against the UNDERLYING list (the grouped view's indices differ).
     private void MoveUp_Click(object sender, RoutedEventArgs e)
     {
-        int i = TriggerList.SelectedIndex;
-        if (i > 0) { CurrentList.Move(i, i - 1); TriggerList.SelectedIndex = i - 1; }
+        if (Selected is not { } sel) return;
+        int i = CurrentList.IndexOf(sel);
+        if (i > 0) { CurrentList.Move(i, i - 1); TriggerList.SelectedItem = sel; }
     }
 
     private void MoveDown_Click(object sender, RoutedEventArgs e)
     {
-        int i = TriggerList.SelectedIndex;
-        if (i >= 0 && i < CurrentList.Count - 1) { CurrentList.Move(i, i + 1); TriggerList.SelectedIndex = i + 1; }
+        if (Selected is not { } sel) return;
+        int i = CurrentList.IndexOf(sel);
+        if (i >= 0 && i < CurrentList.Count - 1) { CurrentList.Move(i, i + 1); TriggerList.SelectedItem = sel; }
     }
 
     // ---- pattern capture / test --------------------------------------------
@@ -732,7 +739,6 @@ public partial class TriggerManagerWindow : Window
         static Visibility V(bool show) => show ? Visibility.Visible : Visibility.Collapsed;
         CategoryGroup.Visibility = V(bars);
         DurationGroup.Visibility = V(bars || matrix || timer);
-        ColorGroup.Visibility = V(bars || flash);
         EndGroup.Visibility = V(bars || matrix);
         BarsChecksGroup.Visibility = V(bars);
         WarnGroup.Visibility = V(bars || matrix);
@@ -979,27 +985,4 @@ public partial class TriggerManagerWindow : Window
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     private void Status(string msg) => StatusText.Text = msg;
-
-    // ---- color swatches -----------------------------------------------------
-
-    private void BuildSwatches()
-    {
-        foreach (var hex in PresetColors)
-        {
-            var btn = new Button
-            {
-                Width = 18,
-                Height = 18,
-                Margin = new Thickness(0, 0, 3, 3),
-                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)),
-                Tag = hex,
-                ToolTip = hex,
-                BorderBrush = Brushes.Gray,
-                BorderThickness = new Thickness(1),
-                Cursor = System.Windows.Input.Cursors.Hand,
-            };
-            btn.Click += (_, _) => { if (Selected != null) Selected.Color = hex; };
-            SwatchPanel.Children.Add(btn);
-        }
-    }
 }

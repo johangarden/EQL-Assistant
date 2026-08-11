@@ -171,9 +171,23 @@
                                         Visibility="Collapsed" ToolTip="Move down — matrix cells lay out in this order"/>
                             </StackPanel>
                             <ListBox x:Name="TriggerList" SelectionChanged="TriggerList_SelectionChanged">
+                                <ListBox.GroupStyle>
+                                    <GroupStyle>
+                                        <GroupStyle.HeaderTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="2,9,4,3">
+                                                    <TextBlock Text="{Binding Name}" FontSize="10" FontWeight="Bold"
+                                                               Foreground="#5C6B82" VerticalAlignment="Center"/>
+                                                    <Border Height="1" Background="#2A3347"
+                                                            Margin="8,1,0,0" VerticalAlignment="Center"/>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </GroupStyle.HeaderTemplate>
+                                    </GroupStyle>
+                                </ListBox.GroupStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
+                                        <StackPanel Orientation="Horizontal" Opacity="{Binding ListOpacity}">
                                             <Border Width="13" Height="13" CornerRadius="2"
                                                     Background="{Binding PreviewBrush}"
                                                     Margin="0,0,7,0" VerticalAlignment="Center"/>
@@ -207,13 +221,16 @@
                                            Text="A depleting countdown bar in the bars panel, grouped by category."/>
 
                                 <StackPanel x:Name="CategoryGroup">
-                                    <TextBlock Text="Category (bars grouping)" Style="{StaticResource FieldLabel}"/>
+                                    <TextBlock Text="Type (grouping — sets the bar color)" Style="{StaticResource FieldLabel}"/>
                                     <ComboBox IsEditable="True" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}">
                                         <ComboBoxItem>Buffs</ComboBoxItem>
                                         <ComboBoxItem>HoTs</ComboBoxItem>
                                         <ComboBoxItem>DoTs</ComboBoxItem>
+                                        <ComboBoxItem>Debuffs</ComboBoxItem>
                                         <ComboBoxItem>Cooldowns</ComboBoxItem>
                                     </ComboBox>
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="Each type owns its color: Buffs blue · HoTs green · DoTs red · Debuffs yellow · Cooldowns purple."/>
                                 </StackPanel>
 
                                 <StackPanel x:Name="DurationGroup">
@@ -229,18 +246,6 @@
                                               Content="Auto-learn the real duration from the log" Margin="0,8,0,0"/>
                                     <TextBlock x:Name="DurationAutoHint" Style="{StaticResource Hint}" Margin="0,3,0,0"
                                                Text="Auto-learn: the value above is only the starting point (library/base value) — every clean cast-to-fade your log shows refines it, in either direction. Untick to enter and enforce an exact time; learning still runs in the background so you can turn it back on later."/>
-                                </StackPanel>
-
-                                <StackPanel x:Name="ColorGroup">
-                                    <TextBlock Text="Color" Style="{StaticResource FieldLabel}"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBox Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}"
-                                                 Width="120"/>
-                                        <Border Width="26" Height="20" Margin="8,0,0,0" CornerRadius="3"
-                                                BorderBrush="#5C6B82" BorderThickness="1"
-                                                Background="{Binding PreviewBrush}"/>
-                                        <WrapPanel x:Name="SwatchPanel" Margin="10,0,0,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
                                 </StackPanel>
 
                                 <TextBlock x:Name="StartLabel" Text="Start pattern (regex — starts the bar)" Style="{StaticResource FieldLabel}"/>

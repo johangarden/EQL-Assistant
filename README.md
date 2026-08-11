@@ -170,6 +170,13 @@ countdown bar (with category grouping), a matrix cell, or a screen flash;
 optionally cleared early by `endPattern`. Patterns are .NET regex matched after
 the `[timestamp]` prefix; a `(?<target>...)` capture gives per-target bars.
 
+The trigger list is **grouped by type** with divider headers (Buffs, HoTs,
+DoTs, Debuffs, Cooldowns, then the matrices, repop timers and flash alerts),
+and **each type owns its color** — buffs blue, HoTs green, DoTs red, debuffs
+yellow, cooldowns purple — everywhere the trigger shows up (bars, flash text,
+the list swatch). No per-trigger color picking. Disabled triggers gray out in
+place.
+
 Per-trigger alerts: spoken phrase (Windows TTS) and/or `.wav`, *warn N seconds
 before it drops*, *alert at 0* (cooldown "ready"), *remind me to rebuff when
 missing* (pulsing REBUFF bar + periodic nudge, only after the buff has been

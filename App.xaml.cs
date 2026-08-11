@@ -551,6 +551,22 @@ public partial class App : Application
                 !rk2.AttachFight("Lady Vox", killAt.AddHours(3), 60));
             File.Delete(rkPath);
 
+            // Type-owned colors (2.9): the category keyword decides — and the
+            // order traps matter ("Debuffs" contains "buff", "HoTs" ≠ "DoTs").
+            Check("colors: buffs blue / hots green / dots red / debuffs yellow",
+                TriggerColors.ForCategory("Buffs") == TriggerColors.Buff
+                && TriggerColors.ForCategory("HoTs") == TriggerColors.Heal
+                && TriggerColors.ForCategory("Heals over time") == TriggerColors.Heal
+                && TriggerColors.ForCategory("DoTs") == TriggerColors.Dot
+                && TriggerColors.ForCategory("Debuffs") == TriggerColors.Debuff
+                && TriggerColors.ForCategory("Cooldowns") == TriggerColors.Cooldown
+                && TriggerColors.ForCategory("Whatever") == TriggerColors.Other);
+            Check("colors: panels override — flash amber, repop teal, matrices typed",
+                TriggerColors.For(Models.Panels.Flash, "Buffs") == TriggerColors.Flash
+                && TriggerColors.For(Models.Panels.TimerAuto, "") == TriggerColors.Repop
+                && TriggerColors.For(Models.Panels.SelfBuffs, "") == TriggerColors.Buff
+                && TriggerColors.For(Models.Panels.TargetDebuffs, "") == TriggerColors.Debuff);
+
             // A speak phrase with no timing defaults to the expiry alert.
             var mute = new Models.TriggerDefinition
             {

@@ -223,7 +223,7 @@ public sealed class TriggerEngine
                 {
                     string text = string.IsNullOrWhiteSpace(trigger.Alert?.FlashText)
                         ? trigger.Name : trigger.Alert!.FlashText!;
-                    FlashRequested?.Invoke(text, trigger.Color);
+                    FlashRequested?.Invoke(text, TriggerColors.For(trigger));
                 }
                 continue;
             }
@@ -231,7 +231,7 @@ public sealed class TriggerEngine
             // Any other trigger may also carry an optional flash on its start match.
             if (!string.IsNullOrWhiteSpace(trigger.Alert?.FlashText)
                 && trigger.StartRegex is { } sr && sr.IsMatch(body))
-                FlashRequested?.Invoke(trigger.Alert!.FlashText!, trigger.Color);
+                FlashRequested?.Invoke(trigger.Alert!.FlashText!, TriggerColors.For(trigger));
 
             if (trigger.Panel == Panels.SelfBuffs)
             {
@@ -322,7 +322,7 @@ public sealed class TriggerEngine
 
         var vm = TimerBarViewModel.CreateTimer(
             key, BuildLabel(trigger, match), trigger.Category,
-            duration, end, MakeBrush(trigger.Color),
+            duration, end, MakeBrush(TriggerColors.For(trigger)),
             trigger.Alert?.AtSeconds ?? 0,
             trigger.Alert?.OnExpire ?? false,
             trigger.Alert?.Speak,

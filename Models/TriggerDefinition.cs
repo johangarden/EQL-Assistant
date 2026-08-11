@@ -59,7 +59,8 @@ public sealed class TriggerDefinition
     /// other trigger fires on any match.</summary>
     public bool? CastAnchored { get; set; }
 
-    /// <summary>Bar fill color, any WPF color string ("#3FA9F5", "DodgerBlue").</summary>
+    /// <summary>LEGACY (pre-2.9): colors are derived from the trigger's type
+    /// now (see TriggerColors) — kept only so old config files round-trip.</summary>
     public string Color { get; set; } = "#3FA9F5";
 
     /// <summary>If true, a fresh match resets a running bar to full duration.</summary>
