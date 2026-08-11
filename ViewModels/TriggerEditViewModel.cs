@@ -7,7 +7,21 @@ namespace EQLOverlay.ViewModels;
 public sealed class TriggerEditViewModel : ViewModelBase
 {
     private string _id = "";
-    public string Id { get => _id; set => SetField(ref _id, value); }
+    public string Id
+    {
+        get => _id;
+        set { if (SetField(ref _id, value)) OnPropertyChanged(nameof(SourceBadge)); }
+    }
+
+    /// <summary>Came from the spell library (lib-/libfade- ids) vs hand-made —
+    /// library triggers arrive with correct patterns, so the manual tooling
+    /// (live log capture) only shows for the M side.</summary>
+    public bool IsLibrary =>
+        Id.StartsWith("lib-", StringComparison.Ordinal)
+        || Id.StartsWith("libfade-", StringComparison.Ordinal);
+
+    /// <summary>List chip: [L]ibrary or [M]anual.</summary>
+    public string SourceBadge => IsLibrary ? "L" : "M";
 
     private string _name = "";
     public string Name { get => _name; set { if (SetField(ref _name, value)) OnPropertyChanged(nameof(Display)); } }

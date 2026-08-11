@@ -507,6 +507,18 @@ public partial class TriggerManagerWindow : Window
         DetailsScroller.IsEnabled = Selected != null;
         UpdateDurationUx();
         UpdateAnchorUx();
+        UpdateLiveLogUx();
+    }
+
+    /// <summary>The live-log capture panel is manual-trigger tooling — library
+    /// adds arrive with correct patterns, so it hides for them (and when
+    /// nothing is selected).</summary>
+    private void UpdateLiveLogUx()
+    {
+        if (LiveLogGroup is null || LiveLogRow is null) return;
+        bool show = Selected is { IsLibrary: false };
+        LiveLogGroup.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        LiveLogRow.Height = new GridLength(show ? 210 : 0);
     }
 
     /// <summary>Title bar carries version + the auto-detected character (+ pet).</summary>

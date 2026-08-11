@@ -131,7 +131,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
-                            <RowDefinition Height="210"/>
+                            <RowDefinition x:Name="LiveLogRow" Height="210"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="290"/>
@@ -190,7 +190,14 @@
                                         <StackPanel Orientation="Horizontal" Opacity="{Binding ListOpacity}">
                                             <Border Width="13" Height="13" CornerRadius="2"
                                                     Background="{Binding PreviewBrush}"
-                                                    Margin="0,0,7,0" VerticalAlignment="Center"/>
+                                                    Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <Border Width="14" Height="13" CornerRadius="2" Background="#20293A"
+                                                    Margin="0,0,7,0" VerticalAlignment="Center"
+                                                    ToolTip="L = added from the spell library · M = manually created">
+                                                <TextBlock Text="{Binding SourceBadge}" FontSize="9" FontWeight="Bold"
+                                                           Foreground="#5C6B82" HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
                                             <TextBlock Text="{Binding Display}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </DataTemplate>
@@ -323,8 +330,9 @@
                             </StackPanel>
                         </ScrollViewer>
 
-                        <!-- Live log capture -->
-                        <GroupBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                        <!-- Live log capture — manual triggers only; library adds
+                             arrive with correct patterns. -->
+                        <GroupBox x:Name="LiveLogGroup" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
                                   Header="Live log — click a line, then send it to a pattern" Margin="0,8,0,0">
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Right" Width="150" Margin="8,0,0,0">
