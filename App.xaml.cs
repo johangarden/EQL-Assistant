@@ -465,21 +465,40 @@ public partial class App : Application
                 SpellLibrary.JunkMessage("You .") && SpellLibrary.JunkMessage("")
                 && SpellLibrary.JunkMessage("Someone .")
                 && !SpellLibrary.JunkMessage("You feel much faster."));
-            Check("junk: Sloths Healing bar anchors on its begin-cast line",
+            Check("junk: Sloths Healing bar anchors on its begin-cast line, rank-tolerant",
                 lib2.FindByName("Sloths Healing") is { } sloths
                 && SpellLibrary.BarTrigger(sloths, spokenWarning: true) is { } slothsBar
-                && slothsBar.StartPattern == @"^You begin casting Sloths\ Healing\."
                 && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing."));
+                    .IsMatch("You begin casting Sloths Healing.")
+                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
+                    .IsMatch("You begin casting Sloths Healing V.")
+                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
+                    .IsMatch("You begin casting Sloths Healing VIII.")
+                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
+                    .IsMatch("You begin casting Sloths Healing X.")
+                && !new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
+                    .IsMatch("You begin casting Sloths Healing Ward."));
+            Check("junk: rank pooling covers base through X",
+                SpellDurations.BaseKey("Sloths Healing") == SpellDurations.BaseKey("Sloths Healing X")
+                && SpellDurations.BaseKey("Sloths Healing VIII") == "sloths healing"
+                && SpellDurations.BaseKey("Sloths Healing IX") == "sloths healing");
             var broken = new Models.TriggerDefinition
             {
                 Id = "lib-sloths-healing", Name = "Sloths Healing", Category = "HoTs",
                 StartPattern = System.Text.RegularExpressions.Regex.Escape("You ."),
             };
-            Check("junk: heal repairs an already-added broken pattern",
-                lib2.HealLibraryTriggers(new[] { broken }) == 1
-                && broken.StartPattern == @"^You begin casting Sloths\ Healing\."
-                && broken.StartRegex is not null);
+            var legacy = new Models.TriggerDefinition
+            {
+                Id = "lib-slugs-healing", Name = "Slugs Healing", Category = "HoTs",
+                StartPattern = @"^You begin casting Slugs\ Healing\.", // 2.9.0 fallback, no rank
+            };
+            Check("junk: heal repairs broken and rank-less fallback patterns",
+                lib2.HealLibraryTriggers(new[] { broken, legacy }) == 2
+                && broken.StartRegex is not null
+                && new System.Text.RegularExpressions.Regex(broken.StartPattern)
+                    .IsMatch("You begin casting Sloths Healing II.")
+                && new System.Text.RegularExpressions.Regex(legacy.StartPattern)
+                    .IsMatch("You begin casting Slugs Healing V."));
 
             Check("anchor: library flags the shared haste landing as ambiguous",
                 lib2.IsSharedLanding(Esc("You feel much faster."))
@@ -1171,6 +1190,14 @@ public partial class App : Application
             Check("procs: a cast-less heal is a heal proc",
                 pw.SessionProcs.TryGetValue("Lifetap Strike", out var lt)
                 && lt.Count == 1 && Math.Abs(lt.Heal - 60) < 0.01);
+            // HoT ticks: the spell was cast ONCE, ticks trickle in far outside
+            // the 12s window — a heal you've ever cast is never a proc.
+            pw.ProcessLine($"[{PTs(40)}] You begin casting Slugs Healing V.");
+            pw.ProcessLine($"[{PTs(60)}] Johan healed himself for 12 hit points by Slugs Healing.");
+            pw.ProcessLine($"[{PTs(75)}] Johan healed himself for 12 hit points by Slugs Healing.");
+            Check("procs: HoT ticks of a cast heal never count",
+                !pw.SessionProcs.ContainsKey("Slugs Healing"));
+
             Check("procs: swings = your melee hits + misses", pw.SessionSwings == 1);
             double liveActive = pw.SessionActiveSeconds;
             Check("procs: active time accrues while fighting", liveActive is > 30 and < 45);
