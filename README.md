@@ -259,9 +259,15 @@ Both open from the Fight History window (and raid kills from the tray):
   lines and remembered forever. Each killed target shows **D0–D4 badges** for
   the zone difficulties you've beaten it at (difficulty is read from the zone
   name — "Befallen 4 (Refined)" = D4; kills recorded before v2.3 count as D0).
-  Every kill also records **what it dropped** (loot lines name the corpse) —
-  hover a killed target for the per-kill drop list, and past loot history is
-  stitched onto past kills automatically on first run.
+  Every kill also records **what it dropped** (loot lines name the corpse),
+  and past loot history is stitched onto past kills automatically on first run.
+  **Click a defeated target to unfold its kill history** — timestamp, zone,
+  difficulty, time-to-kill and the drops per kill — and hit **fight ↗** to jump
+  straight to that kill's DPS breakdown in the fight history. Raid-target
+  fights are **auto-★-kept forever** the moment they end (no manual Keep
+  needed), which is also what powers the time-to-kill and the fight link;
+  kills merged in from old logs show without them (ancient fights aren't
+  replayed).
 - **Loot** — every item you loot, persisted forever: **upgrades** (gold, with
   the "+N → +M" chain), **kept** items, and auto-**vendored** drops with their
   sale price. Search by item/mob/zone, filter by kind, and watch the running

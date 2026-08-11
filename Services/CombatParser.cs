@@ -547,11 +547,15 @@ public sealed class CombatParser
         }
     }
 
+    /// <summary>Raised when a finished fight is frozen into the history —
+    /// the hook for auto-keeping raid-target fights.</summary>
+    public event Action<FightRecord>? FightArchived;
+
     /// <summary>Snapshot the finished fight into the history list (newest first).</summary>
     private void Archive()
     {
         if (!HasData) return;
-        _history.Insert(0, new FightRecord
+        var rec = new FightRecord
         {
             Label = string.IsNullOrEmpty(TargetLabel) ? "fight" : TargetLabel,
             Zone = _fightZone,
@@ -572,8 +576,10 @@ public sealed class CombatParser
                     e.Ability, e.Amount, e.Stream, e.Crit, e.Miss, e.Resist))
                 .ToList(),
             EventsTruncated = _eventsTruncated,
-        });
+        };
+        _history.Insert(0, rec);
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
+        FightArchived?.Invoke(rec);
     }
 
     /// <summary>Clear everything (manual reset button).</summary>

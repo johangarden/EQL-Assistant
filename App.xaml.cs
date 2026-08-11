@@ -517,6 +517,19 @@ public partial class App : Application
                 "Backfill Item", "Lady Vox", "Permafrost", LootTracker.LootKind.Kept) });
             Check("kill loot: backfill skips once items exist",
                 rk2.KillsFor("Lady Vox")[0].Items.All(i => i.Item != "Backfill Item"));
+
+            // Fight link: an archived raid fight stamps its kill with the
+            // time-to-kill + the history key; "+N" multi-pull labels resolve.
+            Check("fight link: labels resolve raid targets",
+                rk2.IsTarget("Lady Vox") && rk2.IsTarget("Lady Vox +2") && !rk2.IsTarget("a rat"));
+            Check("fight link: fight stamps TTK onto the kill",
+                rk2.AttachFight("Lady Vox +1", killAt.AddSeconds(20), 185)
+                && rk2.KillsFor("Lady Vox")[0] is { FightSeconds: 185, FightLabel: "Lady Vox +1" }
+                && rk2.KillsFor("Lady Vox")[0].FightEndedAt == killAt.AddSeconds(20));
+            Check("fight link: unknown label attaches nothing",
+                !rk2.AttachFight("a rat +1", killAt, 30));
+            Check("fight link: far-away fight attaches nothing",
+                !rk2.AttachFight("Lady Vox", killAt.AddHours(3), 60));
             File.Delete(rkPath);
 
             // A speak phrase with no timing defaults to the expiry alert.
@@ -944,8 +957,12 @@ public partial class App : Application
                 && rk.RecentDeaths[1].Zone == ""); // killed before any zone line
 
             // Idle finalize archives the fight; a new line starts fresh.
+            CombatParser.FightRecord? archived = null;
+            p.FightArchived += r => archived = r;
             p.Tick(new DateTime(2026, 8, 3, 12, 0, 30));
             Check("fight ends after 10s idle", !p.InCombat);
+            Check("FightArchived fires with the frozen record",
+                archived is not null && ReferenceEquals(archived, p.History[0]));
             Check("ended fight archived to history", p.History.Count == 1
                 && p.History[0].Label.StartsWith("a gnoll pup") // multi-enemy pull -> "+N" suffix
                 && Math.Abs(p.History[0].DurationSeconds - 18) < 0.01 // last activity = the Ts(18) line

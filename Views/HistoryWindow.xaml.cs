@@ -67,7 +67,7 @@ public partial class HistoryWindow : Window
         _parser = parser;
         _config = config;
         _raids = raids;
-        _saved = config.LoadSavedFights();
+        _saved = config.SavedFights; // the SHARED list — raid auto-keep writes here too
 
         FightsList.SelectionChanged += (_, _) => BuildColumns();
 
@@ -112,6 +112,20 @@ public partial class HistoryWindow : Window
     private static bool SameFight(CombatParser.FightRecord a, CombatParser.FightRecord b) =>
         ReferenceEquals(a, b) || (a.EndedAt == b.EndedAt && a.Label == b.Label);
 
+    /// <summary>Jump to one fight (the Raid Kills window's "fight ↗" link).</summary>
+    public void SelectFight(DateTime endedAt, string label)
+    {
+        Sync(force: true);
+        foreach (FightItem item in FightsList.Items)
+        {
+            if (item.Entry.Rec.EndedAt != endedAt || item.Entry.Rec.Label != label) continue;
+            FightsList.SelectedItems.Clear();
+            FightsList.SelectedItems.Add(item);
+            FightsList.ScrollIntoView(item);
+            return;
+        }
+    }
+
     private static string Display(Entry e)
     {
         var r = e.Rec;
@@ -137,7 +151,11 @@ public partial class HistoryWindow : Window
     {
         if (_raidsWindow is null)
         {
-            _raidsWindow = new RaidKillsWindow(_raids);
+            _raidsWindow = new RaidKillsWindow(_raids)
+            {
+                // A raids window WE opened jumps back to us for fight links.
+                OpenFightRequested = (t, l) => { SelectFight(t, l); Activate(); },
+            };
             _raidsWindow.Closed += (_, _) => _raidsWindow = null;
             _raidsWindow.Show();
         }

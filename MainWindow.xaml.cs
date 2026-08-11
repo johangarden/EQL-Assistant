@@ -117,6 +117,7 @@ public partial class MainWindow : Window
         _combat.PetName = _config.Overlay.PetName;
         _combat.SctEvent += OnSctEvent;
         _combat.PlayerDied += OnPlayerDied;
+        _combat.FightArchived += OnFightArchived;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.LearnedDuration = name => _durations.LearnedMaxSeconds(name);
         _engine.IsSharedLanding = pattern => _spellLib.IsSharedLanding(pattern);
@@ -1165,11 +1166,42 @@ public partial class MainWindow : Window
         _vm.Flash(_alerts.Muted ? "Alerts muted." : "Alerts on.");
     }
 
+    /// <summary>Raid-target fights are keepers by definition: auto-★ them into
+    /// the persistent history and stamp the kill with time-to-kill + the fight
+    /// link (the Raid Kills window's "fight ↗" button).</summary>
+    private void OnFightArchived(CombatParser.FightRecord rec)
+    {
+        if (!_raids.IsTarget(rec.Label)) return;
+        _raids.AttachFight(rec.Label, rec.EndedAt, rec.DurationSeconds);
+
+        var saved = _configService.SavedFights;
+        if (saved.Any(s => s.EndedAt == rec.EndedAt && s.Label == rec.Label)) return;
+        saved.Add(rec);
+        saved.Sort((a, b) => b.EndedAt.CompareTo(a.EndedAt));
+        _configService.SaveSavedFights();
+        Log.Info($"Raid fight auto-kept: {rec.Label} ({rec.DurationSeconds:0}s).");
+    }
+
+    private HistoryWindow? _historyWindow;
+
+    /// <summary>Open the fight history focused on one fight (raid kill links).</summary>
+    private void OpenFightHistory(DateTime endedAt, string label)
+    {
+        if (_historyWindow is null)
+        {
+            _historyWindow = new HistoryWindow(_combat, _configService, _raids, _loot, _skyQuests);
+            _historyWindow.Closed += (_, _) => _historyWindow = null;
+            _historyWindow.Show();
+        }
+        BringToFront(_historyWindow);
+        _historyWindow.SelectFight(endedAt, label);
+    }
+
     private void OpenRaidKills()
     {
         if (_raidsWindow is null)
         {
-            _raidsWindow = new RaidKillsWindow(_raids);
+            _raidsWindow = new RaidKillsWindow(_raids) { OpenFightRequested = OpenFightHistory };
             _raidsWindow.Closed += (_, _) => _raidsWindow = null;
             _raidsWindow.Show();
         }
