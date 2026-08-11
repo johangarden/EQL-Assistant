@@ -237,9 +237,11 @@ public sealed class SpellLibrary
 
     /// <summary>The fallback start pattern when the landing text is junk: the
     /// begin-cast line always prints, is unique per spell, and needs no
-    /// cast-anchor. The bar just starts at cast time instead of landing.</summary>
+    /// cast-anchor. The bar just starts at cast time instead of landing.
+    /// Tolerates the RANK the game appends ("You begin casting Slugs Healing
+    /// V.") and bard singing.</summary>
     public static string BeginCastPattern(string spellName) =>
-        "^You begin casting " + Regex.Escape(spellName.Trim()) + @"\.";
+        "^You begin (?:casting|singing) " + Regex.Escape(spellName.Trim()) + @"(?: [IVX]{1,7})?\.";
 
     /// <summary>Heal library-added triggers on load. Two repairs: (a) triggers
     /// still wearing the pre-2.9 two-bucket categories re-derive their type
@@ -261,8 +263,12 @@ public sealed class SpellLibrary
                 touched = true;
             }
 
+            // Repairable shapes: the escaped junk landing line, empty, or the
+            // 2.9.0 fallback that missed the rank suffix ("… Slugs Healing V.").
+            string legacyFallback = "^You begin casting " + Regex.Escape(s.Name.Trim()) + @"\.";
             if (JunkMessage(s.CastOnYou)
-                && (t.StartPattern == Regex.Escape(s.CastOnYou) || t.StartPattern.Length == 0))
+                && (t.StartPattern == Regex.Escape(s.CastOnYou) || t.StartPattern.Length == 0
+                    || t.StartPattern == legacyFallback))
             {
                 t.StartPattern = BeginCastPattern(s.Name);
                 try { ConfigService.CompileOne(t); } catch { /* keep the text either way */ }

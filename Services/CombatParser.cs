@@ -217,9 +217,16 @@ public sealed class CombatParser
 
     private void NoteProc(string ability, double amount, bool heal, DateTime time, bool crit)
     {
-        if (_recentCasts.TryGetValue(SpellDurations.BaseKey(ability), out var castAt)
-            && (time - castAt).TotalSeconds is >= 0 and <= ProcCastWindowSec)
-            return; // hand-cast, not a proc
+        if (_recentCasts.TryGetValue(SpellDurations.BaseKey(ability), out var castAt))
+        {
+            // A HEAL you've ever cast is your spell: HoT ticks name the spell
+            // 20-40s after the cast, far outside the window, and real heal
+            // procs (Blood Siphon Strike) are never castable. Damage keeps the
+            // window — Spellblade fires the same nuke you also hand-cast.
+            if (heal) return;
+            if ((time - castAt).TotalSeconds is >= 0 and <= ProcCastWindowSec)
+                return; // hand-cast, not a proc
+        }
 
         if (!_sessionProcs.TryGetValue(ability, out var p))
             _sessionProcs[ability] = p = new ProcStat();
