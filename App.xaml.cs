@@ -437,6 +437,28 @@ public partial class App : Application
             string durPath = Path.Combine(Path.GetTempPath(), "eql_dur_test.json");
             File.Delete(durPath);
             var lib2 = new SpellLibrary(new ConfigService());
+
+            // Trigger typing: the wiki type wins, classic landing lines fill
+            // the gaps, the bucket is the fallback — HoTs are not just buffs.
+            string CatOf(string name) => lib2.FindByName(name) is { } sp
+                ? SpellLibrary.TriggerCategory(sp) : "?";
+            Check("typing: Snails Healing is a HoT (wiki type)", CatOf("Snails Healing") == "HoTs");
+            Check("typing: Envenomed Bolt is a DoT (poison landing)", CatOf("Envenomed Bolt") == "DoTs");
+            Check("typing: Boil Blood is a DoT (blood boils)", CatOf("Boil Blood") == "DoTs");
+            Check("typing: Regeneration is a HoT (regenerate landing)", CatOf("Regeneration") == "HoTs");
+            Check("typing: Quickness stays a buff", CatOf("Quickness") == "Buffs");
+            var retype = new[]
+            {
+                new Models.TriggerDefinition { Id = "lib-envenomed-bolt", Name = "Envenomed Bolt", Category = "Debuffs" },
+                new Models.TriggerDefinition { Id = "lib-quickness", Name = "Quickness", Category = "Buffs" },
+                new Models.TriggerDefinition { Id = "lib-snails-healing", Name = "Snails Healing", Category = "MyOwn" },
+                new Models.TriggerDefinition { Id = "custom-1", Name = "Envenomed Bolt", Category = "Debuffs" },
+            };
+            Check("typing: retype heals lib defaults, spares custom types and ids",
+                lib2.RetypeLibraryTriggers(retype) == 1
+                && retype[0].Category == "DoTs" && retype[1].Category == "Buffs"
+                && retype[2].Category == "MyOwn" && retype[3].Category == "Debuffs");
+
             Check("anchor: library flags the shared haste landing as ambiguous",
                 lib2.IsSharedLanding(Esc("You feel much faster."))
                 && !lib2.IsSharedLanding("not a spell line at all"));

@@ -127,6 +127,10 @@ public partial class TriggerManagerWindow : Window
         _configService.EnsureDefaultLoadout();
         foreach (var lo in _configService.ListLoadouts())
         {
+            // Library triggers created before 2.9 only knew Buffs/Debuffs —
+            // re-derive their type (HoTs/DoTs) from the spell data.
+            spellLibrary.RetypeLibraryTriggers(lo.Triggers);
+
             // Stable type-sort so the grouped list shows each type once, in a
             // fixed order (bars types, then matrices, repops, flashes) —
             // manual matrix ordering survives inside its group.

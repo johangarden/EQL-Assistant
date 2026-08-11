@@ -191,6 +191,61 @@ public sealed class SpellLibrary
         return src.OrderByDescending(IsSeen).ThenBy(s => s.Name).ToList();
     }
 
+    // ---- trigger typing -------------------------------------------------------
+
+    /// <summary>The trigger TYPE for a spell — drives list grouping and the
+    /// type-owned color. The wiki's type field decides when it says something
+    /// ("Heal Over Time", "Damage Over Time", …); classic landing-line wording
+    /// fills the gaps (every poison/disease DoT says "You have been poisoned."
+    /// -style lines but is typed just "Detrimental"); the bucket is the
+    /// fallback.</summary>
+    public static string TriggerCategory(Spell s)
+    {
+        string t = s.Type;
+        if (t.Contains("Heal Over Time", StringComparison.OrdinalIgnoreCase)
+            || t.Equals("Regen", StringComparison.OrdinalIgnoreCase)) return "HoTs";
+        if (t.Contains("Damage Over Time", StringComparison.OrdinalIgnoreCase)) return "DoTs";
+        if (t.Equals("Heal", StringComparison.OrdinalIgnoreCase)) return "HoTs";
+
+        string land = s.CastOnYou;
+        bool debuff = s.Bucket == "Debuff";
+        if (debuff && (land.Contains("poisoned", StringComparison.OrdinalIgnoreCase)
+                       || land.Contains("diseased", StringComparison.OrdinalIgnoreCase)
+                       || land.Contains("blood boils", StringComparison.OrdinalIgnoreCase)
+                       || land.Contains("blood simmers", StringComparison.OrdinalIgnoreCase)
+                       || land.Contains("plague", StringComparison.OrdinalIgnoreCase)
+                       || land.Contains("withers", StringComparison.OrdinalIgnoreCase)))
+            return "DoTs";
+        if (!debuff && land.Contains("regenerate", StringComparison.OrdinalIgnoreCase))
+            return "HoTs";
+
+        return debuff ? "Debuffs" : "Buffs";
+    }
+
+    /// <summary>Case-insensitive spell lookup by exact name.</summary>
+    public Spell? FindByName(string name) =>
+        Spells.FirstOrDefault(s => s.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Re-derive the type of library-added triggers still wearing the
+    /// pre-2.9 two-bucket categories ("Buffs"/"Debuffs") — Snails Healing
+    /// becomes a HoT, Envenomed Bolt a DoT. Anything the user re-typed by hand
+    /// is left alone. Returns how many changed.</summary>
+    public int RetypeLibraryTriggers(IEnumerable<TriggerDefinition> triggers)
+    {
+        int changed = 0;
+        foreach (var t in triggers)
+        {
+            if (!t.Id.StartsWith("lib-", StringComparison.Ordinal)) continue;
+            if (t.Category is not ("Buffs" or "Debuffs")) continue;
+            if (FindByName(t.Name) is not { } s) continue;
+            string cat = TriggerCategory(s);
+            if (cat == t.Category) continue;
+            t.Category = cat;
+            changed++;
+        }
+        return changed;
+    }
+
     // ---- one-click trigger generation ----------------------------------------
 
     /// <summary>Countdown bar: starts on the cast message, cleared by the wear-off line.</summary>
@@ -201,7 +256,7 @@ public sealed class SpellLibrary
         {
             Id = "lib-" + Slug(s.Name),
             Name = s.Name,
-            Category = s.Bucket == "Debuff" ? "Debuffs" : "Buffs",
+            Category = TriggerCategory(s),
             Panel = Panels.Bars,
             StartPattern = Regex.Escape(s.CastOnYou),
             EndPattern = s.WearsOff.Length > 0 ? Regex.Escape(s.WearsOff) : null,
