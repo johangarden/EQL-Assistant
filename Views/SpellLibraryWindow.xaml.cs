@@ -103,7 +103,7 @@ public partial class SpellLibraryWindow : Window
         bits.Add(s.Illusion ? "Illusion" : s.Type.Length > 0 ? s.Type : s.Bucket);
         return new SpellRow(s, s.Name, string.Join("  ·  ", bits),
             _library.IsSeen(s) ? "● seen" : "",
-            CanBar: s.CastOnYou.Length > 0,
+            CanBar: s.Name.Length > 0, // junk landing text falls back to the begin-cast line
             level == 0 ? "NO LEVEL" : $"LEVEL {level}");
     }
 

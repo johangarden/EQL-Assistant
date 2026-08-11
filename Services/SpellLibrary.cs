@@ -226,39 +226,71 @@ public sealed class SpellLibrary
     public Spell? FindByName(string name) =>
         Spells.FirstOrDefault(s => s.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>Re-derive the type of library-added triggers still wearing the
-    /// pre-2.9 two-bucket categories ("Buffs"/"Debuffs") — Snails Healing
-    /// becomes a HoT, Envenomed Bolt a DoT. Anything the user re-typed by hand
-    /// is left alone. Returns how many changed.</summary>
-    public int RetypeLibraryTriggers(IEnumerable<TriggerDefinition> triggers)
+    /// <summary>88 scraped spells carry junk landing text ("You .", empty) —
+    /// ports, proc buffs, and the EQL-added heals the wiki has no emote for.</summary>
+    public static bool JunkMessage(string message)
+    {
+        string t = Regex.Replace(message.Trim(), @"^(You|Someone)\b", "",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return t.Trim().TrimEnd('.').Trim().Length == 0;
+    }
+
+    /// <summary>The fallback start pattern when the landing text is junk: the
+    /// begin-cast line always prints, is unique per spell, and needs no
+    /// cast-anchor. The bar just starts at cast time instead of landing.</summary>
+    public static string BeginCastPattern(string spellName) =>
+        "^You begin casting " + Regex.Escape(spellName.Trim()) + @"\.";
+
+    /// <summary>Heal library-added triggers on load. Two repairs: (a) triggers
+    /// still wearing the pre-2.9 two-bucket categories re-derive their type
+    /// (Snails Healing becomes a HoT, Envenomed Bolt a DoT) — hand-typed ones
+    /// are left alone; (b) triggers whose start pattern is a junk landing line
+    /// ("You\ \.") switch to the begin-cast pattern. Returns how many changed.</summary>
+    public int HealLibraryTriggers(IEnumerable<TriggerDefinition> triggers)
     {
         int changed = 0;
         foreach (var t in triggers)
         {
             if (!t.Id.StartsWith("lib-", StringComparison.Ordinal)) continue;
-            if (t.Category is not ("Buffs" or "Debuffs")) continue;
             if (FindByName(t.Name) is not { } s) continue;
-            string cat = TriggerCategory(s);
-            if (cat == t.Category) continue;
-            t.Category = cat;
-            changed++;
+            bool touched = false;
+
+            if (t.Category is "Buffs" or "Debuffs" && TriggerCategory(s) is var cat && cat != t.Category)
+            {
+                t.Category = cat;
+                touched = true;
+            }
+
+            if (JunkMessage(s.CastOnYou)
+                && (t.StartPattern == Regex.Escape(s.CastOnYou) || t.StartPattern.Length == 0))
+            {
+                t.StartPattern = BeginCastPattern(s.Name);
+                try { ConfigService.CompileOne(t); } catch { /* keep the text either way */ }
+                touched = true;
+            }
+
+            if (touched) changed++;
         }
         return changed;
     }
 
     // ---- one-click trigger generation ----------------------------------------
 
-    /// <summary>Countdown bar: starts on the cast message, cleared by the wear-off line.</summary>
+    /// <summary>Countdown bar: starts on the cast message (or, when the scrape
+    /// has no usable landing text, on the begin-cast line), cleared by the
+    /// wear-off line.</summary>
     public static TriggerDefinition? BarTrigger(Spell s, bool spokenWarning)
     {
-        if (s.CastOnYou.Length == 0) return null;
+        if (s.Name.Length == 0) return null;
         var t = new TriggerDefinition
         {
             Id = "lib-" + Slug(s.Name),
             Name = s.Name,
             Category = TriggerCategory(s),
             Panel = Panels.Bars,
-            StartPattern = Regex.Escape(s.CastOnYou),
+            StartPattern = JunkMessage(s.CastOnYou)
+                ? BeginCastPattern(s.Name)
+                : Regex.Escape(s.CastOnYou),
             EndPattern = s.WearsOff.Length > 0 ? Regex.Escape(s.WearsOff) : null,
             DurationSeconds = s.DurationSec > 0 ? s.DurationSec : 60,
             RefreshOnRetrigger = true,

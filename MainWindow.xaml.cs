@@ -105,7 +105,7 @@ public partial class MainWindow : Window
         };
         _spellLib = new SpellLibrary(_configService);
         Log.Info($"Spell library: {_spellLib.Spells.Count} spells, {_spellLib.SeenCount} seen.");
-        int retyped = _spellLib.RetypeLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
+        int retyped = _spellLib.HealLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
         if (retyped > 0) Log.Info($"Retyped {retyped} library trigger(s) (HoTs/DoTs split).");
         _durations = new SpellDurations(_configService, _spellLib);
         _timerHidden = !_config.Overlay.TimerVisible;
@@ -1071,7 +1071,7 @@ public partial class MainWindow : Window
 
         _config.Triggers = lo.Triggers;
         _config.ActiveLoadout = lo.Name;
-        _spellLib.RetypeLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
+        _spellLib.HealLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
         MergeGlobalRespawns(_config);
         _configService.SaveSettings(_config); // remember the choice
 

@@ -454,10 +454,32 @@ public partial class App : Application
                 new Models.TriggerDefinition { Id = "lib-snails-healing", Name = "Snails Healing", Category = "MyOwn" },
                 new Models.TriggerDefinition { Id = "custom-1", Name = "Envenomed Bolt", Category = "Debuffs" },
             };
-            Check("typing: retype heals lib defaults, spares custom types and ids",
-                lib2.RetypeLibraryTriggers(retype) == 1
+            Check("typing: heal fixes lib defaults, spares custom types and ids",
+                lib2.HealLibraryTriggers(retype) == 1
                 && retype[0].Category == "DoTs" && retype[1].Category == "Buffs"
                 && retype[2].Category == "MyOwn" && retype[3].Category == "Debuffs");
+
+            // Junk landing text ("You .") falls back to the begin-cast line —
+            // and already-added broken triggers heal to it on load.
+            Check("junk: detector accepts real text, rejects the stubs",
+                SpellLibrary.JunkMessage("You .") && SpellLibrary.JunkMessage("")
+                && SpellLibrary.JunkMessage("Someone .")
+                && !SpellLibrary.JunkMessage("You feel much faster."));
+            Check("junk: Sloths Healing bar anchors on its begin-cast line",
+                lib2.FindByName("Sloths Healing") is { } sloths
+                && SpellLibrary.BarTrigger(sloths, spokenWarning: true) is { } slothsBar
+                && slothsBar.StartPattern == @"^You begin casting Sloths\ Healing\."
+                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
+                    .IsMatch("You begin casting Sloths Healing."));
+            var broken = new Models.TriggerDefinition
+            {
+                Id = "lib-sloths-healing", Name = "Sloths Healing", Category = "HoTs",
+                StartPattern = System.Text.RegularExpressions.Regex.Escape("You ."),
+            };
+            Check("junk: heal repairs an already-added broken pattern",
+                lib2.HealLibraryTriggers(new[] { broken }) == 1
+                && broken.StartPattern == @"^You begin casting Sloths\ Healing\."
+                && broken.StartRegex is not null);
 
             Check("anchor: library flags the shared haste landing as ambiguous",
                 lib2.IsSharedLanding(Esc("You feel much faster."))

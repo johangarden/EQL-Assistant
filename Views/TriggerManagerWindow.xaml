@@ -324,16 +324,11 @@
 
                                     <TextBlock Text="Play a sound" Style="{StaticResource FieldLabel}"/>
                                     <StackPanel Orientation="Horizontal">
-                                        <ComboBox x:Name="SoundPresetBox" Width="200" MinHeight="30"
+                                        <ComboBox x:Name="SoundPresetBox" Width="220" MinHeight="30"
                                                   SelectionChanged="SoundPreset_Changed"
                                                   ToolTip="Windows' built-in notification sounds — present on every machine, nothing to copy around"/>
                                         <Button Content="Play" Click="PlaySound_Click" Width="50" Margin="8,0,0,0"/>
-                                        <Button Content="Browse…" Click="BrowseSound_Click" Width="76" Margin="4,0,0,0"
-                                                ToolTip="Use your own .wav instead"/>
                                     </StackPanel>
-                                    <TextBox Text="{Binding AlertSound, UpdateSourceTrigger=PropertyChanged}" Width="320"
-                                             Margin="0,4,0,0" FontSize="11"
-                                             ToolTip="The file that will play — filled by the picker, editable by hand"/>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>

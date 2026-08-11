@@ -129,7 +129,7 @@ public partial class TriggerManagerWindow : Window
         {
             // Library triggers created before 2.9 only knew Buffs/Debuffs —
             // re-derive their type (HoTs/DoTs) from the spell data.
-            spellLibrary.RetypeLibraryTriggers(lo.Triggers);
+            spellLibrary.HealLibraryTriggers(lo.Triggers);
 
             // Stable type-sort so the grouped list shows each type once, in a
             // fixed order (bars types, then matrices, repops, flashes) —
@@ -731,13 +731,6 @@ public partial class TriggerManagerWindow : Window
         if (Selected is null) return;
         if (_alerts.Muted) { Status("Unmute to preview."); return; }
         _alerts.Fire(null, Selected.AlertSound);
-    }
-
-    private void BrowseSound_Click(object sender, RoutedEventArgs e)
-    {
-        if (Selected is null) return;
-        var dlg = new OpenFileDialog { Filter = "WAV files (*.wav)|*.wav|All files (*.*)|*.*" };
-        if (dlg.ShowDialog(this) == true) Selected.AlertSound = dlg.FileName;
     }
 
     /// <summary>Jump to a sidebar page by its title ("Repop timer", "General", …).</summary>
