@@ -272,7 +272,11 @@ Both open from the Fight History window (and raid kills from the tray):
 
 - **Raid kills** — a tiered target list (Open World, Fear, Hate, Sky — edit
   `raid-targets.json` to taste) with kill counts and dates, detected from death
-  lines and remembered forever. Each killed target shows **D0–D4 badges** for
+  lines and remembered forever. Every target wears a **hand-drawn vector badge**
+  (dragon, skull, demon, golem, spiroc, wasp, eye, spirit, claw — original
+  silhouettes, no game assets) in its own tint: full color once defeated, a
+  faded tease while it still lives. Targets you add yourself get a monogram
+  badge automatically. Each killed target shows **D0–D4 badges** for
   the zone difficulties you've beaten it at (difficulty is read from the zone
   name — "Befallen 4 (Refined)" = D4; kills recorded before v2.3 count as D0).
   Every kill also records **what it dropped** (loot lines name the corpse),

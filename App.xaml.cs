@@ -1,6 +1,8 @@
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using EQLOverlay.Services;
 using EQLOverlay.Views;
@@ -30,6 +32,23 @@ public partial class App : Application
 
         // Gated smoke test: construct the manager window (forces XAML parse) and
         // exit. Used to verify the build without a human clicking. Not user-facing.
+        int rg = Array.IndexOf(e.Args, "--render-glyphs");
+        if (rg >= 0)
+        {
+            try
+            {
+                RenderGlyphSheet(rg + 1 < e.Args.Length
+                    ? e.Args[rg + 1]
+                    : Path.Combine(Path.GetTempPath(), "eql_glyphs.png"));
+            }
+            catch (Exception ex)
+            {
+                File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_glyphs_error.txt"), ex.ToString());
+            }
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Contains("--selftest"))
         {
             RunSelfTest();
@@ -1078,6 +1097,18 @@ public partial class App : Application
             Check("procs: the session reset clears lanes and active time",
                 pw.SessionProcs.Count == 0 && pw.SessionActiveSeconds == 0 && pw.SessionSwings == 0);
 
+            // Raid badges: every default target resolves to a drawn silhouette;
+            // unknown (user-added) names get a stable monogram fallback.
+            var allTargets = new RaidKills(new ConfigService()).GetView()
+                .SelectMany(t => t.Targets.Select(x => x.Name)).ToList();
+            Check("badges: every default raid target has a silhouette",
+                allTargets.Count > 0 && allTargets.All(Views.RaidGlyphs.HasGlyph));
+            var fb = Views.RaidGlyphs.For("Some Custom Boss");
+            var fb2 = Views.RaidGlyphs.For("a strange mob");
+            Check("badges: unknown targets fall back to a monogram",
+                fb.Glyph is null && fb.Monogram == "S" && fb2.Monogram == "S"
+                && Views.RaidGlyphs.For("Some Custom Boss").Tint == fb.Tint); // stable color
+
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions
             {
@@ -1205,6 +1236,88 @@ public partial class App : Application
         }
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_replay.txt"), report.ToString());
         Shutdown();
+    }
+
+    /// <summary>Dev tool: render every raid-badge silhouette plus the whole
+    /// default target list to a PNG contact sheet, for eyeballing the vectors
+    /// without launching the app (`--render-glyphs [out.png]`).</summary>
+    private void RenderGlyphSheet(string outPath)
+    {
+        const int cols = 5, cellW = 130, cellH = 128, stripCell = 150, stripRowH = 44;
+        var keys = RaidGlyphs.GlyphKeys.ToList();
+        var targets = new RaidKills(new ConfigService()).GetView()
+            .SelectMany(t => t.Targets.Select(x => x.Name)).ToList();
+
+        int glyphRows = (keys.Count + cols - 1) / cols;
+        int stripCols = 4, stripRows = (targets.Count + stripCols - 1) / stripCols;
+        int width = Math.Max(cols * cellW, stripCols * stripCell);
+        int height = glyphRows * cellH + 40 + stripRows * stripRowH + 30;
+
+        var dv = new DrawingVisual();
+        using (var dc = dv.RenderOpen())
+        {
+            dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x12, 0x17, 0x22)), null,
+                new Rect(0, 0, width, height));
+            var face = new Typeface("Segoe UI");
+
+            for (int i = 0; i < keys.Count; i++)
+            {
+                double cx = i % cols * cellW + cellW / 2.0;
+                double cy = i / cols * cellH + 52;
+                DrawBadge(dc, RaidGlyphs.GlyphFor(keys[i]), Color.FromRgb(0x9F, 0xB6, 0xD4), null, cx, cy, 84);
+                var ft = new FormattedText(keys[i], System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, face, 13, Brushes.LightGray, 1.0);
+                dc.DrawText(ft, new Point(cx - ft.Width / 2, cy + 50));
+            }
+
+            double stripTop = glyphRows * cellH + 40;
+            for (int i = 0; i < targets.Count; i++)
+            {
+                double x = i % stripCols * stripCell + 24;
+                double y = stripTop + i / stripCols * stripRowH + 16;
+                var b = RaidGlyphs.For(targets[i]);
+                DrawBadge(dc, b.Glyph, b.Tint, b.Monogram, x, y, 26);
+                var ft = new FormattedText(targets[i], System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, face, 10, Brushes.Gray, 1.0);
+                dc.DrawText(ft, new Point(x + 18, y - ft.Height / 2));
+            }
+        }
+
+        var bmp = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(dv);
+        var enc = new PngBitmapEncoder();
+        enc.Frames.Add(BitmapFrame.Create(bmp));
+        using var fs = File.Create(outPath);
+        enc.Save(fs);
+    }
+
+    /// <summary>The badge exactly as the Raid Kills window draws it: tinted
+    /// ring + translucent fill, silhouette (or monogram) in full tint.</summary>
+    internal static void DrawBadge(DrawingContext dc, Geometry? glyph, Color tint, string? monogram,
+        double cx, double cy, double d)
+    {
+        var bg = new SolidColorBrush(Color.FromArgb(52, tint.R, tint.G, tint.B));
+        var ring = new Pen(new SolidColorBrush(Color.FromArgb(96, tint.R, tint.G, tint.B)),
+            Math.Max(1, d / 26));
+        dc.DrawEllipse(bg, ring, new Point(cx, cy), d / 2, d / 2);
+
+        if (glyph is not null)
+        {
+            double s = d * 0.72 / 24.0;
+            dc.PushTransform(new TranslateTransform(cx - 12 * s, cy - 12 * s));
+            dc.PushTransform(new ScaleTransform(s, s));
+            dc.DrawGeometry(new SolidColorBrush(tint), null, glyph);
+            dc.Pop();
+            dc.Pop();
+        }
+        else if (monogram is not null)
+        {
+            var ft = new FormattedText(monogram, System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, new Typeface(new FontFamily("Segoe UI"),
+                    FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
+                d * 0.5, new SolidColorBrush(tint), 1.0);
+            dc.DrawText(ft, new Point(cx - ft.Width / 2, cy - ft.Height / 2));
+        }
     }
 
     private void RunRepopSelfTest()

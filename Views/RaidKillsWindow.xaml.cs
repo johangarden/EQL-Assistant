@@ -19,7 +19,9 @@ public partial class RaidKillsWindow : Window
     public sealed record KillDetailVm(string Header, string ItemsText, Brush ItemsBrush,
         Visibility FightVisibility, DateTime FightEndedAt, string FightLabel);
     public sealed record KillRow(string Name, string Detail, Brush NameBrush, FontWeight Weight,
-        List<BadgeVm> Badges, string Chevron, Visibility DetailsVisibility, List<KillDetailVm> Details)
+        List<BadgeVm> Badges, string Chevron, Visibility DetailsVisibility, List<KillDetailVm> Details,
+        Geometry? Glyph, Brush GlyphBrush, Brush GlyphBg, Brush GlyphRing, string Monogram,
+        double GlyphOpacity)
     {
         public bool Expandable => Chevron.Length > 0;
     }
@@ -70,6 +72,8 @@ public partial class RaidKillsWindow : Window
                 bool expanded = killed && _expanded.Contains(x.Name);
                 int drops = killed
                     ? _raids.KillsFor(x.Name).Sum(k => k.Items.Sum(i => i.Count)) : 0;
+                var badge = RaidGlyphs.For(x.Name);
+                var c = badge.Tint;
                 return new KillRow(
                     x.Name,
                     killed
@@ -84,7 +88,13 @@ public partial class RaidKillsWindow : Window
                         : new List<BadgeVm>(),
                     killed ? (expanded ? "▾" : "▸") : "",
                     expanded ? Visibility.Visible : Visibility.Collapsed,
-                    expanded ? BuildDetails(x.Name) : new List<KillDetailVm>());
+                    expanded ? BuildDetails(x.Name) : new List<KillDetailVm>(),
+                    badge.Glyph,
+                    Freeze(c),
+                    Freeze(Color.FromArgb(40, c.R, c.G, c.B)),
+                    Freeze(Color.FromArgb(96, c.R, c.G, c.B)),
+                    badge.Monogram ?? "",
+                    killed ? 1.0 : 0.35); // unearned targets show a faded tease
             }).ToList()
         )).ToList();
     }

@@ -51,6 +51,17 @@
                                                         <TextBlock Text="{Binding Chevron}" Foreground="#5C6B82"
                                                                    FontSize="11" Width="14"
                                                                    VerticalAlignment="Center"/>
+                                                        <Grid Width="22" Height="22" Margin="0,0,8,0"
+                                                              VerticalAlignment="Center"
+                                                              Opacity="{Binding GlyphOpacity}">
+                                                            <Ellipse Fill="{Binding GlyphBg}"
+                                                                     Stroke="{Binding GlyphRing}" StrokeThickness="1"/>
+                                                            <Path Data="{Binding Glyph}" Fill="{Binding GlyphBrush}"
+                                                                  Stretch="Uniform" Margin="4"/>
+                                                            <TextBlock Text="{Binding Monogram}" Foreground="{Binding GlyphBrush}"
+                                                                       FontSize="11" FontWeight="Bold"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Grid>
                                                         <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}"
                                                                    Foreground="#8FA6C4" FontSize="11" Margin="8,0,0,0"
                                                                    VerticalAlignment="Center"/>
