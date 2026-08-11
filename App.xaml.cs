@@ -472,8 +472,16 @@ public partial class App : Application
                     .IsMatch("You begin casting Sloths Healing.")
                 && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
                     .IsMatch("You begin casting Sloths Healing V.")
+                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
+                    .IsMatch("You begin casting Sloths Healing VIII.")
+                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
+                    .IsMatch("You begin casting Sloths Healing X.")
                 && !new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
                     .IsMatch("You begin casting Sloths Healing Ward."));
+            Check("junk: rank pooling covers base through X",
+                SpellDurations.BaseKey("Sloths Healing") == SpellDurations.BaseKey("Sloths Healing X")
+                && SpellDurations.BaseKey("Sloths Healing VIII") == "sloths healing"
+                && SpellDurations.BaseKey("Sloths Healing IX") == "sloths healing");
             var broken = new Models.TriggerDefinition
             {
                 Id = "lib-sloths-healing", Name = "Sloths Healing", Category = "HoTs",
