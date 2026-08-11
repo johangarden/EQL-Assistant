@@ -451,7 +451,8 @@ public partial class App : Application
             {
                 new Models.TriggerDefinition { Id = "lib-envenomed-bolt", Name = "Envenomed Bolt", Category = "Debuffs" },
                 new Models.TriggerDefinition { Id = "lib-quickness", Name = "Quickness", Category = "Buffs" },
-                new Models.TriggerDefinition { Id = "lib-snails-healing", Name = "Snails Healing", Category = "MyOwn" },
+                // Custom type AND custom pattern — the heal must not touch either.
+                new Models.TriggerDefinition { Id = "lib-snails-healing", Name = "Snails Healing", Category = "MyOwn", StartPattern = "my custom pattern" },
                 new Models.TriggerDefinition { Id = "custom-1", Name = "Envenomed Bolt", Category = "Debuffs" },
             };
             Check("typing: heal fixes lib defaults, spares custom types and ids",
@@ -1200,7 +1201,7 @@ public partial class App : Application
 
             Check("procs: swings = your melee hits + misses", pw.SessionSwings == 1);
             double liveActive = pw.SessionActiveSeconds;
-            Check("procs: active time accrues while fighting", liveActive is > 30 and < 45);
+            Check("procs: active time accrues while fighting", liveActive is > 70 and < 85); // last line at +75s
             pw.Tick(new DateTime(2026, 8, 10, 21, 2, 0)); // idle out -> Archive
             Check("procs: an archived fight keeps its active time exactly once",
                 Math.Abs(pw.SessionActiveSeconds - liveActive) < 0.5);
