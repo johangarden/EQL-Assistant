@@ -401,7 +401,8 @@ public partial class MainWindow : Window
         _spellLib.SaveSeenIfDirty();
         int lootNew = Math.Max(0, _loot.Entries.Count - lootBefore);
         string summary = $"Reparsed {lines:N0} lines from {Path.GetFileName(path)}: " +
-            $"+{lootNew} loot, +{killsBefore} raid kills, +{durBefore} duration samples.";
+            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples " +
+            "(anything already recorded is skipped, never double-counted).";
         Log.Info(summary);
         return summary;
     }
