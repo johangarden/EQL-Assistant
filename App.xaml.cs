@@ -401,6 +401,47 @@ public partial class App : Application
             anc.ProcessLine($"[{AT(340)}] You feel much faster."); // wrong spell AND stale (>15s)
             Check("anchor: stale or foreign cast starts nothing", anc.Bars.Count == 2);
 
+            // Quick Buff (the Companion's case 3): the AA lands the whole
+            // spellbar at once with no cast lines. During the window an
+            // anchored landing is admitted only when the spell is plausibly
+            // yours — never-cast spells stay silent, ever-cast ones start,
+            // learner knowledge counts as proof, others' activations don't.
+            var qbCfg = new Models.AppConfig();
+            qbCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-quickness", Name = "Quickness", DurationAuto = false,
+                StartPattern = Esc("You feel much faster."), DurationSeconds = 660,
+            });
+            ConfigService.CompileOne(qbCfg.Triggers[0]);
+            var qb = new TriggerEngine(qbCfg, new AlertService()) { IsSharedLanding = _ => true };
+            qb.ProcessLine($"[{AT(0)}] You activate Quick Buff.");
+            qb.ProcessLine($"[{AT(3)}] You feel much faster.");
+            Check("quick buff: a never-cast spell stays silent", qb.Bars.Count == 0);
+            qb.ProcessLine($"[{AT(100)}] You begin casting Quickness II.");
+            qb.ProcessLine($"[{AT(103)}] You feel much faster.");
+            qb.ProcessLine($"[{AT(200)}] You activate Quick Buff.");
+            qb.ProcessLine($"[{AT(203)}] You feel much faster.");
+            Check("quick buff: an ever-cast spell refreshes from the burst",
+                qb.Bars.Count == 1
+                && qb.Bars[0].EndTimeLocal > new DateTime(2026, 8, 10, 23, 0, 0).AddSeconds(850));
+            qb.ProcessLine($"[{AT(300)}] You feel much faster.");
+            double afterStray = (qb.Bars[0].EndTimeLocal
+                - new DateTime(2026, 8, 10, 23, 0, 0)).TotalSeconds;
+            Check("quick buff: outside the window the anchor still guards",
+                Math.Abs(afterStray - 863) < 0.01); // unchanged since the 203 burst
+            var qb2 = new TriggerEngine(qbCfg, new AlertService())
+            {
+                IsSharedLanding = _ => true,
+                LearnedDuration = n => n == "Quickness" ? 555 : null,
+            };
+            qb2.ProcessLine($"[{AT(0)}] Caladar activates Quick Buff.");
+            qb2.ProcessLine($"[{AT(3)}] You feel much faster.");
+            Check("quick buff: someone else's activation opens no window", qb2.Bars.Count == 0);
+            qb2.ProcessLine($"[{AT(50)}] You activate Quick Buff.");
+            qb2.ProcessLine($"[{AT(53)}] You feel much faster.");
+            Check("quick buff: learner knowledge admits a cold-start burst",
+                qb2.Bars.Count == 1 && qb2.Bars[0].Name == "Quickness");
+
             var offCfg = new Models.AppConfig();
             offCfg.Triggers.Add(new Models.TriggerDefinition
             {

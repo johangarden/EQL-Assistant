@@ -88,7 +88,11 @@ these, so merged cross-machine history survives a reset).
   "You feel much faster."). Anchored triggers only fire within 15s of the
   player's own "You begin casting <name>." — an unanchored ambiguous landing
   starts NOTHING (a guessed bar lies). Auto for `lib-*` triggers with shared
-  text; `CastAnchored` tri-state overrides.
+  text; `CastAnchored` tri-state overrides. Exception: **Quick Buff** ("You
+  activate Quick Buff.") lands the whole spellbar with no cast lines — an 8s
+  activation window admits anchored landings when the spell is plausibly the
+  player's own (cast this session / bar already running / known to the
+  duration learner). Others' activations ("X activates …") open nothing.
 - **Duration learning**: sample = cast-anchored landing→wear-off span;
   death/zoning/external re-land/own re-cast discard the cycle instead of
   minting a wrong number; estimate = MAX over recent 5 samples (early breaks

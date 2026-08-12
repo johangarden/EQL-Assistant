@@ -59,7 +59,10 @@ public sealed class TriggerEngine
     public Func<string, bool>? IsSharedLanding { get; set; }
 
     private const double CastAnchorWindowSec = 15;   // begin-cast -> landing (same as SpellDurations)
+    private const double QuickBuffWindowSec = 8;     // activation -> burst (observed: 3s)
     private (string Key, DateTime At)? _lastOwnCast; // rank-stripped, from "You begin casting X."
+    private DateTime _quickBuffAt = DateTime.MinValue;
+    private readonly HashSet<string> _everCast = new(StringComparer.Ordinal); // session, rank-stripped
 
     private static readonly Regex BeginCastRx = new(
         @"^You begin (?:casting|singing) (?<s>.+?)\.",
@@ -77,9 +80,28 @@ public sealed class TriggerEngine
             ?? (trigger.Id.StartsWith("lib-", StringComparison.Ordinal)
                 && (IsSharedLanding?.Invoke(trigger.StartPattern) ?? false));
         if (!anchored) return true;
-        return _lastOwnCast is { } c
-            && c.Key == SpellDurations.BaseKey(trigger.Name)
-            && (eventTime - c.At).TotalSeconds is >= 0 and <= CastAnchorWindowSec;
+
+        string key = SpellDurations.BaseKey(trigger.Name);
+        if (_lastOwnCast is { } c && c.Key == key
+            && (eventTime - c.At).TotalSeconds is >= 0 and <= CastAnchorWindowSec)
+            return true;
+
+        // Quick Buff burst (the Companion's case 3): the AA lands the whole
+        // spellbar at once with NO cast lines, so the named anchor never
+        // arrives. During the activation window an anchored landing is
+        // admitted when the spell is plausibly YOURS: cast at some point this
+        // session, its bar/cell already running (a rebuff refresh), or known
+        // to the duration learner (samples only mint from your own casts).
+        if ((eventTime - _quickBuffAt).TotalSeconds is >= 0 and <= QuickBuffWindowSec)
+        {
+            if (_everCast.Contains(key)) return true;
+            if (_active.Keys.Any(k => k == trigger.Id
+                    || k.StartsWith(trigger.Id + "|", StringComparison.Ordinal))) return true;
+            if (_selfById.TryGetValue(trigger.Id, out var sc) && sc.IsActive) return true;
+            if (_targetById.TryGetValue(trigger.Id, out var tc) && tc.IsActive) return true;
+            if (LearnedDuration?.Invoke(trigger.Name) is not null) return true;
+        }
+        return false;
     }
 
     /// <summary>Auto-learn triggers run on the learned estimate once samples
@@ -214,7 +236,16 @@ public sealed class TriggerEngine
 
         var cast = BeginCastRx.Match(body);
         if (cast.Success)
-            _lastOwnCast = (SpellDurations.BaseKey(cast.Groups["s"].Value), eventTime);
+        {
+            string castKey = SpellDurations.BaseKey(cast.Groups["s"].Value);
+            _lastOwnCast = (castKey, eventTime);
+            _everCast.Add(castKey);
+        }
+        else if (body.StartsWith("You activate Quick Buff.", StringComparison.Ordinal))
+        {
+            // ("Caladar activates Quick Buff." is someone else — no window.)
+            _quickBuffAt = eventTime;
+        }
 
         foreach (var trigger in _triggers)
         {
