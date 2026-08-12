@@ -407,6 +407,27 @@ public sealed class CombatParser
     /// <summary>Wipe every tracked enemy DoT (zoning, your death, manual reset).</summary>
     public void ClearEnemyDots() => _enemyDots.Clear();
 
+    /// <summary>Test hook (Ctrl+Alt+T): seed demo enemy-DoT bars — twins with
+    /// countdowns plus a gray overrun — so the panel can be placed without
+    /// picking a fight. They age out through the normal culls.</summary>
+    public void AddDemoEnemyDots()
+    {
+        var now = DateTime.Now;
+        DotGroup G(string spell, string target)
+        {
+            string key = DotKey(spell, target);
+            if (!_enemyDots.TryGetValue(key, out var g))
+                _enemyDots[key] = g = new DotGroup { Spell = spell, Target = target };
+            g.Instances.Clear();
+            return g;
+        }
+        var curse = G("Demo Curse", "a demo froglok");
+        curse.Instances.Add(new DotInstance { Ordinal = 1, Start = now.AddSeconds(-12), LastTick = now });
+        curse.Instances.Add(new DotInstance { Ordinal = 2, Start = now.AddSeconds(-4), LastTick = now });
+        var venom = G("Demo Venom", "a demo froglok");
+        venom.Instances.Add(new DotInstance { Ordinal = 1, Start = now.AddSeconds(-38), LastTick = now });
+    }
+
     /// <summary>Event cap per fight — a 10-minute raid fight sits well under this.</summary>
     public const int MaxFightEvents = 4000;
 

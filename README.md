@@ -246,6 +246,13 @@ side to compare pulls.
 
 ## Skill tracker
 
+Missing-buff **REBUFF reminders live in their own movable panel** (anchor on
+the Bars & matrices page) instead of squatting inside the buff bars; it only
+appears while something is missing. Ctrl+Alt+T also seeds **demo enemy-DoT
+bars** so that panel can be placed without picking a fight, and the tray's
+Panels menu gained **Enemy DoTs** and **DPS meter · proc watcher** toggles.
+The Manager page is now called **DPS + Skills, Procs**.
+
 A **SKILLS section on the DPS meter** for grinding skills: configure the
 abilities to watch (Manage → Skill tracker — e.g. `backstab, reave, Smite`)
 and each gets a bar filled by its **session-wide** hit rate, colored red →

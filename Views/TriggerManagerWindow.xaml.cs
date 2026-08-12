@@ -792,7 +792,7 @@ public partial class TriggerManagerWindow : Window
             ["Loadouts"] = LoadoutsPage,
             ["Bars & matrices"] = BarsPage,
             ["Repop timer"] = TimerPage,
-            ["DPS & Skills"] = MeterPage,
+            ["DPS + Skills, Procs"] = MeterPage,
             ["Combat text"] = SctPage,
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
@@ -906,6 +906,7 @@ public partial class TriggerManagerWindow : Window
 
         EnemyDotsVisibleCheck.IsChecked = _config.Overlay.EnemyDotsVisible;
         EnemyDotsAnchorBox.SelectedValue = (_configService.LoadPlacement("enemyDots")?.Anchor ?? Anchor.TopLeft).ToString();
+        RemindersAnchorBox.SelectedValue = (_configService.LoadPlacement("reminders")?.Anchor ?? Anchor.TopLeft).ToString();
         BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
         SelfAnchorBox.SelectedValue = (_configService.LoadPlacement("selfMatrix")?.Anchor ?? Anchor.TopLeft).ToString();
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
@@ -1031,6 +1032,7 @@ public partial class TriggerManagerWindow : Window
         // Persist panel anchors (offsets are preserved) before the overlay re-applies.
         ApplyAnchor("main", BarsAnchorBox);
         ApplyAnchor("enemyDots", EnemyDotsAnchorBox);
+        ApplyAnchor("reminders", RemindersAnchorBox);
         ApplyAnchor("selfMatrix", SelfAnchorBox);
         ApplyAnchor("targetDebuffs", TargetAnchorBox);
         ApplyAnchor("timer", TimerAnchorBox);

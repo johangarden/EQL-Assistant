@@ -113,7 +113,7 @@
                     <ListBoxItem Content="PANELS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="Bars &amp; matrices"/>
                     <ListBoxItem Content="Repop timer"/>
-                    <ListBoxItem Content="DPS &amp; Skills"/>
+                    <ListBoxItem Content="DPS + Skills, Procs"/>
                     <ListBoxItem Content="Combat text"/>
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
@@ -549,6 +549,16 @@
                             <TextBox x:Name="WarnBox" Width="120" HorizontalAlignment="Left"/>
                             <TextBlock Text="Reminder repeat interval (seconds)" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="RemindBox" Width="120" HorizontalAlignment="Left"/>
+
+                            <TextBlock Text="Reminders anchor" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox x:Name="RemindersAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
+                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
+                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
+                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
+                            </ComboBox>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="The REBUFF nags live in their own panel now — drag it while unlocked, like every panel."/>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -675,7 +685,7 @@
                     <ScrollViewer x:Name="MeterPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="DPS &amp; Skills" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="DPS + Skills, Procs" Style="{StaticResource PageTitle}"/>
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"

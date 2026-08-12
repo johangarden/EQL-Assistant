@@ -32,6 +32,10 @@ public sealed class TriggerEngine
     /// <summary>Bound directly by the overlay's ItemsControl.</summary>
     public ObservableCollection<TimerBarViewModel> Bars { get; } = new();
 
+    /// <summary>Missing-buff REBUFF indicators — their own panel since 2.10
+    /// (they used to sit inside the bars panel).</summary>
+    public ObservableCollection<TimerBarViewModel> Reminders { get; } = new();
+
     /// <summary>Persistent present/missing cells for the Self-Buffs matrix panel.</summary>
     public ObservableCollection<MatrixCellViewModel> SelfCells { get; } = new();
     private readonly Dictionary<string, MatrixCellViewModel> _selfById = new();
@@ -188,7 +192,7 @@ public sealed class TriggerEngine
             var t = _triggers.FirstOrDefault(x => x.Id == id);
             if (t is null || !t.Enabled || !t.RemindWhenMissing)
             {
-                if (_missing.Remove(id, out var mb)) Bars.Remove(mb);
+                if (_missing.Remove(id, out var mb)) Reminders.Remove(mb);
                 _lastRemind.Remove(id);
             }
         }
@@ -202,6 +206,7 @@ public sealed class TriggerEngine
         _lastRemind.Clear();
         _seen.Clear();
         Bars.Clear();
+        Reminders.Clear();
         foreach (var c in SelfCells) c.Deactivate();
         foreach (var c in TargetCells) c.Deactivate();
     }
@@ -508,7 +513,7 @@ public sealed class TriggerEngine
 
             if (active)
             {
-                if (_missing.Remove(t.Id, out var mb)) Bars.Remove(mb);
+                if (_missing.Remove(t.Id, out var mb)) Reminders.Remove(mb);
                 _lastRemind.Remove(t.Id);
                 continue;
             }
@@ -518,7 +523,7 @@ public sealed class TriggerEngine
                 var mb = TimerBarViewModel.CreateMissing(
                     "missing|" + t.Id, t.Name, t.Category, MakeBrush("#E53935"));
                 _missing[t.Id] = mb;
-                InsertSorted(mb);
+                Reminders.Add(mb);
                 _alerts.Speak($"{t.Name} missing");
                 _lastRemind[t.Id] = now;
             }
