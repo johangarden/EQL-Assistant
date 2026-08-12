@@ -32,6 +32,10 @@ public sealed class TriggerEngine
     /// <summary>Bound directly by the overlay's ItemsControl.</summary>
     public ObservableCollection<TimerBarViewModel> Bars { get; } = new();
 
+    /// <summary>Missing-buff REBUFF indicators — their own panel since 2.10
+    /// (they used to sit inside the bars panel).</summary>
+    public ObservableCollection<TimerBarViewModel> Reminders { get; } = new();
+
     /// <summary>Persistent present/missing cells for the Self-Buffs matrix panel.</summary>
     public ObservableCollection<MatrixCellViewModel> SelfCells { get; } = new();
     private readonly Dictionary<string, MatrixCellViewModel> _selfById = new();
@@ -59,7 +63,10 @@ public sealed class TriggerEngine
     public Func<string, bool>? IsSharedLanding { get; set; }
 
     private const double CastAnchorWindowSec = 15;   // begin-cast -> landing (same as SpellDurations)
+    private const double QuickBuffWindowSec = 8;     // activation -> burst (observed: 3s)
     private (string Key, DateTime At)? _lastOwnCast; // rank-stripped, from "You begin casting X."
+    private DateTime _quickBuffAt = DateTime.MinValue;
+    private readonly HashSet<string> _everCast = new(StringComparer.Ordinal); // session, rank-stripped
 
     private static readonly Regex BeginCastRx = new(
         @"^You begin (?:casting|singing) (?<s>.+?)\.",
@@ -77,9 +84,28 @@ public sealed class TriggerEngine
             ?? (trigger.Id.StartsWith("lib-", StringComparison.Ordinal)
                 && (IsSharedLanding?.Invoke(trigger.StartPattern) ?? false));
         if (!anchored) return true;
-        return _lastOwnCast is { } c
-            && c.Key == SpellDurations.BaseKey(trigger.Name)
-            && (eventTime - c.At).TotalSeconds is >= 0 and <= CastAnchorWindowSec;
+
+        string key = SpellDurations.BaseKey(trigger.Name);
+        if (_lastOwnCast is { } c && c.Key == key
+            && (eventTime - c.At).TotalSeconds is >= 0 and <= CastAnchorWindowSec)
+            return true;
+
+        // Quick Buff burst (the Companion's case 3): the AA lands the whole
+        // spellbar at once with NO cast lines, so the named anchor never
+        // arrives. During the activation window an anchored landing is
+        // admitted when the spell is plausibly YOURS: cast at some point this
+        // session, its bar/cell already running (a rebuff refresh), or known
+        // to the duration learner (samples only mint from your own casts).
+        if ((eventTime - _quickBuffAt).TotalSeconds is >= 0 and <= QuickBuffWindowSec)
+        {
+            if (_everCast.Contains(key)) return true;
+            if (_active.Keys.Any(k => k == trigger.Id
+                    || k.StartsWith(trigger.Id + "|", StringComparison.Ordinal))) return true;
+            if (_selfById.TryGetValue(trigger.Id, out var sc) && sc.IsActive) return true;
+            if (_targetById.TryGetValue(trigger.Id, out var tc) && tc.IsActive) return true;
+            if (LearnedDuration?.Invoke(trigger.Name) is not null) return true;
+        }
+        return false;
     }
 
     /// <summary>Auto-learn triggers run on the learned estimate once samples
@@ -166,7 +192,7 @@ public sealed class TriggerEngine
             var t = _triggers.FirstOrDefault(x => x.Id == id);
             if (t is null || !t.Enabled || !t.RemindWhenMissing)
             {
-                if (_missing.Remove(id, out var mb)) Bars.Remove(mb);
+                if (_missing.Remove(id, out var mb)) Reminders.Remove(mb);
                 _lastRemind.Remove(id);
             }
         }
@@ -180,6 +206,7 @@ public sealed class TriggerEngine
         _lastRemind.Clear();
         _seen.Clear();
         Bars.Clear();
+        Reminders.Clear();
         foreach (var c in SelfCells) c.Deactivate();
         foreach (var c in TargetCells) c.Deactivate();
     }
@@ -214,7 +241,16 @@ public sealed class TriggerEngine
 
         var cast = BeginCastRx.Match(body);
         if (cast.Success)
-            _lastOwnCast = (SpellDurations.BaseKey(cast.Groups["s"].Value), eventTime);
+        {
+            string castKey = SpellDurations.BaseKey(cast.Groups["s"].Value);
+            _lastOwnCast = (castKey, eventTime);
+            _everCast.Add(castKey);
+        }
+        else if (body.StartsWith("You activate Quick Buff.", StringComparison.Ordinal))
+        {
+            // ("Caladar activates Quick Buff." is someone else — no window.)
+            _quickBuffAt = eventTime;
+        }
 
         foreach (var trigger in _triggers)
         {
@@ -330,7 +366,8 @@ public sealed class TriggerEngine
             trigger.Alert?.AtSeconds ?? 0,
             trigger.Alert?.OnExpire ?? false,
             SpeakOf(trigger),
-            trigger.Alert?.Sound);
+            trigger.Alert?.Sound,
+            waitsForFade: trigger.EndRegex is not null);
 
         _active[key] = vm;
         InsertSorted(vm);
@@ -403,12 +440,23 @@ public sealed class TriggerEngine
         }
     }
 
+    /// <summary>An overrunning bar squats at most this long past its estimate
+    /// before the unwitnessed cull removes it (the fade line never arrived —
+    /// death/zoning ate it).</summary>
+    public const double OverrunCapSec = 60;
+
     private void UpdateBars(DateTime now)
     {
         List<TimerBarViewModel>? expired = null;
         foreach (var bar in Bars)
         {
             bar.Refresh(now, _warnSeconds);
+
+            if (bar.IsOverrun)
+            {
+                if (bar.OverrunSeconds > OverrunCapSec) (expired ??= new()).Add(bar);
+                continue; // no fade warnings while gray
+            }
 
             if (!bar.IsMissing && bar.AlertAtSeconds > 0 && !bar.FadeAlertFired &&
                 bar.RemainingSeconds > 0 && bar.RemainingSeconds <= bar.AlertAtSeconds)
@@ -418,14 +466,27 @@ public sealed class TriggerEngine
             }
 
             if (bar.IsExpired)
-                (expired ??= new()).Add(bar);
+            {
+                // A bar with an end pattern doesn't vanish on a mere estimate:
+                // it grays out and counts UP until the real fade line (which
+                // also teaches the learner the true duration).
+                if (bar.WaitsForFade)
+                {
+                    if (bar.AlertOnExpire) _alerts.Fire(bar.AlertSpeak, bar.AlertSound);
+                    bar.EnterOverrun();
+                }
+                else
+                {
+                    (expired ??= new()).Add(bar);
+                }
+            }
         }
 
         if (expired is not null)
         {
             foreach (var bar in expired)
             {
-                if (bar.AlertOnExpire)
+                if (bar.AlertOnExpire && !bar.IsOverrun) // overrun already alerted at 0
                     _alerts.Fire(bar.AlertSpeak, bar.AlertSound);
                 _active.Remove(bar.Key);
                 Bars.Remove(bar);
@@ -452,7 +513,7 @@ public sealed class TriggerEngine
 
             if (active)
             {
-                if (_missing.Remove(t.Id, out var mb)) Bars.Remove(mb);
+                if (_missing.Remove(t.Id, out var mb)) Reminders.Remove(mb);
                 _lastRemind.Remove(t.Id);
                 continue;
             }
@@ -462,7 +523,7 @@ public sealed class TriggerEngine
                 var mb = TimerBarViewModel.CreateMissing(
                     "missing|" + t.Id, t.Name, t.Category, MakeBrush("#E53935"));
                 _missing[t.Id] = mb;
-                InsertSorted(mb);
+                Reminders.Add(mb);
                 _alerts.Speak($"{t.Name} missing");
                 _lastRemind[t.Id] = now;
             }

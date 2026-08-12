@@ -401,6 +401,47 @@ public partial class App : Application
             anc.ProcessLine($"[{AT(340)}] You feel much faster."); // wrong spell AND stale (>15s)
             Check("anchor: stale or foreign cast starts nothing", anc.Bars.Count == 2);
 
+            // Quick Buff (the Companion's case 3): the AA lands the whole
+            // spellbar at once with no cast lines. During the window an
+            // anchored landing is admitted only when the spell is plausibly
+            // yours — never-cast spells stay silent, ever-cast ones start,
+            // learner knowledge counts as proof, others' activations don't.
+            var qbCfg = new Models.AppConfig();
+            qbCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-quickness", Name = "Quickness", DurationAuto = false,
+                StartPattern = Esc("You feel much faster."), DurationSeconds = 660,
+            });
+            ConfigService.CompileOne(qbCfg.Triggers[0]);
+            var qb = new TriggerEngine(qbCfg, new AlertService()) { IsSharedLanding = _ => true };
+            qb.ProcessLine($"[{AT(0)}] You activate Quick Buff.");
+            qb.ProcessLine($"[{AT(3)}] You feel much faster.");
+            Check("quick buff: a never-cast spell stays silent", qb.Bars.Count == 0);
+            qb.ProcessLine($"[{AT(100)}] You begin casting Quickness II.");
+            qb.ProcessLine($"[{AT(103)}] You feel much faster.");
+            qb.ProcessLine($"[{AT(200)}] You activate Quick Buff.");
+            qb.ProcessLine($"[{AT(203)}] You feel much faster.");
+            Check("quick buff: an ever-cast spell refreshes from the burst",
+                qb.Bars.Count == 1
+                && qb.Bars[0].EndTimeLocal > new DateTime(2026, 8, 10, 23, 0, 0).AddSeconds(850));
+            qb.ProcessLine($"[{AT(300)}] You feel much faster.");
+            double afterStray = (qb.Bars[0].EndTimeLocal
+                - new DateTime(2026, 8, 10, 23, 0, 0)).TotalSeconds;
+            Check("quick buff: outside the window the anchor still guards",
+                Math.Abs(afterStray - 863) < 0.01); // unchanged since the 203 burst
+            var qb2 = new TriggerEngine(qbCfg, new AlertService())
+            {
+                IsSharedLanding = _ => true,
+                LearnedDuration = n => n == "Quickness" ? 555 : null,
+            };
+            qb2.ProcessLine($"[{AT(0)}] Caladar activates Quick Buff.");
+            qb2.ProcessLine($"[{AT(3)}] You feel much faster.");
+            Check("quick buff: someone else's activation opens no window", qb2.Bars.Count == 0);
+            qb2.ProcessLine($"[{AT(50)}] You activate Quick Buff.");
+            qb2.ProcessLine($"[{AT(53)}] You feel much faster.");
+            Check("quick buff: learner knowledge admits a cold-start burst",
+                qb2.Bars.Count == 1 && qb2.Bars[0].Name == "Quickness");
+
             var offCfg = new Models.AppConfig();
             offCfg.Triggers.Add(new Models.TriggerDefinition
             {
@@ -456,9 +497,12 @@ public partial class App : Application
                 new Models.TriggerDefinition { Id = "custom-1", Name = "Envenomed Bolt", Category = "Debuffs" },
             };
             Check("typing: heal fixes lib defaults, spares custom types and ids",
-                lib2.HealLibraryTriggers(retype) == 1
+                lib2.HealLibraryTriggers(retype) == 2 // bolt retyped; both empty patterns filled
                 && retype[0].Category == "DoTs" && retype[1].Category == "Buffs"
-                && retype[2].Category == "MyOwn" && retype[3].Category == "Debuffs");
+                && retype[2].Category == "MyOwn" && retype[2].StartPattern == "my custom pattern"
+                && retype[3].Category == "Debuffs" && retype[3].StartPattern.Length == 0
+                && retype[1].StartPattern == System.Text.RegularExpressions.Regex
+                    .Escape("You feel much faster."));
 
             // Junk landing text ("You .") falls back to the begin-cast line —
             // and already-added broken triggers heal to it on load.
@@ -466,26 +510,32 @@ public partial class App : Application
                 SpellLibrary.JunkMessage("You .") && SpellLibrary.JunkMessage("")
                 && SpellLibrary.JunkMessage("Someone .")
                 && !SpellLibrary.JunkMessage("You feel much faster."));
-            Check("junk: Sloths Healing bar anchors on its begin-cast line, rank-tolerant",
-                lib2.FindByName("Sloths Healing") is { } sloths
-                && SpellLibrary.BarTrigger(sloths, spokenWarning: true) is { } slothsBar
-                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing.")
-                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing V.")
-                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing VIII.")
-                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing X.")
-                && !new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing Ward."));
+            Check("junk: a junk-text spell's bar anchors on its begin-cast line, rank-tolerant",
+                lib2.FindByName("Befriend Animal") is { } befriend
+                && SpellLibrary.BarTrigger(befriend, spokenWarning: true) is { } befriendBar
+                && new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal.")
+                && new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal V.")
+                && new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal VIII.")
+                && new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal X.")
+                && !new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal Ward."));
+            // Ghost entries are gone; the scrape's own Tortoises entry carries
+            // the family template and types as a HoT via its landing text.
+            Check("junk: Sloths Healing is a ghost (not on the wiki) and is removed",
+                lib2.FindByName("Sloths Healing") is null
+                && lib2.FindByName("Tortoises Healing") is { } tortoise
+                && SpellLibrary.TriggerCategory(tortoise) == "HoTs");
             Check("junk: rank pooling covers base through X",
                 SpellDurations.BaseKey("Sloths Healing") == SpellDurations.BaseKey("Sloths Healing X")
                 && SpellDurations.BaseKey("Sloths Healing VIII") == "sloths healing"
                 && SpellDurations.BaseKey("Sloths Healing IX") == "sloths healing");
             var broken = new Models.TriggerDefinition
             {
-                Id = "lib-sloths-healing", Name = "Sloths Healing", Category = "HoTs",
+                Id = "lib-befriend-animal", Name = "Befriend Animal", Category = "MyOwn",
                 StartPattern = System.Text.RegularExpressions.Regex.Escape("You ."),
             };
             var legacy = new Models.TriggerDefinition
@@ -493,13 +543,29 @@ public partial class App : Application
                 Id = "lib-slugs-healing", Name = "Slugs Healing", Category = "HoTs",
                 StartPattern = @"^You begin casting Slugs\ Healing\.", // 2.9.0 fallback, no rank
             };
-            Check("junk: heal repairs broken and rank-less fallback patterns",
+            Check("junk: heal repairs broken patterns; corrected spells graduate to landing text",
                 lib2.HealLibraryTriggers(new[] { broken, legacy }) == 2
                 && broken.StartRegex is not null
                 && new System.Text.RegularExpressions.Regex(broken.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing II.")
+                    .IsMatch("You begin casting Befriend Animal II.")
                 && new System.Text.RegularExpressions.Regex(legacy.StartPattern)
-                    .IsMatch("You begin casting Slugs Healing V."));
+                    .IsMatch("You being to feel healed by the slug.")
+                && legacy.EndPattern is not null
+                && new System.Text.RegularExpressions.Regex(legacy.EndPattern)
+                    .IsMatch("You feel the slug spirit depart."));
+
+            // Observed message corrections (real-log sentences, game typo intact).
+            Check("corrections: Slugs Healing carries its observed landing + fade",
+                lib2.FindByName("Slugs Healing") is
+                {
+                    CastOnYou: "You being to feel healed by the slug.",
+                    WearsOff: "You feel the slug spirit depart.",
+                }
+                && SpellLibrary.BarTrigger(lib2.FindByName("Slugs Healing")!, spokenWarning: false) is
+                { } slugsBar
+                && slugsBar.StartPattern == System.Text.RegularExpressions.Regex
+                    .Escape("You being to feel healed by the slug.")
+                && SpellLibrary.TriggerCategory(lib2.FindByName("Slugs Healing")!) == "HoTs");
 
             Check("anchor: library flags the shared haste landing as ambiguous",
                 lib2.IsSharedLanding(Esc("You feel much faster."))
@@ -515,6 +581,13 @@ public partial class App : Application
             dur.ProcessLine($"[{T(2403)}] The spirit of wolf leaves you.");
             Check("durations: full cycle mints a 2400s sample",
                 dur.LearnedMaxSeconds("Spirit of Wolf") is double d1 && Math.Abs(d1 - 2400) < 0.01);
+            // Ranked cast of a corrected spell: "Slugs Healing V" resolves to
+            // the library's base entry, so the observed landing/fade pair mints.
+            dur.ProcessLine($"[{T(9000)}] You begin casting Slugs Healing V.");
+            dur.ProcessLine($"[{T(9006)}] You being to feel healed by the slug.");
+            dur.ProcessLine($"[{T(9047)}] You feel the slug spirit depart.");
+            Check("durations: ranked cast of a corrected spell mints a sample",
+                dur.LearnedMaxSeconds("Slugs Healing") is double slugSec && Math.Abs(slugSec - 41) < 0.01);
             dur.ProcessLine($"[{T(3000)}] You begin casting Spirit of Wolf.");
             dur.ProcessLine($"[{T(3003)}] You feel the spirit of wolf enter you.");
             dur.ProcessLine($"[{T(3100)}] The spirit of wolf leaves you.");
@@ -654,6 +727,32 @@ public partial class App : Application
             Check("voice: library adds arrive with a default fade phrase, voice on",
                 SpellLibrary.BarTrigger(lib2.FindByName("Quickness")!, spokenWarning: true) is
                     { Alert: { Speak: "Quickness is fading", SpeakEnabled: true, AtSeconds: 20 } });
+
+            // Merged-log copies: timestamped name keeps base + extension.
+            Check("merge copies: timestamped copy name",
+                ConfigService.MergedCopyName("eqlog_Thorrak_paineel.txt",
+                    new DateTime(2026, 8, 12, 20, 30, 15))
+                    == "eqlog_Thorrak_paineel-20260812-203015.txt");
+
+            // Overrun state: a bar with an end pattern grays out at 0 and
+            // counts UP until the fade line — "still there, still learning".
+            var ov = ViewModels.TimerBarViewModel.CreateTimer("k", "n", "Buffs", 10,
+                new DateTime(2026, 8, 11, 12, 0, 10), Brushes.Blue, 0, false, null, null,
+                waitsForFade: true);
+            ov.Refresh(new DateTime(2026, 8, 11, 12, 0, 11), 5);
+            Check("overrun: expired-but-waiting bar reports expired once", ov.IsExpired);
+            ov.EnterOverrun();
+            ov.Refresh(new DateTime(2026, 8, 11, 12, 0, 24), 5);
+            Check("overrun: gray bar counts up and is no longer 'expired'",
+                ov.IsOverrun && !ov.IsExpired && ov.RemainingText == "+14s"
+                && Math.Abs(ov.OverrunSeconds - 14) < 0.01 && !ov.IsWarning);
+            ov.Restart(10, new DateTime(2026, 8, 11, 12, 0, 40));
+            Check("overrun: a retrigger returns the bar to a live countdown", !ov.IsOverrun);
+            var nf = ViewModels.TimerBarViewModel.CreateTimer("k2", "n2", "Buffs", 10,
+                new DateTime(2026, 8, 11, 12, 0, 10), Brushes.Blue, 0, false, null, null);
+            nf.Refresh(new DateTime(2026, 8, 11, 12, 0, 11), 5);
+            Check("overrun: bars without an end pattern still just expire",
+                nf.IsExpired && !nf.WaitsForFade);
 
             // A speak phrase with no timing defaults to the expiry alert.
             var mute = new Models.TriggerDefinition
@@ -1220,6 +1319,97 @@ public partial class App : Application
             Check("badges: unknown targets fall back to a monogram",
                 fb.Glyph is null && fb.Monogram == "S" && fb2.Monogram == "S"
                 && Views.RaidGlyphs.For("Some Custom Boss").Tint == fb.Tint); // stable color
+
+            // Enemy DoT tracker: one bar per same-named mob. A tick belongs to
+            // the instance DUE one (its own 6s heartbeat); nobody due = a new
+            // mob = the next bar. Wear-off closes the oldest; death, zoning
+            // and tick silence censor.
+            var ep = new CombatParser { SelfName = "Johan" };
+            ep.DotDurationLookup = s => s == "Curse" ? 30.0 : null;
+            string ETs(int s) => new DateTime(2026, 8, 11, 22, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            DateTime ET(int s) => new DateTime(2026, 8, 11, 22, 0, 0).AddSeconds(s);
+            ep.ProcessLine($"[{ETs(0)}] A froglok has taken 100 damage from your Curse.");
+            var dots = ep.EnemyDots(ET(1));
+            Check("dots: first tick opens bar 01 with the countdown",
+                dots is [{ Spell: "Curse", Target: "A froglok", Ordinal: 1, RemainingSeconds: not null }]
+                && Math.Abs(dots[0].RemainingSeconds!.Value - 29) < 0.01);
+            ep.ProcessLine($"[{ETs(2)}] A froglok has taken 100 damage from your Curse.");
+            Check("dots: a tick when nobody is due = a second mob = bar 02",
+                ep.EnemyDots(ET(3)).Select(d => d.Ordinal).OrderBy(x => x).SequenceEqual(new[] { 1, 2 }));
+            ep.ProcessLine($"[{ETs(6)}] A froglok has taken 100 damage from your Curse.");
+            Check("dots: a due instance owns its heartbeat tick (no third bar)",
+                ep.EnemyDots(ET(7)).Count == 2);
+            ep.ProcessLine($"[{ETs(8)}] Your Curse spell has worn off of a froglok.");
+            Check("dots: the wear-off closes the OLDEST bar (01 fades, 02 stays)",
+                ep.EnemyDots(ET(9)) is [{ Ordinal: 2 }]);
+            ep.ProcessLine($"[{ETs(10)}] A froglok has taken 100 damage from your Curse.");
+            ep.ProcessLine($"[{ETs(11)}] A froglok has taken 100 damage from your Curse.");
+            Check("dots: a freed number is reused (new mob becomes 01 again)",
+                ep.EnemyDots(ET(12)).Select(d => d.Ordinal).OrderBy(x => x).SequenceEqual(new[] { 1, 2 }));
+            ep.ProcessLine($"[{ETs(12)}] Zibantik has taken 50 damage from your Curse.");
+            Check("dots: single-word (player-like) targets never get bars",
+                ep.EnemyDots(ET(13)).Count == 2);
+            ep.ProcessLine($"[{ETs(13)}] A froglok has taken 40 damage from your Venom of the Snake.");
+            Check("dots: unknown duration counts UP instead of guessing",
+                ep.EnemyDots(ET(14)).First(d => d.Spell == "Venom of the Snake").RemainingSeconds is null);
+            ep.ProcessLine($"[{ETs(14)}] You have slain a froglok!");
+            Check("dots: death clears single-instance groups, twins wait for silence",
+                ep.EnemyDots(ET(15)).All(d => d.Spell == "Curse")
+                && ep.EnemyDots(ET(15)).Count == 2);
+            Check("dots: tick silence culls the leftovers", ep.EnemyDots(ET(30)).Count == 0);
+            ep.ProcessLine($"[{ETs(40)}] A froglok has taken 100 damage from your Curse.");
+            ep.ProcessLine($"[{ETs(41)}] You have entered The Feerrott.");
+            Check("dots: zoning leaves hostiles behind", ep.EnemyDots(ET(42)).Count == 0);
+            ep.ProcessLine($"[{ETs(50)}] A froglok has taken 100 damage from your Curse.");
+            ep.ProcessLine($"[{ETs(85)}] A froglok has taken 100 damage from your Curse.");
+            Check("dots: a tick past the duration goes gray-OVERRUN, never a guessed restart",
+                ep.EnemyDots(ET(86)) is [{ Overrun: true } r2]
+                && Math.Abs(r2.OverrunSeconds - 6) < 0.01);
+
+            // Landing-based debuff bars: your cast arms the detector, the
+            // third-person landing names the mob — one bar per mob, closed by
+            // wear-off/death, culled by the unwitnessed-overrun cap (they
+            // never tick, so silence proves nothing).
+            var eb = new CombatParser { SelfName = "Johan" };
+            eb.DotDurationLookup = s => SpellDurations.BaseKey(s) == "envenomed bolt" ? 36.0 : null;
+            eb.OtherLandingLookup = s => SpellDurations.BaseKey(s) == "envenomed bolt"
+                ? ("has been poisoned.", true) : ((string, bool)?)null;
+            string BTs(int s) => new DateTime(2026, 8, 11, 23, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            DateTime BT(int s) => new DateTime(2026, 8, 11, 23, 0, 0).AddSeconds(s);
+            eb.ProcessLine($"[{BTs(0)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(3)}] A froglok has been poisoned.");
+            var dbars = eb.EnemyDots(BT(4));
+            Check("debuffs: your cast's landing opens bar 01 with the countdown",
+                dbars is [{ Ordinal: 1, RemainingSeconds: not null }]
+                && Math.Abs(dbars[0].RemainingSeconds!.Value - 35) < 0.01); // clock starts at LANDING
+            eb.ProcessLine($"[{BTs(5)}] A froglok has been poisoned.");
+            Check("debuffs: a landing with no cast of yours is someone else's",
+                eb.EnemyDots(BT(6)).Count == 1);
+            eb.ProcessLine($"[{BTs(8)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(11)}] A froglok has been poisoned.");
+            Check("debuffs: second cast+landing = bar 02", eb.EnemyDots(BT(12)).Count == 2);
+            Check("debuffs: non-ticking bars are exempt from the silence cull",
+                eb.EnemyDots(BT(30)).Count == 2);
+            eb.ProcessLine($"[{BTs(31)}] Your Envenomed Bolt spell has worn off of a froglok.");
+            Check("debuffs: the wear-off closes the oldest bar",
+                eb.EnemyDots(BT(32)) is [{ Ordinal: 2 }]);
+            Check("debuffs: the unwitnessed-overrun cap culls the leftovers",
+                eb.EnemyDots(BT(11 + 36 + 61)).Count == 0);
+            eb.ProcessLine($"[{BTs(120)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(123)}] A froglok has been poisoned.");
+            eb.ProcessLine($"[{BTs(130)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(133)}] A froglok has been poisoned.");
+            eb.ProcessLine($"[{BTs(161)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(164)}] A froglok has been poisoned.");
+            var refreshed = eb.EnemyDots(BT(165));
+            Check("debuffs: a re-cast refreshes the overrun bar, no phantom third",
+                refreshed.Count == 2 && refreshed.All(r => !r.Overrun));
+            eb.ProcessLine($"[{BTs(170)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(181)}] A froglok has been poisoned.");
+            Check("debuffs: a landing outside the cast window is ignored",
+                eb.EnemyDots(BT(182)).Count == 2);
 
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions

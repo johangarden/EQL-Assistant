@@ -69,6 +69,11 @@
             </Grid>
 
             <DataTemplate.Triggers>
+                <!-- Overrun: past the estimate, fade not yet witnessed — gray
+                     out and count up ("still there, still learning"). -->
+                <DataTrigger Binding="{Binding IsOverrun}" Value="True">
+                    <Setter Property="Opacity" Value="0.45"/>
+                </DataTrigger>
                 <DataTrigger Binding="{Binding IsWarning}" Value="True">
                     <DataTrigger.EnterActions>
                         <BeginStoryboard Name="PulseSb">

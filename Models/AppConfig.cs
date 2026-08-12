@@ -98,6 +98,10 @@ public sealed class OverlayConfig
     /// <summary>Whether the meter shows the proc watcher section (procs + PPM).</summary>
     public bool ProcWatcherVisible { get; set; } = false;
 
+    /// <summary>Whether the automatic Enemy DoTs panel is shown (it only
+    /// materializes on screen while it has rows, or while unlocked).</summary>
+    public bool EnemyDotsVisible { get; set; } = true;
+
     /// <summary>Whether the flash-alert area is shown (flash triggers stay quiet when off).</summary>
     public bool FlashVisible { get; set; } = true;
 

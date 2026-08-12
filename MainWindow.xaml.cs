@@ -28,6 +28,8 @@ public partial class MainWindow : Window
     private TimerWindow? _timer;
     private FlashWindow? _flash;
     private MeterWindow? _meter;
+    private EnemyDotsWindow? _enemyDotsWin;
+    private RemindersWindow? _remindersWin;
     private readonly CombatParser _combat = new();
     private RaidKills _raids = null!;
     private LootTracker _loot = null!;
@@ -108,6 +110,12 @@ public partial class MainWindow : Window
         int retyped = _spellLib.HealLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
         if (retyped > 0) Log.Info($"Retyped {retyped} library trigger(s) (HoTs/DoTs split).");
         _durations = new SpellDurations(_configService, _spellLib);
+        // Enemy-DoT countdowns: learned first, library figure as the fallback.
+        _combat.DotDurationLookup = spell =>
+            spell.StartsWith("Demo ", StringComparison.Ordinal) ? 30 // Ctrl+Alt+T bars
+            : _durations.LearnedMaxSeconds(spell)
+              ?? (_spellLib.FindByBaseName(spell)?.DurationSec is > 0 and var libSec ? libSec : null);
+        _combat.OtherLandingLookup = _spellLib.OtherLanding;
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
@@ -405,16 +413,33 @@ public partial class MainWindow : Window
         _spellLib.SaveSeenIfDirty();
         int lootNew = Math.Max(0, _loot.Entries.Count - lootBefore);
         string summary = $"Reparsed {lines:N0} lines from {Path.GetFileName(path)}: " +
-            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples " +
-            "(anything already recorded is skipped, never double-counted).";
+            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples.";
         Log.Info(summary);
         return summary;
     }
 
+    /// <summary>Data page's "Merge in another log file…": store a timestamped
+    /// COPY in the config folder FIRST — the original may be deleted or moved,
+    /// and Reset &amp; rebuild replays the stored copies — then run the
+    /// retroactive replay on the copy.</summary>
+    private string MergeLogFile(string pickedPath)
+    {
+        string copy;
+        try { copy = _configService.StoreMergedLogCopy(pickedPath); }
+        catch (Exception ex)
+        {
+            Log.Warn("Merge copy failed: " + ex.Message);
+            return "Couldn't copy the file into the config folder — nothing was merged.";
+        }
+        Log.Info($"Merged log stored as {Path.GetFileName(copy)}."); // shows under Additional log files
+        return ReparseFile(copy);
+    }
+
     /// <summary>Data page's "Reset & rebuild": wipe every log-DERIVED data file
     /// (loot, raid kills, Sky progress, seen spells, learned durations), then
-    /// rebuild them all with a full reparse. Config, loadouts, respawns, raid
-    /// targets, kept fights and window positions are untouched.</summary>
+    /// rebuild them all with a full reparse of the followed log PLUS every
+    /// stored merge copy. Config, loadouts, respawns, raid targets, kept
+    /// fights and window positions are untouched.</summary>
     private string ResetAndRebuild()
     {
         Log.Info("Data reset: wiping derived data files before full reparse.");
@@ -423,7 +448,13 @@ public partial class MainWindow : Window
         _skyQuests.ResetProgress();
         _spellLib.ResetSeen();
         _durations.ResetAll();
-        return "Data files reset. " + ReparseFullLog();
+
+        string result = "Data files reset. " + ReparseFullLog();
+        var merged = _configService.ListMergedLogs();
+        foreach (var f in merged) ReparseFile(f); // each logs its own summary
+        if (merged.Count > 0)
+            result += $" Also replayed {merged.Count} stored merged log file(s).";
+        return result;
     }
 
     private static readonly string[] LineTimeFormats =
@@ -669,6 +700,17 @@ public partial class MainWindow : Window
         _vm.Flash(_meterHidden ? "DPS meter hidden." : "DPS meter shown.");
     }
 
+    /// <summary>Show/hide the proc watcher on the meter (tray / Manager page), and remember it.</summary>
+    private void ToggleProcs()
+    {
+        _config.Overlay.ProcWatcherVisible = !_config.Overlay.ProcWatcherVisible;
+        _configService.SaveSettings(_config);
+        if (_hidden && _config.Overlay.ProcWatcherVisible) ToggleHide();
+        _meter?.SetProcsVisible(_config.Overlay.ProcWatcherVisible);
+        if (_config.Overlay.ProcWatcherVisible && _meterHidden) ToggleMeter(); // it lives on the meter
+        _vm.Flash(_config.Overlay.ProcWatcherVisible ? "Proc watcher shown." : "Proc watcher hidden.");
+    }
+
     /// <summary>Show/hide the skills section on the meter (tray / Manager page), and remember it.</summary>
     private void ToggleSkills()
     {
@@ -689,7 +731,28 @@ public partial class MainWindow : Window
             _engine.SelfCells, defaultLeft: 60, defaultTop: 420);
         _targetMatrix = RebuildPanel(_targetMatrix, "targetDebuffs", "Target Debuffs",
             _engine.TargetCells, defaultLeft: 420, defaultTop: 420);
+        RebuildEnemyDotsWindow();
+        RebuildRemindersWindow();
         UpdateMatrixVisibility();
+    }
+
+    private void RebuildRemindersWindow()
+    {
+        if (_remindersWin is not null) { try { _remindersWin.Close(); } catch { /* ignore */ } }
+        _remindersWin = new RemindersWindow(_engine.Reminders, _configService, _config.Overlay.Opacity);
+        _remindersWin.Show();
+        _remindersWin.SetLocked(_vm.Locked);
+        _remindersWin.SetHidden(_hidden);
+    }
+
+    private void RebuildEnemyDotsWindow()
+    {
+        if (_enemyDotsWin is not null) { try { _enemyDotsWin.Close(); } catch { /* ignore */ } _enemyDotsWin = null; }
+        if (!_config.Overlay.EnemyDotsVisible) return;
+        _enemyDotsWin = new EnemyDotsWindow(_combat, _configService, _config.Overlay.Opacity);
+        _enemyDotsWin.Show();
+        _enemyDotsWin.SetLocked(_vm.Locked);
+        _enemyDotsWin.SetHidden(_hidden);
     }
 
     private MatrixWindow RebuildPanel(MatrixWindow? existing, string key, string title,
@@ -812,7 +875,7 @@ public partial class MainWindow : Window
                 case HK_LOCK:   ToggleLock();       handled = true; break;
                 case HK_TEST:
                     _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell();
-                    _combat.AddDemoFight(); UpdateMatrixVisibility();
+                    _combat.AddDemoFight(); _combat.AddDemoEnemyDots(); UpdateMatrixVisibility();
                     OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
                     if (!_hidden && !_sctHidden)
                         foreach (var (kind, lane) in _sctLanes)
@@ -845,6 +908,8 @@ public partial class MainWindow : Window
         ApplyLockVisual();
         _selfMatrix?.SetLocked(_vm.Locked);
         _targetMatrix?.SetLocked(_vm.Locked);
+        _enemyDotsWin?.SetLocked(_vm.Locked);
+        _remindersWin?.SetLocked(_vm.Locked);
         _flash?.SetLocked(_vm.Locked);
         foreach (var lane in _sctLanes.Values) lane.SetLocked(_vm.Locked);
         _configService.SaveWindowState(_config.Overlay);
@@ -859,9 +924,18 @@ public partial class MainWindow : Window
     private void ApplyLockVisual() =>
         RootBorder.Background = _vm.Locked ? Brushes.Transparent : UnlockedBackdrop;
 
+    private void ToggleEnemyDots()
+    {
+        _config.Overlay.EnemyDotsVisible = !_config.Overlay.EnemyDotsVisible;
+        _configService.SaveSettings(_config);
+        RebuildEnemyDotsWindow();
+    }
+
     private void ToggleHide()
     {
         _hidden = !_hidden;
+        _enemyDotsWin?.SetHidden(_hidden);
+        _remindersWin?.SetHidden(_hidden);
         UpdateBarsVisibility();
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
@@ -890,6 +964,8 @@ public partial class MainWindow : Window
             ApplyLockVisual();
             _selfMatrix?.SetLocked(false);
             _targetMatrix?.SetLocked(false);
+            _enemyDotsWin?.SetLocked(false);
+            _remindersWin?.SetLocked(false);
             _flash?.SetLocked(false);
             foreach (var lane in _sctLanes.Values) lane.SetLocked(false);
             _configService.SaveWindowState(_config.Overlay);
@@ -898,6 +974,8 @@ public partial class MainWindow : Window
         _mainPlacement?.ResetToDefault();
         _selfMatrix?.ResetPosition();
         _targetMatrix?.ResetPosition();
+        _enemyDotsWin?.ResetPosition();
+        _remindersWin?.ResetPosition();
         _timer?.ResetPosition();
         _meter?.ResetPosition();
         _flash?.ResetPosition();
@@ -925,7 +1003,7 @@ public partial class MainWindow : Window
             _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations)
             {
                 ReparseFullLogRequested = ReparseFullLog,
-                ReparseOtherRequested = ReparseFile,
+                ReparseOtherRequested = MergeLogFile,
                 ResetAndRebuildRequested = ResetAndRebuild,
             };
             _manager.Closed += (_, _) => _manager = null;
@@ -1342,19 +1420,23 @@ public partial class MainWindow : Window
         var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Repop timer", null, (_, _) => ToggleTimer());
         var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
         var panelSkills = new System.Windows.Forms.ToolStripMenuItem("DPS meter · skills section", null, (_, _) => ToggleSkills());
+        var panelProcs = new System.Windows.Forms.ToolStripMenuItem("DPS meter · proc watcher", null, (_, _) => ToggleProcs());
         var panelSct = new System.Windows.Forms.ToolStripMenuItem("Combat text", null, (_, _) => ToggleSct());
         var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
         var panelToolbar = new System.Windows.Forms.ToolStripMenuItem("Toolbar", null, (_, _) => ToggleToolbar());
         var panelBars = new System.Windows.Forms.ToolStripMenuItem("Buff bars", null, (_, _) => ToggleBars());
+        var panelDots = new System.Windows.Forms.ToolStripMenuItem("Enemy DoTs", null, (_, _) => ToggleEnemyDots());
         panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
-            { panelToolbar, panelBars, panelTimer, panelMeter, panelSkills, panelSct, panelFlash });
+            { panelToolbar, panelBars, panelDots, panelTimer, panelMeter, panelSkills, panelProcs, panelSct, panelFlash });
         panelsItem.DropDownOpening += (_, _) =>
         {
             panelToolbar.Checked = !_toolbarHidden;
             panelBars.Checked = !_barsHidden;
+            panelDots.Checked = _config.Overlay.EnemyDotsVisible;
             panelTimer.Checked = !_timerHidden;
             panelMeter.Checked = !_meterHidden;
             panelSkills.Checked = !_skillsHidden;
+            panelProcs.Checked = _config.Overlay.ProcWatcherVisible;
             panelSct.Checked = !_sctHidden;
             panelFlash.Checked = !_flashHidden;
         };
@@ -1448,6 +1530,8 @@ public partial class MainWindow : Window
         _watcher?.Dispose();
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
+        try { _enemyDotsWin?.Close(); } catch { /* ignore */ }
+        try { _remindersWin?.Close(); } catch { /* ignore */ }
         try { _timer?.Close(); } catch { /* ignore */ }
         try { _meter?.Close(); } catch { /* ignore */ }
         try { _flash?.Close(); } catch { /* ignore */ }

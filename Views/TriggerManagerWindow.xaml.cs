@@ -60,6 +60,40 @@ public partial class TriggerManagerWindow : Window
         System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
         try { Status(ReparseOtherRequested(dlg.FileName)); }
         finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+        RefreshMergedLogs();
+    }
+
+    // ---- stored merge copies (Data page) --------------------------------------
+
+    private sealed record MergedLogItem(string Path)
+    {
+        public override string ToString()
+        {
+            var fi = new System.IO.FileInfo(Path);
+            return $"{fi.Name}   ·   {fi.Length / 1048576.0:0.0} MB   ·   {fi.LastWriteTime:dd MMM yyyy HH:mm}";
+        }
+    }
+
+    private void RefreshMergedLogs()
+    {
+        if (MergedLogsList is null) return;
+        var items = _configService.ListMergedLogs().Select(f => new MergedLogItem(f)).ToList();
+        MergedLogsList.ItemsSource = items;
+        MergedLogsList.Visibility = items.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        MergedLogsEmptyText.Visibility = items.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+        RemoveMergedBtn.IsEnabled = items.Count > 0;
+    }
+
+    private void RemoveMerged_Click(object sender, RoutedEventArgs e)
+    {
+        if (MergedLogsList.SelectedItem is not MergedLogItem item) { Status("Select a file first."); return; }
+        try
+        {
+            System.IO.File.Delete(item.Path);
+            Status($"Removed {System.IO.Path.GetFileName(item.Path)} — the next Reset & rebuild won't include it.");
+        }
+        catch (Exception ex) { Status("Couldn't remove: " + ex.Message); }
+        RefreshMergedLogs();
     }
 
     private void ResetRebuild_Click(object sender, RoutedEventArgs e)
@@ -72,11 +106,12 @@ public partial class TriggerManagerWindow : Window
         if (!ConfirmDialog.Show(this, "Reset data files & rebuild",
                 "This WIPES all log-derived data — loot history, raid kills + drops, " +
                 "Plane of Sky progress, seen spells and learned durations — and rebuilds " +
-                "everything from a full reparse of the current log file.\n\n" +
+                "everything from a full reparse of the current log file PLUS every " +
+                "stored additional log file.\n\n" +
                 "NOT touched: settings, triggers/loadouts, respawns, raid targets, " +
                 "★-kept fights and panel positions.\n\n" +
-                "Anything the current log no longer contains (a rotated/deleted old log) " +
-                "is lost for good. Continue?",
+                "Anything that is in neither the current log nor a stored file " +
+                "(a rotated/deleted old log that was never merged in) is lost for good. Continue?",
                 yesText: "Reset & rebuild", noText: "Cancel"))
             return;
 
@@ -157,6 +192,7 @@ public partial class TriggerManagerWindow : Window
         UpdateCharInfo();
 
         PopulateSoundPresets();
+        RefreshMergedLogs();
         LoadSettingsFields();
         MuteCheck.IsChecked = _alerts.Muted;
         MuteCheck.Click += (_, _) => _alerts.Muted = MuteCheck.IsChecked == true;
@@ -756,7 +792,7 @@ public partial class TriggerManagerWindow : Window
             ["Loadouts"] = LoadoutsPage,
             ["Bars & matrices"] = BarsPage,
             ["Repop timer"] = TimerPage,
-            ["DPS & Skills"] = MeterPage,
+            ["DPS + Skills, Procs"] = MeterPage,
             ["Combat text"] = SctPage,
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
@@ -868,6 +904,9 @@ public partial class TriggerManagerWindow : Window
         SctLaneWidthBox.Text = _config.Overlay.SctLaneWidth.ToString(CultureInfo.InvariantCulture);
         SctLaneHeightBox.Text = _config.Overlay.SctLaneHeight.ToString(CultureInfo.InvariantCulture);
 
+        EnemyDotsVisibleCheck.IsChecked = _config.Overlay.EnemyDotsVisible;
+        EnemyDotsAnchorBox.SelectedValue = (_configService.LoadPlacement("enemyDots")?.Anchor ?? Anchor.TopLeft).ToString();
+        RemindersAnchorBox.SelectedValue = (_configService.LoadPlacement("reminders")?.Anchor ?? Anchor.TopLeft).ToString();
         BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
         SelfAnchorBox.SelectedValue = (_configService.LoadPlacement("selfMatrix")?.Anchor ?? Anchor.TopLeft).ToString();
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
@@ -945,6 +984,7 @@ public partial class TriggerManagerWindow : Window
                 DeathRecapAuto = DeathRecapCheck.IsChecked == true,
                 ToolbarVisible = _config.Overlay.ToolbarVisible, // tray-toggled — carried through
                 BarsVisible = _config.Overlay.BarsVisible,       // tray-toggled — carried through
+                EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,
@@ -991,6 +1031,8 @@ public partial class TriggerManagerWindow : Window
 
         // Persist panel anchors (offsets are preserved) before the overlay re-applies.
         ApplyAnchor("main", BarsAnchorBox);
+        ApplyAnchor("enemyDots", EnemyDotsAnchorBox);
+        ApplyAnchor("reminders", RemindersAnchorBox);
         ApplyAnchor("selfMatrix", SelfAnchorBox);
         ApplyAnchor("targetDebuffs", TargetAnchorBox);
         ApplyAnchor("timer", TimerAnchorBox);

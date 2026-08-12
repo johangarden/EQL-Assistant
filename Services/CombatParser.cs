@@ -236,6 +236,198 @@ public sealed class CombatParser
         if (crit) p.Crits++;
     }
 
+    // ---- enemy DoT tracker -------------------------------------------------------
+    // Automatic per-(spell, mob-name) rows for YOUR damage-over-time spells.
+    // Tick lines name both halves every ~6s ("A froglok has taken 169 damage
+    // from your Curse.") and the exact wear-off names both too ("Your Curse
+    // spell has worn off of a bok ghoul knight."). Same-named mobs are
+    // genuinely indistinguishable in an EQ log (the Companion's ruling too),
+    // but each live instance ticks once per period — so the number of ticks in
+    // one trailing tick-period IS the live instance count, and the ×N chip
+    // self-corrects as mobs die. Censors: exact wear-off, mob death, zoning,
+    // your own death, and 18s of tick silence (three missed ticks).
+
+    public sealed record EnemyDotView(string Spell, string Target, int Ordinal,
+        double? RemainingSeconds, double SinceSeconds, bool Overrun, double OverrunSeconds);
+
+    private sealed class DotInstance
+    {
+        public int Ordinal;      // stable per-group bar number ("01", "02", …)
+        public DateTime Start;
+        public DateTime LastTick;
+        public int Ticks;        // 0 = landing-only (a non-ticking debuff)
+    }
+
+    private sealed class DotGroup
+    {
+        public string Spell = "";
+        public string Target = "";
+        public readonly List<DotInstance> Instances = new();
+    }
+
+    // A tick "belongs" to the instance that is DUE one (its own last tick at
+    // least this long ago); when nobody is due, it's a NEW same-named mob.
+    private const double DotTickDueSec = 4.5;
+    private const double DotSilenceCullSec = 13;    // two missed ticks = it's gone
+    private const double DotOverrunCapSec = 60;     // landing-only rows: unwitnessed cull
+    private const double DotHygieneCapSec = 90;     // landing-only + unknown duration
+    private const double DebuffLandingWindowSec = 10; // your begin-cast -> its landing
+
+    private readonly Dictionary<string, DotGroup> _enemyDots = new(StringComparer.OrdinalIgnoreCase);
+    private (string Spell, string Suffix, DateTime At)? _pendingEnemyLanding;
+
+    /// <summary>Optional duration lookup (learned/library) for the countdown;
+    /// null keeps the row counting up instead of lying.</summary>
+    public Func<string, double?>? DotDurationLookup { get; set; }
+
+    /// <summary>Optional lookup (SpellLibrary): a DETRIMENTAL spell's
+    /// third-person landing suffix ("has been poisoned.") — arms the
+    /// non-ticking-debuff detector on your begin-cast.</summary>
+    public Func<string, (string Suffix, bool Detrimental)?>? OtherLandingLookup { get; set; }
+
+    private static readonly Regex WornOffOfRx = new(
+        @"^Your (?<spell>.+?) spell has worn off of (?<mob>.+?)\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex WornOffRx = new(
+        @"^Your (?<spell>.+?) spell has worn off\.$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static string DotKey(string spell, string target) =>
+        SpellDurations.BaseKey(spell) + "|" + target.Trim().ToLowerInvariant();
+
+    private void NoteDotTick(string spell, string target, DateTime time)
+    {
+        target = Normalize(target);
+        if (!IsEnemyName(target)) return;
+        string key = DotKey(spell, target);
+        if (!_enemyDots.TryGetValue(key, out var g))
+            _enemyDots[key] = g = new DotGroup { Spell = spell.Trim(), Target = target };
+
+        // The most-overdue due instance owns this tick; nobody due = new mob.
+        // (A tick past the known duration keeps the instance — the view shows
+        // it as OVERRUN; the re-cast's own landing line resets the clock.)
+        var inst = g.Instances
+            .Where(i => (time - i.LastTick).TotalSeconds >= DotTickDueSec)
+            .OrderByDescending(i => time - i.LastTick)
+            .FirstOrDefault();
+        if (inst is null)
+        {
+            int ordinal = 1;
+            while (g.Instances.Any(i => i.Ordinal == ordinal)) ordinal++; // lowest free number
+            g.Instances.Add(inst = new DotInstance { Ordinal = ordinal, Start = time });
+        }
+        inst.LastTick = time;
+        inst.Ticks++;
+    }
+
+    /// <summary>Your cast's landing on an enemy ("A froglok has been
+    /// poisoned.") — the entry point for NON-ticking debuffs (and the recast
+    /// reset for ticking ones): an OVERRUN instance is refreshed, otherwise
+    /// a new bar opens.</summary>
+    private void NoteDotLanding(string spell, string target, DateTime time)
+    {
+        target = Normalize(target);
+        if (!IsEnemyName(target)) return;
+        string key = DotKey(spell, target);
+        if (!_enemyDots.TryGetValue(key, out var g))
+            _enemyDots[key] = g = new DotGroup { Spell = spell.Trim(), Target = target };
+
+        double? dur = DotDurationLookup?.Invoke(g.Spell) is double d && d > 1 ? d : null;
+        var overrun = g.Instances
+            .Where(i => dur is double dd && (time - i.Start).TotalSeconds > dd)
+            .OrderByDescending(i => time - i.Start)
+            .FirstOrDefault();
+        if (overrun is not null)
+        {
+            overrun.Start = time;   // the re-cast: same bar, fresh clock
+            overrun.LastTick = time;
+        }
+        else
+        {
+            int ordinal = 1;
+            while (g.Instances.Any(i => i.Ordinal == ordinal)) ordinal++;
+            g.Instances.Add(new DotInstance { Ordinal = ordinal, Start = time, LastTick = time });
+        }
+    }
+
+    private void RemoveDotsFor(string mobName)
+    {
+        // The dying twin's instance is unknowable — its silence culls it in
+        // seconds. Only a group with a SINGLE instance clears immediately.
+        string suffix = "|" + mobName.Trim().ToLowerInvariant();
+        foreach (var key in _enemyDots.Keys.Where(k =>
+                     k.EndsWith(suffix, StringComparison.Ordinal)).ToList())
+            if (_enemyDots[key].Instances.Count <= 1)
+                _enemyDots.Remove(key);
+    }
+
+    /// <summary>The wear-off closes the OLDEST instance — first landed fades
+    /// first (the Companion's rule).</summary>
+    private void CloseOldestDot(DotGroup g)
+    {
+        var oldest = g.Instances.OrderBy(i => i.Start).FirstOrDefault();
+        if (oldest is not null) g.Instances.Remove(oldest);
+    }
+
+    /// <summary>Live enemy-DoT rows: one bar per same-named mob ("a froglok
+    /// 01/02"), grouped per spell, soonest fade first inside the group.
+    /// Silence-culled inline, so callers can poll this directly.</summary>
+    public IReadOnlyList<EnemyDotView> EnemyDots(DateTime now)
+    {
+        var rows = new List<EnemyDotView>();
+        foreach (var (key, g) in _enemyDots.ToList())
+        {
+            double? dur = DotDurationLookup?.Invoke(g.Spell) is double d && d > 1 ? d : null;
+
+            // Ticking instances die by silence; landing-only ones by the
+            // unwitnessed-overrun cap (or the hygiene cap with no duration).
+            g.Instances.RemoveAll(i => i.Ticks > 0
+                ? (now - i.LastTick).TotalSeconds > DotSilenceCullSec
+                : dur is double dd2
+                    ? (now - i.Start).TotalSeconds > dd2 + DotOverrunCapSec
+                    : (now - i.Start).TotalSeconds > DotHygieneCapSec);
+            if (g.Instances.Count == 0) { _enemyDots.Remove(key); continue; }
+
+            foreach (var i in g.Instances)
+            {
+                double since = (now - i.Start).TotalSeconds;
+                bool overrun = dur is double dd && since > dd;
+                rows.Add(new EnemyDotView(g.Spell, g.Target, i.Ordinal,
+                    dur is double dd3 ? Math.Max(0, dd3 - since) : null, since,
+                    overrun, overrun ? since - dur!.Value : 0));
+            }
+        }
+        return rows.OrderBy(r => r.Spell, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.Overrun) // live countdowns above gray overruns
+            .ThenBy(r => r.RemainingSeconds ?? double.MaxValue)
+            .ThenBy(r => r.Ordinal).ToList();
+    }
+
+    /// <summary>Wipe every tracked enemy DoT (zoning, your death, manual reset).</summary>
+    public void ClearEnemyDots() => _enemyDots.Clear();
+
+    /// <summary>Test hook (Ctrl+Alt+T): seed demo enemy-DoT bars — twins with
+    /// countdowns plus a gray overrun — so the panel can be placed without
+    /// picking a fight. They age out through the normal culls.</summary>
+    public void AddDemoEnemyDots()
+    {
+        var now = DateTime.Now;
+        DotGroup G(string spell, string target)
+        {
+            string key = DotKey(spell, target);
+            if (!_enemyDots.TryGetValue(key, out var g))
+                _enemyDots[key] = g = new DotGroup { Spell = spell, Target = target };
+            g.Instances.Clear();
+            return g;
+        }
+        var curse = G("Demo Curse", "a demo froglok");
+        curse.Instances.Add(new DotInstance { Ordinal = 1, Start = now.AddSeconds(-12), LastTick = now });
+        curse.Instances.Add(new DotInstance { Ordinal = 2, Start = now.AddSeconds(-4), LastTick = now });
+        var venom = G("Demo Venom", "a demo froglok");
+        venom.Instances.Add(new DotInstance { Ordinal = 1, Start = now.AddSeconds(-38), LastTick = now });
+    }
+
     /// <summary>Event cap per fight — a 10-minute raid fight sits well under this.</summary>
     public const int MaxFightEvents = 4000;
 
@@ -281,6 +473,7 @@ public sealed class CombatParser
     {
         if (Math.Abs((time - _lastDeathAt).TotalSeconds) < 5) return;
         _lastDeathAt = time;
+        _enemyDots.Clear(); // your death strips your DoTs' bookkeeping too
         var snapshot = _recap.ToList();
         _recap.Clear();
         PlayerDied?.Invoke(new DeathEvent(time, killer, snapshot));
@@ -480,6 +673,7 @@ public sealed class CombatParser
         if (body.StartsWith(ZonePrefix, StringComparison.Ordinal) && body.EndsWith('.'))
         {
             CurrentZone = body[ZonePrefix.Length..^1];
+            _enemyDots.Clear(); // hostiles are left behind on zone
             return;
         }
 
@@ -491,12 +685,66 @@ public sealed class CombatParser
             return;
         }
 
+        // Enemy-DoT censors: the exact wear-off ("… has worn off of <mob>."),
+        // the target-less form (all rows of that spell), and mob deaths.
+        if (body.StartsWith("Your ", StringComparison.Ordinal) && _enemyDots.Count > 0)
+        {
+            if (WornOffOfRx.Match(body) is { Success: true } wOf)
+            {
+                string k = DotKey(wOf.Groups["spell"].Value, wOf.Groups["mob"].Value);
+                if (_enemyDots.TryGetValue(k, out var g1))
+                {
+                    CloseOldestDot(g1);
+                    if (g1.Instances.Count == 0) _enemyDots.Remove(k);
+                }
+                return;
+            }
+            if (WornOffRx.Match(body) is { Success: true } wAll)
+            {
+                // Target-less fade: one instance faded somewhere — close the
+                // globally oldest of that spell.
+                string sk = SpellDurations.BaseKey(wAll.Groups["spell"].Value) + "|";
+                var g2 = _enemyDots.Where(kv => kv.Key.StartsWith(sk, StringComparison.Ordinal))
+                    .OrderBy(kv => kv.Value.Instances.Min(i => i.Start))
+                    .Select(kv => kv.Value).FirstOrDefault();
+                if (g2 is not null)
+                {
+                    CloseOldestDot(g2);
+                    if (g2.Instances.Count == 0)
+                        _enemyDots.Remove(DotKey(g2.Spell, g2.Target));
+                }
+                return;
+            }
+        }
+        if (_enemyDots.Count > 0 && RaidKills.TryParseKill(body, out string deadMob))
+            RemoveDotsFor(deadMob); // no return — death lines aren't otherwise consumed here
+
         // Own casts feed the proc detector: a spell landing WITHOUT one procced.
         if (body.StartsWith("You begin ", StringComparison.Ordinal)
             && BeginCastRx.Match(body) is { Success: true } cast)
         {
-            _recentCasts[SpellDurations.BaseKey(cast.Groups["s"].Value)] = time;
+            string castName = cast.Groups["s"].Value.Trim();
+            _recentCasts[SpellDurations.BaseKey(castName)] = time;
+            // A detrimental cast arms the enemy-landing detector: its
+            // third-person landing ("A froglok has been poisoned.") opens a
+            // per-mob bar even when the spell never ticks.
+            if (OtherLandingLookup?.Invoke(castName) is { Detrimental: true } ol)
+                _pendingEnemyLanding = (castName, ol.Suffix, time);
             return;
+        }
+
+        if (_pendingEnemyLanding is { } pe)
+        {
+            if ((time - pe.At).TotalSeconds > DebuffLandingWindowSec)
+            {
+                _pendingEnemyLanding = null; // resisted / interrupted / fizzled
+            }
+            else if (body.Length > pe.Suffix.Length + 1
+                     && body.EndsWith(pe.Suffix, StringComparison.Ordinal))
+            {
+                NoteDotLanding(pe.Spell, body[..^pe.Suffix.Length].Trim(), time);
+                _pendingEnemyLanding = null;
+            }
         }
 
         bool crit = body.Contains("(Critical)", StringComparison.Ordinal);
@@ -505,10 +753,21 @@ public sealed class CombatParser
         if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true); return; }
 
         m = DotRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit); return; }
+        if (m.Success)
+        {
+            if (IsSelf(Normalize(m.Groups["att"].Value)))
+                NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
+            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            return;
+        }
 
         m = DotYourRx.Match(body);
-        if (m.Success) { AddDamage(Self(), m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit); return; }
+        if (m.Success)
+        {
+            NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
+            AddDamage(Self(), m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            return;
+        }
 
         m = HealRx.Match(body);
         if (m.Success)

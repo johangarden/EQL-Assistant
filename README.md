@@ -142,9 +142,13 @@ everything else is **GLOBAL**.
   character log), overlay basics.
 - **Data** — everything the app knows is derived from your log: **Reparse
   entire log file** (additive backfill after updates add new log-based
-  features) and **Reset data files & rebuild** (wipe the derived files and
-  rebuild them cleanly from the current log — settings, loadouts, respawns
-  and ★-kept fights are never touched).
+  features), **Merge in another log file…** (replay a log from a second PC —
+  the file is **copied into the config folder with a timestamp**, listed
+  under *Additional log files*, so the merged history survives even if the
+  original is deleted), and **Reset data files & rebuild** (wipe the derived
+  files and rebuild them cleanly from the current log **plus every stored
+  additional file** — settings, loadouts, respawns and ★-kept fights are
+  never touched).
 - **Shortcuts** — the global hotkey reference.
 
 Panels stick to their chosen screen corner and grow away from it (Bottom-left
@@ -242,6 +246,13 @@ side to compare pulls.
 
 ## Skill tracker
 
+Missing-buff **REBUFF reminders live in their own movable panel** (anchor on
+the Bars & matrices page) instead of squatting inside the buff bars; it only
+appears while something is missing. Ctrl+Alt+T also seeds **demo enemy-DoT
+bars** so that panel can be placed without picking a fight, and the tray's
+Panels menu gained **Enemy DoTs** and **DPS meter · proc watcher** toggles.
+The Manager page is now called **DPS + Skills, Procs**.
+
 A **SKILLS section on the DPS meter** for grinding skills: configure the
 abilities to watch (Manage → Skill tracker — e.g. `backstab, reave, Smite`)
 and each gets a bar filled by its **session-wide** hit rate, colored red →
@@ -249,6 +260,37 @@ amber → green, with `hits/attempts · % · crit %` on the right and
 misses/resists/max in the tooltip. Counts accumulate across fights — only the
 section's **⟲** button resets them. Spell resists count as failed attempts.
 Toggle from the tray.
+
+## Enemy DoTs (automatic)
+
+Tab-dotting a camp of same-named mobs is unreadable in the game UI — so the
+**Enemy DoTs panel fills itself in**: every DoT of *yours* ticking on an enemy
+gets its **own bar per mob**, grouped under the spell — "CURSE: a froglok 01 ·
+24s / a froglok 02 · 18s" — no triggers needed. The trick: every tick line
+names spell + mob, and each live application ticks on its own ~6-second
+heartbeat, so a tick belongs to the bar that's *due* one — and a tick when
+nobody is due means a **new** mob (the next bar; freed numbers are reused).
+EQ logs genuinely can't tell twins apart, but their heartbeats can. Bars
+clear on the wear-off line ("Your Curse spell has worn off of …" — the
+oldest bar fades first), the mob's death, zoning, your death, or ~13 seconds
+of tick silence.
+
+**Non-ticking debuffs get bars too**: your begin-cast arms a detector, and the
+spell's third-person landing ("A froglok has been poisoned.") opens a per-mob
+bar — landings without your cast are someone else's and are ignored. Since
+these never tick, they're culled by the overrun cap instead of silence.
+
+**The overrun state (everywhere bars have a fade line):** when a bar's
+learned/estimated timer runs out *before* the real fade message arrives, it
+doesn't vanish — it **grays out and counts up** ("+14s") until the fade line,
+death, or a cull cap closes it. The bar stops claiming precision and shows
+"still there, still learning" — and the eventual fade is exactly what teaches
+the learner the true duration. A re-cast landing on an overrun bar refreshes
+it in place.
+Countdowns use learned/library durations and count *up* when the duration is
+unknown rather than guessing. The panel only appears while it has rows (or
+while unlocked, so you can place it); toggle and anchor live on the
+Manager's Bars & matrices page, plus a tray Panels toggle.
 
 ## Proc watcher
 

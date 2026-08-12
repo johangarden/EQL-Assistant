@@ -116,8 +116,11 @@ public sealed class SpellDurations
         if (begin.Success)
         {
             string name = begin.Groups["s"].Value.Trim();
+            // The cast line carries the RANK ("Slugs Healing V") but the
+            // library holds the base name — fall back to a rank-stripped match.
             var spell = _library.Spells.FirstOrDefault(s =>
-                s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                    s.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                ?? _library.Spells.FirstOrDefault(s => BaseKey(s.Name) == BaseKey(name));
             // A re-cast contaminates any open cycle of the same spell (a refresh
             // would otherwise mint an inflated land-to-fade span).
             if (spell is not null)
