@@ -113,9 +113,26 @@ public sealed class TriggerEngine
     /// may correct in EITHER direction, e.g. level-scaled durations shorter
     /// than the library's max-level number). Manual triggers enforce the
     /// configured duration exactly.</summary>
-    /// <summary>The phrase to speak — null when the voice toggle is off.</summary>
-    private static string? SpeakOf(TriggerDefinition t) =>
-        t.Alert is { SpeakEnabled: true } a ? a.Speak : null;
+    /// <summary>The trigger's two alert payloads, each already narrowed to its
+    /// chosen channel (phrase OR sound — never both). Disabled notices come
+    /// back empty so downstream code needs no further gating.</summary>
+    private static (double WarnAt, string? WarnSpeak, string? WarnSound,
+                    bool OnFaded, string? FadedSpeak, string? FadedSound)
+        AlertOf(TriggerDefinition t)
+    {
+        if (t.Alert is not { } a) return (0, null, null, false, null, null);
+        bool warnOn = a.WarnEnabled == true;
+        bool fadedOn = a.FadedEnabled == true;
+        bool warnSpeaks = a.WarnMode != AlertConfig.ModeSound;
+        bool fadedSpeaks = a.FadedMode != AlertConfig.ModeSound;
+        return (
+            warnOn ? a.AtSeconds : 0,
+            warnOn && warnSpeaks ? a.Speak : null,
+            warnOn && !warnSpeaks ? a.Sound : null,
+            fadedOn,
+            fadedOn && fadedSpeaks ? a.FadedSpeak : null,
+            fadedOn && !fadedSpeaks ? a.FadedSound : null);
+    }
 
     private double EffectiveDuration(TriggerDefinition trigger)
     {
@@ -228,8 +245,10 @@ public sealed class TriggerEngine
             };
             if (cells is null || byId is null) continue;
 
+            var al = AlertOf(t);
             var cell = new MatrixCellViewModel(t.Id, t.Name, t.DurationSeconds,
-                t.Alert?.AtSeconds ?? 0, t.Alert?.OnExpire ?? false, SpeakOf(t), t.Alert?.Sound);
+                al.WarnAt, al.OnFaded, al.WarnSpeak, al.WarnSound,
+                al.FadedSpeak, al.FadedSound);
             byId[t.Id] = cell;
             cells.Add(cell);
         }
@@ -360,13 +379,12 @@ public sealed class TriggerEngine
             return;
         }
 
+        var al = AlertOf(trigger);
         var vm = TimerBarViewModel.CreateTimer(
             key, BuildLabel(trigger, match), trigger.Category,
             duration, end, MakeBrush(TriggerColors.For(trigger)),
-            trigger.Alert?.AtSeconds ?? 0,
-            trigger.Alert?.OnExpire ?? false,
-            SpeakOf(trigger),
-            trigger.Alert?.Sound,
+            al.WarnAt, al.OnFaded, al.WarnSpeak, al.WarnSound,
+            al.FadedSpeak, al.FadedSound,
             waitsForFade: trigger.EndRegex is not null);
 
         _active[key] = vm;
@@ -441,7 +459,7 @@ public sealed class TriggerEngine
             bool expired = cell.Refresh(now, _warnSeconds);
             if (expired)
             {
-                if (cell.AlertOnExpire) _alerts.Fire(cell.AlertSpeak, cell.AlertSound);
+                if (cell.AlertOnExpire) _alerts.Fire(cell.AlertFadedSpeak, cell.AlertFadedSound);
             }
             else if (cell.AlertAtSeconds > 0 && !cell.FadeAlertFired &&
                      cell.RemainingSeconds > 0 && cell.RemainingSeconds <= cell.AlertAtSeconds)
@@ -484,7 +502,7 @@ public sealed class TriggerEngine
                 // also teaches the learner the true duration).
                 if (bar.WaitsForFade)
                 {
-                    if (bar.AlertOnExpire) _alerts.Fire(bar.AlertSpeak, bar.AlertSound);
+                    if (bar.AlertOnExpire) _alerts.Fire(bar.AlertFadedSpeak, bar.AlertFadedSound);
                     bar.EnterOverrun();
                 }
                 else
@@ -499,7 +517,7 @@ public sealed class TriggerEngine
             foreach (var bar in expired)
             {
                 if (bar.AlertOnExpire && !bar.IsOverrun) // overrun already alerted at 0
-                    _alerts.Fire(bar.AlertSpeak, bar.AlertSound);
+                    _alerts.Fire(bar.AlertFadedSpeak, bar.AlertFadedSound);
                 _active.Remove(bar.Key);
                 Bars.Remove(bar);
             }

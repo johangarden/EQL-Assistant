@@ -84,6 +84,14 @@ these, so merged cross-machine history survives a reset).
 
 - **Types own colors** (`TriggerColors`): buffs blue, HoTs green, DoTs red,
   debuffs yellow, cooldowns purple. No per-trigger color picking.
+- **Alerts are two notices** (2.11+): *notify before it fades* (default 15s)
+  and *notify when it faded* (doubles as cooldown "ready"), each a toggle +
+  Phrase OR Sound (one channel, never both). Phrases prefill "<Name> is about
+  to end" / "<Name> faded" ("… is ready" for Cooldowns) and follow renames
+  until hand-edited. Pre-2.11 single-payload configs migrate in
+  `ConfigService.NormalizeAlert` (idempotent, runs in `CompileOne`). The
+  editor hides manual-only tooling (Show in, Type, cooldown reducer, live
+  log) for library triggers.
 - **Cast anchor**: several spells share landing sentences (all hastes print
   "You feel much faster."). Anchored triggers only fire within 15s of the
   player's own "You begin casting <name>." — an unanchored ambiguous landing

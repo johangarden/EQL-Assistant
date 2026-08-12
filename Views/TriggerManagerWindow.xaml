@@ -219,29 +219,41 @@
                                 <TextBlock Text="Name" Style="{StaticResource FieldLabel}"/>
                                 <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
 
-                                <TextBlock Text="Show in" Style="{StaticResource FieldLabel}"/>
-                                <ComboBox x:Name="PanelCombo" SelectedValuePath="Tag" SelectedValue="{Binding Panel}"
-                                          SelectionChanged="PanelCombo_SelectionChanged"
-                                          AutomationProperties.AutomationId="PanelCombo">
-                                    <ComboBoxItem Content="Bars — countdown timers" Tag="bars"/>
-                                    <ComboBoxItem Content="Self buffs — present/missing matrix" Tag="selfBuffs"/>
-                                    <ComboBoxItem Content="Target debuffs — present/missing matrix" Tag="targetDebuffs"/>
-                                    <ComboBoxItem Content="Flash — screen-center alert" Tag="flash"/>
-                                </ComboBox>
-                                <TextBlock x:Name="PanelHint" Style="{StaticResource Hint}"
-                                           Text="A depleting countdown bar in the bars panel, grouped by category."/>
+                                <!-- The two everyday toggles live at the top. -->
+                                <StackPanel x:Name="BarsChecksGroup">
+                                    <CheckBox Content="Refresh to full when it triggers again"
+                                              IsChecked="{Binding RefreshOnRetrigger}" Margin="0,10,0,0"/>
+                                    <CheckBox Content="Remind me to rebuff when this is missing"
+                                              IsChecked="{Binding RemindWhenMissing}" Margin="0,6,0,0"/>
+                                </StackPanel>
 
-                                <StackPanel x:Name="CategoryGroup">
-                                    <TextBlock Text="Type (grouping — sets the bar color)" Style="{StaticResource FieldLabel}"/>
-                                    <ComboBox IsEditable="True" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}">
-                                        <ComboBoxItem>Buffs</ComboBoxItem>
-                                        <ComboBoxItem>HoTs</ComboBoxItem>
-                                        <ComboBoxItem>DoTs</ComboBoxItem>
-                                        <ComboBoxItem>Debuffs</ComboBoxItem>
-                                        <ComboBoxItem>Cooldowns</ComboBoxItem>
+                                <!-- Manual triggers only: library adds arrive with the
+                                     panel and type already decided. -->
+                                <StackPanel x:Name="ShowInGroup">
+                                    <TextBlock Text="Show in" Style="{StaticResource FieldLabel}"/>
+                                    <ComboBox x:Name="PanelCombo" SelectedValuePath="Tag" SelectedValue="{Binding Panel}"
+                                              SelectionChanged="PanelCombo_SelectionChanged"
+                                              AutomationProperties.AutomationId="PanelCombo">
+                                        <ComboBoxItem Content="Bars — countdown timers" Tag="bars"/>
+                                        <ComboBoxItem Content="Self buffs — present/missing matrix" Tag="selfBuffs"/>
+                                        <ComboBoxItem Content="Target debuffs — present/missing matrix" Tag="targetDebuffs"/>
+                                        <ComboBoxItem Content="Flash — screen-center alert" Tag="flash"/>
                                     </ComboBox>
-                                    <TextBlock Style="{StaticResource Hint}"
-                                               Text="Each type owns its color: Buffs blue · HoTs green · DoTs red · Debuffs yellow · Cooldowns purple."/>
+                                    <TextBlock x:Name="PanelHint" Style="{StaticResource Hint}"
+                                               Text="A depleting countdown bar in the bars panel, grouped by category."/>
+
+                                    <StackPanel x:Name="CategoryGroup">
+                                        <TextBlock Text="Type (grouping — sets the bar color)" Style="{StaticResource FieldLabel}"/>
+                                        <ComboBox IsEditable="True" Text="{Binding Category, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBoxItem>Buffs</ComboBoxItem>
+                                            <ComboBoxItem>HoTs</ComboBoxItem>
+                                            <ComboBoxItem>DoTs</ComboBoxItem>
+                                            <ComboBoxItem>Debuffs</ComboBoxItem>
+                                            <ComboBoxItem>Cooldowns</ComboBoxItem>
+                                        </ComboBox>
+                                        <TextBlock Style="{StaticResource Hint}"
+                                                   Text="Each type owns its color: Buffs blue · HoTs green · DoTs red · Debuffs yellow · Cooldowns purple."/>
+                                    </StackPanel>
                                 </StackPanel>
 
                                 <StackPanel x:Name="DurationGroup">
@@ -279,12 +291,8 @@
                                              FontFamily="Consolas" TextWrapping="Wrap"/>
                                 </StackPanel>
 
-                                <StackPanel x:Name="BarsChecksGroup">
-                                    <CheckBox Content="Refresh to full when it triggers again"
-                                              IsChecked="{Binding RefreshOnRetrigger}" Margin="0,10,0,0"/>
-                                    <CheckBox Content="Remind me to rebuff when this is missing"
-                                              IsChecked="{Binding RemindWhenMissing}" Margin="0,6,0,0"/>
-
+                                <!-- Manual power tool — library triggers never need it. -->
+                                <StackPanel x:Name="ReducerGroup">
                                     <TextBlock Text="Cooldown reducer (regex — each match cuts time off the running bar, optional)"
                                                Style="{StaticResource FieldLabel}"/>
                                     <TextBox Text="{Binding ReducePattern, UpdateSourceTrigger=PropertyChanged}"
@@ -293,19 +301,107 @@
                                     <TextBlock Text="Seconds cut per match" Style="{StaticResource FieldLabel}"/>
                                     <TextBox Text="{Binding ReduceSeconds}" Width="120" HorizontalAlignment="Left"/>
                                     <TextBlock Style="{StaticResource Hint}"
-                                               Text="SK example: a Cooldowns bar 'Harm Touch' starting on '^You begin casting Harm Touch' (1200s) with reducer '^You reave ' cutting 60 — the bar jumps on every landed reave and '-60s' floats in the XP &amp; faction lane. 'Alert at 0' then announces it's ready."/>
+                                               Text="SK example: a Cooldowns bar 'Harm Touch' starting on '^You begin casting Harm Touch' (1200s) with reducer '^You reave ' cutting 60 — the bar jumps on every landed reave and 'Notify when it fades' then announces it's ready."/>
                                 </StackPanel>
 
                                 <Border BorderBrush="#3A4560" BorderThickness="0,1,0,0" Margin="0,12,0,4"/>
                                 <TextBlock Text="Alerts" Style="{StaticResource SectionTitle}"/>
 
-                                <StackPanel x:Name="WarnGroup">
-                                    <TextBlock Text="Fire the alert this many seconds before it drops (0 = off)" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox Text="{Binding AlertAtSeconds}" Width="120" HorizontalAlignment="Left"/>
-                                    <TextBlock Style="{StaticResource Hint}"
-                                               Text="This is the WHEN, not the what: at this many seconds left, the spoken phrase and/or sound below play. The bar turning amber near the end is separate (the global warn colour)."/>
-                                    <CheckBox Content="Alert when it reaches 0 (use for cooldown 'ready')"
-                                              IsChecked="{Binding AlertOnExpire}" Margin="0,8,0,0"/>
+                                <StackPanel x:Name="AlertsGroup">
+                                    <!-- Notice 1: before it fades -->
+                                    <CheckBox IsChecked="{Binding WarnOn}" Content="Notify before it fades"
+                                              FontWeight="SemiBold" Margin="0,4,0,0"
+                                              AutomationProperties.AutomationId="WarnOnCheck"/>
+                                    <StackPanel Margin="24,6,0,0" IsEnabled="{Binding WarnOn}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBox Text="{Binding WarnSeconds}" Width="50"/>
+                                            <TextBlock Text="seconds before it drops, using" Style="{StaticResource Hint}"
+                                                       Margin="8,0,8,0" VerticalAlignment="Center"/>
+                                            <ComboBox Width="90" SelectedValuePath="Tag" SelectedValue="{Binding WarnMode}"
+                                                      AutomationProperties.AutomationId="WarnModeBox">
+                                                <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                                <ComboBoxItem Content="Sound" Tag="sound"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding WarnMode}" Value="sound">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBox Text="{Binding WarnSpeak, UpdateSourceTrigger=PropertyChanged}" Width="300"
+                                                     ToolTip="Spoken via Windows text-to-speech"/>
+                                            <Button Content="Speak" Click="WarnSpeak_Click" Width="60" Margin="8,0,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding WarnMode}" Value="sound">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <ComboBox x:Name="WarnSoundBox" Width="220" MinHeight="30"
+                                                      SelectionChanged="WarnSound_Changed"
+                                                      ToolTip="Windows' built-in notification sounds — present on every machine, nothing to copy around"/>
+                                            <Button Content="Play" Click="WarnPlay_Click" Width="50" Margin="8,0,0,0"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Notice 2: when it faded -->
+                                    <CheckBox IsChecked="{Binding FadedOn}" Content="Notify when it fades"
+                                              FontWeight="SemiBold" Margin="0,14,0,0"
+                                              AutomationProperties.AutomationId="FadedOnCheck"/>
+                                    <TextBlock Style="{StaticResource Hint}" Margin="24,2,0,0"
+                                               Text="Fires as the timer runs out — also the 'ready' announcement for Cooldowns bars."/>
+                                    <StackPanel Margin="24,6,0,0" IsEnabled="{Binding FadedOn}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="Using" Style="{StaticResource Hint}"
+                                                       Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <ComboBox Width="90" SelectedValuePath="Tag" SelectedValue="{Binding FadedMode}"
+                                                      AutomationProperties.AutomationId="FadedModeBox">
+                                                <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                                <ComboBoxItem Content="Sound" Tag="sound"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding FadedMode}" Value="sound">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBox Text="{Binding FadedSpeak, UpdateSourceTrigger=PropertyChanged}" Width="300"
+                                                     ToolTip="Spoken via Windows text-to-speech"/>
+                                            <Button Content="Speak" Click="FadedSpeak_Click" Width="60" Margin="8,0,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding FadedMode}" Value="sound">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <ComboBox x:Name="FadedSoundBox" Width="220" MinHeight="30"
+                                                      SelectionChanged="FadedSound_Changed"
+                                                      ToolTip="Windows' built-in notification sounds — present on every machine, nothing to copy around"/>
+                                            <Button Content="Play" Click="FadedPlay_Click" Width="50" Margin="8,0,0,0"/>
+                                        </StackPanel>
+                                    </StackPanel>
                                 </StackPanel>
 
                                 <StackPanel x:Name="FlashGroup">
@@ -314,25 +410,6 @@
                                     <TextBox Text="{Binding FlashText, UpdateSourceTrigger=PropertyChanged}" Width="320" HorizontalAlignment="Left"/>
                                     <TextBlock Style="{StaticResource Hint}"
                                                Text="Big text in the trigger's colour in the flash area, fading out. Size and position: Flash alerts page."/>
-                                </StackPanel>
-
-                                <StackPanel x:Name="SpeakSoundGroup">
-                                    <TextBlock Text="Speak this phrase (Windows text-to-speech)" Style="{StaticResource FieldLabel}"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBox Text="{Binding AlertSpeak, UpdateSourceTrigger=PropertyChanged}" Width="320"/>
-                                        <Button Content="Speak" Click="Speak_Click" Width="60" Margin="8,0,0,0"/>
-                                    </StackPanel>
-                                    <CheckBox IsChecked="{Binding AlertSpeakEnabled}" Margin="0,6,0,0"
-                                              Content="Voice on"
-                                              ToolTip="Off keeps the phrase for later but never speaks it — library triggers arrive with a default fade warning you can simply switch off"/>
-
-                                    <TextBlock Text="Play a sound" Style="{StaticResource FieldLabel}"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <ComboBox x:Name="SoundPresetBox" Width="220" MinHeight="30"
-                                                  SelectionChanged="SoundPreset_Changed"
-                                                  ToolTip="Windows' built-in notification sounds — present on every machine, nothing to copy around"/>
-                                        <Button Content="Play" Click="PlaySound_Click" Width="50" Margin="8,0,0,0"/>
-                                    </StackPanel>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>

@@ -24,7 +24,22 @@ public sealed class TriggerEditViewModel : ViewModelBase
     public string SourceBadge => IsLibrary ? "L" : "M";
 
     private string _name = "";
-    public string Name { get => _name; set { if (SetField(ref _name, value)) OnPropertyChanged(nameof(Display)); } }
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            string prevWarn = AlertConfig.DefaultWarnPhrase(_name);
+            string prevFaded = AlertConfig.DefaultFadedPhrase(_name, _category);
+            if (!SetField(ref _name, value)) return;
+            OnPropertyChanged(nameof(Display));
+            // Prefilled alert phrases follow the name until hand-edited.
+            if (WarnSpeak.Length == 0 || WarnSpeak == prevWarn)
+                WarnSpeak = AlertConfig.DefaultWarnPhrase(value);
+            if (FadedSpeak.Length == 0 || FadedSpeak == prevFaded)
+                FadedSpeak = AlertConfig.DefaultFadedPhrase(value, _category);
+        }
+    }
 
     private string _category = "Buffs";
     public string Category
@@ -32,10 +47,15 @@ public sealed class TriggerEditViewModel : ViewModelBase
         get => _category;
         set
         {
+            string prevFaded = AlertConfig.DefaultFadedPhrase(_name, _category);
             if (!SetField(ref _category, value)) return;
             OnPropertyChanged(nameof(Display));
             OnPropertyChanged(nameof(PreviewBrush));
             OnPropertyChanged(nameof(GroupLabel));
+            // Cooldowns say "is ready" instead of "faded" — keep a default
+            // phrase in step when the type changes.
+            if (FadedSpeak.Length == 0 || FadedSpeak == prevFaded)
+                FadedSpeak = AlertConfig.DefaultFadedPhrase(_name, value);
         }
     }
 
@@ -136,22 +156,37 @@ public sealed class TriggerEditViewModel : ViewModelBase
     private bool _refreshOnRetrigger = true;
     public bool RefreshOnRetrigger { get => _refreshOnRetrigger; set => SetField(ref _refreshOnRetrigger, value); }
 
-    // Alert fields (flattened).
-    private string _alertSpeak = "";
-    public string AlertSpeak { get => _alertSpeak; set => SetField(ref _alertSpeak, value); }
+    // Alert fields (flattened): two notices, each a phrase OR a sound.
 
-    private bool _alertSpeakEnabled = true;
-    /// <summary>Voice on/off — off keeps the phrase but never speaks it.</summary>
-    public bool AlertSpeakEnabled { get => _alertSpeakEnabled; set => SetField(ref _alertSpeakEnabled, value); }
+    private bool _warnOn;
+    /// <summary>"Notify before it fades" toggle.</summary>
+    public bool WarnOn { get => _warnOn; set => SetField(ref _warnOn, value); }
 
-    private string _alertSound = "";
-    public string AlertSound { get => _alertSound; set => SetField(ref _alertSound, value); }
+    private double _warnSeconds = 15;
+    /// <summary>Seconds left when the pre-fade notice fires.</summary>
+    public double WarnSeconds { get => _warnSeconds; set => SetField(ref _warnSeconds, value); }
 
-    private double _alertAtSeconds;
-    public double AlertAtSeconds { get => _alertAtSeconds; set => SetField(ref _alertAtSeconds, value); }
+    private string _warnMode = AlertConfig.ModeSpeak;
+    public string WarnMode { get => _warnMode; set => SetField(ref _warnMode, value); }
 
-    private bool _alertOnExpire;
-    public bool AlertOnExpire { get => _alertOnExpire; set => SetField(ref _alertOnExpire, value); }
+    private string _warnSpeak = "";
+    public string WarnSpeak { get => _warnSpeak; set => SetField(ref _warnSpeak, value); }
+
+    private string _warnSound = "";
+    public string WarnSound { get => _warnSound; set => SetField(ref _warnSound, value); }
+
+    private bool _fadedOn;
+    /// <summary>"Notify when it faded" toggle (doubles as cooldown 'ready').</summary>
+    public bool FadedOn { get => _fadedOn; set => SetField(ref _fadedOn, value); }
+
+    private string _fadedMode = AlertConfig.ModeSpeak;
+    public string FadedMode { get => _fadedMode; set => SetField(ref _fadedMode, value); }
+
+    private string _fadedSpeak = "";
+    public string FadedSpeak { get => _fadedSpeak; set => SetField(ref _fadedSpeak, value); }
+
+    private string _fadedSound = "";
+    public string FadedSound { get => _fadedSound; set => SetField(ref _fadedSound, value); }
 
     private string _flashText = "";
     public string FlashText { get => _flashText; set => SetField(ref _flashText, value); }
@@ -187,38 +222,48 @@ public sealed class TriggerEditViewModel : ViewModelBase
         }
     }
 
-    public static TriggerEditViewModel FromDefinition(TriggerDefinition d) => new()
+    public static TriggerEditViewModel FromDefinition(TriggerDefinition d)
     {
-        Id = d.Id,
-        Name = d.Name,
-        Category = d.Category,
-        Panel = string.IsNullOrWhiteSpace(d.Panel) ? Panels.Bars : d.Panel,
-        Enabled = d.Enabled,
-        StartPattern = d.StartPattern,
-        EndPattern = d.EndPattern ?? "",
-        DurationSeconds = d.DurationSeconds,
-        DurationAuto = d.DurationAuto,
-        CastAnchored = d.CastAnchored,
-        Color = d.Color,
-        RefreshOnRetrigger = d.RefreshOnRetrigger,
-        AlertSpeak = d.Alert?.Speak ?? "",
-        AlertSpeakEnabled = d.Alert?.SpeakEnabled ?? true,
-        AlertSound = d.Alert?.Sound ?? "",
-        AlertAtSeconds = d.Alert?.AtSeconds ?? 0,
-        AlertOnExpire = d.Alert?.OnExpire ?? false,
-        FlashText = d.Alert?.FlashText ?? "",
-        RemindWhenMissing = d.RemindWhenMissing,
-        ReducePattern = d.ReducePattern ?? "",
-        ReduceSeconds = d.ReduceSeconds,
-    };
+        // Migrate pre-2.11 single-payload alerts before flattening, so the
+        // editor always sees (and saves back) the two-notice model.
+        Services.ConfigService.NormalizeAlert(d);
+        return new()
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Category = d.Category,
+            Panel = string.IsNullOrWhiteSpace(d.Panel) ? Panels.Bars : d.Panel,
+            Enabled = d.Enabled,
+            StartPattern = d.StartPattern,
+            EndPattern = d.EndPattern ?? "",
+            DurationSeconds = d.DurationSeconds,
+            DurationAuto = d.DurationAuto,
+            CastAnchored = d.CastAnchored,
+            Color = d.Color,
+            RefreshOnRetrigger = d.RefreshOnRetrigger,
+            WarnOn = d.Alert?.WarnEnabled ?? false,
+            WarnSeconds = d.Alert is { AtSeconds: > 0 } a1 ? a1.AtSeconds : 15,
+            WarnMode = d.Alert?.WarnMode is AlertConfig.ModeSound
+                ? AlertConfig.ModeSound : AlertConfig.ModeSpeak,
+            WarnSpeak = string.IsNullOrWhiteSpace(d.Alert?.Speak)
+                ? AlertConfig.DefaultWarnPhrase(d.Name) : d.Alert!.Speak!,
+            WarnSound = d.Alert?.Sound ?? "",
+            FadedOn = d.Alert?.FadedEnabled ?? false,
+            FadedMode = d.Alert?.FadedMode is AlertConfig.ModeSound
+                ? AlertConfig.ModeSound : AlertConfig.ModeSpeak,
+            FadedSpeak = string.IsNullOrWhiteSpace(d.Alert?.FadedSpeak)
+                ? AlertConfig.DefaultFadedPhrase(d.Name, d.Category) : d.Alert!.FadedSpeak!,
+            FadedSound = d.Alert?.FadedSound ?? "",
+            FlashText = d.Alert?.FlashText ?? "",
+            RemindWhenMissing = d.RemindWhenMissing,
+            ReducePattern = d.ReducePattern ?? "",
+            ReduceSeconds = d.ReduceSeconds,
+        };
+    }
 
     public TriggerDefinition ToDefinition()
     {
-        bool hasAlert = !string.IsNullOrWhiteSpace(AlertSpeak)
-                        || !string.IsNullOrWhiteSpace(AlertSound)
-                        || !string.IsNullOrWhiteSpace(FlashText)
-                        || AlertAtSeconds > 0
-                        || AlertOnExpire;
+        bool hasAlert = WarnOn || FadedOn || !string.IsNullOrWhiteSpace(FlashText);
 
         return new TriggerDefinition
         {
@@ -239,12 +284,19 @@ public sealed class TriggerEditViewModel : ViewModelBase
             ReduceSeconds = ReduceSeconds,
             Alert = hasAlert ? new AlertConfig
             {
-                Speak = string.IsNullOrWhiteSpace(AlertSpeak) ? null : AlertSpeak,
-                SpeakEnabled = AlertSpeakEnabled,
-                Sound = string.IsNullOrWhiteSpace(AlertSound) ? null : AlertSound,
-                AtSeconds = AlertAtSeconds,
-                OnExpire = AlertOnExpire,
+                WarnEnabled = WarnOn,
+                AtSeconds = WarnSeconds > 0 ? WarnSeconds : 15,
+                WarnMode = WarnMode,
+                Speak = string.IsNullOrWhiteSpace(WarnSpeak) ? null : WarnSpeak,
+                Sound = string.IsNullOrWhiteSpace(WarnSound) ? null : WarnSound,
+                FadedEnabled = FadedOn,
+                FadedMode = FadedMode,
+                FadedSpeak = string.IsNullOrWhiteSpace(FadedSpeak) ? null : FadedSpeak,
+                FadedSound = string.IsNullOrWhiteSpace(FadedSound) ? null : FadedSound,
                 FlashText = string.IsNullOrWhiteSpace(FlashText) ? null : FlashText,
+                // Legacy flags stay coherent for anything old reading the file.
+                SpeakEnabled = WarnOn && WarnMode == AlertConfig.ModeSpeak,
+                OnExpire = FadedOn,
             } : null,
         };
     }

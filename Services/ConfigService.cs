@@ -224,14 +224,54 @@ public sealed class ConfigService
             ? null
             : new Regex(t.ReducePattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-        // A speak/sound with no timing would never fire — a phrase like
-        // "Quickness faded" clearly means "say it when the bar runs out",
-        // so default it to the expiry alert.
-        if (t.Alert is { } a && a.AtSeconds <= 0 && !a.OnExpire
-            && (!string.IsNullOrWhiteSpace(a.Speak) || !string.IsNullOrWhiteSpace(a.Sound)))
+        NormalizeAlert(t);
+    }
+
+    /// <summary>Fill the two-notice alert fields (2.11 model), migrating pre-2.11
+    /// configs where one speak/sound payload served both the timed warning and
+    /// the expiry alert: the payload follows whichever notice actually fired.
+    /// Idempotent — reruns leave a migrated config untouched.</summary>
+    public static void NormalizeAlert(TriggerDefinition t)
+    {
+        if (t.Alert is not { } a) return;
+
+        bool hadPayload = (a.SpeakEnabled && !string.IsNullOrWhiteSpace(a.Speak))
+                          || !string.IsNullOrWhiteSpace(a.Sound);
+        string legacyMode = !a.SpeakEnabled && !string.IsNullOrWhiteSpace(a.Sound)
+            ? AlertConfig.ModeSound : AlertConfig.ModeSpeak;
+
+        if (a.FadedEnabled is null)
         {
-            a.OnExpire = true;
+            // Old expiry alert — explicit OnExpire, or implied by a payload
+            // with no timing ("Quickness faded" with AtSeconds 0 clearly
+            // meant "say it when the bar runs out").
+            a.FadedEnabled = a.OnExpire || (a.AtSeconds <= 0 && hadPayload);
+            if (a.FadedEnabled == true)
+            {
+                a.FadedSpeak ??= a.Speak;
+                a.FadedSound ??= a.Sound;
+            }
         }
+        a.WarnEnabled ??= a.AtSeconds > 0 && hadPayload;
+        if (string.IsNullOrEmpty(a.WarnMode)) a.WarnMode = legacyMode;
+        if (string.IsNullOrEmpty(a.FadedMode)) a.FadedMode = legacyMode;
+
+        if (a.AtSeconds <= 0) a.AtSeconds = 15;
+
+        // Prefill the phrases so the editor never shows an empty box (bars and
+        // matrices only — a flash trigger's name is "X faded" already).
+        if (t.Panel is Panels.Bars or Panels.SelfBuffs or Panels.TargetDebuffs)
+        {
+            if (string.IsNullOrWhiteSpace(a.Speak))
+                a.Speak = AlertConfig.DefaultWarnPhrase(t.Name);
+            if (string.IsNullOrWhiteSpace(a.FadedSpeak))
+                a.FadedSpeak = AlertConfig.DefaultFadedPhrase(t.Name, t.Category);
+        }
+
+        // Keep the legacy flags coherent so an old exe reading this file stays
+        // quiet about disabled notices.
+        a.SpeakEnabled = a.WarnEnabled == true && a.WarnMode == AlertConfig.ModeSpeak;
+        a.OnExpire = a.FadedEnabled == true;
     }
 
     private List<TriggerDefinition>? TryReadLegacyTriggers()

@@ -26,6 +26,7 @@ public sealed class TimerBarViewModel : ViewModelBase
         string key, string name, string category, double totalSeconds,
         DateTime endTimeLocal, Brush fill,
         double alertAtSeconds, bool alertOnExpire, string? alertSpeak, string? alertSound,
+        string? alertFadedSpeak = null, string? alertFadedSound = null,
         bool waitsForFade = false)
     {
         var vm = new TimerBarViewModel(key, name, category, fill)
@@ -36,6 +37,8 @@ public sealed class TimerBarViewModel : ViewModelBase
             AlertOnExpire = alertOnExpire,
             AlertSpeak = alertSpeak,
             AlertSound = alertSound,
+            AlertFadedSpeak = alertFadedSpeak,
+            AlertFadedSound = alertFadedSound,
             WaitsForFade = waitsForFade,
         };
         vm.Refresh(DateTime.Now, double.MaxValue);
@@ -65,11 +68,14 @@ public sealed class TimerBarViewModel : ViewModelBase
     public double TotalSeconds { get; private set; }
     public DateTime EndTimeLocal { get; private set; }
 
-    // Alert settings copied from the trigger at creation.
+    // Alert settings copied from the trigger at creation. Speak/Sound are the
+    // pre-fade payload; the Faded pair plays when the bar reaches 0.
     public double AlertAtSeconds { get; private init; }
     public bool AlertOnExpire { get; private init; }
     public string? AlertSpeak { get; private init; }
     public string? AlertSound { get; private init; }
+    public string? AlertFadedSpeak { get; private init; }
+    public string? AlertFadedSound { get; private init; }
 
     /// <summary>Engine flag so a "fading" alert only fires once per fill.</summary>
     public bool FadeAlertFired { get; set; }

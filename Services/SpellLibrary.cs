@@ -377,7 +377,14 @@ public sealed class SpellLibrary
             DurationSeconds = s.DurationSec > 0 ? s.DurationSec : 60,
             RefreshOnRetrigger = true,
             Alert = spokenWarning
-                ? new AlertConfig { AtSeconds = 20, Speak = s.Name + " is fading" }
+                ? new AlertConfig
+                {
+                    WarnEnabled = true,
+                    AtSeconds = 15,
+                    WarnMode = AlertConfig.ModeSpeak,
+                    Speak = AlertConfig.DefaultWarnPhrase(s.Name),
+                    FadedEnabled = false,
+                }
                 : null,
         };
         ConfigService.CompileOne(t);

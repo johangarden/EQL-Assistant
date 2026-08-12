@@ -704,7 +704,9 @@ public partial class App : Application
                 && TriggerColors.For(Models.Panels.SelfBuffs, "") == TriggerColors.Buff
                 && TriggerColors.For(Models.Panels.TargetDebuffs, "") == TriggerColors.Debuff);
 
-            // Voice toggle: off keeps the phrase but the bar never receives it.
+            // Alert migration: pre-2.11 configs carried ONE speak/sound payload
+            // gated by SpeakEnabled + AtSeconds/OnExpire — they map onto the
+            // two-notice model (warn before fade / notify at fade).
             var vt = new Models.AppConfig();
             vt.Triggers.Add(new Models.TriggerDefinition
             {
@@ -716,17 +718,53 @@ public partial class App : Application
                 Id = "v2", Name = "Muted", StartPattern = @"^A silence\.", DurationSeconds = 30,
                 Alert = new Models.AlertConfig { Speak = "hello", AtSeconds = 5, SpeakEnabled = false },
             });
+            vt.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "v3", Name = "Chimed", StartPattern = @"^A chime\.", DurationSeconds = 30,
+                Alert = new Models.AlertConfig
+                    { Sound = @"C:\Windows\Media\chimes.wav", AtSeconds = 5, SpeakEnabled = false },
+            });
             foreach (var t in vt.Triggers) ConfigService.CompileOne(t);
             var vtEng = new TriggerEngine(vt, new AlertService());
             vtEng.ProcessLine($"[{AT(0)}] A voice.");
             vtEng.ProcessLine($"[{AT(0)}] A silence.");
-            Check("voice: toggle gates the spoken phrase, text survives",
+            vtEng.ProcessLine($"[{AT(0)}] A chime.");
+            Check("alerts: legacy timed speak migrates to the pre-fade notice",
                 vtEng.Bars.First(b => b.Name == "Voiced").AlertSpeak == "hello"
-                && vtEng.Bars.First(b => b.Name == "Muted").AlertSpeak is null
+                && vtEng.Bars.First(b => b.Name == "Voiced").AlertAtSeconds == 5);
+            Check("alerts: legacy voice-off keeps the phrase but disables the notice",
+                vtEng.Bars.First(b => b.Name == "Muted").AlertSpeak is null
+                && vtEng.Bars.First(b => b.Name == "Muted").AlertAtSeconds == 0
                 && vt.Triggers[1].Alert!.Speak == "hello");
-            Check("voice: library adds arrive with a default fade phrase, voice on",
+            Check("alerts: legacy sound-only migrates to a sound-mode notice",
+                vt.Triggers[2].Alert is { WarnEnabled: true, WarnMode: Models.AlertConfig.ModeSound }
+                && vtEng.Bars.First(b => b.Name == "Chimed").AlertSound == @"C:\Windows\Media\chimes.wav"
+                && vtEng.Bars.First(b => b.Name == "Chimed").AlertSpeak is null);
+
+            // The two notices carry independent payloads to the bar.
+            var two = new Models.AppConfig();
+            two.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "t2", Name = "Twofold", StartPattern = @"^Twofold lands\.", DurationSeconds = 30,
+                Alert = new Models.AlertConfig
+                {
+                    WarnEnabled = true, AtSeconds = 10,
+                    WarnMode = Models.AlertConfig.ModeSpeak, Speak = "twofold ending",
+                    FadedEnabled = true,
+                    FadedMode = Models.AlertConfig.ModeSpeak, FadedSpeak = "twofold gone",
+                },
+            });
+            foreach (var t in two.Triggers) ConfigService.CompileOne(t);
+            var twoEng = new TriggerEngine(two, new AlertService());
+            twoEng.ProcessLine($"[{AT(0)}] Twofold lands.");
+            var twoBar = twoEng.Bars.First(b => b.Name == "Twofold");
+            Check("alerts: warn and faded notices carry separate payloads",
+                twoBar.AlertSpeak == "twofold ending" && twoBar.AlertAtSeconds == 10
+                && twoBar.AlertOnExpire && twoBar.AlertFadedSpeak == "twofold gone");
+            Check("voice: library adds arrive with a default pre-fade phrase at 15s",
                 SpellLibrary.BarTrigger(lib2.FindByName("Quickness")!, spokenWarning: true) is
-                    { Alert: { Speak: "Quickness is fading", SpeakEnabled: true, AtSeconds: 20 } });
+                    { Alert: { Speak: "Quickness is about to end", WarnEnabled: true, AtSeconds: 15,
+                               WarnMode: Models.AlertConfig.ModeSpeak, FadedEnabled: false } });
 
             // Merged-log copies: timestamped name keeps base + extension.
             Check("merge copies: timestamped copy name",
@@ -754,21 +792,28 @@ public partial class App : Application
             Check("overrun: bars without an end pattern still just expire",
                 nf.IsExpired && !nf.WaitsForFade);
 
-            // A speak phrase with no timing defaults to the expiry alert.
+            // A legacy speak phrase with no timing meant "say it when the bar
+            // runs out" — it migrates to the faded notice, phrase intact.
             var mute = new Models.TriggerDefinition
             {
                 Id = "qk", Name = "Quickness", StartPattern = "x",
                 Alert = new Models.AlertConfig { Speak = "Quickness faded" },
             };
             ConfigService.CompileOne(mute);
-            Check("alert: speak with no timing fires on expire", mute.Alert!.OnExpire);
+            Check("alert: legacy speak with no timing becomes the faded notice",
+                mute.Alert is { FadedEnabled: true, FadedSpeak: "Quickness faded", WarnEnabled: false });
             var timed = new Models.TriggerDefinition
             {
                 Id = "qk2", Name = "Quickness", StartPattern = "x",
                 Alert = new Models.AlertConfig { Speak = "fading", AtSeconds = 20 },
             };
             ConfigService.CompileOne(timed);
-            Check("alert: timed speak is left alone", !timed.Alert!.OnExpire);
+            Check("alert: legacy timed speak stays a pre-fade notice only",
+                timed.Alert is { WarnEnabled: true, AtSeconds: 20, FadedEnabled: false });
+            ConfigService.CompileOne(timed); // normalize must be idempotent
+            ConfigService.CompileOne(timed);
+            Check("alert: normalization is idempotent across recompiles",
+                timed.Alert is { WarnEnabled: true, AtSeconds: 20, FadedEnabled: false, Speak: "fading" });
 
             // Self-update: tag parsing, release-JSON asset picking, compare, copy-swap.
             Check("update: tags parse normalized",
@@ -1153,7 +1198,7 @@ public partial class App : Application
                 && bar.StartRegex!.IsMatch("You feel the spirit of wolf enter you.")
                 && bar.EndRegex!.IsMatch("The spirit of wolf leaves you.")
                 && bar.DurationSeconds == 2160
-                && bar.Alert is { AtSeconds: 20 });
+                && bar.Alert is { WarnEnabled: true, AtSeconds: 15 });
             var fade = SpellLibrary.FadeFlashTrigger(sow!);
             Check("library fade-flash trigger", fade is not null
                 && fade.Panel == Models.Panels.Flash

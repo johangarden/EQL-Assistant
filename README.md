@@ -164,9 +164,9 @@ debuffs or class, then one click adds:
 The list is **grouped by level** (the filtered class's level when one is
 picked, else the lowest class level), alphabetical inside each level. One
 **Add** button per spell: a ready-made countdown bar with the right type,
-color and duration, **plus a spoken fade warning** ("Quickness is fading",
-20s before it drops) — the phrase is editable on the trigger, and a **Voice
-on/off** toggle under it silences it without losing the text.
+color and duration, **plus a spoken fade warning** ("Quickness is about to
+end", 15s before it drops) — the phrase is editable on the trigger, and the
+notice can be toggled off or switched to a notification sound.
 
 Added triggers are normal triggers — edit them like any other.
 
@@ -184,10 +184,14 @@ yellow, cooldowns purple — everywhere the trigger shows up (bars, flash text,
 the list swatch). No per-trigger color picking. Disabled triggers gray out in
 place.
 
-Per-trigger alerts: spoken phrase (Windows TTS) and/or `.wav`, *warn N seconds
-before it drops*, *alert at 0* (cooldown "ready"), *remind me to rebuff when
-missing* (pulsing REBUFF bar + periodic nudge, only after the buff has been
-seen up once).
+Per-trigger alerts are **two independent notices**, each with its own toggle
+and its own channel — a spoken phrase (Windows TTS, prefilled "X is about to
+end" / "X faded") **or** a Windows notification sound, never both at once:
+*notify before it fades* (default 15s) and *notify when it fades* (also the
+cooldown "ready" announcement). *Remind me to rebuff when missing* adds a
+pulsing REBUFF bar + periodic nudge, only after the buff has been seen up
+once. Library triggers keep the editor lean: **Show in**, **Type** and the
+cooldown reducer only appear on manually created triggers.
 
 Bar triggers can also carry a **cooldown reducer**: while the bar runs, every
 log line matching the reducer regex cuts N seconds off it — the bar visibly
