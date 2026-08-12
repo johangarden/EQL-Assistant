@@ -36,10 +36,10 @@
                             <ItemsControl ItemsSource="{Binding Rows}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,1" CornerRadius="4" Background="#C0141A24" Padding="6,3"
-                                                BorderBrush="#3A2528" BorderThickness="1" MinWidth="230">
+                                        <Border x:Name="RowBox" Margin="0,1" CornerRadius="4" Background="#C0141A24"
+                                                Padding="6,3" BorderBrush="#3A2528" BorderThickness="1" MinWidth="230">
                                             <DockPanel>
-                                                <Border DockPanel.Dock="Left" Width="4" CornerRadius="2"
+                                                <Border x:Name="RowChip" DockPanel.Dock="Left" Width="4" CornerRadius="2"
                                                         Background="#E57373" Margin="0,0,7,0"/>
                                                 <TextBlock DockPanel.Dock="Right" Text="{Binding TimeText}"
                                                            Foreground="White" FontWeight="Bold" FontSize="12"
@@ -49,6 +49,14 @@
                                                            MaxWidth="240"/>
                                             </DockPanel>
                                         </Border>
+                                        <DataTemplate.Triggers>
+                                            <!-- Overrun: past the estimate, fade not yet seen -
+                                                 gray, counting up, still honest. -->
+                                            <DataTrigger Binding="{Binding IsOverrun}" Value="True">
+                                                <Setter TargetName="RowBox" Property="Opacity" Value="0.5"/>
+                                                <Setter TargetName="RowChip" Property="Background" Value="#9AA3AF"/>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

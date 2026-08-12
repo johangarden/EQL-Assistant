@@ -112,7 +112,8 @@ public partial class MainWindow : Window
         // Enemy-DoT countdowns: learned first, library figure as the fallback.
         _combat.DotDurationLookup = spell =>
             _durations.LearnedMaxSeconds(spell)
-            ?? (_spellLib.FindByName(spell)?.DurationSec is > 0 and var libSec ? libSec : null);
+            ?? (_spellLib.FindByBaseName(spell)?.DurationSec is > 0 and var libSec ? libSec : null);
+        _combat.OtherLandingLookup = _spellLib.OtherLanding;
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;

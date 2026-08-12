@@ -257,6 +257,27 @@ public sealed class SpellLibrary
     public Spell? FindByName(string name) =>
         Spells.FirstOrDefault(s => s.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Rank-tolerant lookup: "Envenomed Bolt V" finds "Envenomed Bolt".</summary>
+    public Spell? FindByBaseName(string name) =>
+        FindByName(name) ?? Spells.FirstOrDefault(s =>
+            SpellDurations.BaseKey(s.Name) == SpellDurations.BaseKey(name));
+
+    /// <summary>A DETRIMENTAL spell's third-person landing suffix for the
+    /// enemy-debuff detector: castOnOther "Someone has been poisoned." →
+    /// "has been poisoned." — the actual line replaces "Someone" with the mob
+    /// ("A froglok has been poisoned."). Null when the scrape has nothing
+    /// usable. Possessive forms ("Someone 's blood boils.") work too: the
+    /// suffix is "'s blood boils." and endswith-matching strips the name.</summary>
+    public (string Suffix, bool Detrimental)? OtherLanding(string spellName)
+    {
+        if (FindByBaseName(spellName) is not { } s) return null;
+        const string prefix = "Someone ";
+        if (!s.CastOnOther.StartsWith(prefix, StringComparison.Ordinal)) return null;
+        string suffix = s.CastOnOther[prefix.Length..].Trim();
+        if (suffix.Length < 4 || JunkMessage(suffix)) return null;
+        return (suffix, s.Bucket == "Debuff");
+    }
+
     /// <summary>88 scraped spells carry junk landing text ("You .", empty) —
     /// ports, proc buffs, and the EQL-added heals the wiki has no emote for.</summary>
     public static bool JunkMessage(string message)

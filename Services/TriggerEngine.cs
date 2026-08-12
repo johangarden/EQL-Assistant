@@ -361,7 +361,8 @@ public sealed class TriggerEngine
             trigger.Alert?.AtSeconds ?? 0,
             trigger.Alert?.OnExpire ?? false,
             SpeakOf(trigger),
-            trigger.Alert?.Sound);
+            trigger.Alert?.Sound,
+            waitsForFade: trigger.EndRegex is not null);
 
         _active[key] = vm;
         InsertSorted(vm);
@@ -434,12 +435,23 @@ public sealed class TriggerEngine
         }
     }
 
+    /// <summary>An overrunning bar squats at most this long past its estimate
+    /// before the unwitnessed cull removes it (the fade line never arrived —
+    /// death/zoning ate it).</summary>
+    public const double OverrunCapSec = 60;
+
     private void UpdateBars(DateTime now)
     {
         List<TimerBarViewModel>? expired = null;
         foreach (var bar in Bars)
         {
             bar.Refresh(now, _warnSeconds);
+
+            if (bar.IsOverrun)
+            {
+                if (bar.OverrunSeconds > OverrunCapSec) (expired ??= new()).Add(bar);
+                continue; // no fade warnings while gray
+            }
 
             if (!bar.IsMissing && bar.AlertAtSeconds > 0 && !bar.FadeAlertFired &&
                 bar.RemainingSeconds > 0 && bar.RemainingSeconds <= bar.AlertAtSeconds)
@@ -449,14 +461,27 @@ public sealed class TriggerEngine
             }
 
             if (bar.IsExpired)
-                (expired ??= new()).Add(bar);
+            {
+                // A bar with an end pattern doesn't vanish on a mere estimate:
+                // it grays out and counts UP until the real fade line (which
+                // also teaches the learner the true duration).
+                if (bar.WaitsForFade)
+                {
+                    if (bar.AlertOnExpire) _alerts.Fire(bar.AlertSpeak, bar.AlertSound);
+                    bar.EnterOverrun();
+                }
+                else
+                {
+                    (expired ??= new()).Add(bar);
+                }
+            }
         }
 
         if (expired is not null)
         {
             foreach (var bar in expired)
             {
-                if (bar.AlertOnExpire)
+                if (bar.AlertOnExpire && !bar.IsOverrun) // overrun already alerted at 0
                     _alerts.Fire(bar.AlertSpeak, bar.AlertSound);
                 _active.Remove(bar.Key);
                 Bars.Remove(bar);

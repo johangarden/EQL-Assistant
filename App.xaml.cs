@@ -734,6 +734,26 @@ public partial class App : Application
                     new DateTime(2026, 8, 12, 20, 30, 15))
                     == "eqlog_Thorrak_paineel-20260812-203015.txt");
 
+            // Overrun state: a bar with an end pattern grays out at 0 and
+            // counts UP until the fade line — "still there, still learning".
+            var ov = ViewModels.TimerBarViewModel.CreateTimer("k", "n", "Buffs", 10,
+                new DateTime(2026, 8, 11, 12, 0, 10), Brushes.Blue, 0, false, null, null,
+                waitsForFade: true);
+            ov.Refresh(new DateTime(2026, 8, 11, 12, 0, 11), 5);
+            Check("overrun: expired-but-waiting bar reports expired once", ov.IsExpired);
+            ov.EnterOverrun();
+            ov.Refresh(new DateTime(2026, 8, 11, 12, 0, 24), 5);
+            Check("overrun: gray bar counts up and is no longer 'expired'",
+                ov.IsOverrun && !ov.IsExpired && ov.RemainingText == "+14s"
+                && Math.Abs(ov.OverrunSeconds - 14) < 0.01 && !ov.IsWarning);
+            ov.Restart(10, new DateTime(2026, 8, 11, 12, 0, 40));
+            Check("overrun: a retrigger returns the bar to a live countdown", !ov.IsOverrun);
+            var nf = ViewModels.TimerBarViewModel.CreateTimer("k2", "n2", "Buffs", 10,
+                new DateTime(2026, 8, 11, 12, 0, 10), Brushes.Blue, 0, false, null, null);
+            nf.Refresh(new DateTime(2026, 8, 11, 12, 0, 11), 5);
+            Check("overrun: bars without an end pattern still just expire",
+                nf.IsExpired && !nf.WaitsForFade);
+
             // A speak phrase with no timing defaults to the expiry alert.
             var mute = new Models.TriggerDefinition
             {
@@ -1343,9 +1363,53 @@ public partial class App : Application
             Check("dots: zoning leaves hostiles behind", ep.EnemyDots(ET(42)).Count == 0);
             ep.ProcessLine($"[{ETs(50)}] A froglok has taken 100 damage from your Curse.");
             ep.ProcessLine($"[{ETs(85)}] A froglok has taken 100 damage from your Curse.");
-            Check("dots: a tick past the duration restarts the clock (silent recast)",
-                ep.EnemyDots(ET(86)) is [{ RemainingSeconds: not null } r2]
-                && Math.Abs(r2.RemainingSeconds!.Value - 29) < 0.01);
+            Check("dots: a tick past the duration goes gray-OVERRUN, never a guessed restart",
+                ep.EnemyDots(ET(86)) is [{ Overrun: true } r2]
+                && Math.Abs(r2.OverrunSeconds - 6) < 0.01);
+
+            // Landing-based debuff bars: your cast arms the detector, the
+            // third-person landing names the mob — one bar per mob, closed by
+            // wear-off/death, culled by the unwitnessed-overrun cap (they
+            // never tick, so silence proves nothing).
+            var eb = new CombatParser { SelfName = "Johan" };
+            eb.DotDurationLookup = s => SpellDurations.BaseKey(s) == "envenomed bolt" ? 36.0 : null;
+            eb.OtherLandingLookup = s => SpellDurations.BaseKey(s) == "envenomed bolt"
+                ? ("has been poisoned.", true) : ((string, bool)?)null;
+            string BTs(int s) => new DateTime(2026, 8, 11, 23, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            DateTime BT(int s) => new DateTime(2026, 8, 11, 23, 0, 0).AddSeconds(s);
+            eb.ProcessLine($"[{BTs(0)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(3)}] A froglok has been poisoned.");
+            var dbars = eb.EnemyDots(BT(4));
+            Check("debuffs: your cast's landing opens bar 01 with the countdown",
+                dbars is [{ Ordinal: 1, RemainingSeconds: not null }]
+                && Math.Abs(dbars[0].RemainingSeconds!.Value - 35) < 0.01); // clock starts at LANDING
+            eb.ProcessLine($"[{BTs(5)}] A froglok has been poisoned.");
+            Check("debuffs: a landing with no cast of yours is someone else's",
+                eb.EnemyDots(BT(6)).Count == 1);
+            eb.ProcessLine($"[{BTs(8)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(11)}] A froglok has been poisoned.");
+            Check("debuffs: second cast+landing = bar 02", eb.EnemyDots(BT(12)).Count == 2);
+            Check("debuffs: non-ticking bars are exempt from the silence cull",
+                eb.EnemyDots(BT(30)).Count == 2);
+            eb.ProcessLine($"[{BTs(31)}] Your Envenomed Bolt spell has worn off of a froglok.");
+            Check("debuffs: the wear-off closes the oldest bar",
+                eb.EnemyDots(BT(32)) is [{ Ordinal: 2 }]);
+            Check("debuffs: the unwitnessed-overrun cap culls the leftovers",
+                eb.EnemyDots(BT(11 + 36 + 61)).Count == 0);
+            eb.ProcessLine($"[{BTs(120)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(123)}] A froglok has been poisoned.");
+            eb.ProcessLine($"[{BTs(130)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(133)}] A froglok has been poisoned.");
+            eb.ProcessLine($"[{BTs(161)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(164)}] A froglok has been poisoned.");
+            var refreshed = eb.EnemyDots(BT(165));
+            Check("debuffs: a re-cast refreshes the overrun bar, no phantom third",
+                refreshed.Count == 2 && refreshed.All(r => !r.Overrun));
+            eb.ProcessLine($"[{BTs(170)}] You begin casting Envenomed Bolt V.");
+            eb.ProcessLine($"[{BTs(181)}] A froglok has been poisoned.");
+            Check("debuffs: a landing outside the cast window is ignored",
+                eb.EnemyDots(BT(182)).Count == 2);
 
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions

@@ -19,7 +19,7 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class EnemyDotsWindow : Window
 {
-    private sealed record RowVm(string Label, string TimeText);
+    private sealed record RowVm(string Label, string TimeText, bool IsOverrun);
     private sealed record GroupVm(string Spell, List<RowVm> Rows);
 
     private readonly CombatParser _parser;
@@ -80,11 +80,14 @@ public partial class EnemyDotsWindow : Window
             .GroupBy(r => r.Spell, StringComparer.OrdinalIgnoreCase)
             .Select(grp => new GroupVm(grp.Key.ToUpperInvariant(), grp.Select(r => new RowVm(
                 $"{r.Target} {r.Ordinal:00}",
-                r.RemainingSeconds is double rem
-                    ? TimeSpan.FromSeconds(rem) is { TotalMinutes: >= 1 } ts
-                        ? $"{(int)ts.TotalMinutes}:{ts.Seconds:00}"
-                        : $"{rem:0}s"
-                    : $"↑{r.SinceSeconds:0}s")).ToList()))
+                r.Overrun
+                    ? $"+{r.OverrunSeconds:0}s" // past the estimate, fade unwitnessed
+                    : r.RemainingSeconds is double rem
+                        ? TimeSpan.FromSeconds(rem) is { TotalMinutes: >= 1 } ts
+                            ? $"{(int)ts.TotalMinutes}:{ts.Seconds:00}"
+                            : $"{rem:0}s"
+                        : $"↑{r.SinceSeconds:0}s",
+                r.Overrun)).ToList()))
             .ToList();
 
         Placeholder.Visibility = !_locked && rows.Count == 0

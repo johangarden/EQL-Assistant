@@ -105,10 +105,18 @@ these, so merged cross-machine history survives a reset).
 - **Enemy DoTs**: automatic per-mob bars ("a froglok 01/02") grouped per
   spell, driven by own tick lines. Instance identity = tick heartbeat: a tick
   belongs to the instance DUE one (≥4.5s since its last); nobody due = new
-  mob = next free number. Censors: wear-off closes the OLDEST bar ("Your X
-  spell has worn off of <mob>."), mob death clears single-instance groups
-  (twins wait for silence), zoning, own death, 13s tick silence. Unknown
-  durations count UP, never guess.
+  mob = next free number. NON-ticking debuffs enter via your begin-cast +
+  the spell's third-person landing suffix ("A froglok has been poisoned.",
+  SpellLibrary.OtherLanding); anonymous landings without your cast are
+  ignored. Censors: wear-off closes the OLDEST bar, mob death clears
+  single-instance groups (twins wait for silence), zoning, own death; ticking
+  bars die by 13s silence, landing-only ones by duration+60s (90s hygiene cap
+  when no duration). Unknown durations count UP, never guess.
+- **Overrun state**: any bar with a fade line (trigger bars with EndPattern,
+  enemy-DoT bars) that expires WITHOUT the fade being witnessed grays out and
+  counts up ("+14s") instead of vanishing — removed by the real fade line, a
+  re-cast (refresh in place), or a 60s unwitnessed cull. Never delete on a
+  mere estimate when the log can still contradict it.
 - **88 library spells have junk landing text** ("You ."): their triggers
   anchor on `^You begin (?:casting|singing) <name>(?: [IVX]{1,7})?\.` instead.
   `SpellLibrary.MessageCorrections` overrides junk with sentences OBSERVED in

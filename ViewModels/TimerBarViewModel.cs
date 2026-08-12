@@ -18,11 +18,15 @@ public sealed class TimerBarViewModel : ViewModelBase
         Fill.Freeze();
     }
 
-    /// <summary>A normal countdown bar.</summary>
+    /// <summary>A normal countdown bar. <paramref name="waitsForFade"/> = the
+    /// trigger has an end pattern: on expiry the bar OVERRUNS (grays out and
+    /// counts up) until the fade line arrives, instead of vanishing while the
+    /// buff is demonstrably still up — the "still there, still learning" state.</summary>
     public static TimerBarViewModel CreateTimer(
         string key, string name, string category, double totalSeconds,
         DateTime endTimeLocal, Brush fill,
-        double alertAtSeconds, bool alertOnExpire, string? alertSpeak, string? alertSound)
+        double alertAtSeconds, bool alertOnExpire, string? alertSpeak, string? alertSound,
+        bool waitsForFade = false)
     {
         var vm = new TimerBarViewModel(key, name, category, fill)
         {
@@ -32,6 +36,7 @@ public sealed class TimerBarViewModel : ViewModelBase
             AlertOnExpire = alertOnExpire,
             AlertSpeak = alertSpeak,
             AlertSound = alertSound,
+            WaitsForFade = waitsForFade,
         };
         vm.Refresh(DateTime.Now, double.MaxValue);
         return vm;
@@ -69,6 +74,22 @@ public sealed class TimerBarViewModel : ViewModelBase
     /// <summary>Engine flag so a "fading" alert only fires once per fill.</summary>
     public bool FadeAlertFired { get; set; }
 
+    /// <summary>True when the trigger has an end pattern (see CreateTimer).</summary>
+    public bool WaitsForFade { get; private init; }
+
+    private bool _isOverrun;
+    /// <summary>Expired without a witnessed fade: gray, counting up.</summary>
+    public bool IsOverrun
+    {
+        get => _isOverrun;
+        private set => SetField(ref _isOverrun, value);
+    }
+
+    /// <summary>Seconds past the estimate while overrunning (engine cull cap).</summary>
+    public double OverrunSeconds { get; private set; }
+
+    public void EnterOverrun() => IsOverrun = true;
+
     private double _remainingSeconds;
     public double RemainingSeconds
     {
@@ -97,13 +118,15 @@ public sealed class TimerBarViewModel : ViewModelBase
         private set => SetField(ref _isWarning, value);
     }
 
-    public bool IsExpired => !IsMissing && RemainingSeconds <= 0;
+    public bool IsExpired => !IsMissing && !IsOverrun && RemainingSeconds <= 0;
 
     public void Restart(double totalSeconds, DateTime endTimeLocal)
     {
         TotalSeconds = totalSeconds <= 0 ? 1 : totalSeconds;
         EndTimeLocal = endTimeLocal;
         FadeAlertFired = false;
+        IsOverrun = false;
+        OverrunSeconds = 0;
     }
 
     /// <summary>Cut time off a running bar (cooldown reducers) — the bar visibly
@@ -122,6 +145,16 @@ public sealed class TimerBarViewModel : ViewModelBase
             RemainingText = "REBUFF";
             IsWarning = true; // pulse
             RemainingSeconds = 1;
+            return;
+        }
+
+        if (IsOverrun)
+        {
+            OverrunSeconds = Math.Max(0, (now - EndTimeLocal).TotalSeconds);
+            RemainingSeconds = 0;
+            Fraction = 1; // full gray bar: "still up, past the estimate"
+            RemainingText = $"+{OverrunSeconds:0}s";
+            IsWarning = false;
             return;
         }
 
