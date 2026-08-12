@@ -102,6 +102,12 @@ public sealed class OverlayConfig
     /// materializes on screen while it has rows, or while unlocked).</summary>
     public bool EnemyDotsVisible { get; set; } = true;
 
+    /// <summary>Panels-menu master toggles: every panel that can appear gets
+    /// one. Matrices still need cells, reminders still need a missing buff.</summary>
+    public bool SelfMatrixVisible { get; set; } = true;
+    public bool TargetMatrixVisible { get; set; } = true;
+    public bool RemindersVisible { get; set; } = true;
+
     /// <summary>Whether the flash-alert area is shown (flash triggers stay quiet when off).</summary>
     public bool FlashVisible { get; set; } = true;
 

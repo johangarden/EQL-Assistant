@@ -738,11 +738,33 @@ public partial class MainWindow : Window
 
     private void RebuildRemindersWindow()
     {
-        if (_remindersWin is not null) { try { _remindersWin.Close(); } catch { /* ignore */ } }
+        if (_remindersWin is not null) { try { _remindersWin.Close(); } catch { /* ignore */ } _remindersWin = null; }
+        if (!_config.Overlay.RemindersVisible) return;
         _remindersWin = new RemindersWindow(_engine.Reminders, _configService, _config.Overlay.Opacity);
         _remindersWin.Show();
         _remindersWin.SetLocked(_vm.Locked);
         _remindersWin.SetHidden(_hidden);
+    }
+
+    private void ToggleSelfMatrix()
+    {
+        _config.Overlay.SelfMatrixVisible = !_config.Overlay.SelfMatrixVisible;
+        _configService.SaveSettings(_config);
+        UpdateMatrixVisibility();
+    }
+
+    private void ToggleTargetMatrix()
+    {
+        _config.Overlay.TargetMatrixVisible = !_config.Overlay.TargetMatrixVisible;
+        _configService.SaveSettings(_config);
+        UpdateMatrixVisibility();
+    }
+
+    private void ToggleReminders()
+    {
+        _config.Overlay.RemindersVisible = !_config.Overlay.RemindersVisible;
+        _configService.SaveSettings(_config);
+        RebuildRemindersWindow();
     }
 
     private void RebuildEnemyDotsWindow()
@@ -769,14 +791,14 @@ public partial class MainWindow : Window
 
     private void UpdateMatrixVisibility()
     {
-        SetPanelVisible(_selfMatrix, _engine.SelfCells.Count);
-        SetPanelVisible(_targetMatrix, _engine.TargetCells.Count);
+        SetPanelVisible(_selfMatrix, _engine.SelfCells.Count, _config.Overlay.SelfMatrixVisible);
+        SetPanelVisible(_targetMatrix, _engine.TargetCells.Count, _config.Overlay.TargetMatrixVisible);
     }
 
-    private void SetPanelVisible(MatrixWindow? w, int cellCount)
+    private void SetPanelVisible(MatrixWindow? w, int cellCount, bool enabled)
     {
         if (w is null) return;
-        w.Visibility = (!_hidden && cellCount > 0) ? Visibility.Visible : Visibility.Hidden;
+        w.Visibility = (!_hidden && enabled && cellCount > 0) ? Visibility.Visible : Visibility.Hidden;
     }
 
     private void ApplyOpacity() =>
@@ -875,6 +897,7 @@ public partial class MainWindow : Window
                 case HK_LOCK:   ToggleLock();       handled = true; break;
                 case HK_TEST:
                     _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell();
+                    _engine.AddDemoReminder();
                     _combat.AddDemoFight(); _combat.AddDemoEnemyDots(); UpdateMatrixVisibility();
                     OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
                     if (!_hidden && !_sctHidden)
@@ -1426,12 +1449,19 @@ public partial class MainWindow : Window
         var panelToolbar = new System.Windows.Forms.ToolStripMenuItem("Toolbar", null, (_, _) => ToggleToolbar());
         var panelBars = new System.Windows.Forms.ToolStripMenuItem("Buff bars", null, (_, _) => ToggleBars());
         var panelDots = new System.Windows.Forms.ToolStripMenuItem("Enemy DoTs", null, (_, _) => ToggleEnemyDots());
+        var panelSelfM = new System.Windows.Forms.ToolStripMenuItem("Self-buffs matrix", null, (_, _) => ToggleSelfMatrix());
+        var panelTargetM = new System.Windows.Forms.ToolStripMenuItem("Target-debuffs matrix", null, (_, _) => ToggleTargetMatrix());
+        var panelRemind = new System.Windows.Forms.ToolStripMenuItem("Rebuff reminders", null, (_, _) => ToggleReminders());
         panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
-            { panelToolbar, panelBars, panelDots, panelTimer, panelMeter, panelSkills, panelProcs, panelSct, panelFlash });
+            { panelToolbar, panelBars, panelSelfM, panelTargetM, panelRemind, panelDots,
+              panelTimer, panelMeter, panelSkills, panelProcs, panelSct, panelFlash });
         panelsItem.DropDownOpening += (_, _) =>
         {
             panelToolbar.Checked = !_toolbarHidden;
             panelBars.Checked = !_barsHidden;
+            panelSelfM.Checked = _config.Overlay.SelfMatrixVisible;
+            panelTargetM.Checked = _config.Overlay.TargetMatrixVisible;
+            panelRemind.Checked = _config.Overlay.RemindersVisible;
             panelDots.Checked = _config.Overlay.EnemyDotsVisible;
             panelTimer.Checked = !_timerHidden;
             panelMeter.Checked = !_meterHidden;
