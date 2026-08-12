@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private TimerWindow? _timer;
     private FlashWindow? _flash;
     private MeterWindow? _meter;
+    private EnemyDotsWindow? _enemyDotsWin;
     private readonly CombatParser _combat = new();
     private RaidKills _raids = null!;
     private LootTracker _loot = null!;
@@ -108,6 +109,10 @@ public partial class MainWindow : Window
         int retyped = _spellLib.HealLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
         if (retyped > 0) Log.Info($"Retyped {retyped} library trigger(s) (HoTs/DoTs split).");
         _durations = new SpellDurations(_configService, _spellLib);
+        // Enemy-DoT countdowns: learned first, library figure as the fallback.
+        _combat.DotDurationLookup = spell =>
+            _durations.LearnedMaxSeconds(spell)
+            ?? (_spellLib.FindByName(spell)?.DurationSec is > 0 and var libSec ? libSec : null);
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
@@ -712,7 +717,18 @@ public partial class MainWindow : Window
             _engine.SelfCells, defaultLeft: 60, defaultTop: 420);
         _targetMatrix = RebuildPanel(_targetMatrix, "targetDebuffs", "Target Debuffs",
             _engine.TargetCells, defaultLeft: 420, defaultTop: 420);
+        RebuildEnemyDotsWindow();
         UpdateMatrixVisibility();
+    }
+
+    private void RebuildEnemyDotsWindow()
+    {
+        if (_enemyDotsWin is not null) { try { _enemyDotsWin.Close(); } catch { /* ignore */ } _enemyDotsWin = null; }
+        if (!_config.Overlay.EnemyDotsVisible) return;
+        _enemyDotsWin = new EnemyDotsWindow(_combat, _configService, _config.Overlay.Opacity);
+        _enemyDotsWin.Show();
+        _enemyDotsWin.SetLocked(_vm.Locked);
+        _enemyDotsWin.SetHidden(_hidden);
     }
 
     private MatrixWindow RebuildPanel(MatrixWindow? existing, string key, string title,
@@ -868,6 +884,7 @@ public partial class MainWindow : Window
         ApplyLockVisual();
         _selfMatrix?.SetLocked(_vm.Locked);
         _targetMatrix?.SetLocked(_vm.Locked);
+        _enemyDotsWin?.SetLocked(_vm.Locked);
         _flash?.SetLocked(_vm.Locked);
         foreach (var lane in _sctLanes.Values) lane.SetLocked(_vm.Locked);
         _configService.SaveWindowState(_config.Overlay);
@@ -882,9 +899,17 @@ public partial class MainWindow : Window
     private void ApplyLockVisual() =>
         RootBorder.Background = _vm.Locked ? Brushes.Transparent : UnlockedBackdrop;
 
+    private void ToggleEnemyDots()
+    {
+        _config.Overlay.EnemyDotsVisible = !_config.Overlay.EnemyDotsVisible;
+        _configService.SaveSettings(_config);
+        RebuildEnemyDotsWindow();
+    }
+
     private void ToggleHide()
     {
         _hidden = !_hidden;
+        _enemyDotsWin?.SetHidden(_hidden);
         UpdateBarsVisibility();
         UpdateMatrixVisibility();
         UpdateTimerVisibility();
@@ -913,6 +938,7 @@ public partial class MainWindow : Window
             ApplyLockVisual();
             _selfMatrix?.SetLocked(false);
             _targetMatrix?.SetLocked(false);
+            _enemyDotsWin?.SetLocked(false);
             _flash?.SetLocked(false);
             foreach (var lane in _sctLanes.Values) lane.SetLocked(false);
             _configService.SaveWindowState(_config.Overlay);
@@ -921,6 +947,7 @@ public partial class MainWindow : Window
         _mainPlacement?.ResetToDefault();
         _selfMatrix?.ResetPosition();
         _targetMatrix?.ResetPosition();
+        _enemyDotsWin?.ResetPosition();
         _timer?.ResetPosition();
         _meter?.ResetPosition();
         _flash?.ResetPosition();
@@ -1369,12 +1396,14 @@ public partial class MainWindow : Window
         var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
         var panelToolbar = new System.Windows.Forms.ToolStripMenuItem("Toolbar", null, (_, _) => ToggleToolbar());
         var panelBars = new System.Windows.Forms.ToolStripMenuItem("Buff bars", null, (_, _) => ToggleBars());
+        var panelDots = new System.Windows.Forms.ToolStripMenuItem("Enemy DoTs", null, (_, _) => ToggleEnemyDots());
         panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
-            { panelToolbar, panelBars, panelTimer, panelMeter, panelSkills, panelSct, panelFlash });
+            { panelToolbar, panelBars, panelDots, panelTimer, panelMeter, panelSkills, panelSct, panelFlash });
         panelsItem.DropDownOpening += (_, _) =>
         {
             panelToolbar.Checked = !_toolbarHidden;
             panelBars.Checked = !_barsHidden;
+            panelDots.Checked = _config.Overlay.EnemyDotsVisible;
             panelTimer.Checked = !_timerHidden;
             panelMeter.Checked = !_meterHidden;
             panelSkills.Checked = !_skillsHidden;
@@ -1471,6 +1500,7 @@ public partial class MainWindow : Window
         _watcher?.Dispose();
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
+        try { _enemyDotsWin?.Close(); } catch { /* ignore */ }
         try { _timer?.Close(); } catch { /* ignore */ }
         try { _meter?.Close(); } catch { /* ignore */ }
         try { _flash?.Close(); } catch { /* ignore */ }

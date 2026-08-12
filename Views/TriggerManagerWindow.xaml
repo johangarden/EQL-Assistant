@@ -526,6 +526,21 @@
                             </ComboBox>
 
                             <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Enemy DoTs (automatic)" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A self-filling panel: every DoT of YOURS ticking on an enemy gets a row — spell, mob, and time left — with a ×N chip when several same-named mobs carry it (counted from tick frequency; EQ logs genuinely can't tell twins apart). Rows clear on the wear-off line, the mob's death, zoning, or 18s of tick silence. No triggers needed."/>
+
+                            <CheckBox x:Name="EnemyDotsVisibleCheck" Content="Show the Enemy DoTs panel" Margin="0,10,0,0"/>
+
+                            <TextBlock Text="Enemy-DoTs anchor" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox x:Name="EnemyDotsAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
+                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
+                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
+                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
+                            </ComboBox>
+
+                            <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Rebuff reminders" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="Nagging for buffs that dropped: tick 'Remind me when this buff is missing' on a trigger (in the Triggers editor) and a pulsing REBUFF bar + spoken nudge appear once the buff has been seen and is gone. The timings below apply to all of them."/>

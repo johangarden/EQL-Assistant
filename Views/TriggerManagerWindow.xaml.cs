@@ -904,6 +904,8 @@ public partial class TriggerManagerWindow : Window
         SctLaneWidthBox.Text = _config.Overlay.SctLaneWidth.ToString(CultureInfo.InvariantCulture);
         SctLaneHeightBox.Text = _config.Overlay.SctLaneHeight.ToString(CultureInfo.InvariantCulture);
 
+        EnemyDotsVisibleCheck.IsChecked = _config.Overlay.EnemyDotsVisible;
+        EnemyDotsAnchorBox.SelectedValue = (_configService.LoadPlacement("enemyDots")?.Anchor ?? Anchor.TopLeft).ToString();
         BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
         SelfAnchorBox.SelectedValue = (_configService.LoadPlacement("selfMatrix")?.Anchor ?? Anchor.TopLeft).ToString();
         TargetAnchorBox.SelectedValue = (_configService.LoadPlacement("targetDebuffs")?.Anchor ?? Anchor.TopLeft).ToString();
@@ -981,6 +983,7 @@ public partial class TriggerManagerWindow : Window
                 DeathRecapAuto = DeathRecapCheck.IsChecked == true,
                 ToolbarVisible = _config.Overlay.ToolbarVisible, // tray-toggled — carried through
                 BarsVisible = _config.Overlay.BarsVisible,       // tray-toggled — carried through
+                EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,
@@ -1027,6 +1030,7 @@ public partial class TriggerManagerWindow : Window
 
         // Persist panel anchors (offsets are preserved) before the overlay re-applies.
         ApplyAnchor("main", BarsAnchorBox);
+        ApplyAnchor("enemyDots", EnemyDotsAnchorBox);
         ApplyAnchor("selfMatrix", SelfAnchorBox);
         ApplyAnchor("targetDebuffs", TargetAnchorBox);
         ApplyAnchor("timer", TimerAnchorBox);

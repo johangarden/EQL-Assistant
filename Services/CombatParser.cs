@@ -236,6 +236,99 @@ public sealed class CombatParser
         if (crit) p.Crits++;
     }
 
+    // ---- enemy DoT tracker -------------------------------------------------------
+    // Automatic per-(spell, mob-name) rows for YOUR damage-over-time spells.
+    // Tick lines name both halves every ~6s ("A froglok has taken 169 damage
+    // from your Curse.") and the exact wear-off names both too ("Your Curse
+    // spell has worn off of a bok ghoul knight."). Same-named mobs are
+    // genuinely indistinguishable in an EQ log (the Companion's ruling too),
+    // but each live instance ticks once per period — so the number of ticks in
+    // one trailing tick-period IS the live instance count, and the ×N chip
+    // self-corrects as mobs die. Censors: exact wear-off, mob death, zoning,
+    // your own death, and 18s of tick silence (three missed ticks).
+
+    public sealed record EnemyDotView(string Spell, string Target, int Count,
+        double? RemainingSeconds, double SinceSeconds);
+
+    private sealed class DotTrack
+    {
+        public string Spell = "";
+        public string Target = "";
+        public DateTime Start;
+        public DateTime LastTick;
+        public readonly List<DateTime> RecentTicks = new();
+    }
+
+    private const double DotCountWindowSec = 5.5;   // just under one 6s tick period
+    private const double DotSilenceCullSec = 18;    // three missed ticks = it's gone
+
+    private readonly Dictionary<string, DotTrack> _enemyDots = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Optional duration lookup (learned/library) for the countdown;
+    /// null keeps the row counting up instead of lying.</summary>
+    public Func<string, double?>? DotDurationLookup { get; set; }
+
+    private static readonly Regex WornOffOfRx = new(
+        @"^Your (?<spell>.+?) spell has worn off of (?<mob>.+?)\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex WornOffRx = new(
+        @"^Your (?<spell>.+?) spell has worn off\.$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static string DotKey(string spell, string target) =>
+        SpellDurations.BaseKey(spell) + "|" + target.Trim().ToLowerInvariant();
+
+    private void NoteDotTick(string spell, string target, DateTime time)
+    {
+        target = Normalize(target);
+        if (!IsEnemyName(target)) return;
+        string key = DotKey(spell, target);
+        if (!_enemyDots.TryGetValue(key, out var t))
+            _enemyDots[key] = t = new DotTrack { Spell = spell.Trim(), Target = target, Start = time };
+        // A tick past the known duration = a silent re-application: new clock.
+        if (DotDurationLookup?.Invoke(t.Spell) is double d && d > 1
+            && (time - t.Start).TotalSeconds > d)
+            t.Start = time;
+        t.LastTick = time;
+        t.RecentTicks.Add(time);
+        t.RecentTicks.RemoveAll(x => (time - x).TotalSeconds > DotCountWindowSec);
+    }
+
+    private void RemoveDotsFor(string mobName)
+    {
+        string suffix = "|" + mobName.Trim().ToLowerInvariant();
+        foreach (var key in _enemyDots.Keys.Where(k =>
+                     k.EndsWith(suffix, StringComparison.Ordinal)).ToList())
+            _enemyDots.Remove(key);
+    }
+
+    /// <summary>Live enemy-DoT rows, soonest fade first. Silence-culled inline,
+    /// so callers can poll this directly.</summary>
+    public IReadOnlyList<EnemyDotView> EnemyDots(DateTime now)
+    {
+        var rows = new List<EnemyDotView>();
+        foreach (var (key, t) in _enemyDots.ToList())
+        {
+            if ((now - t.LastTick).TotalSeconds > DotSilenceCullSec)
+            {
+                _enemyDots.Remove(key);
+                continue;
+            }
+            double since = (now - t.Start).TotalSeconds;
+            double? remaining = DotDurationLookup?.Invoke(t.Spell) is double d && d > 1
+                ? Math.Max(0, d - since)
+                : null;
+            int count = Math.Max(1, t.RecentTicks.Count(x => (now - x).TotalSeconds <= DotCountWindowSec));
+            rows.Add(new EnemyDotView(t.Spell, t.Target, count, remaining, since));
+        }
+        return rows.OrderBy(r => r.RemainingSeconds ?? double.MaxValue)
+            .ThenBy(r => r.Spell, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>Wipe every tracked enemy DoT (zoning, your death, manual reset).</summary>
+    public void ClearEnemyDots() => _enemyDots.Clear();
+
     /// <summary>Event cap per fight — a 10-minute raid fight sits well under this.</summary>
     public const int MaxFightEvents = 4000;
 
@@ -281,6 +374,7 @@ public sealed class CombatParser
     {
         if (Math.Abs((time - _lastDeathAt).TotalSeconds) < 5) return;
         _lastDeathAt = time;
+        _enemyDots.Clear(); // your death strips your DoTs' bookkeeping too
         var snapshot = _recap.ToList();
         _recap.Clear();
         PlayerDied?.Invoke(new DeathEvent(time, killer, snapshot));
@@ -480,6 +574,7 @@ public sealed class CombatParser
         if (body.StartsWith(ZonePrefix, StringComparison.Ordinal) && body.EndsWith('.'))
         {
             CurrentZone = body[ZonePrefix.Length..^1];
+            _enemyDots.Clear(); // hostiles are left behind on zone
             return;
         }
 
@@ -490,6 +585,27 @@ public sealed class CombatParser
             FireDeath(time, slain.Groups["mob"].Value);
             return;
         }
+
+        // Enemy-DoT censors: the exact wear-off ("… has worn off of <mob>."),
+        // the target-less form (all rows of that spell), and mob deaths.
+        if (body.StartsWith("Your ", StringComparison.Ordinal) && _enemyDots.Count > 0)
+        {
+            if (WornOffOfRx.Match(body) is { Success: true } wOf)
+            {
+                _enemyDots.Remove(DotKey(wOf.Groups["spell"].Value, wOf.Groups["mob"].Value));
+                return;
+            }
+            if (WornOffRx.Match(body) is { Success: true } wAll)
+            {
+                string sk = SpellDurations.BaseKey(wAll.Groups["spell"].Value) + "|";
+                foreach (var k in _enemyDots.Keys.Where(x =>
+                             x.StartsWith(sk, StringComparison.Ordinal)).ToList())
+                    _enemyDots.Remove(k);
+                return;
+            }
+        }
+        if (_enemyDots.Count > 0 && RaidKills.TryParseKill(body, out string deadMob))
+            RemoveDotsFor(deadMob); // no return — death lines aren't otherwise consumed here
 
         // Own casts feed the proc detector: a spell landing WITHOUT one procced.
         if (body.StartsWith("You begin ", StringComparison.Ordinal)
@@ -505,10 +621,21 @@ public sealed class CombatParser
         if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true); return; }
 
         m = DotRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit); return; }
+        if (m.Success)
+        {
+            if (IsSelf(Normalize(m.Groups["att"].Value)))
+                NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
+            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            return;
+        }
 
         m = DotYourRx.Match(body);
-        if (m.Success) { AddDamage(Self(), m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit); return; }
+        if (m.Success)
+        {
+            NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
+            AddDamage(Self(), m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            return;
+        }
 
         m = HealRx.Match(body);
         if (m.Success)
