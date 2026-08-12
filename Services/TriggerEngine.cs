@@ -403,6 +403,18 @@ public sealed class TriggerEngine
         UpdateMatrix(TargetCells, now);
     }
 
+    /// <summary>Test hook: a REBUFF row for ~15s (panel placement without
+    /// waiting for a real buff to drop).</summary>
+    public void AddDemoReminder()
+    {
+        var mb = TimerBarViewModel.CreateMissing(
+            "missing|__demo" + DateTime.Now.Ticks, "Demo Rebuff", "Buffs", MakeBrush("#E53935"));
+        Reminders.Add(mb);
+        var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        t.Tick += (_, _) => { t.Stop(); Reminders.Remove(mb); };
+        t.Start();
+    }
+
     /// <summary>Test hook: drop a demo cell into the Self matrix (present ~15s, then missing).</summary>
     public void AddDemoMatrixCell() => AddDemoCell(SelfCells, _selfById, "Buff");
 

@@ -984,6 +984,9 @@ public partial class TriggerManagerWindow : Window
                 DeathRecapAuto = DeathRecapCheck.IsChecked == true,
                 ToolbarVisible = _config.Overlay.ToolbarVisible, // tray-toggled — carried through
                 BarsVisible = _config.Overlay.BarsVisible,       // tray-toggled — carried through
+                SelfMatrixVisible = _config.Overlay.SelfMatrixVisible,     // tray-toggled
+                TargetMatrixVisible = _config.Overlay.TargetMatrixVisible, // tray-toggled
+                RemindersVisible = _config.Overlay.RemindersVisible,       // tray-toggled
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
