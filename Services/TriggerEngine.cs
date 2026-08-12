@@ -57,11 +57,6 @@ public sealed class TriggerEngine
     /// learned recent-window max for a trigger name, or null.</summary>
     public Func<string, double?>? LearnedDuration { get; set; }
 
-    /// <summary>Optional lookup (SpellLibrary): is this start pattern a landing
-    /// sentence that several different spells print? Drives the AUTO half of
-    /// the cast-anchor rule.</summary>
-    public Func<string, bool>? IsSharedLanding { get; set; }
-
     private const double CastAnchorWindowSec = 15;   // begin-cast -> landing (same as SpellDurations)
     private const double QuickBuffWindowSec = 8;     // activation -> burst (observed: 3s)
     private (string Key, DateTime At)? _lastOwnCast; // rank-stripped, from "You begin casting X."
@@ -77,12 +72,15 @@ public sealed class TriggerEngine
     /// "You begin casting &lt;Name&gt;." within the window — an unanchored
     /// ambiguous landing draws nothing, because a bar that guesses which of
     /// four hastes just landed would lie about the duration. Auto (null)
-    /// anchors library triggers whose landing sentence is shared.</summary>
+    /// anchors EVERY library trigger — EQL is solo-first, so by default a
+    /// groupmate's buff landing on you starts nothing; untick per trigger to
+    /// opt into group play. Manual triggers stay unanchored on auto (their
+    /// names often aren't castable spell names, so an anchor would silently
+    /// never arrive).</summary>
     private bool AnchorAllows(TriggerDefinition trigger, DateTime eventTime)
     {
         bool anchored = trigger.CastAnchored
-            ?? (trigger.Id.StartsWith("lib-", StringComparison.Ordinal)
-                && (IsSharedLanding?.Invoke(trigger.StartPattern) ?? false));
+            ?? trigger.Id.StartsWith("lib-", StringComparison.Ordinal);
         if (!anchored) return true;
 
         string key = SpellDurations.BaseKey(trigger.Name);

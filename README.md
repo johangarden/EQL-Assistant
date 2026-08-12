@@ -369,7 +369,7 @@ time; learning still runs in the background so you can switch back any time.
 Ranks pool ("Quickness II" teaches "Quickness III"), and samples persist in
 `spell-durations.json`.
 
-### Cast-anchored triggers (shared landing lines)
+### Cast-anchored triggers (solo-first)
 
 Several spells print the *same* landing sentence — Quickness, Alacrity,
 Celerity and Swift Like The Wind all say "You feel much faster." A plain
@@ -378,9 +378,14 @@ Quickness bar with the wrong duration. Triggers therefore support a **cast
 anchor** (same ruling as the Companion's): the start pattern only counts when
 it follows *your own* "You begin casting &lt;spell&gt;." within 15 seconds,
 and an ambiguous landing with no anchor starts **nothing** — a bar that
-guesses which haste landed would lie about the time left. Library-added
-triggers whose landing text is shared anchor themselves automatically; the
-checkbox under the start pattern overrides it either way.
+guesses which haste landed would lie about the time left.
+
+EQL is a solo-first game, so **every library-added trigger anchors itself by
+default** — a groupmate's buff landing on you starts nothing (you couldn't
+refresh it anyway, and the duration would be theirs, not yours). Playing
+grouped and want those bars? Untick the checkbox under the start pattern per
+trigger. Manually created triggers default the other way (unanchored), since
+their names often aren't castable spell names.
 
 ## Death recap
 

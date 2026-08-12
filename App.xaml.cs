@@ -360,7 +360,9 @@ public partial class App : Application
             // all print "You feel much faster.", so a shared landing only starts
             // the bar whose own begin-cast line it follows — and an unanchored
             // ambiguous landing starts NOTHING (a guessed bar lies about the
-            // duration). Auto anchors library (lib-*) triggers with shared text.
+            // duration). Auto anchors EVERY library (lib-*) trigger: EQL is
+            // solo-first, so a groupmate's buff landing on you starts nothing
+            // by default; untick per trigger to opt into group play.
             static string Esc(string s) => System.Text.RegularExpressions.Regex.Escape(s);
             string AT(int s) => new DateTime(2026, 8, 10, 23, 0, 0).AddSeconds(s)
                 .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
@@ -378,10 +380,7 @@ public partial class App : Application
                 EndPattern = Esc("Your speed returns to normal."), DurationSeconds = 660,
             });
             foreach (var t in ancCfg.Triggers) ConfigService.CompileOne(t);
-            var anc = new TriggerEngine(ancCfg, new AlertService())
-            {
-                IsSharedLanding = _ => true, // the haste line IS shared
-            };
+            var anc = new TriggerEngine(ancCfg, new AlertService());
             anc.ProcessLine($"[{AT(0)}] You feel much faster.");
             Check("anchor: unanchored shared landing draws nothing", anc.Bars.Count == 0);
             anc.ProcessLine($"[{AT(10)}] You begin casting Quickness.");
@@ -401,6 +400,24 @@ public partial class App : Application
             anc.ProcessLine($"[{AT(340)}] You feel much faster."); // wrong spell AND stale (>15s)
             Check("anchor: stale or foreign cast starts nothing", anc.Bars.Count == 2);
 
+            // Solo-first: even a UNIQUE landing sentence anchors on auto for a
+            // library trigger — a groupmate's buff landing on you would
+            // otherwise start a bar for a spell you never cast.
+            var soloCfg = new Models.AppConfig();
+            soloCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-strengthen", Name = "Strengthen", DurationAuto = false,
+                StartPattern = Esc("You feel stronger."), DurationSeconds = 1620,
+            });
+            ConfigService.CompileOne(soloCfg.Triggers[0]);
+            var solo = new TriggerEngine(soloCfg, new AlertService());
+            solo.ProcessLine($"[{AT(0)}] You feel stronger.");
+            Check("anchor: solo-first — an unshared library landing still needs your cast",
+                solo.Bars.Count == 0);
+            solo.ProcessLine($"[{AT(10)}] You begin casting Strengthen.");
+            solo.ProcessLine($"[{AT(12)}] You feel stronger.");
+            Check("anchor: solo-first — your own cast starts it", solo.Bars.Count == 1);
+
             // Quick Buff (the Companion's case 3): the AA lands the whole
             // spellbar at once with no cast lines. During the window an
             // anchored landing is admitted only when the spell is plausibly
@@ -413,7 +430,7 @@ public partial class App : Application
                 StartPattern = Esc("You feel much faster."), DurationSeconds = 660,
             });
             ConfigService.CompileOne(qbCfg.Triggers[0]);
-            var qb = new TriggerEngine(qbCfg, new AlertService()) { IsSharedLanding = _ => true };
+            var qb = new TriggerEngine(qbCfg, new AlertService());
             qb.ProcessLine($"[{AT(0)}] You activate Quick Buff.");
             qb.ProcessLine($"[{AT(3)}] You feel much faster.");
             Check("quick buff: a never-cast spell stays silent", qb.Bars.Count == 0);
@@ -431,7 +448,6 @@ public partial class App : Application
                 Math.Abs(afterStray - 863) < 0.01); // unchanged since the 203 burst
             var qb2 = new TriggerEngine(qbCfg, new AlertService())
             {
-                IsSharedLanding = _ => true,
                 LearnedDuration = n => n == "Quickness" ? 555 : null,
             };
             qb2.ProcessLine($"[{AT(0)}] Caladar activates Quick Buff.");
@@ -449,7 +465,7 @@ public partial class App : Application
                 StartPattern = Esc("You feel much faster."), CastAnchored = false,
             });
             ConfigService.CompileOne(offCfg.Triggers[0]);
-            var offEng = new TriggerEngine(offCfg, new AlertService()) { IsSharedLanding = _ => true };
+            var offEng = new TriggerEngine(offCfg, new AlertService());
             offEng.ProcessLine($"[{AT(0)}] You feel much faster.");
             Check("anchor: explicit untick beats auto", offEng.Bars.Count == 1);
 
@@ -460,11 +476,11 @@ public partial class App : Application
                 StartPattern = Esc("You feel much faster."),
             });
             ConfigService.CompileOne(freeCfg.Triggers[0]);
-            var freeEng = new TriggerEngine(freeCfg, new AlertService()) { IsSharedLanding = _ => true };
+            var freeEng = new TriggerEngine(freeCfg, new AlertService());
             freeEng.ProcessLine($"[{AT(0)}] You feel much faster.");
             Check("anchor: custom triggers stay unanchored on auto", freeEng.Bars.Count == 1);
             freeCfg.Triggers[0].CastAnchored = true;
-            var freeEng2 = new TriggerEngine(freeCfg, new AlertService()) { IsSharedLanding = _ => true };
+            var freeEng2 = new TriggerEngine(freeCfg, new AlertService());
             freeEng2.ProcessLine($"[{AT(0)}] You feel much faster.");
             Check("anchor: explicit tick anchors a custom trigger", freeEng2.Bars.Count == 0);
             freeEng2.ProcessLine($"[{AT(10)}] You begin casting AnyHaste.");
