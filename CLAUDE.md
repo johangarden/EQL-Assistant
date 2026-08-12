@@ -102,10 +102,13 @@ these, so merged cross-machine history survives a reset).
   within 12s. Never DoT ticks, never thorns; a HEAL you've EVER cast this
   session is your spell (HoT ticks arrive outside any window). Rates hide
   below sample floors instead of lying.
-- **Enemy DoTs**: automatic (spell, mob-name) rows driven by own tick lines;
-  ticks-per-period = live same-named instance count (the ×N chip). Censors:
-  exact wear-off ("Your X spell has worn off of <mob>."), mob death, zoning,
-  own death, 18s tick silence. Unknown durations count UP, never guess.
+- **Enemy DoTs**: automatic per-mob bars ("a froglok 01/02") grouped per
+  spell, driven by own tick lines. Instance identity = tick heartbeat: a tick
+  belongs to the instance DUE one (≥4.5s since its last); nobody due = new
+  mob = next free number. Censors: wear-off closes the OLDEST bar ("Your X
+  spell has worn off of <mob>."), mob death clears single-instance groups
+  (twins wait for silence), zoning, own death, 13s tick silence. Unknown
+  durations count UP, never guess.
 - **88 library spells have junk landing text** ("You ."): their triggers
   anchor on `^You begin (?:casting|singing) <name>(?: [IVX]{1,7})?\.` instead.
   `SpellLibrary.MessageCorrections` overrides junk with sentences OBSERVED in

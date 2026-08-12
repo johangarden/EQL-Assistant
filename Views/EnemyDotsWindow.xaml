@@ -23,22 +23,36 @@
                        Visibility="Collapsed"
                        Text="Your DoTs on enemies appear here on their own — no triggers needed."/>
 
-            <ItemsControl x:Name="RowsControl">
+            <ItemsControl x:Name="GroupsControl">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Margin="0,1" CornerRadius="4" Background="#C0141A24" Padding="6,3"
-                                BorderBrush="#3A2528" BorderThickness="1" MinWidth="230">
-                            <DockPanel>
-                                <Border DockPanel.Dock="Left" Width="4" CornerRadius="2"
-                                        Background="#E57373" Margin="0,0,7,0"/>
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding TimeText}"
-                                           Foreground="White" FontWeight="Bold" FontSize="12"
-                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                <TextBlock Text="{Binding Label}" Foreground="#E2E6EC" FontSize="12"
-                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                           MaxWidth="260"/>
+                        <StackPanel>
+                            <DockPanel Margin="2,4,2,1" MinWidth="230">
+                                <TextBlock Text="{Binding Spell}" Foreground="#E57373" FontSize="10"
+                                           FontWeight="Bold" VerticalAlignment="Center"/>
+                                <Border Height="1" Background="#3A2528" Margin="7,1,0,0"
+                                        VerticalAlignment="Center"/>
                             </DockPanel>
-                        </Border>
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,1" CornerRadius="4" Background="#C0141A24" Padding="6,3"
+                                                BorderBrush="#3A2528" BorderThickness="1" MinWidth="230">
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Left" Width="4" CornerRadius="2"
+                                                        Background="#E57373" Margin="0,0,7,0"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding TimeText}"
+                                                           Foreground="White" FontWeight="Bold" FontSize="12"
+                                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                                <TextBlock Text="{Binding Label}" Foreground="#E2E6EC" FontSize="12"
+                                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                           MaxWidth="240"/>
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

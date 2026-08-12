@@ -258,13 +258,15 @@ Toggle from the tray.
 
 Tab-dotting a camp of same-named mobs is unreadable in the game UI — so the
 **Enemy DoTs panel fills itself in**: every DoT of *yours* ticking on an enemy
-gets a row ("Curse — a froglok urd shaman ×2 · 14s"), no triggers needed. The
-trick: every DoT tick line names both the spell and the mob, and each live
-application ticks once per ~6 seconds — so the number of ticks inside one
-tick-period **is** the number of same-named mobs carrying it (EQ logs
-genuinely can't tell twins apart; the ×N chip self-corrects as they die).
-Rows clear on the exact wear-off line ("Your Curse spell has worn off of
-…"), the mob's death, zoning, your death, or 18 seconds of tick silence.
+gets its **own bar per mob**, grouped under the spell — "CURSE: a froglok 01 ·
+24s / a froglok 02 · 18s" — no triggers needed. The trick: every tick line
+names spell + mob, and each live application ticks on its own ~6-second
+heartbeat, so a tick belongs to the bar that's *due* one — and a tick when
+nobody is due means a **new** mob (the next bar; freed numbers are reused).
+EQ logs genuinely can't tell twins apart, but their heartbeats can. Bars
+clear on the wear-off line ("Your Curse spell has worn off of …" — the
+oldest bar fades first), the mob's death, zoning, your death, or ~13 seconds
+of tick silence.
 Countdowns use learned/library durations and count *up* when the duration is
 unknown rather than guessing. The panel only appears while it has rows (or
 while unlocked, so you can place it); toggle and anchor live on the

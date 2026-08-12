@@ -1300,8 +1300,10 @@ public partial class App : Application
                 fb.Glyph is null && fb.Monogram == "S" && fb2.Monogram == "S"
                 && Views.RaidGlyphs.For("Some Custom Boss").Tint == fb.Tint); // stable color
 
-            // Enemy DoT tracker: tick lines drive rows; the tick-frequency ×N
-            // counts same-named mobs; wear-off/death/zone/silence censor.
+            // Enemy DoT tracker: one bar per same-named mob. A tick belongs to
+            // the instance DUE one (its own 6s heartbeat); nobody due = a new
+            // mob = the next bar. Wear-off closes the oldest; death, zoning
+            // and tick silence censor.
             var ep = new CombatParser { SelfName = "Johan" };
             ep.DotDurationLookup = s => s == "Curse" ? 30.0 : null;
             string ETs(int s) => new DateTime(2026, 8, 11, 22, 0, 0).AddSeconds(s)
@@ -1309,35 +1311,40 @@ public partial class App : Application
             DateTime ET(int s) => new DateTime(2026, 8, 11, 22, 0, 0).AddSeconds(s);
             ep.ProcessLine($"[{ETs(0)}] A froglok has taken 100 damage from your Curse.");
             var dots = ep.EnemyDots(ET(1));
-            Check("dots: an own tick opens a row with the countdown",
-                dots is [{ Spell: "Curse", Target: "A froglok", Count: 1, RemainingSeconds: not null }]
+            Check("dots: first tick opens bar 01 with the countdown",
+                dots is [{ Spell: "Curse", Target: "A froglok", Ordinal: 1, RemainingSeconds: not null }]
                 && Math.Abs(dots[0].RemainingSeconds!.Value - 29) < 0.01);
             ep.ProcessLine($"[{ETs(2)}] A froglok has taken 100 damage from your Curse.");
-            Check("dots: two ticks inside one period = two same-named mobs",
-                ep.EnemyDots(ET(3)) is [{ Count: 2 }]);
-            ep.ProcessLine($"[{ETs(4)}] Zibantik has taken 50 damage from your Curse.");
-            Check("dots: single-word (player-like) targets never get rows",
-                ep.EnemyDots(ET(5)).Count == 1);
-            ep.ProcessLine($"[{ETs(6)}] A froglok has taken 40 damage from your Venom of the Snake.");
-            Check("dots: unknown duration counts UP instead of guessing",
-                ep.EnemyDots(ET(7)).First(d => d.Spell == "Venom of the Snake").RemainingSeconds is null);
+            Check("dots: a tick when nobody is due = a second mob = bar 02",
+                ep.EnemyDots(ET(3)).Select(d => d.Ordinal).OrderBy(x => x).SequenceEqual(new[] { 1, 2 }));
+            ep.ProcessLine($"[{ETs(6)}] A froglok has taken 100 damage from your Curse.");
+            Check("dots: a due instance owns its heartbeat tick (no third bar)",
+                ep.EnemyDots(ET(7)).Count == 2);
             ep.ProcessLine($"[{ETs(8)}] Your Curse spell has worn off of a froglok.");
-            Check("dots: the exact wear-off clears its (spell, mob) row",
-                ep.EnemyDots(ET(9)).All(d => d.Spell != "Curse"));
+            Check("dots: the wear-off closes the OLDEST bar (01 fades, 02 stays)",
+                ep.EnemyDots(ET(9)) is [{ Ordinal: 2 }]);
             ep.ProcessLine($"[{ETs(10)}] A froglok has taken 100 damage from your Curse.");
-            ep.ProcessLine($"[{ETs(11)}] You have slain a froglok!");
-            Check("dots: the mob's death censors every row on that name",
-                ep.EnemyDots(ET(12)).Count == 0);
-            ep.ProcessLine($"[{ETs(20)}] A froglok has taken 100 damage from your Curse.");
-            Check("dots: 18s of tick silence culls the row",
-                ep.EnemyDots(ET(45)).Count == 0);
+            ep.ProcessLine($"[{ETs(11)}] A froglok has taken 100 damage from your Curse.");
+            Check("dots: a freed number is reused (new mob becomes 01 again)",
+                ep.EnemyDots(ET(12)).Select(d => d.Ordinal).OrderBy(x => x).SequenceEqual(new[] { 1, 2 }));
+            ep.ProcessLine($"[{ETs(12)}] Zibantik has taken 50 damage from your Curse.");
+            Check("dots: single-word (player-like) targets never get bars",
+                ep.EnemyDots(ET(13)).Count == 2);
+            ep.ProcessLine($"[{ETs(13)}] A froglok has taken 40 damage from your Venom of the Snake.");
+            Check("dots: unknown duration counts UP instead of guessing",
+                ep.EnemyDots(ET(14)).First(d => d.Spell == "Venom of the Snake").RemainingSeconds is null);
+            ep.ProcessLine($"[{ETs(14)}] You have slain a froglok!");
+            Check("dots: death clears single-instance groups, twins wait for silence",
+                ep.EnemyDots(ET(15)).All(d => d.Spell == "Curse")
+                && ep.EnemyDots(ET(15)).Count == 2);
+            Check("dots: tick silence culls the leftovers", ep.EnemyDots(ET(30)).Count == 0);
+            ep.ProcessLine($"[{ETs(40)}] A froglok has taken 100 damage from your Curse.");
+            ep.ProcessLine($"[{ETs(41)}] You have entered The Feerrott.");
+            Check("dots: zoning leaves hostiles behind", ep.EnemyDots(ET(42)).Count == 0);
             ep.ProcessLine($"[{ETs(50)}] A froglok has taken 100 damage from your Curse.");
-            ep.ProcessLine($"[{ETs(51)}] You have entered The Feerrott.");
-            Check("dots: zoning leaves hostiles behind", ep.EnemyDots(ET(52)).Count == 0);
-            ep.ProcessLine($"[{ETs(60)}] A froglok has taken 100 damage from your Curse.");
-            ep.ProcessLine($"[{ETs(95)}] A froglok has taken 100 damage from your Curse.");
+            ep.ProcessLine($"[{ETs(85)}] A froglok has taken 100 damage from your Curse.");
             Check("dots: a tick past the duration restarts the clock (silent recast)",
-                ep.EnemyDots(ET(96)) is [{ RemainingSeconds: not null } r2]
+                ep.EnemyDots(ET(86)) is [{ RemainingSeconds: not null } r2]
                 && Math.Abs(r2.RemainingSeconds!.Value - 29) < 0.01);
 
             // Kept-fights persistence: FightRecord must survive a JSON round trip.

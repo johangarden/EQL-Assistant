@@ -247,22 +247,29 @@ public sealed class CombatParser
     // self-corrects as mobs die. Censors: exact wear-off, mob death, zoning,
     // your own death, and 18s of tick silence (three missed ticks).
 
-    public sealed record EnemyDotView(string Spell, string Target, int Count,
+    public sealed record EnemyDotView(string Spell, string Target, int Ordinal,
         double? RemainingSeconds, double SinceSeconds);
 
-    private sealed class DotTrack
+    private sealed class DotInstance
+    {
+        public int Ordinal;      // stable per-group bar number ("01", "02", …)
+        public DateTime Start;
+        public DateTime LastTick;
+    }
+
+    private sealed class DotGroup
     {
         public string Spell = "";
         public string Target = "";
-        public DateTime Start;
-        public DateTime LastTick;
-        public readonly List<DateTime> RecentTicks = new();
+        public readonly List<DotInstance> Instances = new();
     }
 
-    private const double DotCountWindowSec = 5.5;   // just under one 6s tick period
-    private const double DotSilenceCullSec = 18;    // three missed ticks = it's gone
+    // A tick "belongs" to the instance that is DUE one (its own last tick at
+    // least this long ago); when nobody is due, it's a NEW same-named mob.
+    private const double DotTickDueSec = 4.5;
+    private const double DotSilenceCullSec = 13;    // two missed ticks = it's gone
 
-    private readonly Dictionary<string, DotTrack> _enemyDots = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DotGroup> _enemyDots = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Optional duration lookup (learned/library) for the countdown;
     /// null keeps the row counting up instead of lying.</summary>
@@ -284,46 +291,70 @@ public sealed class CombatParser
         target = Normalize(target);
         if (!IsEnemyName(target)) return;
         string key = DotKey(spell, target);
-        if (!_enemyDots.TryGetValue(key, out var t))
-            _enemyDots[key] = t = new DotTrack { Spell = spell.Trim(), Target = target, Start = time };
+        if (!_enemyDots.TryGetValue(key, out var g))
+            _enemyDots[key] = g = new DotGroup { Spell = spell.Trim(), Target = target };
+
+        // The most-overdue due instance owns this tick; nobody due = new mob.
+        var inst = g.Instances
+            .Where(i => (time - i.LastTick).TotalSeconds >= DotTickDueSec)
+            .OrderByDescending(i => time - i.LastTick)
+            .FirstOrDefault();
+        if (inst is null)
+        {
+            int ordinal = 1;
+            while (g.Instances.Any(i => i.Ordinal == ordinal)) ordinal++; // lowest free number
+            g.Instances.Add(inst = new DotInstance { Ordinal = ordinal, Start = time });
+        }
         // A tick past the known duration = a silent re-application: new clock.
-        if (DotDurationLookup?.Invoke(t.Spell) is double d && d > 1
-            && (time - t.Start).TotalSeconds > d)
-            t.Start = time;
-        t.LastTick = time;
-        t.RecentTicks.Add(time);
-        t.RecentTicks.RemoveAll(x => (time - x).TotalSeconds > DotCountWindowSec);
+        else if (DotDurationLookup?.Invoke(g.Spell) is double d && d > 1
+                 && (time - inst.Start).TotalSeconds > d)
+        {
+            inst.Start = time;
+        }
+        inst.LastTick = time;
     }
 
     private void RemoveDotsFor(string mobName)
     {
+        // The dying twin's instance is unknowable — its silence culls it in
+        // seconds. Only a group with a SINGLE instance clears immediately.
         string suffix = "|" + mobName.Trim().ToLowerInvariant();
         foreach (var key in _enemyDots.Keys.Where(k =>
                      k.EndsWith(suffix, StringComparison.Ordinal)).ToList())
-            _enemyDots.Remove(key);
+            if (_enemyDots[key].Instances.Count <= 1)
+                _enemyDots.Remove(key);
     }
 
-    /// <summary>Live enemy-DoT rows, soonest fade first. Silence-culled inline,
-    /// so callers can poll this directly.</summary>
+    /// <summary>The wear-off closes the OLDEST instance — first landed fades
+    /// first (the Companion's rule).</summary>
+    private void CloseOldestDot(DotGroup g)
+    {
+        var oldest = g.Instances.OrderBy(i => i.Start).FirstOrDefault();
+        if (oldest is not null) g.Instances.Remove(oldest);
+    }
+
+    /// <summary>Live enemy-DoT rows: one bar per same-named mob ("a froglok
+    /// 01/02"), grouped per spell, soonest fade first inside the group.
+    /// Silence-culled inline, so callers can poll this directly.</summary>
     public IReadOnlyList<EnemyDotView> EnemyDots(DateTime now)
     {
         var rows = new List<EnemyDotView>();
-        foreach (var (key, t) in _enemyDots.ToList())
+        foreach (var (key, g) in _enemyDots.ToList())
         {
-            if ((now - t.LastTick).TotalSeconds > DotSilenceCullSec)
+            g.Instances.RemoveAll(i => (now - i.LastTick).TotalSeconds > DotSilenceCullSec);
+            if (g.Instances.Count == 0) { _enemyDots.Remove(key); continue; }
+
+            double? dur = DotDurationLookup?.Invoke(g.Spell) is double d && d > 1 ? d : null;
+            foreach (var i in g.Instances)
             {
-                _enemyDots.Remove(key);
-                continue;
+                double since = (now - i.Start).TotalSeconds;
+                rows.Add(new EnemyDotView(g.Spell, g.Target, i.Ordinal,
+                    dur is double dd ? Math.Max(0, dd - since) : null, since));
             }
-            double since = (now - t.Start).TotalSeconds;
-            double? remaining = DotDurationLookup?.Invoke(t.Spell) is double d && d > 1
-                ? Math.Max(0, d - since)
-                : null;
-            int count = Math.Max(1, t.RecentTicks.Count(x => (now - x).TotalSeconds <= DotCountWindowSec));
-            rows.Add(new EnemyDotView(t.Spell, t.Target, count, remaining, since));
         }
-        return rows.OrderBy(r => r.RemainingSeconds ?? double.MaxValue)
-            .ThenBy(r => r.Spell, StringComparer.OrdinalIgnoreCase).ToList();
+        return rows.OrderBy(r => r.Spell, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.RemainingSeconds ?? double.MaxValue)
+            .ThenBy(r => r.Ordinal).ToList();
     }
 
     /// <summary>Wipe every tracked enemy DoT (zoning, your death, manual reset).</summary>
@@ -592,15 +623,28 @@ public sealed class CombatParser
         {
             if (WornOffOfRx.Match(body) is { Success: true } wOf)
             {
-                _enemyDots.Remove(DotKey(wOf.Groups["spell"].Value, wOf.Groups["mob"].Value));
+                string k = DotKey(wOf.Groups["spell"].Value, wOf.Groups["mob"].Value);
+                if (_enemyDots.TryGetValue(k, out var g1))
+                {
+                    CloseOldestDot(g1);
+                    if (g1.Instances.Count == 0) _enemyDots.Remove(k);
+                }
                 return;
             }
             if (WornOffRx.Match(body) is { Success: true } wAll)
             {
+                // Target-less fade: one instance faded somewhere — close the
+                // globally oldest of that spell.
                 string sk = SpellDurations.BaseKey(wAll.Groups["spell"].Value) + "|";
-                foreach (var k in _enemyDots.Keys.Where(x =>
-                             x.StartsWith(sk, StringComparison.Ordinal)).ToList())
-                    _enemyDots.Remove(k);
+                var g2 = _enemyDots.Where(kv => kv.Key.StartsWith(sk, StringComparison.Ordinal))
+                    .OrderBy(kv => kv.Value.Instances.Min(i => i.Start))
+                    .Select(kv => kv.Value).FirstOrDefault();
+                if (g2 is not null)
+                {
+                    CloseOldestDot(g2);
+                    if (g2.Instances.Count == 0)
+                        _enemyDots.Remove(DotKey(g2.Spell, g2.Target));
+                }
                 return;
             }
         }

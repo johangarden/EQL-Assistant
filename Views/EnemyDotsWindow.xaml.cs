@@ -20,6 +20,7 @@ namespace EQLOverlay.Views;
 public partial class EnemyDotsWindow : Window
 {
     private sealed record RowVm(string Label, string TimeText);
+    private sealed record GroupVm(string Spell, List<RowVm> Rows);
 
     private readonly CombatParser _parser;
     private readonly PanelPlacement _placement;
@@ -75,13 +76,16 @@ public partial class EnemyDotsWindow : Window
     private void Refresh()
     {
         var rows = _parser.EnemyDots(DateTime.Now);
-        RowsControl.ItemsSource = rows.Select(r => new RowVm(
-            $"{r.Spell} — {r.Target}{(r.Count > 1 ? $" ×{r.Count}" : "")}",
-            r.RemainingSeconds is double rem
-                ? TimeSpan.FromSeconds(rem) is { TotalMinutes: >= 1 } ts
-                    ? $"{(int)ts.TotalMinutes}:{ts.Seconds:00}"
-                    : $"{rem:0}s"
-                : $"↑{r.SinceSeconds:0}s")).ToList();
+        GroupsControl.ItemsSource = rows
+            .GroupBy(r => r.Spell, StringComparer.OrdinalIgnoreCase)
+            .Select(grp => new GroupVm(grp.Key.ToUpperInvariant(), grp.Select(r => new RowVm(
+                $"{r.Target} {r.Ordinal:00}",
+                r.RemainingSeconds is double rem
+                    ? TimeSpan.FromSeconds(rem) is { TotalMinutes: >= 1 } ts
+                        ? $"{(int)ts.TotalMinutes}:{ts.Seconds:00}"
+                        : $"{rem:0}s"
+                    : $"↑{r.SinceSeconds:0}s")).ToList()))
+            .ToList();
 
         Placeholder.Visibility = !_locked && rows.Count == 0
             ? Visibility.Visible : Visibility.Collapsed;
