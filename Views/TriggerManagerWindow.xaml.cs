@@ -858,6 +858,9 @@ public partial class TriggerManagerWindow : Window
         BarsChecksGroup.Visibility = V(bars);
         ReducerGroup.Visibility = V(bars && manual);
         AlertsGroup.Visibility = V(bars || matrix);
+        // Flash text is a flash trigger's main field; elsewhere it's a manual
+        // power tool (library adds never come with one).
+        FlashGroup.Visibility = V(flash || manual);
 
         DurationLabel.Text = timer ? "Respawn time" : "Duration";
         // Auto-learn is a spell-duration concept — respawn timers don't learn.
@@ -879,7 +882,7 @@ public partial class TriggerManagerWindow : Window
             : matrix ? "Start pattern (regex — turns the cell green)"
             : "Start pattern (regex — starts the bar)";
         FlashLabel.Text = flash ? "Flash text (empty = the trigger's name)"
-            : "Flash this text on screen when it matches (optional)";
+            : "Flash this text on screen when the start pattern matches (optional)";
         PanelHint.Text = timer
             ? "When the pattern matches (e.g. a named mob death), the circular repop watch starts with this respawn time. Also listed in the watch's ☰ preset menu."
             : matrix ? "A red/green cell: green with seconds left while active, red when missing."
