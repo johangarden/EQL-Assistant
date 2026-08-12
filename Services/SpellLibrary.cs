@@ -53,28 +53,39 @@ public sealed class SpellLibrary
     public IReadOnlyList<Spell> Spells { get; }
     public int SeenCount => _seen.Count;
 
-    // ---- message corrections ---------------------------------------------------
+    // ---- library corrections ---------------------------------------------------
     // The wiki has no emotes for several EQL-added spells (the "You ." junk).
     // These sentences are OBSERVED in real logs — never inferred: a guessed
     // line that's wrong would silently never fire, which is worse than the
-    // begin-cast fallback. The game's own typo ("being") is preserved.
-    private static readonly (string Name, string CastOnYou, string WearsOff)[] MessageCorrections =
+    // begin-cast fallback. The game's own typo ("being") is preserved, and the
+    // scrape's own Tortoises Healing entry carries the identical template.
+    // Durations are the wiki's stated base ("for 24s") — auto-learn refines.
+    private static readonly (string Name, string CastOnYou, string WearsOff, double DurationSec)[]
+        MessageCorrections =
     {
-        ("Snails Healing", "You being to feel healed by the snail.", "You feel the snail spirit depart."),
-        ("Slugs Healing", "You being to feel healed by the slug.", "You feel the slug spirit depart."),
+        ("Snails Healing", "You being to feel healed by the snail.", "You feel the snail spirit depart.", 24),
+        ("Slugs Healing", "You being to feel healed by the slug.", "You feel the slug spirit depart.", 24),
     };
+
+    // Ghost entries: the scrape carries spells the live wiki no longer lists
+    // (eqlwiki Shaman Spells: the family is Snails 14 / Tortoises 28 /
+    // Slugs 42 — there is no Sloths Healing). A trigger for one never fires.
+    private static readonly string[] RemovedSpells = { "Sloths Healing" };
 
     public SpellLibrary(ConfigService config)
     {
         _seenPath = Path.Combine(config.ConfigDirectory, "seen-spells.json");
-        Spells = LoadLibrary();
+        Spells = LoadLibrary()
+            .Where(s => !RemovedSpells.Contains(s.Name, StringComparer.OrdinalIgnoreCase))
+            .ToList();
 
-        foreach (var (name, castOnYou, wearsOff) in MessageCorrections)
+        foreach (var (name, castOnYou, wearsOff, durationSec) in MessageCorrections)
         {
             var s = Spells.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             if (s is null) continue;
             s.CastOnYou = castOnYou;
             s.WearsOff = wearsOff;
+            if (durationSec > 0 && s.DurationSec <= 0) s.DurationSec = durationSec;
         }
 
         static void Index(Dictionary<string, List<Spell>> dict, string msg, Spell s)

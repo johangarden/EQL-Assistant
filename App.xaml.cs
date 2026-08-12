@@ -469,26 +469,32 @@ public partial class App : Application
                 SpellLibrary.JunkMessage("You .") && SpellLibrary.JunkMessage("")
                 && SpellLibrary.JunkMessage("Someone .")
                 && !SpellLibrary.JunkMessage("You feel much faster."));
-            Check("junk: Sloths Healing bar anchors on its begin-cast line, rank-tolerant",
-                lib2.FindByName("Sloths Healing") is { } sloths
-                && SpellLibrary.BarTrigger(sloths, spokenWarning: true) is { } slothsBar
-                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing.")
-                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing V.")
-                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing VIII.")
-                && new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing X.")
-                && !new System.Text.RegularExpressions.Regex(slothsBar.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing Ward."));
+            Check("junk: a junk-text spell's bar anchors on its begin-cast line, rank-tolerant",
+                lib2.FindByName("Befriend Animal") is { } befriend
+                && SpellLibrary.BarTrigger(befriend, spokenWarning: true) is { } befriendBar
+                && new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal.")
+                && new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal V.")
+                && new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal VIII.")
+                && new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal X.")
+                && !new System.Text.RegularExpressions.Regex(befriendBar.StartPattern)
+                    .IsMatch("You begin casting Befriend Animal Ward."));
+            // Ghost entries are gone; the scrape's own Tortoises entry carries
+            // the family template and types as a HoT via its landing text.
+            Check("junk: Sloths Healing is a ghost (not on the wiki) and is removed",
+                lib2.FindByName("Sloths Healing") is null
+                && lib2.FindByName("Tortoises Healing") is { } tortoise
+                && SpellLibrary.TriggerCategory(tortoise) == "HoTs");
             Check("junk: rank pooling covers base through X",
                 SpellDurations.BaseKey("Sloths Healing") == SpellDurations.BaseKey("Sloths Healing X")
                 && SpellDurations.BaseKey("Sloths Healing VIII") == "sloths healing"
                 && SpellDurations.BaseKey("Sloths Healing IX") == "sloths healing");
             var broken = new Models.TriggerDefinition
             {
-                Id = "lib-sloths-healing", Name = "Sloths Healing", Category = "HoTs",
+                Id = "lib-befriend-animal", Name = "Befriend Animal", Category = "MyOwn",
                 StartPattern = System.Text.RegularExpressions.Regex.Escape("You ."),
             };
             var legacy = new Models.TriggerDefinition
@@ -500,7 +506,7 @@ public partial class App : Application
                 lib2.HealLibraryTriggers(new[] { broken, legacy }) == 2
                 && broken.StartRegex is not null
                 && new System.Text.RegularExpressions.Regex(broken.StartPattern)
-                    .IsMatch("You begin casting Sloths Healing II.")
+                    .IsMatch("You begin casting Befriend Animal II.")
                 && new System.Text.RegularExpressions.Regex(legacy.StartPattern)
                     .IsMatch("You being to feel healed by the slug.")
                 && legacy.EndPattern is not null
