@@ -100,8 +100,12 @@ these, so merged cross-machine history survives a reset).
   below sample floors instead of lying.
 - **88 library spells have junk landing text** ("You ."): their triggers
   anchor on `^You begin (?:casting|singing) <name>(?: [IVX]{1,7})?\.` instead.
+  `SpellLibrary.MessageCorrections` overrides junk with sentences OBSERVED in
+  real logs (never inferred — a guessed line silently never fires; the game's
+  own typos like "You **being** to feel healed by the slug." are preserved).
   `SpellLibrary.HealLibraryTriggers` repairs old/broken library triggers on
-  every load (types + patterns); hand-edited values are never touched.
+  every load (types + patterns; corrected spells graduate from begin-cast to
+  landing timing); hand-edited values are never touched.
 - **Panels**: every panel window with a `DispatcherTimer` MUST stop it on
   `Closed`; prefer in-place `ApplySettings` over rebuild for stateful panels
   (rebuilding the repop watch once caused ghost beeps). Manager saves must

@@ -456,9 +456,12 @@ public partial class App : Application
                 new Models.TriggerDefinition { Id = "custom-1", Name = "Envenomed Bolt", Category = "Debuffs" },
             };
             Check("typing: heal fixes lib defaults, spares custom types and ids",
-                lib2.HealLibraryTriggers(retype) == 1
+                lib2.HealLibraryTriggers(retype) == 2 // bolt retyped; both empty patterns filled
                 && retype[0].Category == "DoTs" && retype[1].Category == "Buffs"
-                && retype[2].Category == "MyOwn" && retype[3].Category == "Debuffs");
+                && retype[2].Category == "MyOwn" && retype[2].StartPattern == "my custom pattern"
+                && retype[3].Category == "Debuffs" && retype[3].StartPattern.Length == 0
+                && retype[1].StartPattern == System.Text.RegularExpressions.Regex
+                    .Escape("You feel much faster."));
 
             // Junk landing text ("You .") falls back to the begin-cast line —
             // and already-added broken triggers heal to it on load.
@@ -493,13 +496,29 @@ public partial class App : Application
                 Id = "lib-slugs-healing", Name = "Slugs Healing", Category = "HoTs",
                 StartPattern = @"^You begin casting Slugs\ Healing\.", // 2.9.0 fallback, no rank
             };
-            Check("junk: heal repairs broken and rank-less fallback patterns",
+            Check("junk: heal repairs broken patterns; corrected spells graduate to landing text",
                 lib2.HealLibraryTriggers(new[] { broken, legacy }) == 2
                 && broken.StartRegex is not null
                 && new System.Text.RegularExpressions.Regex(broken.StartPattern)
                     .IsMatch("You begin casting Sloths Healing II.")
                 && new System.Text.RegularExpressions.Regex(legacy.StartPattern)
-                    .IsMatch("You begin casting Slugs Healing V."));
+                    .IsMatch("You being to feel healed by the slug.")
+                && legacy.EndPattern is not null
+                && new System.Text.RegularExpressions.Regex(legacy.EndPattern)
+                    .IsMatch("You feel the slug spirit depart."));
+
+            // Observed message corrections (real-log sentences, game typo intact).
+            Check("corrections: Slugs Healing carries its observed landing + fade",
+                lib2.FindByName("Slugs Healing") is
+                {
+                    CastOnYou: "You being to feel healed by the slug.",
+                    WearsOff: "You feel the slug spirit depart.",
+                }
+                && SpellLibrary.BarTrigger(lib2.FindByName("Slugs Healing")!, spokenWarning: false) is
+                { } slugsBar
+                && slugsBar.StartPattern == System.Text.RegularExpressions.Regex
+                    .Escape("You being to feel healed by the slug.")
+                && SpellLibrary.TriggerCategory(lib2.FindByName("Slugs Healing")!) == "HoTs");
 
             Check("anchor: library flags the shared haste landing as ambiguous",
                 lib2.IsSharedLanding(Esc("You feel much faster."))
@@ -515,6 +534,13 @@ public partial class App : Application
             dur.ProcessLine($"[{T(2403)}] The spirit of wolf leaves you.");
             Check("durations: full cycle mints a 2400s sample",
                 dur.LearnedMaxSeconds("Spirit of Wolf") is double d1 && Math.Abs(d1 - 2400) < 0.01);
+            // Ranked cast of a corrected spell: "Slugs Healing V" resolves to
+            // the library's base entry, so the observed landing/fade pair mints.
+            dur.ProcessLine($"[{T(9000)}] You begin casting Slugs Healing V.");
+            dur.ProcessLine($"[{T(9006)}] You being to feel healed by the slug.");
+            dur.ProcessLine($"[{T(9047)}] You feel the slug spirit depart.");
+            Check("durations: ranked cast of a corrected spell mints a sample",
+                dur.LearnedMaxSeconds("Slugs Healing") is double slugSec && Math.Abs(slugSec - 41) < 0.01);
             dur.ProcessLine($"[{T(3000)}] You begin casting Spirit of Wolf.");
             dur.ProcessLine($"[{T(3003)}] You feel the spirit of wolf enter you.");
             dur.ProcessLine($"[{T(3100)}] The spirit of wolf leaves you.");

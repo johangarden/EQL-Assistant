@@ -53,10 +53,29 @@ public sealed class SpellLibrary
     public IReadOnlyList<Spell> Spells { get; }
     public int SeenCount => _seen.Count;
 
+    // ---- message corrections ---------------------------------------------------
+    // The wiki has no emotes for several EQL-added spells (the "You ." junk).
+    // These sentences are OBSERVED in real logs — never inferred: a guessed
+    // line that's wrong would silently never fire, which is worse than the
+    // begin-cast fallback. The game's own typo ("being") is preserved.
+    private static readonly (string Name, string CastOnYou, string WearsOff)[] MessageCorrections =
+    {
+        ("Snails Healing", "You being to feel healed by the snail.", "You feel the snail spirit depart."),
+        ("Slugs Healing", "You being to feel healed by the slug.", "You feel the slug spirit depart."),
+    };
+
     public SpellLibrary(ConfigService config)
     {
         _seenPath = Path.Combine(config.ConfigDirectory, "seen-spells.json");
         Spells = LoadLibrary();
+
+        foreach (var (name, castOnYou, wearsOff) in MessageCorrections)
+        {
+            var s = Spells.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (s is null) continue;
+            s.CastOnYou = castOnYou;
+            s.WearsOff = wearsOff;
+        }
 
         static void Index(Dictionary<string, List<Spell>> dict, string msg, Spell s)
         {
@@ -216,7 +235,8 @@ public sealed class SpellLibrary
                        || land.Contains("plague", StringComparison.OrdinalIgnoreCase)
                        || land.Contains("withers", StringComparison.OrdinalIgnoreCase)))
             return "DoTs";
-        if (!debuff && land.Contains("regenerate", StringComparison.OrdinalIgnoreCase))
+        if (!debuff && (land.Contains("regenerate", StringComparison.OrdinalIgnoreCase)
+                        || land.Contains("healed", StringComparison.OrdinalIgnoreCase)))
             return "HoTs";
 
         return debuff ? "Debuffs" : "Buffs";
@@ -248,6 +268,18 @@ public sealed class SpellLibrary
     /// (Snails Healing becomes a HoT, Envenomed Bolt a DoT) — hand-typed ones
     /// are left alone; (b) triggers whose start pattern is a junk landing line
     /// ("You\ \.") switch to the begin-cast pattern. Returns how many changed.</summary>
+    /// <summary>Is this start pattern one of OUR generated shapes — empty, an
+    /// escaped junk landing ("You\ \."), or a begin-cast fallback (current or
+    /// the 2.9.0 rank-less one)? Hand-written patterns never match.</summary>
+    private static bool IsGeneratedPattern(string startPattern, string spellName)
+    {
+        if (startPattern.Length == 0) return true;
+        if (startPattern == BeginCastPattern(spellName)) return true;
+        if (startPattern == "^You begin casting " + Regex.Escape(spellName.Trim()) + @"\.") return true;
+        try { if (JunkMessage(Regex.Unescape(startPattern))) return true; } catch { /* real regex */ }
+        return false;
+    }
+
     public int HealLibraryTriggers(IEnumerable<TriggerDefinition> triggers)
     {
         int changed = 0;
@@ -263,16 +295,28 @@ public sealed class SpellLibrary
                 touched = true;
             }
 
-            // Repairable shapes: the escaped junk landing line, empty, or the
-            // 2.9.0 fallback that missed the rank suffix ("… Slugs Healing V.").
-            string legacyFallback = "^You begin casting " + Regex.Escape(s.Name.Trim()) + @"\.";
-            if (JunkMessage(s.CastOnYou)
-                && (t.StartPattern == Regex.Escape(s.CastOnYou) || t.StartPattern.Length == 0
-                    || t.StartPattern == legacyFallback))
+            // Patterns WE generated may be upgraded (hand-written ones never):
+            // a junk-landing spell gets the begin-cast fallback; a spell whose
+            // real landing text we've since observed (MessageCorrections)
+            // graduates from cast-time to landing-time, gaining the fade line.
+            if (IsGeneratedPattern(t.StartPattern, s.Name))
             {
-                t.StartPattern = BeginCastPattern(s.Name);
-                try { ConfigService.CompileOne(t); } catch { /* keep the text either way */ }
-                touched = true;
+                string desired = JunkMessage(s.CastOnYou)
+                    ? BeginCastPattern(s.Name)
+                    : Regex.Escape(s.CastOnYou);
+                if (t.StartPattern != desired)
+                {
+                    t.StartPattern = desired;
+                    touched = true;
+                }
+                if (!JunkMessage(s.CastOnYou) && string.IsNullOrEmpty(t.EndPattern)
+                    && s.WearsOff.Length > 0)
+                {
+                    t.EndPattern = Regex.Escape(s.WearsOff);
+                    touched = true;
+                }
+                if (touched)
+                    try { ConfigService.CompileOne(t); } catch { /* keep the text either way */ }
             }
 
             if (touched) changed++;
