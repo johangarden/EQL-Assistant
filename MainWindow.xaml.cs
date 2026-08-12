@@ -405,8 +405,7 @@ public partial class MainWindow : Window
         _spellLib.SaveSeenIfDirty();
         int lootNew = Math.Max(0, _loot.Entries.Count - lootBefore);
         string summary = $"Reparsed {lines:N0} lines from {Path.GetFileName(path)}: " +
-            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples " +
-            "(anything already recorded is skipped, never double-counted).";
+            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples.";
         Log.Info(summary);
         return summary;
     }
@@ -424,9 +423,8 @@ public partial class MainWindow : Window
             Log.Warn("Merge copy failed: " + ex.Message);
             return "Couldn't copy the file into the config folder — nothing was merged.";
         }
-        Log.Info($"Merged log stored as {Path.GetFileName(copy)}.");
-        return ReparseFile(copy)
-            + $" Stored as {Path.GetFileName(copy)} — Reset & rebuild replays it automatically.";
+        Log.Info($"Merged log stored as {Path.GetFileName(copy)}."); // shows under Additional log files
+        return ReparseFile(copy);
     }
 
     /// <summary>Data page's "Reset & rebuild": wipe every log-DERIVED data file
