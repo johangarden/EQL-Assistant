@@ -57,11 +57,6 @@ public sealed class TriggerEngine
     /// learned recent-window max for a trigger name, or null.</summary>
     public Func<string, double?>? LearnedDuration { get; set; }
 
-    /// <summary>Optional lookup (SpellLibrary): is this start pattern a landing
-    /// sentence that several different spells print? Drives the AUTO half of
-    /// the cast-anchor rule.</summary>
-    public Func<string, bool>? IsSharedLanding { get; set; }
-
     private const double CastAnchorWindowSec = 15;   // begin-cast -> landing (same as SpellDurations)
     private const double QuickBuffWindowSec = 8;     // activation -> burst (observed: 3s)
     private (string Key, DateTime At)? _lastOwnCast; // rank-stripped, from "You begin casting X."
@@ -77,12 +72,15 @@ public sealed class TriggerEngine
     /// "You begin casting &lt;Name&gt;." within the window — an unanchored
     /// ambiguous landing draws nothing, because a bar that guesses which of
     /// four hastes just landed would lie about the duration. Auto (null)
-    /// anchors library triggers whose landing sentence is shared.</summary>
+    /// anchors EVERY library trigger — EQL is solo-first, so by default a
+    /// groupmate's buff landing on you starts nothing; untick per trigger to
+    /// opt into group play. Manual triggers stay unanchored on auto (their
+    /// names often aren't castable spell names, so an anchor would silently
+    /// never arrive).</summary>
     private bool AnchorAllows(TriggerDefinition trigger, DateTime eventTime)
     {
         bool anchored = trigger.CastAnchored
-            ?? (trigger.Id.StartsWith("lib-", StringComparison.Ordinal)
-                && (IsSharedLanding?.Invoke(trigger.StartPattern) ?? false));
+            ?? trigger.Id.StartsWith("lib-", StringComparison.Ordinal);
         if (!anchored) return true;
 
         string key = SpellDurations.BaseKey(trigger.Name);
@@ -113,9 +111,26 @@ public sealed class TriggerEngine
     /// may correct in EITHER direction, e.g. level-scaled durations shorter
     /// than the library's max-level number). Manual triggers enforce the
     /// configured duration exactly.</summary>
-    /// <summary>The phrase to speak — null when the voice toggle is off.</summary>
-    private static string? SpeakOf(TriggerDefinition t) =>
-        t.Alert is { SpeakEnabled: true } a ? a.Speak : null;
+    /// <summary>The trigger's two alert payloads, each already narrowed to its
+    /// chosen channel (phrase OR sound — never both). Disabled notices come
+    /// back empty so downstream code needs no further gating.</summary>
+    private static (double WarnAt, string? WarnSpeak, string? WarnSound,
+                    bool OnFaded, string? FadedSpeak, string? FadedSound)
+        AlertOf(TriggerDefinition t)
+    {
+        if (t.Alert is not { } a) return (0, null, null, false, null, null);
+        bool warnOn = a.WarnEnabled == true;
+        bool fadedOn = a.FadedEnabled == true;
+        bool warnSpeaks = a.WarnMode != AlertConfig.ModeSound;
+        bool fadedSpeaks = a.FadedMode != AlertConfig.ModeSound;
+        return (
+            warnOn ? a.AtSeconds : 0,
+            warnOn && warnSpeaks ? a.Speak : null,
+            warnOn && !warnSpeaks ? a.Sound : null,
+            fadedOn,
+            fadedOn && fadedSpeaks ? a.FadedSpeak : null,
+            fadedOn && !fadedSpeaks ? a.FadedSound : null);
+    }
 
     private double EffectiveDuration(TriggerDefinition trigger)
     {
@@ -228,8 +243,10 @@ public sealed class TriggerEngine
             };
             if (cells is null || byId is null) continue;
 
+            var al = AlertOf(t);
             var cell = new MatrixCellViewModel(t.Id, t.Name, t.DurationSeconds,
-                t.Alert?.AtSeconds ?? 0, t.Alert?.OnExpire ?? false, SpeakOf(t), t.Alert?.Sound);
+                al.WarnAt, al.OnFaded, al.WarnSpeak, al.WarnSound,
+                al.FadedSpeak, al.FadedSound);
             byId[t.Id] = cell;
             cells.Add(cell);
         }
@@ -360,13 +377,12 @@ public sealed class TriggerEngine
             return;
         }
 
+        var al = AlertOf(trigger);
         var vm = TimerBarViewModel.CreateTimer(
             key, BuildLabel(trigger, match), trigger.Category,
             duration, end, MakeBrush(TriggerColors.For(trigger)),
-            trigger.Alert?.AtSeconds ?? 0,
-            trigger.Alert?.OnExpire ?? false,
-            SpeakOf(trigger),
-            trigger.Alert?.Sound,
+            al.WarnAt, al.OnFaded, al.WarnSpeak, al.WarnSound,
+            al.FadedSpeak, al.FadedSound,
             waitsForFade: trigger.EndRegex is not null);
 
         _active[key] = vm;
@@ -441,7 +457,7 @@ public sealed class TriggerEngine
             bool expired = cell.Refresh(now, _warnSeconds);
             if (expired)
             {
-                if (cell.AlertOnExpire) _alerts.Fire(cell.AlertSpeak, cell.AlertSound);
+                if (cell.AlertOnExpire) _alerts.Fire(cell.AlertFadedSpeak, cell.AlertFadedSound);
             }
             else if (cell.AlertAtSeconds > 0 && !cell.FadeAlertFired &&
                      cell.RemainingSeconds > 0 && cell.RemainingSeconds <= cell.AlertAtSeconds)
@@ -484,7 +500,7 @@ public sealed class TriggerEngine
                 // also teaches the learner the true duration).
                 if (bar.WaitsForFade)
                 {
-                    if (bar.AlertOnExpire) _alerts.Fire(bar.AlertSpeak, bar.AlertSound);
+                    if (bar.AlertOnExpire) _alerts.Fire(bar.AlertFadedSpeak, bar.AlertFadedSound);
                     bar.EnterOverrun();
                 }
                 else
@@ -499,7 +515,7 @@ public sealed class TriggerEngine
             foreach (var bar in expired)
             {
                 if (bar.AlertOnExpire && !bar.IsOverrun) // overrun already alerted at 0
-                    _alerts.Fire(bar.AlertSpeak, bar.AlertSound);
+                    _alerts.Fire(bar.AlertFadedSpeak, bar.AlertFadedSound);
                 _active.Remove(bar.Key);
                 Bars.Remove(bar);
             }

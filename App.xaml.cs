@@ -360,7 +360,9 @@ public partial class App : Application
             // all print "You feel much faster.", so a shared landing only starts
             // the bar whose own begin-cast line it follows — and an unanchored
             // ambiguous landing starts NOTHING (a guessed bar lies about the
-            // duration). Auto anchors library (lib-*) triggers with shared text.
+            // duration). Auto anchors EVERY library (lib-*) trigger: EQL is
+            // solo-first, so a groupmate's buff landing on you starts nothing
+            // by default; untick per trigger to opt into group play.
             static string Esc(string s) => System.Text.RegularExpressions.Regex.Escape(s);
             string AT(int s) => new DateTime(2026, 8, 10, 23, 0, 0).AddSeconds(s)
                 .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
@@ -378,10 +380,7 @@ public partial class App : Application
                 EndPattern = Esc("Your speed returns to normal."), DurationSeconds = 660,
             });
             foreach (var t in ancCfg.Triggers) ConfigService.CompileOne(t);
-            var anc = new TriggerEngine(ancCfg, new AlertService())
-            {
-                IsSharedLanding = _ => true, // the haste line IS shared
-            };
+            var anc = new TriggerEngine(ancCfg, new AlertService());
             anc.ProcessLine($"[{AT(0)}] You feel much faster.");
             Check("anchor: unanchored shared landing draws nothing", anc.Bars.Count == 0);
             anc.ProcessLine($"[{AT(10)}] You begin casting Quickness.");
@@ -401,6 +400,24 @@ public partial class App : Application
             anc.ProcessLine($"[{AT(340)}] You feel much faster."); // wrong spell AND stale (>15s)
             Check("anchor: stale or foreign cast starts nothing", anc.Bars.Count == 2);
 
+            // Solo-first: even a UNIQUE landing sentence anchors on auto for a
+            // library trigger — a groupmate's buff landing on you would
+            // otherwise start a bar for a spell you never cast.
+            var soloCfg = new Models.AppConfig();
+            soloCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "lib-strengthen", Name = "Strengthen", DurationAuto = false,
+                StartPattern = Esc("You feel stronger."), DurationSeconds = 1620,
+            });
+            ConfigService.CompileOne(soloCfg.Triggers[0]);
+            var solo = new TriggerEngine(soloCfg, new AlertService());
+            solo.ProcessLine($"[{AT(0)}] You feel stronger.");
+            Check("anchor: solo-first — an unshared library landing still needs your cast",
+                solo.Bars.Count == 0);
+            solo.ProcessLine($"[{AT(10)}] You begin casting Strengthen.");
+            solo.ProcessLine($"[{AT(12)}] You feel stronger.");
+            Check("anchor: solo-first — your own cast starts it", solo.Bars.Count == 1);
+
             // Quick Buff (the Companion's case 3): the AA lands the whole
             // spellbar at once with no cast lines. During the window an
             // anchored landing is admitted only when the spell is plausibly
@@ -413,7 +430,7 @@ public partial class App : Application
                 StartPattern = Esc("You feel much faster."), DurationSeconds = 660,
             });
             ConfigService.CompileOne(qbCfg.Triggers[0]);
-            var qb = new TriggerEngine(qbCfg, new AlertService()) { IsSharedLanding = _ => true };
+            var qb = new TriggerEngine(qbCfg, new AlertService());
             qb.ProcessLine($"[{AT(0)}] You activate Quick Buff.");
             qb.ProcessLine($"[{AT(3)}] You feel much faster.");
             Check("quick buff: a never-cast spell stays silent", qb.Bars.Count == 0);
@@ -431,7 +448,6 @@ public partial class App : Application
                 Math.Abs(afterStray - 863) < 0.01); // unchanged since the 203 burst
             var qb2 = new TriggerEngine(qbCfg, new AlertService())
             {
-                IsSharedLanding = _ => true,
                 LearnedDuration = n => n == "Quickness" ? 555 : null,
             };
             qb2.ProcessLine($"[{AT(0)}] Caladar activates Quick Buff.");
@@ -449,7 +465,7 @@ public partial class App : Application
                 StartPattern = Esc("You feel much faster."), CastAnchored = false,
             });
             ConfigService.CompileOne(offCfg.Triggers[0]);
-            var offEng = new TriggerEngine(offCfg, new AlertService()) { IsSharedLanding = _ => true };
+            var offEng = new TriggerEngine(offCfg, new AlertService());
             offEng.ProcessLine($"[{AT(0)}] You feel much faster.");
             Check("anchor: explicit untick beats auto", offEng.Bars.Count == 1);
 
@@ -460,11 +476,11 @@ public partial class App : Application
                 StartPattern = Esc("You feel much faster."),
             });
             ConfigService.CompileOne(freeCfg.Triggers[0]);
-            var freeEng = new TriggerEngine(freeCfg, new AlertService()) { IsSharedLanding = _ => true };
+            var freeEng = new TriggerEngine(freeCfg, new AlertService());
             freeEng.ProcessLine($"[{AT(0)}] You feel much faster.");
             Check("anchor: custom triggers stay unanchored on auto", freeEng.Bars.Count == 1);
             freeCfg.Triggers[0].CastAnchored = true;
-            var freeEng2 = new TriggerEngine(freeCfg, new AlertService()) { IsSharedLanding = _ => true };
+            var freeEng2 = new TriggerEngine(freeCfg, new AlertService());
             freeEng2.ProcessLine($"[{AT(0)}] You feel much faster.");
             Check("anchor: explicit tick anchors a custom trigger", freeEng2.Bars.Count == 0);
             freeEng2.ProcessLine($"[{AT(10)}] You begin casting AnyHaste.");
@@ -704,7 +720,9 @@ public partial class App : Application
                 && TriggerColors.For(Models.Panels.SelfBuffs, "") == TriggerColors.Buff
                 && TriggerColors.For(Models.Panels.TargetDebuffs, "") == TriggerColors.Debuff);
 
-            // Voice toggle: off keeps the phrase but the bar never receives it.
+            // Alert migration: pre-2.11 configs carried ONE speak/sound payload
+            // gated by SpeakEnabled + AtSeconds/OnExpire — they map onto the
+            // two-notice model (warn before fade / notify at fade).
             var vt = new Models.AppConfig();
             vt.Triggers.Add(new Models.TriggerDefinition
             {
@@ -716,17 +734,53 @@ public partial class App : Application
                 Id = "v2", Name = "Muted", StartPattern = @"^A silence\.", DurationSeconds = 30,
                 Alert = new Models.AlertConfig { Speak = "hello", AtSeconds = 5, SpeakEnabled = false },
             });
+            vt.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "v3", Name = "Chimed", StartPattern = @"^A chime\.", DurationSeconds = 30,
+                Alert = new Models.AlertConfig
+                    { Sound = @"C:\Windows\Media\chimes.wav", AtSeconds = 5, SpeakEnabled = false },
+            });
             foreach (var t in vt.Triggers) ConfigService.CompileOne(t);
             var vtEng = new TriggerEngine(vt, new AlertService());
             vtEng.ProcessLine($"[{AT(0)}] A voice.");
             vtEng.ProcessLine($"[{AT(0)}] A silence.");
-            Check("voice: toggle gates the spoken phrase, text survives",
+            vtEng.ProcessLine($"[{AT(0)}] A chime.");
+            Check("alerts: legacy timed speak migrates to the pre-fade notice",
                 vtEng.Bars.First(b => b.Name == "Voiced").AlertSpeak == "hello"
-                && vtEng.Bars.First(b => b.Name == "Muted").AlertSpeak is null
+                && vtEng.Bars.First(b => b.Name == "Voiced").AlertAtSeconds == 5);
+            Check("alerts: legacy voice-off keeps the phrase but disables the notice",
+                vtEng.Bars.First(b => b.Name == "Muted").AlertSpeak is null
+                && vtEng.Bars.First(b => b.Name == "Muted").AlertAtSeconds == 0
                 && vt.Triggers[1].Alert!.Speak == "hello");
-            Check("voice: library adds arrive with a default fade phrase, voice on",
+            Check("alerts: legacy sound-only migrates to a sound-mode notice",
+                vt.Triggers[2].Alert is { WarnEnabled: true, WarnMode: Models.AlertConfig.ModeSound }
+                && vtEng.Bars.First(b => b.Name == "Chimed").AlertSound == @"C:\Windows\Media\chimes.wav"
+                && vtEng.Bars.First(b => b.Name == "Chimed").AlertSpeak is null);
+
+            // The two notices carry independent payloads to the bar.
+            var two = new Models.AppConfig();
+            two.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "t2", Name = "Twofold", StartPattern = @"^Twofold lands\.", DurationSeconds = 30,
+                Alert = new Models.AlertConfig
+                {
+                    WarnEnabled = true, AtSeconds = 10,
+                    WarnMode = Models.AlertConfig.ModeSpeak, Speak = "twofold ending",
+                    FadedEnabled = true,
+                    FadedMode = Models.AlertConfig.ModeSpeak, FadedSpeak = "twofold gone",
+                },
+            });
+            foreach (var t in two.Triggers) ConfigService.CompileOne(t);
+            var twoEng = new TriggerEngine(two, new AlertService());
+            twoEng.ProcessLine($"[{AT(0)}] Twofold lands.");
+            var twoBar = twoEng.Bars.First(b => b.Name == "Twofold");
+            Check("alerts: warn and faded notices carry separate payloads",
+                twoBar.AlertSpeak == "twofold ending" && twoBar.AlertAtSeconds == 10
+                && twoBar.AlertOnExpire && twoBar.AlertFadedSpeak == "twofold gone");
+            Check("voice: library adds arrive with a default pre-fade phrase at 15s",
                 SpellLibrary.BarTrigger(lib2.FindByName("Quickness")!, spokenWarning: true) is
-                    { Alert: { Speak: "Quickness is fading", SpeakEnabled: true, AtSeconds: 20 } });
+                    { Alert: { Speak: "Quickness is about to end", WarnEnabled: true, AtSeconds: 15,
+                               WarnMode: Models.AlertConfig.ModeSpeak, FadedEnabled: false } });
 
             // Merged-log copies: timestamped name keeps base + extension.
             Check("merge copies: timestamped copy name",
@@ -754,21 +808,28 @@ public partial class App : Application
             Check("overrun: bars without an end pattern still just expire",
                 nf.IsExpired && !nf.WaitsForFade);
 
-            // A speak phrase with no timing defaults to the expiry alert.
+            // A legacy speak phrase with no timing meant "say it when the bar
+            // runs out" — it migrates to the faded notice, phrase intact.
             var mute = new Models.TriggerDefinition
             {
                 Id = "qk", Name = "Quickness", StartPattern = "x",
                 Alert = new Models.AlertConfig { Speak = "Quickness faded" },
             };
             ConfigService.CompileOne(mute);
-            Check("alert: speak with no timing fires on expire", mute.Alert!.OnExpire);
+            Check("alert: legacy speak with no timing becomes the faded notice",
+                mute.Alert is { FadedEnabled: true, FadedSpeak: "Quickness faded", WarnEnabled: false });
             var timed = new Models.TriggerDefinition
             {
                 Id = "qk2", Name = "Quickness", StartPattern = "x",
                 Alert = new Models.AlertConfig { Speak = "fading", AtSeconds = 20 },
             };
             ConfigService.CompileOne(timed);
-            Check("alert: timed speak is left alone", !timed.Alert!.OnExpire);
+            Check("alert: legacy timed speak stays a pre-fade notice only",
+                timed.Alert is { WarnEnabled: true, AtSeconds: 20, FadedEnabled: false });
+            ConfigService.CompileOne(timed); // normalize must be idempotent
+            ConfigService.CompileOne(timed);
+            Check("alert: normalization is idempotent across recompiles",
+                timed.Alert is { WarnEnabled: true, AtSeconds: 20, FadedEnabled: false, Speak: "fading" });
 
             // Self-update: tag parsing, release-JSON asset picking, compare, copy-swap.
             Check("update: tags parse normalized",
@@ -1153,7 +1214,7 @@ public partial class App : Application
                 && bar.StartRegex!.IsMatch("You feel the spirit of wolf enter you.")
                 && bar.EndRegex!.IsMatch("The spirit of wolf leaves you.")
                 && bar.DurationSeconds == 2160
-                && bar.Alert is { AtSeconds: 20 });
+                && bar.Alert is { WarnEnabled: true, AtSeconds: 15 });
             var fade = SpellLibrary.FadeFlashTrigger(sow!);
             Check("library fade-flash trigger", fade is not null
                 && fade.Panel == Models.Panels.Flash

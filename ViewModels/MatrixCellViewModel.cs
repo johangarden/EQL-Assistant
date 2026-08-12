@@ -8,7 +8,8 @@ namespace EQLOverlay.ViewModels;
 public sealed class MatrixCellViewModel : ViewModelBase
 {
     public MatrixCellViewModel(string key, string name, double durationSeconds,
-        double alertAtSeconds, bool alertOnExpire, string? alertSpeak, string? alertSound)
+        double alertAtSeconds, bool alertOnExpire, string? alertSpeak, string? alertSound,
+        string? alertFadedSpeak = null, string? alertFadedSound = null)
     {
         Key = key;
         Name = name;
@@ -17,16 +18,21 @@ public sealed class MatrixCellViewModel : ViewModelBase
         AlertOnExpire = alertOnExpire;
         AlertSpeak = alertSpeak;
         AlertSound = alertSound;
+        AlertFadedSpeak = alertFadedSpeak;
+        AlertFadedSound = alertFadedSound;
     }
 
     public string Key { get; }
     public string Name { get; }
     public double DurationSeconds { get; }
 
+    // Speak/Sound = the pre-fade payload; the Faded pair plays at expiry.
     public double AlertAtSeconds { get; }
     public bool AlertOnExpire { get; }
     public string? AlertSpeak { get; }
     public string? AlertSound { get; }
+    public string? AlertFadedSpeak { get; }
+    public string? AlertFadedSound { get; }
 
     public bool FadeAlertFired { get; set; }
 

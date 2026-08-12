@@ -84,11 +84,22 @@ these, so merged cross-machine history survives a reset).
 
 - **Types own colors** (`TriggerColors`): buffs blue, HoTs green, DoTs red,
   debuffs yellow, cooldowns purple. No per-trigger color picking.
+- **Alerts are two notices** (2.11+): *notify before it fades* (default 15s)
+  and *notify when it faded* (doubles as cooldown "ready"), each a toggle +
+  Phrase OR Sound (one channel, never both). Phrases prefill "<Name> is about
+  to end" / "<Name> faded" ("… is ready" for Cooldowns) and follow renames
+  until hand-edited. Pre-2.11 single-payload configs migrate in
+  `ConfigService.NormalizeAlert` (idempotent, runs in `CompileOne`). The
+  editor hides manual-only tooling (Show in, Type, cooldown reducer, live
+  log) for library triggers.
 - **Cast anchor**: several spells share landing sentences (all hastes print
   "You feel much faster."). Anchored triggers only fire within 15s of the
   player's own "You begin casting <name>." — an unanchored ambiguous landing
-  starts NOTHING (a guessed bar lies). Auto for `lib-*` triggers with shared
-  text; `CastAnchored` tri-state overrides. Exception: **Quick Buff** ("You
+  starts NOTHING (a guessed bar lies). **Solo-first** (2.11+): auto anchors
+  EVERY `lib-*` trigger, shared text or not — a groupmate's buff landing on
+  you starts nothing by default; untick per trigger for group play. Manual
+  triggers stay unanchored on auto (their names often aren't castable spell
+  names). `CastAnchored` tri-state overrides. Exception: **Quick Buff** ("You
   activate Quick Buff.") lands the whole spellbar with no cast lines — an 8s
   activation window admits anchored landings when the spell is plausibly the
   player's own (cast this session / bar already running / known to the

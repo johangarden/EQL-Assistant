@@ -542,6 +542,9 @@ public partial class TriggerManagerWindow : Window
     {
         DetailsScroller.DataContext = Selected;
         DetailsScroller.IsEnabled = Selected != null;
+        // PanelCombo only raises SelectionChanged when the panel actually
+        // differs — the library/manual gating must re-evaluate every time.
+        ApplyPanelVisibility();
         UpdateDurationUx();
         UpdateAnchorUx();
         UpdateLiveLogUx();
@@ -559,7 +562,7 @@ public partial class TriggerManagerWindow : Window
 
     private bool _soundUxLoading;
 
-    private void PopulateSoundPresets()
+    private static List<SoundPreset> LoadSoundPresets()
     {
         var items = new List<SoundPreset> { new("(no sound)", "") };
         try
@@ -570,26 +573,45 @@ public partial class TriggerManagerWindow : Window
                 .Select(f => new SoundPreset(System.IO.Path.GetFileNameWithoutExtension(f), f))
                 .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase));
         }
-        catch { /* no Media folder — Browse still works */ }
-        SoundPresetBox.ItemsSource = items;
+        catch { /* no Media folder — the combo just offers (no sound) */ }
+        return items;
     }
 
-    private void SoundPreset_Changed(object sender, SelectionChangedEventArgs e)
+    private void PopulateSoundPresets()
+    {
+        // Separate lists per combo — two Selectors sharing one IEnumerable
+        // share its default collection view, which would sync their selections.
+        WarnSoundBox.ItemsSource = LoadSoundPresets();
+        FadedSoundBox.ItemsSource = LoadSoundPresets();
+    }
+
+    private void WarnSound_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (_soundUxLoading || Selected is null) return;
-        if (SoundPresetBox.SelectedItem is SoundPreset p)
-            Selected.AlertSound = p.Path;
+        if (WarnSoundBox.SelectedItem is SoundPreset p) Selected.WarnSound = p.Path;
     }
 
-    /// <summary>Sync the picker to the selected trigger: a preset shows by
-    /// name, a custom/browsed path leaves the combo blank.</summary>
+    private void FadedSound_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_soundUxLoading || Selected is null) return;
+        if (FadedSoundBox.SelectedItem is SoundPreset p) Selected.FadedSound = p.Path;
+    }
+
+    /// <summary>Sync both pickers to the selected trigger: a preset shows by
+    /// name, an unknown path leaves the combo blank.</summary>
     private void UpdateSoundUx()
     {
-        if (SoundPresetBox?.ItemsSource is not List<SoundPreset> items) return;
         _soundUxLoading = true;
-        SoundPresetBox.SelectedItem = items.FirstOrDefault(p =>
-            p.Path.Equals(Selected?.AlertSound ?? "", StringComparison.OrdinalIgnoreCase));
+        SyncSoundCombo(WarnSoundBox, Selected?.WarnSound);
+        SyncSoundCombo(FadedSoundBox, Selected?.FadedSound);
         _soundUxLoading = false;
+    }
+
+    private static void SyncSoundCombo(System.Windows.Controls.ComboBox box, string? path)
+    {
+        if (box?.ItemsSource is not List<SoundPreset> items) return;
+        box.SelectedItem = items.FirstOrDefault(p =>
+            p.Path.Equals(path ?? "", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>The live-log capture panel is manual-trigger tooling — library
@@ -626,9 +648,9 @@ public partial class TriggerManagerWindow : Window
     }
 
     /// <summary>The cast-anchor checkbox shows the EFFECTIVE state: an untouched
-    /// trigger is on auto (library triggers whose landing sentence is shared by
-    /// several spells anchor themselves — all hastes print "You feel much
-    /// faster."); clicking it stores an explicit choice.</summary>
+    /// trigger is on auto — EQL is solo-first, so EVERY library trigger anchors
+    /// itself (a groupmate's buff landing on you starts nothing); untick to opt
+    /// into group play. Clicking stores an explicit choice.</summary>
     private void UpdateAnchorUx()
     {
         if (CastAnchorCheck is null || CastAnchorHint is null) return;
@@ -636,22 +658,23 @@ public partial class TriggerManagerWindow : Window
 
         bool shared = _spellLibrary.IsSharedLanding(Selected.StartPattern);
         bool effective = Selected.CastAnchored
-            ?? (Selected.Id.StartsWith("lib-", StringComparison.Ordinal) && shared);
+            ?? Selected.Id.StartsWith("lib-", StringComparison.Ordinal);
 
         _anchorUxLoading = true;
         CastAnchorCheck.IsChecked = effective;
         _anchorUxLoading = false;
 
         string castLine = $"\"You begin casting {Selected.Name}.\"";
+        string sharedNote = shared
+            ? " Several spells print this exact landing text (all hastes say the same line), so unticked the bar is a coin flip."
+            : "";
         CastAnchorHint.Text = Selected.CastAnchored is null
-            ? shared && effective
-                ? $"Auto: ON — several spells print this exact landing text (all hastes say the same line), so the bar only starts right after your own {castLine} Untick to fire on any match."
-                : shared
-                    ? $"Several spells print this exact landing text — tick to only start the bar right after your own {castLine}"
-                    : $"Off — this start text is unambiguous; any match starts the bar. Tick to require your own {castLine} first."
+            ? effective
+                ? $"Auto: ON — solo-first: the bar only starts within 15s of your own {castLine} (Quick Buff bursts count). Untick if someone else casts this on you in a group.{sharedNote}"
+                : $"Off — manually created triggers fire on any match. Tick to require your own {castLine} first.{sharedNote}"
             : effective
                 ? $"On — the bar only starts within 15s of your own {castLine}"
-                : "Off — any matching line starts the bar.";
+                : $"Off — any matching line starts the bar, including someone else's cast landing on you.{sharedNote}";
     }
 
     /// <summary>Auto-learn owns the duration: the field is disabled and the
@@ -755,18 +778,16 @@ public partial class TriggerManagerWindow : Window
 
     // ---- alert previews -----------------------------------------------------
 
-    private void Speak_Click(object sender, RoutedEventArgs e)
-    {
-        if (Selected is null) return;
-        if (_alerts.Muted) { Status("Unmute to preview."); return; }
-        _alerts.Speak(Selected.AlertSpeak);
-    }
+    private void WarnSpeak_Click(object sender, RoutedEventArgs e) => Preview(Selected?.WarnSpeak, null);
+    private void FadedSpeak_Click(object sender, RoutedEventArgs e) => Preview(Selected?.FadedSpeak, null);
+    private void WarnPlay_Click(object sender, RoutedEventArgs e) => Preview(null, Selected?.WarnSound);
+    private void FadedPlay_Click(object sender, RoutedEventArgs e) => Preview(null, Selected?.FadedSound);
 
-    private void PlaySound_Click(object sender, RoutedEventArgs e)
+    private void Preview(string? speak, string? sound)
     {
         if (Selected is null) return;
         if (_alerts.Muted) { Status("Unmute to preview."); return; }
-        _alerts.Fire(null, Selected.AlertSound);
+        _alerts.Fire(speak, sound);
     }
 
     /// <summary>Jump to a sidebar page by its title ("Repop timer", "General", …).</summary>
@@ -815,25 +836,32 @@ public partial class TriggerManagerWindow : Window
 
     /// <summary>
     /// Show only the fields that mean something for the selected "Show in"
-    /// type — a repop trigger has no category, color, or rebuff reminder.
+    /// type — a repop trigger has no category, color, or rebuff reminder —
+    /// and hide the manual-only tooling (Show in, Type, cooldown reducer)
+    /// for library triggers, which arrive with all of that predefined.
     /// </summary>
     private void ApplyPanelVisibility()
     {
-        if (SpeakSoundGroup is null) return; // still initializing
+        if (AlertsGroup is null) return; // still initializing
 
         string p = PanelCombo.SelectedValue as string ?? Panels.Bars;
         bool bars = p == Panels.Bars;
         bool matrix = p is Panels.SelfBuffs or Panels.TargetDebuffs;
         bool timer = p == Panels.TimerAuto;
         bool flash = p == Panels.Flash;
+        bool manual = Selected?.IsLibrary != true;
 
         static Visibility V(bool show) => show ? Visibility.Visible : Visibility.Collapsed;
-        CategoryGroup.Visibility = V(bars);
+        ShowInGroup.Visibility = V(manual);
+        CategoryGroup.Visibility = V(bars); // nested in ShowInGroup → manual && bars
         DurationGroup.Visibility = V(bars || matrix || timer);
         EndGroup.Visibility = V(bars || matrix);
         BarsChecksGroup.Visibility = V(bars);
-        WarnGroup.Visibility = V(bars || matrix);
-        SpeakSoundGroup.Visibility = V(bars || matrix);
+        ReducerGroup.Visibility = V(bars && manual);
+        AlertsGroup.Visibility = V(bars || matrix);
+        // Flash text is a flash trigger's main field; elsewhere it's a manual
+        // power tool (library adds never come with one).
+        FlashGroup.Visibility = V(flash || manual);
 
         DurationLabel.Text = timer ? "Respawn time" : "Duration";
         // Auto-learn is a spell-duration concept — respawn timers don't learn.
@@ -855,7 +883,7 @@ public partial class TriggerManagerWindow : Window
             : matrix ? "Start pattern (regex — turns the cell green)"
             : "Start pattern (regex — starts the bar)";
         FlashLabel.Text = flash ? "Flash text (empty = the trigger's name)"
-            : "Flash this text on screen when it matches (optional)";
+            : "Flash this text on screen when the start pattern matches (optional)";
         PanelHint.Text = timer
             ? "When the pattern matches (e.g. a named mob death), the circular repop watch starts with this respawn time. Also listed in the watch's ☰ preset menu."
             : matrix ? "A red/green cell: green with seconds left while active, red when missing."

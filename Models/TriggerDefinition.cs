@@ -91,25 +91,66 @@ public sealed class TriggerDefinition
     [JsonIgnore] public Regex? ReduceRegex { get; set; }
 }
 
-/// <summary>When/how to alert for a trigger.</summary>
+/// <summary>When/how to alert for a trigger — two independent notices ("before
+/// it fades" and "when it faded"), each playing EITHER a spoken phrase OR a
+/// notification sound, never both.</summary>
 public sealed class AlertConfig
 {
-    /// <summary>Text spoken via Windows TTS when the alert fires. Optional.</summary>
-    public string? Speak { get; set; }
+    public const string ModeSpeak = "speak";
+    public const string ModeSound = "sound";
 
-    /// <summary>Voice on/off — off keeps the phrase (editable in the Manager)
-    /// but never speaks it. Old configs load as on.</summary>
-    public bool SpeakEnabled { get; set; } = true;
+    // ---- notice 1: "Notify before it fades" ---------------------------------
 
-    /// <summary>Path to a .wav file played when the alert fires. Optional.</summary>
-    public string? Sound { get; set; }
+    /// <summary>Master toggle for the pre-fade notice. null = pre-2.11 config;
+    /// ConfigService.NormalizeAlert derives it from the legacy fields below.</summary>
+    public bool? WarnEnabled { get; set; }
 
-    /// <summary>Fire this many seconds before the bar expires (0 = don't).</summary>
+    /// <summary>Seconds left when the pre-fade notice fires (default 15).</summary>
     public double AtSeconds { get; set; }
 
-    /// <summary>Fire when the bar reaches 0 (use for "cooldown ready").</summary>
-    public bool OnExpire { get; set; }
+    /// <summary>"speak" or "sound" — which channel the pre-fade notice uses.</summary>
+    public string WarnMode { get; set; } = "";
+
+    /// <summary>Pre-fade phrase (Windows TTS), default "&lt;Name&gt; is about to end".</summary>
+    public string? Speak { get; set; }
+
+    /// <summary>Pre-fade .wav (a Windows Media preset).</summary>
+    public string? Sound { get; set; }
+
+    // ---- notice 2: "Notify when it faded" -----------------------------------
+
+    /// <summary>Master toggle for the faded notice (doubles as "cooldown ready").</summary>
+    public bool? FadedEnabled { get; set; }
+
+    /// <summary>"speak" or "sound" — which channel the faded notice uses.</summary>
+    public string FadedMode { get; set; } = "";
+
+    /// <summary>Faded phrase, default "&lt;Name&gt; faded" ("… is ready" for Cooldowns).</summary>
+    public string? FadedSpeak { get; set; }
+
+    /// <summary>Faded .wav (a Windows Media preset).</summary>
+    public string? FadedSound { get; set; }
+
+    // ---- shared -------------------------------------------------------------
 
     /// <summary>Text to flash big in the screen centre when the trigger matches (optional).</summary>
     public string? FlashText { get; set; }
+
+    // ---- legacy (pre-2.11) — read for migration, kept coherent on save ------
+
+    /// <summary>LEGACY: voice on/off for the single old speak phrase.</summary>
+    public bool SpeakEnabled { get; set; } = true;
+
+    /// <summary>LEGACY: fire when the bar reaches 0 (the old model shared one
+    /// speak/sound payload between the timed warning and the expiry alert).</summary>
+    public bool OnExpire { get; set; }
+
+    /// <summary>Default pre-fade phrase for a trigger name.</summary>
+    public static string DefaultWarnPhrase(string name) => name + " is about to end";
+
+    /// <summary>Default faded phrase — cooldown-flavoured triggers announce "ready".</summary>
+    public static string DefaultFadedPhrase(string name, string category) =>
+        (category ?? "").Contains("cool", StringComparison.OrdinalIgnoreCase)
+            ? name + " is ready"
+            : name + " faded";
 }

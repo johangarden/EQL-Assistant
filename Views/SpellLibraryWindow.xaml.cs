@@ -110,12 +110,15 @@ public partial class SpellLibraryWindow : Window
     private static string FormatDuration(double sec) =>
         sec >= 3600 ? $"{sec / 3600:0.#}h" : sec >= 60 ? $"{sec / 60:0} min" : $"{sec:0}s";
 
-    /// <summary>The one add: a bar with the default spoken fade warning.</summary>
+    /// <summary>The one add: a bar with the default spoken fade warning. The
+    /// window closes with it — it covers the trigger list, so staying open
+    /// hides where the pick just landed; re-open per trigger instead.</summary>
     private void Add_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not SpellRow row) return;
         var def = SpellLibrary.BarTrigger(row.Spell, spokenWarning: true);
         if (def is null) return;
         _onAdd(def);
+        Close();
     }
 }
