@@ -142,9 +142,13 @@ everything else is **GLOBAL**.
   character log), overlay basics.
 - **Data** — everything the app knows is derived from your log: **Reparse
   entire log file** (additive backfill after updates add new log-based
-  features) and **Reset data files & rebuild** (wipe the derived files and
-  rebuild them cleanly from the current log — settings, loadouts, respawns
-  and ★-kept fights are never touched).
+  features), **Merge in another log file…** (replay a log from a second PC —
+  the file is **copied into the config folder with a timestamp**, listed
+  under *Additional log files*, so the merged history survives even if the
+  original is deleted), and **Reset data files & rebuild** (wipe the derived
+  files and rebuild them cleanly from the current log **plus every stored
+  additional file** — settings, loadouts, respawns and ★-kept fights are
+  never touched).
 - **Shortcuts** — the global hotkey reference.
 
 Panels stick to their chosen screen corner and grow away from it (Bottom-left

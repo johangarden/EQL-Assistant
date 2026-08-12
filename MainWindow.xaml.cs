@@ -411,10 +411,29 @@ public partial class MainWindow : Window
         return summary;
     }
 
+    /// <summary>Data page's "Merge in another log file…": store a timestamped
+    /// COPY in the config folder FIRST — the original may be deleted or moved,
+    /// and Reset &amp; rebuild replays the stored copies — then run the
+    /// retroactive replay on the copy.</summary>
+    private string MergeLogFile(string pickedPath)
+    {
+        string copy;
+        try { copy = _configService.StoreMergedLogCopy(pickedPath); }
+        catch (Exception ex)
+        {
+            Log.Warn("Merge copy failed: " + ex.Message);
+            return "Couldn't copy the file into the config folder — nothing was merged.";
+        }
+        Log.Info($"Merged log stored as {Path.GetFileName(copy)}.");
+        return ReparseFile(copy)
+            + $" Stored as {Path.GetFileName(copy)} — Reset & rebuild replays it automatically.";
+    }
+
     /// <summary>Data page's "Reset & rebuild": wipe every log-DERIVED data file
     /// (loot, raid kills, Sky progress, seen spells, learned durations), then
-    /// rebuild them all with a full reparse. Config, loadouts, respawns, raid
-    /// targets, kept fights and window positions are untouched.</summary>
+    /// rebuild them all with a full reparse of the followed log PLUS every
+    /// stored merge copy. Config, loadouts, respawns, raid targets, kept
+    /// fights and window positions are untouched.</summary>
     private string ResetAndRebuild()
     {
         Log.Info("Data reset: wiping derived data files before full reparse.");
@@ -423,7 +442,13 @@ public partial class MainWindow : Window
         _skyQuests.ResetProgress();
         _spellLib.ResetSeen();
         _durations.ResetAll();
-        return "Data files reset. " + ReparseFullLog();
+
+        string result = "Data files reset. " + ReparseFullLog();
+        var merged = _configService.ListMergedLogs();
+        foreach (var f in merged) ReparseFile(f); // each logs its own summary
+        if (merged.Count > 0)
+            result += $" Also replayed {merged.Count} stored merged log file(s).";
+        return result;
     }
 
     private static readonly string[] LineTimeFormats =
@@ -925,7 +950,7 @@ public partial class MainWindow : Window
             _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations)
             {
                 ReparseFullLogRequested = ReparseFullLog,
-                ReparseOtherRequested = ReparseFile,
+                ReparseOtherRequested = MergeLogFile,
                 ResetAndRebuildRequested = ResetAndRebuild,
             };
             _manager.Closed += (_, _) => _manager = null;

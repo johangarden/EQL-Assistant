@@ -655,6 +655,12 @@ public partial class App : Application
                 SpellLibrary.BarTrigger(lib2.FindByName("Quickness")!, spokenWarning: true) is
                     { Alert: { Speak: "Quickness is fading", SpeakEnabled: true, AtSeconds: 20 } });
 
+            // Merged-log copies: timestamped name keeps base + extension.
+            Check("merge copies: timestamped copy name",
+                ConfigService.MergedCopyName("eqlog_Thorrak_paineel.txt",
+                    new DateTime(2026, 8, 12, 20, 30, 15))
+                    == "eqlog_Thorrak_paineel-20260812-203015.txt");
+
             // A speak phrase with no timing defaults to the expiry alert.
             var mute = new Models.TriggerDefinition
             {

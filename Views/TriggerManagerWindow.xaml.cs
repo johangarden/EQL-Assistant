@@ -60,6 +60,40 @@ public partial class TriggerManagerWindow : Window
         System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
         try { Status(ReparseOtherRequested(dlg.FileName)); }
         finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+        RefreshMergedLogs();
+    }
+
+    // ---- stored merge copies (Data page) --------------------------------------
+
+    private sealed record MergedLogItem(string Path)
+    {
+        public override string ToString()
+        {
+            var fi = new System.IO.FileInfo(Path);
+            return $"{fi.Name}   ·   {fi.Length / 1048576.0:0.0} MB   ·   {fi.LastWriteTime:dd MMM yyyy HH:mm}";
+        }
+    }
+
+    private void RefreshMergedLogs()
+    {
+        if (MergedLogsList is null) return;
+        var items = _configService.ListMergedLogs().Select(f => new MergedLogItem(f)).ToList();
+        MergedLogsList.ItemsSource = items;
+        MergedLogsList.Visibility = items.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        MergedLogsEmptyText.Visibility = items.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+        RemoveMergedBtn.IsEnabled = items.Count > 0;
+    }
+
+    private void RemoveMerged_Click(object sender, RoutedEventArgs e)
+    {
+        if (MergedLogsList.SelectedItem is not MergedLogItem item) { Status("Select a file first."); return; }
+        try
+        {
+            System.IO.File.Delete(item.Path);
+            Status($"Removed {System.IO.Path.GetFileName(item.Path)} — the next Reset & rebuild won't include it.");
+        }
+        catch (Exception ex) { Status("Couldn't remove: " + ex.Message); }
+        RefreshMergedLogs();
     }
 
     private void ResetRebuild_Click(object sender, RoutedEventArgs e)
@@ -72,11 +106,12 @@ public partial class TriggerManagerWindow : Window
         if (!ConfirmDialog.Show(this, "Reset data files & rebuild",
                 "This WIPES all log-derived data — loot history, raid kills + drops, " +
                 "Plane of Sky progress, seen spells and learned durations — and rebuilds " +
-                "everything from a full reparse of the current log file.\n\n" +
+                "everything from a full reparse of the current log file PLUS every " +
+                "stored additional log file.\n\n" +
                 "NOT touched: settings, triggers/loadouts, respawns, raid targets, " +
                 "★-kept fights and panel positions.\n\n" +
-                "Anything the current log no longer contains (a rotated/deleted old log) " +
-                "is lost for good. Continue?",
+                "Anything that is in neither the current log nor a stored file " +
+                "(a rotated/deleted old log that was never merged in) is lost for good. Continue?",
                 yesText: "Reset & rebuild", noText: "Cancel"))
             return;
 
@@ -157,6 +192,7 @@ public partial class TriggerManagerWindow : Window
         UpdateCharInfo();
 
         PopulateSoundPresets();
+        RefreshMergedLogs();
         LoadSettingsFields();
         MuteCheck.IsChecked = _alerts.Muted;
         MuteCheck.Click += (_, _) => _alerts.Muted = MuteCheck.IsChecked == true;

@@ -458,6 +458,39 @@ public sealed class ConfigService
     public List<TriggerDefinition> BuildRespawnTriggers() =>
         LoadRespawns().Select(BuildRespawnTrigger).Where(t => t is not null).Select(t => t!).ToList();
 
+    // ---- merged log copies -----------------------------------------------------
+    // "Merge in another log file…" stores a timestamped COPY inside the config
+    // folder, so Reset & rebuild can replay merged history even after the
+    // original file is deleted or moved.
+
+    public string MergedLogsDirectory => Path.Combine(ConfigDirectory, "merged-logs");
+
+    /// <summary>Stored merge copies, oldest first (empty when none).</summary>
+    public List<string> ListMergedLogs()
+    {
+        try
+        {
+            return Directory.Exists(MergedLogsDirectory)
+                ? Directory.GetFiles(MergedLogsDirectory, "*.txt").OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList()
+                : new();
+        }
+        catch { return new(); }
+    }
+
+    /// <summary>"eqlog_X.txt" + 2026-08-12 20:30:15 → "eqlog_X-20260812-203015.txt".</summary>
+    public static string MergedCopyName(string sourceFileName, DateTime when) =>
+        $"{Path.GetFileNameWithoutExtension(sourceFileName)}-{when:yyyyMMdd-HHmmss}{Path.GetExtension(sourceFileName)}";
+
+    /// <summary>Copy a picked log into merged-logs; returns the copy's path.</summary>
+    public string StoreMergedLogCopy(string sourcePath)
+    {
+        Directory.CreateDirectory(MergedLogsDirectory);
+        string dest = Path.Combine(MergedLogsDirectory,
+            MergedCopyName(Path.GetFileName(sourcePath), DateTime.Now));
+        File.Copy(sourcePath, dest, overwrite: true);
+        return dest;
+    }
+
     // ---- kept fights (DPS meter history) -------------------------------------
 
     public string SavedFightsPath => Path.Combine(ConfigDirectory, "fights.json");

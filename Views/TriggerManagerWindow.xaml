@@ -445,9 +445,21 @@
                                        Text="'Merge in another log file…' runs the same replay on a picked file — e.g. a log copied over from a second PC. Same dedupes, so the histories merge safely."/>
 
                             <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Additional log files" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Every merged file is COPIED into the config folder with a timestamp, so its history survives even if the original is deleted or moved — Reset &amp; rebuild replays the main log AND every file below."/>
+                            <ListBox x:Name="MergedLogsList" MaxHeight="120" Margin="0,6,0,0"/>
+                            <TextBlock x:Name="MergedLogsEmptyText" Style="{StaticResource Hint}" Margin="0,4,0,0"
+                                       Text="No additional files yet — 'Merge in another log file…' adds them."/>
+                            <Button x:Name="RemoveMergedBtn" Content="Remove selected" Click="RemoveMerged_Click"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
+                                       Text="Removing a file doesn't delete already-merged data — but the next Reset &amp; rebuild won't include it."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Reset data files &amp; rebuild" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="DESTRUCTIVE: wipes all the derived data files above, then rebuilds them with a full reparse — a clean slate built purely from what the current log contains. Use it if data ever looks wrong or double-counted. Settings, triggers/loadouts, respawns, raid targets, ★-kept fights and panel positions are never touched."/>
+                                       Text="DESTRUCTIVE: wipes all the derived data files above, then rebuilds them with a full reparse of the current log PLUS every stored additional file. Use it if data ever looks wrong or double-counted. Settings, triggers/loadouts, respawns, raid targets, ★-kept fights and panel positions are never touched."/>
                             <Button x:Name="ResetRebuildBtn" Content="🗑 Reset data files &amp; rebuild from log" Click="ResetRebuild_Click"
                                     HorizontalAlignment="Left" Margin="0,6,0,0"
                                     Background="#3A1B1E" Foreground="#FF8A80" BorderBrush="#7A2E33"/>

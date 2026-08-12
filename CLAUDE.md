@@ -76,7 +76,9 @@ corner-anchor (`window-<key>.json`). `TriggerManagerWindow` is the Manager
 Storage: `%APPDATA%\EQL_Assistant\` — `config.json` (no triggers),
 `loadouts\<slug>.json`, `respawns.json`, `raid-targets.json`,
 `raid-kills.json`, `loot.json`, `fights.json` (★-kept), `seen-spells.json`,
-`spell-durations.json`, `window-*.json`.
+`spell-durations.json`, `window-*.json`, `merged-logs\` (timestamped copies
+of merged-in log files — Reset & rebuild replays the followed log + all of
+these, so merged cross-machine history survives a reset).
 
 ## Design rules that keep recurring
 
