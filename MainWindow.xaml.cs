@@ -1494,9 +1494,9 @@ public partial class MainWindow : Window
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
         menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
         menu.Items.Add("Death recap…", null, (_, _) => OpenDeathRecap());
-        menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
+        menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdates(manual: true));
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
         menu.Items.Add("Reset position", null, (_, _) => ResetPosition());
