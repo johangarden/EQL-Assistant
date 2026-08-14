@@ -605,6 +605,41 @@ public partial class App : Application
             Check("anchor: library flags the shared haste landing as ambiguous",
                 lib2.IsSharedLanding(Esc("You feel much faster."))
                 && !lib2.IsSharedLanding("not a spell line at all"));
+
+            // Condition badges: landings derive from the library's uniform
+            // wear-off families — no keyword guessing, buffs never match.
+            var cw = new ConditionWatcher(lib2);
+            Check("conditions: landing sets derive from the library",
+                cw.LandingCount(ConditionWatcher.Stunned) > 3
+                && cw.LandingCount(ConditionWatcher.Feared) > 3
+                && cw.LandingCount(ConditionWatcher.Charmed) > 0
+                && cw.LandingCount(ConditionWatcher.Mezzed) > 3);
+            cw.ProcessLine($"[{AT(0)}] You are struck by a sudden force.");
+            Check("conditions: a stun landing raises the badge",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 5)) is [{ Kind: ConditionWatcher.Stunned }]);
+            cw.ProcessLine($"[{AT(6)}] You are no longer stunned.");
+            Check("conditions: the wear-off line clears it",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 7)).Count == 0);
+            cw.ProcessLine($"[{AT(10)}] You freeze in terror.");
+            cw.ProcessLine($"[{AT(11)}] You have been charmed.");
+            Check("conditions: fear + charm stack, oldest first",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 12)) is
+                    [{ Kind: ConditionWatcher.Feared }, { Kind: ConditionWatcher.Charmed }]);
+            cw.ProcessLine($"[{AT(20)}] You have been slain by a gnoll reaver!");
+            Check("conditions: death clears everything",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 21)).Count == 0);
+            cw.ProcessLine($"[{AT(30)}] Your muscles scream with strength.");
+            cw.ProcessLine($"[{AT(30)}] Your body screams with the power of an Avatar.");
+            Check("conditions: scream-flavored BUFFS never raise a badge",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 31)).Count == 0);
+            cw.ProcessLine($"[{AT(40)}] You are stunned by a gust of air.");
+            Check("conditions: hygiene cap culls an eaten stun wear-off (30s)",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 45)).Count == 1
+                && cw.Active(new DateTime(2026, 8, 10, 23, 1, 20)).Count == 0);
+            cw.ProcessLine($"[{AT(90)}] Your mind fills with fear.");
+            cw.ProcessLine($"[{AT(95)}] You have entered The Plane of Hate.");
+            Check("conditions: zoning clears the badges",
+                cw.Active(new DateTime(2026, 8, 10, 23, 1, 36)).Count == 0);
             var dur = new SpellDurations(new ConfigService(), lib2, durPath);
             Check("durations: rank suffix pools",
                 SpellDurations.BaseKey("Mesmerization VII") == "mesmerization"

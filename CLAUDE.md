@@ -61,6 +61,12 @@ the affected suites (with `-Wait`) before committing.
 ## Architecture map
 
 `Services/` — the brains, all fed line-by-line from `LogWatcher` via `LogBus`:
+- `ConditionWatcher` — big stun/fear/charm/mez badges (`ConditionsWindow`).
+  Landing/wear-off sets DERIVE from the spell library's uniform wear-off
+  families ("You are no longer stunned/afraid/charmed/mesmerized.") — never
+  keyword guessing. Badge shows landing→wear-off; censors: own death, zoning;
+  hygiene caps per condition (stun 30s … charm 21m). Live-only (not fed on
+  catch-up).
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,

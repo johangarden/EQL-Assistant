@@ -293,6 +293,19 @@ spell's third-person landing ("A froglok has been poisoned.") opens a per-mob
 bar — landings without your cast are someone else's and are ignored. Since
 these never tick, they're culled by the overrun cap instead of silence.
 
+## Condition badges (stun / fear / charm / mez)
+
+Raid bosses stun. When you are **stunned, feared, charmed or mesmerized**, a
+**big glyph badge** (starburst / warning triangle / heart / crescent) appears
+in its own movable panel and stays on screen for the **entire duration** —
+from the landing line ("You are struck by a sudden force.") to the wear-off
+line ("You are no longer stunned."), counting the seconds. Detection is
+derived from the spell library's wear-off families, so buff lines never
+false-positive. Dying or zoning clears the badges; a per-condition hygiene
+cap covers a missed wear-off. Toggle under tray → Panels → **Condition
+badges**; place it by unlocking (Ctrl+Alt+L) and dragging — Ctrl+Alt+T shows
+demo badges.
+
 **The overrun state (everywhere bars have a fade line):** when a bar's
 learned/estimated timer runs out *before* the real fade message arrives, it
 doesn't vanish — it **grays out and counts up** (auto-learn bars say

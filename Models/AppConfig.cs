@@ -106,6 +106,10 @@ public sealed class OverlayConfig
     /// materializes on screen while it has rows, or while unlocked).</summary>
     public bool EnemyDotsVisible { get; set; } = true;
 
+    /// <summary>Whether the big stun/fear/charm/mez condition badges are shown
+    /// (materializes only while a condition is active, or unlocked).</summary>
+    public bool ConditionsVisible { get; set; } = true;
+
     /// <summary>Panels-menu master toggles: every panel that can appear gets
     /// one. Matrices still need cells, reminders still need a missing buff.</summary>
     public bool SelfMatrixVisible { get; set; } = true;
