@@ -125,9 +125,13 @@ these, so merged cross-machine history survives a reset).
   when no duration). Unknown durations count UP, never guess.
 - **Overrun state**: any bar with a fade line (trigger bars with EndPattern,
   enemy-DoT bars) that expires WITHOUT the fade being witnessed grays out and
-  counts up ("+14s") instead of vanishing — removed by the real fade line, a
-  re-cast (refresh in place), or a 60s unwitnessed cull. Never delete on a
-  mere estimate when the log can still contradict it.
+  counts up ("+14s"; auto-learn bars say "learning +14s") instead of
+  vanishing — removed by the real fade line, a re-cast (refresh in place), or
+  an unwitnessed cull at max(60s, the bar's own estimate) (enemy DoTs keep
+  the flat 60s). Own death strips all non-Cooldown bars + both matrices
+  (buffs die with you — and death is the usual eater of fade lines, which is
+  what makes the generous cap honest). Never delete on a mere estimate when
+  the log can still contradict it.
 - **88 library spells have junk landing text** ("You ."): their triggers
   anchor on `^You begin (?:casting|singing) <name>(?: [IVX]{1,7})?\.` instead.
   `SpellLibrary.MessageCorrections` overrides junk with sentences OBSERVED in

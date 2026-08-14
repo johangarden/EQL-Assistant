@@ -292,11 +292,16 @@ these never tick, they're culled by the overrun cap instead of silence.
 
 **The overrun state (everywhere bars have a fade line):** when a bar's
 learned/estimated timer runs out *before* the real fade message arrives, it
-doesn't vanish — it **grays out and counts up** ("+14s") until the fade line,
-death, or a cull cap closes it. The bar stops claiming precision and shows
-"still there, still learning" — and the eventual fade is exactly what teaches
-the learner the true duration. A re-cast landing on an overrun bar refreshes
-it in place.
+doesn't vanish — it **grays out and counts up** (auto-learn bars say
+"**learning +14s**") until the fade line, death, or a cull cap closes it. The
+cap scales with the bar: up to the bar's own estimated duration again (60s
+minimum), so a library starting value that runs short by minutes can't
+vanish a buff that's demonstrably still up. The bar stops claiming precision
+and shows "still there, still learning" — and the eventual fade is exactly
+what teaches the learner the true duration. A re-cast landing on an overrun
+bar refreshes it in place. **Dying strips your bars** (except Cooldowns,
+which tick through death) — buffs die with you, and that's also the usual
+reason a fade line never printed.
 Countdowns use learned/library durations and count *up* when the duration is
 unknown rather than guessing. The panel only appears while it has rows (or
 while unlocked, so you can place it); toggle and anchor live on the

@@ -808,6 +808,41 @@ public partial class App : Application
             Check("overrun: bars without an end pattern still just expire",
                 nf.IsExpired && !nf.WaitsForFade);
 
+            // Learning mode: the gray bar SAYS it's learning, and the cull cap
+            // scales with the estimate (a short library value must not vanish
+            // the bar while the buff is demonstrably still up).
+            var lv = ViewModels.TimerBarViewModel.CreateTimer("k3", "Learner", "Buffs", 600,
+                new DateTime(2026, 8, 11, 12, 0, 0), Brushes.Blue, 0, false, null, null,
+                waitsForFade: true, learnsDuration: true);
+            lv.EnterOverrun();
+            lv.Refresh(new DateTime(2026, 8, 11, 12, 1, 30), 5);
+            Check("overrun: learning bar labels the count-up",
+                lv.RemainingText == "learning +90s");
+            Check("overrun: cull cap scales to the bar's own duration",
+                Math.Abs(TriggerEngine.OverrunCapFor(lv) - 600) < 0.01
+                && Math.Abs(TriggerEngine.OverrunCapFor(ov) - 60) < 0.01);
+
+            // Own death strips buffs (that's also what eats fade lines) — but
+            // cooldown bars keep ticking through it.
+            var dth = new Models.AppConfig();
+            dth.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "b1", Name = "Skin", Category = "Buffs", DurationSeconds = 600,
+                StartPattern = @"^Your skin hardens\.",
+            });
+            dth.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "c1", Name = "Harm Touch", Category = "Cooldowns", DurationSeconds = 1200,
+                StartPattern = @"^You begin casting Harm Touch\.", CastAnchored = false,
+            });
+            foreach (var t in dth.Triggers) ConfigService.CompileOne(t);
+            var dthEng = new TriggerEngine(dth, new AlertService());
+            dthEng.ProcessLine($"[{AT(0)}] Your skin hardens.");
+            dthEng.ProcessLine($"[{AT(1)}] You begin casting Harm Touch.");
+            dthEng.ProcessLine($"[{AT(20)}] You have been slain by a gnoll reaver!");
+            Check("death: buff bars strip, cooldown bars survive",
+                dthEng.Bars.Count == 1 && dthEng.Bars[0].Name == "Harm Touch");
+
             // A legacy speak phrase with no timing meant "say it when the bar
             // runs out" — it migrates to the faded notice, phrase intact.
             var mute = new Models.TriggerDefinition
