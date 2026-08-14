@@ -86,6 +86,10 @@ public sealed class OverlayConfig
     /// <summary>Whether the DPS meter panel is shown (toggled from toolbar / tray / Ctrl+Alt+D).</summary>
     public bool MeterVisible { get; set; } = true;
 
+    /// <summary>Meter scope: solo (your abilities ranked, pet collapsible) vs
+    /// group (everyone the log shows, ranked). EQL is solo-first.</summary>
+    public bool MeterSoloMode { get; set; } = true;
+
     /// <summary>Your pet's name — enables the pet line in the DPS meter's incoming footer.</summary>
     public string PetName { get; set; } = "";
 
@@ -101,6 +105,10 @@ public sealed class OverlayConfig
     /// <summary>Whether the automatic Enemy DoTs panel is shown (it only
     /// materializes on screen while it has rows, or while unlocked).</summary>
     public bool EnemyDotsVisible { get; set; } = true;
+
+    /// <summary>Whether the big stun/fear/charm/mez condition badges are shown
+    /// (materializes only while a condition is active, or unlocked).</summary>
+    public bool ConditionsVisible { get; set; } = true;
 
     /// <summary>Panels-menu master toggles: every panel that can appear gets
     /// one. Matrices still need cells, reminders still need a missing buff.</summary>

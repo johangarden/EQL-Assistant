@@ -372,7 +372,8 @@ public partial class TimerWindow : Window
             {
                 _remaining = 0;
                 _running = false;
-                _alerts.Beep();
+                // Spoken, not the Windows pling — a named mob announces itself.
+                _alerts.Speak(_modeName is null ? "Respawn" : $"{_modeName} respawn");
                 // A named repop just spawned — the next-soonest takes the pie.
                 if (_modeName is not null) PromoteSoonest();
             }
@@ -390,7 +391,7 @@ public partial class TimerWindow : Window
             double rem = (e.EndTime - now).TotalSeconds;
             if (rem <= 0)
             {
-                _alerts.Beep();
+                _alerts.Speak($"{e.Name} respawn");
                 _secondaries.Remove(e.Vm);
                 _repops.RemoveAt(i);
                 continue;

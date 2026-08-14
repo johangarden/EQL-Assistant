@@ -229,11 +229,18 @@ public sealed class SpellLibrary
     /// fills the gaps (every poison/disease DoT says "You have been poisoned."
     /// -style lines but is typed just "Detrimental"); the bucket is the
     /// fallback.</summary>
+    /// <summary>A heal effect running longer than this is maintenance regen —
+    /// a BUFF — not a rotational HoT: Chloroplast holds 16 minutes, Slugs
+    /// Healing 24 seconds. The regen landing family is buff territory outright.</summary>
+    private const double HotMaxDurationSec = 120;
+
     public static string TriggerCategory(Spell s)
     {
         string t = s.Type;
+        bool longRunning = s.DurationSec > HotMaxDurationSec;
         if (t.Contains("Heal Over Time", StringComparison.OrdinalIgnoreCase)
-            || t.Equals("Regen", StringComparison.OrdinalIgnoreCase)) return "HoTs";
+            || t.Equals("Regen", StringComparison.OrdinalIgnoreCase))
+            return longRunning ? "Buffs" : "HoTs"; // "Regen"-typed Spiritual Light runs 45m
         if (t.Contains("Damage Over Time", StringComparison.OrdinalIgnoreCase)) return "DoTs";
         if (t.Equals("Heal", StringComparison.OrdinalIgnoreCase)) return "HoTs";
 
@@ -246,9 +253,11 @@ public sealed class SpellLibrary
                        || land.Contains("plague", StringComparison.OrdinalIgnoreCase)
                        || land.Contains("withers", StringComparison.OrdinalIgnoreCase)))
             return "DoTs";
-        if (!debuff && (land.Contains("regenerate", StringComparison.OrdinalIgnoreCase)
-                        || land.Contains("healed", StringComparison.OrdinalIgnoreCase)))
-            return "HoTs";
+        // "You begin to regenerate." = the regen line (Chloroplast & kin): buffs.
+        if (!debuff && land.Contains("regenerate", StringComparison.OrdinalIgnoreCase))
+            return "Buffs";
+        if (!debuff && land.Contains("healed", StringComparison.OrdinalIgnoreCase))
+            return longRunning ? "Buffs" : "HoTs";
 
         return debuff ? "Debuffs" : "Buffs";
     }
@@ -321,7 +330,9 @@ public sealed class SpellLibrary
             if (FindByName(t.Name) is not { } s) continue;
             bool touched = false;
 
-            if (t.Category is "Buffs" or "Debuffs" && TriggerCategory(s) is var cat && cat != t.Category)
+            // HoTs included since 2.12: the regen line (Chloroplast) was
+            // mis-typed HoT and heals back to Buffs on load.
+            if (t.Category is "Buffs" or "Debuffs" or "HoTs" && TriggerCategory(s) is var cat && cat != t.Category)
             {
                 t.Category = cat;
                 touched = true;

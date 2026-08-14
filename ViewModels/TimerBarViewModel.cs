@@ -16,7 +16,13 @@ public sealed class TimerBarViewModel : ViewModelBase
         Category = category;
         Fill = fill;
         Fill.Freeze();
+        // HoTs are the bars you actively watch to stay alive — render taller.
+        HeightScale = Services.TriggerColors.ForCategory(category) == Services.TriggerColors.Heal
+            ? 1.4 : 1.0;
     }
+
+    /// <summary>Multiplier on the configured bar height (HoTs 1.4×, rest 1×).</summary>
+    public double HeightScale { get; }
 
     /// <summary>A normal countdown bar. <paramref name="waitsForFade"/> = the
     /// trigger has an end pattern: on expiry the bar OVERRUNS (grays out and
@@ -27,7 +33,7 @@ public sealed class TimerBarViewModel : ViewModelBase
         DateTime endTimeLocal, Brush fill,
         double alertAtSeconds, bool alertOnExpire, string? alertSpeak, string? alertSound,
         string? alertFadedSpeak = null, string? alertFadedSound = null,
-        bool waitsForFade = false)
+        bool waitsForFade = false, bool learnsDuration = false)
     {
         var vm = new TimerBarViewModel(key, name, category, fill)
         {
@@ -40,6 +46,7 @@ public sealed class TimerBarViewModel : ViewModelBase
             AlertFadedSpeak = alertFadedSpeak,
             AlertFadedSound = alertFadedSound,
             WaitsForFade = waitsForFade,
+            LearnsDuration = learnsDuration,
         };
         vm.Refresh(DateTime.Now, double.MaxValue);
         return vm;
@@ -82,6 +89,10 @@ public sealed class TimerBarViewModel : ViewModelBase
 
     /// <summary>True when the trigger has an end pattern (see CreateTimer).</summary>
     public bool WaitsForFade { get; private init; }
+
+    /// <summary>Auto-learn is on: an overrun means the estimate was short and
+    /// the coming fade line will teach the real duration.</summary>
+    public bool LearnsDuration { get; private init; }
 
     private bool _isOverrun;
     /// <summary>Expired without a witnessed fade: gray, counting up.</summary>
@@ -159,7 +170,9 @@ public sealed class TimerBarViewModel : ViewModelBase
             OverrunSeconds = Math.Max(0, (now - EndTimeLocal).TotalSeconds);
             RemainingSeconds = 0;
             Fraction = 1; // full gray bar: "still up, past the estimate"
-            RemainingText = $"+{OverrunSeconds:0}s";
+            RemainingText = LearnsDuration
+                ? $"learning +{OverrunSeconds:0}s"
+                : $"+{OverrunSeconds:0}s";
             IsWarning = false;
             return;
         }

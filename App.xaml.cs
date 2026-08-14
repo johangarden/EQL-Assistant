@@ -502,7 +502,11 @@ public partial class App : Application
             Check("typing: Snails Healing is a HoT (wiki type)", CatOf("Snails Healing") == "HoTs");
             Check("typing: Envenomed Bolt is a DoT (poison landing)", CatOf("Envenomed Bolt") == "DoTs");
             Check("typing: Boil Blood is a DoT (blood boils)", CatOf("Boil Blood") == "DoTs");
-            Check("typing: Regeneration is a HoT (regenerate landing)", CatOf("Regeneration") == "HoTs");
+            // The regen line is maintenance, not rotational healing (2.12).
+            Check("typing: Regeneration/Chloroplast are regen BUFFS, not HoTs",
+                CatOf("Regeneration") == "Buffs" && CatOf("Chloroplast") == "Buffs");
+            Check("typing: a long 'Regen'-typed spell is a buff too",
+                CatOf("Spiritual Light") == "Buffs");
             Check("typing: Quickness stays a buff", CatOf("Quickness") == "Buffs");
             var retype = new[]
             {
@@ -519,6 +523,21 @@ public partial class App : Application
                 && retype[3].Category == "Debuffs" && retype[3].StartPattern.Length == 0
                 && retype[1].StartPattern == System.Text.RegularExpressions.Regex
                     .Escape("You feel much faster."));
+            // Pre-2.12 files carry the regen line as HoTs — heals back to Buffs.
+            var regen = new Models.TriggerDefinition
+                { Id = "lib-chloroplast", Name = "Chloroplast", Category = "HoTs" };
+            lib2.HealLibraryTriggers(new[] { regen });
+            Check("typing: an existing HoT-typed Chloroplast heals to Buffs",
+                regen.Category == "Buffs");
+
+            // HoT bars carry extra height (the stay-alive bars).
+            Check("bars: HoT bars render 1.4x tall, others 1x",
+                ViewModels.TimerBarViewModel.CreateTimer("h1", "Slugs Healing", "HoTs", 24,
+                    DateTime.Now.AddSeconds(24), Brushes.Green, 0, false, null, null)
+                    .HeightScale == 1.4
+                && ViewModels.TimerBarViewModel.CreateTimer("h2", "Quickness", "Buffs", 660,
+                    DateTime.Now.AddSeconds(660), Brushes.Blue, 0, false, null, null)
+                    .HeightScale == 1.0);
 
             // Junk landing text ("You .") falls back to the begin-cast line —
             // and already-added broken triggers heal to it on load.
@@ -586,6 +605,45 @@ public partial class App : Application
             Check("anchor: library flags the shared haste landing as ambiguous",
                 lib2.IsSharedLanding(Esc("You feel much faster."))
                 && !lib2.IsSharedLanding("not a spell line at all"));
+
+            // Condition badges: landings derive from the library's uniform
+            // wear-off families — no keyword guessing, buffs never match.
+            var cw = new ConditionWatcher(lib2);
+            Check("conditions: landing sets derive from the library",
+                cw.LandingCount(ConditionWatcher.Stunned) > 3
+                && cw.LandingCount(ConditionWatcher.Feared) > 3
+                && cw.LandingCount(ConditionWatcher.Charmed) > 0
+                && cw.LandingCount(ConditionWatcher.Mezzed) > 3);
+            cw.ProcessLine($"[{AT(0)}] You are struck by a sudden force.");
+            Check("conditions: a stun landing raises the badge",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 5)) is [{ Kind: ConditionWatcher.Stunned }]);
+            cw.ProcessLine($"[{AT(2)}] You are no longer stunned.");
+            cw.ProcessLine($"[{AT(3)}] You are stunned."); // plain form: melee bash/slam too
+            Check("conditions: the plain melee-stun line raises the badge",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 4)) is [{ Kind: ConditionWatcher.Stunned }]);
+            cw.ProcessLine($"[{AT(6)}] You are no longer stunned.");
+            Check("conditions: the wear-off line clears it",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 7)).Count == 0);
+            cw.ProcessLine($"[{AT(10)}] You freeze in terror.");
+            cw.ProcessLine($"[{AT(11)}] You have been charmed.");
+            Check("conditions: fear + charm stack, oldest first",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 12)) is
+                    [{ Kind: ConditionWatcher.Feared }, { Kind: ConditionWatcher.Charmed }]);
+            cw.ProcessLine($"[{AT(20)}] You have been slain by a gnoll reaver!");
+            Check("conditions: death clears everything",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 21)).Count == 0);
+            cw.ProcessLine($"[{AT(30)}] Your muscles scream with strength.");
+            cw.ProcessLine($"[{AT(30)}] Your body screams with the power of an Avatar.");
+            Check("conditions: scream-flavored BUFFS never raise a badge",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 31)).Count == 0);
+            cw.ProcessLine($"[{AT(40)}] You are stunned by a gust of air.");
+            Check("conditions: hygiene cap culls an eaten stun wear-off (30s)",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 45)).Count == 1
+                && cw.Active(new DateTime(2026, 8, 10, 23, 1, 20)).Count == 0);
+            cw.ProcessLine($"[{AT(90)}] Your mind fills with fear.");
+            cw.ProcessLine($"[{AT(95)}] You have entered The Plane of Hate.");
+            Check("conditions: zoning clears the badges",
+                cw.Active(new DateTime(2026, 8, 10, 23, 1, 36)).Count == 0);
             var dur = new SpellDurations(new ConfigService(), lib2, durPath);
             Check("durations: rank suffix pools",
                 SpellDurations.BaseKey("Mesmerization VII") == "mesmerization"
@@ -807,6 +865,41 @@ public partial class App : Application
             nf.Refresh(new DateTime(2026, 8, 11, 12, 0, 11), 5);
             Check("overrun: bars without an end pattern still just expire",
                 nf.IsExpired && !nf.WaitsForFade);
+
+            // Learning mode: the gray bar SAYS it's learning, and the cull cap
+            // scales with the estimate (a short library value must not vanish
+            // the bar while the buff is demonstrably still up).
+            var lv = ViewModels.TimerBarViewModel.CreateTimer("k3", "Learner", "Buffs", 600,
+                new DateTime(2026, 8, 11, 12, 0, 0), Brushes.Blue, 0, false, null, null,
+                waitsForFade: true, learnsDuration: true);
+            lv.EnterOverrun();
+            lv.Refresh(new DateTime(2026, 8, 11, 12, 1, 30), 5);
+            Check("overrun: learning bar labels the count-up",
+                lv.RemainingText == "learning +90s");
+            Check("overrun: cull cap scales to the bar's own duration",
+                Math.Abs(TriggerEngine.OverrunCapFor(lv) - 600) < 0.01
+                && Math.Abs(TriggerEngine.OverrunCapFor(ov) - 60) < 0.01);
+
+            // Own death strips buffs (that's also what eats fade lines) — but
+            // cooldown bars keep ticking through it.
+            var dth = new Models.AppConfig();
+            dth.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "b1", Name = "Skin", Category = "Buffs", DurationSeconds = 600,
+                StartPattern = @"^Your skin hardens\.",
+            });
+            dth.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "c1", Name = "Harm Touch", Category = "Cooldowns", DurationSeconds = 1200,
+                StartPattern = @"^You begin casting Harm Touch\.", CastAnchored = false,
+            });
+            foreach (var t in dth.Triggers) ConfigService.CompileOne(t);
+            var dthEng = new TriggerEngine(dth, new AlertService());
+            dthEng.ProcessLine($"[{AT(0)}] Your skin hardens.");
+            dthEng.ProcessLine($"[{AT(1)}] You begin casting Harm Touch.");
+            dthEng.ProcessLine($"[{AT(20)}] You have been slain by a gnoll reaver!");
+            Check("death: buff bars strip, cooldown bars survive",
+                dthEng.Bars.Count == 1 && dthEng.Bars[0].Name == "Harm Touch");
 
             // A legacy speak phrase with no timing meant "say it when the bar
             // runs out" — it migrates to the faded notice, phrase intact.
@@ -1109,6 +1202,16 @@ public partial class App : Application
                 inc3.First(r => r.Name == "thorns") is { Total: 6 });
             Check("unattributed non-melee incoming (100)",
                 inc3.First(r => r.Name == "non-melee") is { Total: 100 });
+            // Solo HPS view: heals split per spell, bare heals under "heal",
+            // other healers' spells never bleed into your lanes.
+            var heals = p.GetHealAbilityRows("Johan");
+            Check("solo heals: per-spell split with bare-heal fallback",
+                heals.First(r => r.Name == "heal") is { Total: 25 }
+                && heals.First(r => r.Name == "Sprouting Heal") is { Total: 30 }
+                && heals.All(r => r.Name != "Light Healing"));
+            Check("solo heals: the other healer keeps their own lane",
+                // 65 on Snik (Ts10) + 40 on Johan (Ts17), same fight
+                p.GetHealAbilityRows("Malahoja").First(r => r.Name == "Light Healing") is { Total: 105 });
             Check("SCT: bare heal fires HealOut with 'heal' label",
                 sct.Any(e => e is { Kind: CombatParser.SctKind.HealOut, Ability: "heal", Amount: 25 }));
             Check("SCT: HoT tick fires HealOut with spell label",
@@ -1188,6 +1291,12 @@ public partial class App : Application
                 && mob2 == "a Sage of Innoruuk");
             Check("raid kill: normal line no match",
                 !RaidKills.TryParseKill("You slash a rat for 5 points of damage.", out _));
+
+            // Target renames observed in real logs migrate old target files —
+            // Innoruuk's actual death line names him in full.
+            Check("raid targets: short Innoruuk migrates to the observed full name",
+                RaidKills.MigrateTargetName("Innoruuk") == "Innoruuk, the Prince of Hate"
+                && RaidKills.MigrateTargetName("Lady Vox") == "Lady Vox");
 
             // Global respawns: the auto-generated death pattern matches both forms.
             var resp = ConfigService.BuildRespawnTrigger(

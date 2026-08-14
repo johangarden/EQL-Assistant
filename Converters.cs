@@ -30,6 +30,25 @@ public sealed class RestStarConverter : IValueConverter
         throw new NotSupportedException();
 }
 
+/// <summary>Multiplies its inputs (doubles) — bar height × the bar's own
+/// height scale (HoT bars render taller than the rest).</summary>
+public sealed class MultiplyConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type t, object p, CultureInfo c)
+    {
+        double result = 1;
+        foreach (var v in values)
+        {
+            if (v is not double d || double.IsNaN(d)) return DependencyProperty.UnsetValue;
+            result *= d;
+        }
+        return result;
+    }
+
+    public object[] ConvertBack(object value, Type[] t, object p, CultureInfo c) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>Spacing value (double) -> a bottom-only Thickness for gaps between bars.</summary>
 public sealed class BottomSpacingConverter : IValueConverter
 {

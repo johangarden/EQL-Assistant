@@ -213,6 +213,22 @@ public sealed class TriggerEngine
         }
     }
 
+    /// <summary>Death strips buffs — clear every non-cooldown bar (cooldowns
+    /// keep ticking through death) and blank both matrices. Also what makes
+    /// the generous overrun cap honest: the usual eater of a fade line is
+    /// dying before it prints.</summary>
+    private void StripOnDeath()
+    {
+        foreach (var (key, bar) in _active.ToList())
+        {
+            if (bar.Category.Contains("cool", StringComparison.OrdinalIgnoreCase)) continue;
+            _active.Remove(key);
+            Bars.Remove(bar);
+        }
+        foreach (var cell in SelfCells) cell.Deactivate();
+        foreach (var cell in TargetCells) cell.Deactivate();
+    }
+
     /// <summary>Clear all bars and tracking state (used when switching loadouts).</summary>
     public void Reset()
     {
@@ -267,6 +283,11 @@ public sealed class TriggerEngine
         {
             // ("Caladar activates Quick Buff." is someone else — no window.)
             _quickBuffAt = eventTime;
+        }
+        else if (body.StartsWith("You died.", StringComparison.Ordinal)
+                 || body.StartsWith("You have been slain", StringComparison.Ordinal))
+        {
+            StripOnDeath();
         }
 
         foreach (var trigger in _triggers)
@@ -383,7 +404,8 @@ public sealed class TriggerEngine
             duration, end, MakeBrush(TriggerColors.For(trigger)),
             al.WarnAt, al.OnFaded, al.WarnSpeak, al.WarnSound,
             al.FadedSpeak, al.FadedSound,
-            waitsForFade: trigger.EndRegex is not null);
+            waitsForFade: trigger.EndRegex is not null,
+            learnsDuration: trigger.DurationAuto);
 
         _active[key] = vm;
         InsertSorted(vm);
@@ -468,10 +490,17 @@ public sealed class TriggerEngine
         }
     }
 
-    /// <summary>An overrunning bar squats at most this long past its estimate
-    /// before the unwitnessed cull removes it (the fade line never arrived —
-    /// death/zoning ate it).</summary>
+    /// <summary>Floor of the unwitnessed-overrun cull. The real cap scales with
+    /// the bar: an overrunning bar may squat up to max(60s, its own estimated
+    /// duration) past 0 — a learning trigger whose library starting value runs
+    /// short by minutes must not vanish while the buff is demonstrably still
+    /// up. Bounded all the same, because a fade line that never arrives (crash,
+    /// missed log) must not leave a gray bar squatting forever; the own-death
+    /// censor below covers the common eater of fade lines.</summary>
     public const double OverrunCapSec = 60;
+
+    public static double OverrunCapFor(TimerBarViewModel bar) =>
+        Math.Max(OverrunCapSec, bar.TotalSeconds);
 
     private void UpdateBars(DateTime now)
     {
@@ -482,7 +511,7 @@ public sealed class TriggerEngine
 
             if (bar.IsOverrun)
             {
-                if (bar.OverrunSeconds > OverrunCapSec) (expired ??= new()).Add(bar);
+                if (bar.OverrunSeconds > OverrunCapFor(bar)) (expired ??= new()).Add(bar);
                 continue; // no fade warnings while gray
             }
 

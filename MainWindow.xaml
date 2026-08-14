@@ -26,8 +26,14 @@
 
         <!-- One countdown bar. -->
         <DataTemplate x:Key="BarTemplate" DataType="{x:Type vm:TimerBarViewModel}">
-            <Grid Height="{Binding DataContext.BarHeight, RelativeSource={RelativeSource AncestorType=Window}}"
-                  Margin="{Binding DataContext.Spacing, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BottomSpacing}}">
+            <Grid Margin="{Binding DataContext.Spacing, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BottomSpacing}}">
+                <Grid.Height>
+                    <!-- configured height × the bar's own scale (HoTs run 1.4×) -->
+                    <MultiBinding Converter="{StaticResource Multiply}">
+                        <Binding Path="DataContext.BarHeight" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                        <Binding Path="HeightScale"/>
+                    </MultiBinding>
+                </Grid.Height>
                 <!-- track -->
                 <Border CornerRadius="4" Background="#C8101318"/>
                 <!-- depleting fill (width scales with Fraction via a nested grid) -->

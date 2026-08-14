@@ -61,6 +61,12 @@ the affected suites (with `-Wait`) before committing.
 ## Architecture map
 
 `Services/` — the brains, all fed line-by-line from `LogWatcher` via `LogBus`:
+- `ConditionWatcher` — big stun/fear/charm/mez badges (`ConditionsWindow`).
+  Landing/wear-off sets DERIVE from the spell library's uniform wear-off
+  families ("You are no longer stunned/afraid/charmed/mesmerized.") — never
+  keyword guessing. Badge shows landing→wear-off; censors: own death, zoning;
+  hygiene caps per condition (stun 30s … charm 21m). Live-only (not fed on
+  catch-up).
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,
@@ -83,7 +89,12 @@ these, so merged cross-machine history survives a reset).
 ## Design rules that keep recurring
 
 - **Types own colors** (`TriggerColors`): buffs blue, HoTs green, DoTs red,
-  debuffs yellow, cooldowns purple. No per-trigger color picking.
+  debuffs yellow, cooldowns purple. No per-trigger color picking. HoTs =
+  SHORT rotational heals only (≤120s): the regen line ("You begin to
+  regenerate." — Chloroplast & kin) and any heal effect running longer are
+  Buffs (`SpellLibrary.TriggerCategory`; HealLibraryTriggers retypes old
+  HoT-typed regen on load). HoT bars render 1.4× tall (`HeightScale`) — the
+  stay-alive bars.
 - **Alerts are two notices** (2.11+): *notify before it fades* (default 15s)
   and *notify when it faded* (doubles as cooldown "ready"), each a toggle +
   Phrase OR Sound (one channel, never both). Phrases prefill "<Name> is about
@@ -125,9 +136,13 @@ these, so merged cross-machine history survives a reset).
   when no duration). Unknown durations count UP, never guess.
 - **Overrun state**: any bar with a fade line (trigger bars with EndPattern,
   enemy-DoT bars) that expires WITHOUT the fade being witnessed grays out and
-  counts up ("+14s") instead of vanishing — removed by the real fade line, a
-  re-cast (refresh in place), or a 60s unwitnessed cull. Never delete on a
-  mere estimate when the log can still contradict it.
+  counts up ("+14s"; auto-learn bars say "learning +14s") instead of
+  vanishing — removed by the real fade line, a re-cast (refresh in place), or
+  an unwitnessed cull at max(60s, the bar's own estimate) (enemy DoTs keep
+  the flat 60s). Own death strips all non-Cooldown bars + both matrices
+  (buffs die with you — and death is the usual eater of fade lines, which is
+  what makes the generous cap honest). Never delete on a mere estimate when
+  the log can still contradict it.
 - **88 library spells have junk landing text** ("You ."): their triggers
   anchor on `^You begin (?:casting|singing) <name>(?: [IVX]{1,7})?\.` instead.
   `SpellLibrary.MessageCorrections` overrides junk with sentences OBSERVED in

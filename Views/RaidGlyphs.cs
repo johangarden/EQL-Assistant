@@ -123,7 +123,7 @@ public static class RaidGlyphs
         ["A dracoliche"] = ("dragon", "#D7CCC8"),          // bone dragon
 
         // Plane of Hate
-        ["Innoruuk"] = ("demon", "#BA68C8"),               // the god of hate
+        ["Innoruuk, the Prince of Hate"] = ("demon", "#BA68C8"), // the god of hate
         ["Maestro of Rancor"] = ("spirit", "#CE93D8"),
         ["Lord of Loathing"] = ("demon", "#AB47BC"),
         ["Lord of Ire"] = ("demon", "#8E24AA"),

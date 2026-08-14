@@ -117,6 +117,8 @@ public sealed class CombatParser
     private readonly Dictionary<string, double> _healing = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, double> _taken = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Dictionary<string, AbilityStat>> _abilities = new(StringComparer.OrdinalIgnoreCase);
+    // Healing split per spell (damage and heals must never share totals).
+    private readonly Dictionary<string, Dictionary<string, AbilityStat>> _healAbilities = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AbilityStat> _incomingSelfAbility = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AbilityStat> _incomingPetAbility = new(StringComparer.OrdinalIgnoreCase);
     private double _incomingSelf;
@@ -931,6 +933,7 @@ public sealed class CombatParser
         _healing.Clear();
         _taken.Clear();
         _abilities.Clear();
+        _healAbilities.Clear();
         _incomingSelfAbility.Clear();
         _incomingPetAbility.Clear();
         _incomingSelf = 0;
@@ -974,6 +977,15 @@ public sealed class CombatParser
     {
         if (string.IsNullOrWhiteSpace(sourceName)
             || !_abilities.TryGetValue(sourceName.Trim(), out var byAbility))
+            return new();
+        return AbilityRows(byAbility);
+    }
+
+    /// <summary>Healing split by spell for one source, highest first (solo HPS view).</summary>
+    public List<Row> GetHealAbilityRows(string sourceName)
+    {
+        if (string.IsNullOrWhiteSpace(sourceName)
+            || !_healAbilities.TryGetValue(sourceName.Trim(), out var byAbility))
             return new();
         return AbilityRows(byAbility);
     }
@@ -1132,6 +1144,11 @@ public sealed class CombatParser
         Touch(time);
         Bump(_healing, healer, amount);
 
+        // Per-spell split for the solo HPS view (bare heals have no spell name).
+        if (!_healAbilities.TryGetValue(healer, out var bySpell))
+            _healAbilities[healer] = bySpell = new Dictionary<string, AbilityStat>(StringComparer.OrdinalIgnoreCase);
+        StatIn(bySpell, string.IsNullOrWhiteSpace(spell) ? "heal" : spell).Land(amount, crit);
+
         if (IsSelf(target)) RecapNote(time, healer, spell, amount, heal: true, crit);
 
         if (IsSelf(healer))
@@ -1263,6 +1280,10 @@ public sealed class CombatParser
         {
             ["bite"] = DemoStat(1800, 30, 11, 25, 80),
             ["claw"] = DemoStat(1150, 26, 9, 18, 66),
+        };
+        _healAbilities[Self()] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Slugs Healing"] = DemoStat(420, 6, 0, 60, 80),
         };
         _incomingSelfAbility["hit"] = DemoStat(780, 7, 5, 60, 150);
         _incomingSelfAbility["Frost Breath"] = DemoStat(570, 2, 0, 250, 320, resists: 1);

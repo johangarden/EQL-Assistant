@@ -29,7 +29,9 @@ public partial class MainWindow : Window
     private FlashWindow? _flash;
     private MeterWindow? _meter;
     private EnemyDotsWindow? _enemyDotsWin;
+    private ConditionsWindow? _conditionsWin;
     private RemindersWindow? _remindersWin;
+    private ConditionWatcher _conditions = null!;
     private readonly CombatParser _combat = new();
     private RaidKills _raids = null!;
     private LootTracker _loot = null!;
@@ -110,6 +112,7 @@ public partial class MainWindow : Window
         int retyped = _spellLib.HealLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
         if (retyped > 0) Log.Info($"Retyped {retyped} library trigger(s) (HoTs/DoTs split).");
         _durations = new SpellDurations(_configService, _spellLib);
+        _conditions = new ConditionWatcher(_spellLib);
         // Enemy-DoT countdowns: learned first, library figure as the fallback.
         _combat.DotDurationLookup = spell =>
             spell.StartsWith("Demo ", StringComparison.Ordinal) ? 30 // Ctrl+Alt+T bars
@@ -677,7 +680,12 @@ public partial class MainWindow : Window
         _meter = new MeterWindow(_configService, _combat, _raids, _loot, _skyQuests,
             _config.Overlay.Opacity,
             _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible,
-            _config.Overlay.ProcWatcherVisible);
+            _config.Overlay.ProcWatcherVisible, _config.Overlay.MeterSoloMode);
+        _meter.SoloModeChanged += solo =>
+        {
+            _config.Overlay.MeterSoloMode = solo;
+            _configService.SaveSettings(_config);
+        };
         _meter.Show();
         UpdateMeterVisibility();
     }
@@ -731,6 +739,7 @@ public partial class MainWindow : Window
         _targetMatrix = RebuildPanel(_targetMatrix, "targetDebuffs", "Target Debuffs",
             _engine.TargetCells, defaultLeft: 420, defaultTop: 420);
         RebuildEnemyDotsWindow();
+        RebuildConditionsWindow();
         RebuildRemindersWindow();
         UpdateMatrixVisibility();
     }
@@ -774,6 +783,23 @@ public partial class MainWindow : Window
         _enemyDotsWin.Show();
         _enemyDotsWin.SetLocked(_vm.Locked);
         _enemyDotsWin.SetHidden(_hidden);
+    }
+
+    private void RebuildConditionsWindow()
+    {
+        if (_conditionsWin is not null) { try { _conditionsWin.Close(); } catch { /* ignore */ } _conditionsWin = null; }
+        if (!_config.Overlay.ConditionsVisible) return;
+        _conditionsWin = new ConditionsWindow(_conditions, _configService, _config.Overlay.Opacity);
+        _conditionsWin.Show();
+        _conditionsWin.SetLocked(_vm.Locked);
+        _conditionsWin.SetHidden(_hidden);
+    }
+
+    private void ToggleConditions()
+    {
+        _config.Overlay.ConditionsVisible = !_config.Overlay.ConditionsVisible;
+        _configService.SaveSettings(_config);
+        RebuildConditionsWindow();
     }
 
     private MatrixWindow RebuildPanel(MatrixWindow? existing, string key, string title,
@@ -829,6 +855,7 @@ public partial class MainWindow : Window
                 _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
+                _conditions.ProcessLine(line); // live CC state — not fed on catch-up
                 if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
             }),
@@ -897,7 +924,8 @@ public partial class MainWindow : Window
                 case HK_TEST:
                     _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell();
                     _engine.AddDemoReminder();
-                    _combat.AddDemoFight(); _combat.AddDemoEnemyDots(); UpdateMatrixVisibility();
+                    _combat.AddDemoFight(); _combat.AddDemoEnemyDots(); _conditions.AddDemo();
+                    UpdateMatrixVisibility();
                     OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
                     if (!_hidden && !_sctHidden)
                         foreach (var (kind, lane) in _sctLanes)
@@ -931,6 +959,7 @@ public partial class MainWindow : Window
         _selfMatrix?.SetLocked(_vm.Locked);
         _targetMatrix?.SetLocked(_vm.Locked);
         _enemyDotsWin?.SetLocked(_vm.Locked);
+        _conditionsWin?.SetLocked(_vm.Locked);
         _remindersWin?.SetLocked(_vm.Locked);
         _flash?.SetLocked(_vm.Locked);
         foreach (var lane in _sctLanes.Values) lane.SetLocked(_vm.Locked);
@@ -957,6 +986,7 @@ public partial class MainWindow : Window
     {
         _hidden = !_hidden;
         _enemyDotsWin?.SetHidden(_hidden);
+        _conditionsWin?.SetHidden(_hidden);
         _remindersWin?.SetHidden(_hidden);
         UpdateBarsVisibility();
         UpdateMatrixVisibility();
@@ -987,6 +1017,7 @@ public partial class MainWindow : Window
             _selfMatrix?.SetLocked(false);
             _targetMatrix?.SetLocked(false);
             _enemyDotsWin?.SetLocked(false);
+            _conditionsWin?.SetLocked(false);
             _remindersWin?.SetLocked(false);
             _flash?.SetLocked(false);
             foreach (var lane in _sctLanes.Values) lane.SetLocked(false);
@@ -997,6 +1028,7 @@ public partial class MainWindow : Window
         _selfMatrix?.ResetPosition();
         _targetMatrix?.ResetPosition();
         _enemyDotsWin?.ResetPosition();
+        _conditionsWin?.ResetPosition();
         _remindersWin?.ResetPosition();
         _timer?.ResetPosition();
         _meter?.ResetPosition();
@@ -1144,7 +1176,7 @@ public partial class MainWindow : Window
         {
             _meter.ApplySettings(cfg.Overlay.Opacity,
                 cfg.Overlay.SkillTrackerSkills, cfg.Overlay.SkillTrackerVisible,
-                cfg.Overlay.ProcWatcherVisible);
+                cfg.Overlay.ProcWatcherVisible, cfg.Overlay.MeterSoloMode);
             UpdateMeterVisibility();
         }
 
@@ -1448,12 +1480,13 @@ public partial class MainWindow : Window
         var panelToolbar = new System.Windows.Forms.ToolStripMenuItem("Toolbar", null, (_, _) => ToggleToolbar());
         var panelBars = new System.Windows.Forms.ToolStripMenuItem("Buff bars", null, (_, _) => ToggleBars());
         var panelDots = new System.Windows.Forms.ToolStripMenuItem("Enemy DoTs", null, (_, _) => ToggleEnemyDots());
+        var panelConds = new System.Windows.Forms.ToolStripMenuItem("Condition badges (stun/fear)", null, (_, _) => ToggleConditions());
         var panelSelfM = new System.Windows.Forms.ToolStripMenuItem("Self-buffs matrix", null, (_, _) => ToggleSelfMatrix());
         var panelTargetM = new System.Windows.Forms.ToolStripMenuItem("Target-debuffs matrix", null, (_, _) => ToggleTargetMatrix());
         var panelRemind = new System.Windows.Forms.ToolStripMenuItem("Rebuff reminders", null, (_, _) => ToggleReminders());
         panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
             { panelToolbar, panelBars, panelSelfM, panelTargetM, panelRemind, panelDots,
-              panelTimer, panelMeter, panelSkills, panelProcs, panelSct, panelFlash });
+              panelConds, panelTimer, panelMeter, panelSkills, panelProcs, panelSct, panelFlash });
         panelsItem.DropDownOpening += (_, _) =>
         {
             panelToolbar.Checked = !_toolbarHidden;
@@ -1462,6 +1495,7 @@ public partial class MainWindow : Window
             panelTargetM.Checked = _config.Overlay.TargetMatrixVisible;
             panelRemind.Checked = _config.Overlay.RemindersVisible;
             panelDots.Checked = _config.Overlay.EnemyDotsVisible;
+            panelConds.Checked = _config.Overlay.ConditionsVisible;
             panelTimer.Checked = !_timerHidden;
             panelMeter.Checked = !_meterHidden;
             panelSkills.Checked = !_skillsHidden;
@@ -1560,6 +1594,7 @@ public partial class MainWindow : Window
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
         try { _enemyDotsWin?.Close(); } catch { /* ignore */ }
+        try { _conditionsWin?.Close(); } catch { /* ignore */ }
         try { _remindersWin?.Close(); } catch { /* ignore */ }
         try { _timer?.Close(); } catch { /* ignore */ }
         try { _meter?.Close(); } catch { /* ignore */ }

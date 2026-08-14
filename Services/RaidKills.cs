@@ -256,6 +256,19 @@ public sealed class RaidKills
 
     // ---- persistence ---------------------------------------------------------
 
+    // Kill matching is EXACT against the death line's mob name — a target
+    // listed under a short community name never records. Renames observed in
+    // real logs land here and migrate existing raid-targets.json files.
+    private static readonly Dictionary<string, string> TargetRenames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Observed 13 Aug 2026: "Innoruuk, the Prince of Hate has been slain by …"
+        ["Innoruuk"] = "Innoruuk, the Prince of Hate",
+    };
+
+    /// <summary>The current canonical name for a (possibly outdated) target name.</summary>
+    public static string MigrateTargetName(string name) =>
+        TargetRenames.TryGetValue(name.Trim(), out string? renamed) ? renamed : name;
+
     private void LoadTargets()
     {
         try
@@ -264,6 +277,18 @@ public sealed class RaidKills
                 File.WriteAllText(_targetsPath, DefaultTargetsJson);
             var tiers = JsonSerializer.Deserialize<List<Tier>>(File.ReadAllText(_targetsPath), JsonOpts);
             if (tiers is not null) _tiers.AddRange(tiers);
+
+            // Migrate outdated names in the user's file (it exists from first
+            // run, so fixing the default alone would never reach them).
+            bool renamed = false;
+            foreach (var t in _tiers)
+                for (int i = 0; i < t.Targets.Count; i++)
+                {
+                    string fixedName = MigrateTargetName(t.Targets[i]);
+                    if (fixedName != t.Targets[i]) { t.Targets[i] = fixedName; renamed = true; }
+                }
+            if (renamed)
+                File.WriteAllText(_targetsPath, JsonSerializer.Serialize(_tiers, JsonOpts));
         }
         catch { /* corrupt/unreadable targets file -> empty tracker rather than crash */ }
 
@@ -283,7 +308,7 @@ public sealed class RaidKills
                 var kills = JsonSerializer.Deserialize<Dictionary<string, List<Kill>>>(json, JsonOpts);
                 if (kills is null) return;
                 foreach (var (name, list) in kills)
-                    _kills[name] = list.Where(k => k is not null).ToList();
+                    _kills[MigrateTargetName(name)] = list.Where(k => k is not null).ToList();
             }
             catch (JsonException)
             {
@@ -318,7 +343,7 @@ public sealed class RaidKills
       {
         "name": "Plane of Hate",
         "targets": [
-          "Innoruuk", "Maestro of Rancor", "Lord of Loathing", "Lord of Ire",
+          "Innoruuk, the Prince of Hate", "Maestro of Rancor", "Lord of Loathing", "Lord of Ire",
           "Master of Spite", "Mistress of Scorn", "High Priest M'kari", "Magi P'tasa",
           "Coercer T'vala", "Grandmaster R'Tal", "Ashenbone Broodmaster", "Avatar of Abhorrence"
         ]

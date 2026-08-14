@@ -182,7 +182,10 @@ DoTs, Debuffs, Cooldowns, then the matrices, repop timers and flash alerts),
 and **each type owns its color** — buffs blue, HoTs green, DoTs red, debuffs
 yellow, cooldowns purple — everywhere the trigger shows up (bars, flash text,
 the list swatch). No per-trigger color picking. Disabled triggers gray out in
-place.
+place. **HoTs mean short rotational heals** (Slugs Healing and kin, ~24s) —
+the regen line (Chloroplast, Regeneration, Regrowth…) and other long-running
+heal effects are Buffs. HoT bars render **1.4× taller** than the rest:
+they're the ones keeping you alive.
 
 Per-trigger alerts are **two independent notices**, each with its own toggle
 and its own channel — a spoken phrase (Windows TTS, prefilled "X is about to
@@ -220,11 +223,17 @@ running, the watch shows the **soonest spawn** big, the rest as secondary rows.
 
 ## DPS meter, fight history and timeline
 
-The meter shows live ranked damage (or healing — toggle **DPS/HPS**) per
-source, with your character highlighted, same-named mobs merged into a combined
-**Enemies** row (log lines can't tell two "a royal guard" apart), and a
-**DAMAGE TAKEN** footer for you and your pet. A fight ends ~10s after combat
-goes quiet.
+The meter has two scopes (**SOLO/GROUP** button, solo by default — EQL is a
+solo-first game). **SOLO** ranks *your own abilities* live: every spell, melee
+skill, DoT and proc as its own bar with real-time DPS, total and share, plus
+hits/crits/misses/range on hover. A detected pet gets a fold-out row of its
+own (click the ▶ to expand its per-ability split). **GROUP** ranks everyone
+the log shows — nearby players' melee and spells appear in your log, so this
+is the classic party meter. Both scopes honor the **DPS/HPS** toggle (solo
+HPS = your healing per spell), keep your character highlighted, merge
+same-named mobs into a combined **Enemies** row (log lines can't tell two
+"a royal guard" apart), and show the **DAMAGE TAKEN** footer for you and your
+pet. A fight ends ~10s after combat goes quiet.
 
 **Fight history** (📜 on the meter) keeps the last 50 fights — Ctrl-click up to
 three to compare side by side. **★ Keep** saves a fight permanently, so you can
@@ -284,13 +293,31 @@ spell's third-person landing ("A froglok has been poisoned.") opens a per-mob
 bar — landings without your cast are someone else's and are ignored. Since
 these never tick, they're culled by the overrun cap instead of silence.
 
+## Condition badges (stun / fear / charm / mez)
+
+Raid bosses stun. When you are **stunned, feared, charmed or mesmerized**, a
+**big glyph badge** (starburst / warning triangle / heart / crescent) appears
+in its own movable panel and stays on screen for the **entire duration** —
+from the landing line ("You are struck by a sudden force.") to the wear-off
+line ("You are no longer stunned."), counting the seconds. Detection is
+derived from the spell library's wear-off families, so buff lines never
+false-positive. Dying or zoning clears the badges; a per-condition hygiene
+cap covers a missed wear-off. Toggle under tray → Panels → **Condition
+badges**; place it by unlocking (Ctrl+Alt+L) and dragging — Ctrl+Alt+T shows
+demo badges.
+
 **The overrun state (everywhere bars have a fade line):** when a bar's
 learned/estimated timer runs out *before* the real fade message arrives, it
-doesn't vanish — it **grays out and counts up** ("+14s") until the fade line,
-death, or a cull cap closes it. The bar stops claiming precision and shows
-"still there, still learning" — and the eventual fade is exactly what teaches
-the learner the true duration. A re-cast landing on an overrun bar refreshes
-it in place.
+doesn't vanish — it **grays out and counts up** (auto-learn bars say
+"**learning +14s**") until the fade line, death, or a cull cap closes it. The
+cap scales with the bar: up to the bar's own estimated duration again (60s
+minimum), so a library starting value that runs short by minutes can't
+vanish a buff that's demonstrably still up. The bar stops claiming precision
+and shows "still there, still learning" — and the eventual fade is exactly
+what teaches the learner the true duration. A re-cast landing on an overrun
+bar refreshes it in place. **Dying strips your bars** (except Cooldowns,
+which tick through death) — buffs die with you, and that's also the usual
+reason a fade line never printed.
 Countdowns use learned/library durations and count *up* when the duration is
 unknown rather than guessing. The panel only appears while it has rows (or
 while unlocked, so you can place it); toggle and anchor live on the
