@@ -677,7 +677,12 @@ public partial class MainWindow : Window
         _meter = new MeterWindow(_configService, _combat, _raids, _loot, _skyQuests,
             _config.Overlay.Opacity,
             _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible,
-            _config.Overlay.ProcWatcherVisible);
+            _config.Overlay.ProcWatcherVisible, _config.Overlay.MeterSoloMode);
+        _meter.SoloModeChanged += solo =>
+        {
+            _config.Overlay.MeterSoloMode = solo;
+            _configService.SaveSettings(_config);
+        };
         _meter.Show();
         UpdateMeterVisibility();
     }
@@ -1144,7 +1149,7 @@ public partial class MainWindow : Window
         {
             _meter.ApplySettings(cfg.Overlay.Opacity,
                 cfg.Overlay.SkillTrackerSkills, cfg.Overlay.SkillTrackerVisible,
-                cfg.Overlay.ProcWatcherVisible);
+                cfg.Overlay.ProcWatcherVisible, cfg.Overlay.MeterSoloMode);
             UpdateMeterVisibility();
         }
 

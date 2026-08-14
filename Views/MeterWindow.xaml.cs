@@ -34,8 +34,16 @@ public partial class MeterWindow : Window
     private bool _skillsVisible;
     private bool _procsVisible;
     private readonly ObservableCollection<MeterRowViewModel> _procRows = new();
+    private readonly ObservableCollection<MeterRowViewModel> _petRows = new();
     private bool _showHealing;
+    private bool _soloMode;
+    private bool _petExpanded;
     private int _nextColor;
+
+    private const int MaxSoloRows = 10; // a dot build runs more lanes than a group does players
+
+    /// <summary>Raised when the SOLO/GROUP button flips, so the choice persists.</summary>
+    public event Action<bool>? SoloModeChanged;
 
     private static readonly Brush SkillLowFill = Freeze(Color.FromRgb(0xE5, 0x73, 0x73));  // < 60%
     private static readonly Brush SkillMidFill = Freeze(Color.FromRgb(0xFF, 0xB7, 0x4D));  // 60–85%
@@ -58,9 +66,10 @@ public partial class MeterWindow : Window
 
     public MeterWindow(ConfigService config, CombatParser parser, RaidKills raids, LootTracker loot,
         SkyQuests sky, double opacity, IEnumerable<string> skills, bool skillsVisible,
-        bool procsVisible = false)
+        bool procsVisible = false, bool soloMode = true)
     {
         InitializeComponent();
+        _soloMode = soloMode;
 
         _parser = parser;
         _config = config;
@@ -74,8 +83,10 @@ public partial class MeterWindow : Window
 
         _procsVisible = procsVisible;
         RowsControl.ItemsSource = _rows;
+        PetRowsControl.ItemsSource = _petRows;
         SkillRowsControl.ItemsSource = _skillRows;
         ProcRowsControl.ItemsSource = _procRows;
+        ScopeBtn.Content = _soloMode ? "SOLO" : "GROUP";
         SkillsSection.Visibility = _skillsVisible ? Visibility.Visible : Visibility.Collapsed;
         ProcsSection.Visibility = _procsVisible ? Visibility.Visible : Visibility.Collapsed;
 
@@ -104,12 +115,18 @@ public partial class MeterWindow : Window
 
     /// <summary>Apply changed settings live — the fight and any open history window survive.</summary>
     public void ApplySettings(double opacity, IEnumerable<string> skills, bool skillsVisible,
-        bool procsVisible = false)
+        bool procsVisible = false, bool? soloMode = null)
     {
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
         _skillNames = CleanSkills(skills);
         SetSkillsVisible(skillsVisible);
         SetProcsVisible(procsVisible);
+        if (soloMode is bool solo && solo != _soloMode)
+        {
+            _soloMode = solo;
+            ScopeBtn.Content = _soloMode ? "SOLO" : "GROUP";
+            Refresh();
+        }
         _placement.Reload();
     }
 
@@ -146,6 +163,23 @@ public partial class MeterWindow : Window
     {
         _showHealing = !_showHealing;
         ModeBtn.Content = _showHealing ? "HPS" : "DPS";
+        Refresh();
+    }
+
+    private void OnToggleScope(object sender, RoutedEventArgs e)
+    {
+        _soloMode = !_soloMode;
+        ScopeBtn.Content = _soloMode ? "SOLO" : "GROUP";
+        SoloModeChanged?.Invoke(_soloMode);
+        Refresh();
+    }
+
+    private void PetHeader_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true; // don't start a window drag
+        _petExpanded = !_petExpanded;
+        PetHeaderChevron.Text = _petExpanded ? "▼" : "▶";
+        PetRowsControl.Visibility = _petExpanded ? Visibility.Visible : Visibility.Collapsed;
         Refresh();
     }
 
@@ -201,6 +235,8 @@ public partial class MeterWindow : Window
             TitleText.Text = $"{metric} meter";
             SummaryText.Text = "waiting for combat…";
             _rows.Clear();
+            _petRows.Clear();
+            PetSection.Visibility = Visibility.Collapsed;
             EnemiesRow.Visibility = Visibility.Collapsed;
             UpdateIncoming();
             RefreshSkills();
@@ -214,27 +250,11 @@ public partial class MeterWindow : Window
         SummaryText.Text =
             $"{FormatDuration(_parser.DurationSeconds)} · total {FormatDps(_parser.TotalPerSecond(_showHealing))} {metric.ToLowerInvariant()}{state}";
 
-        // Rank players/pets only; enemy-shaped sources collapse into one dim row
-        // below (same-named mobs are indistinguishable in the log anyway).
-        var ranked = _parser.GetRows(_showHealing);
-        var friendly = ranked.Where(r => !r.Enemy).ToList();
-        int count = Math.Min(MaxRows, friendly.Count);
-        double top = count > 0 ? friendly[0].Total : 0;
-
-        while (_rows.Count > count) _rows.RemoveAt(_rows.Count - 1);
-        while (_rows.Count < count) _rows.Add(new MeterRowViewModel());
-
-        for (int i = 0; i < count; i++)
-        {
-            var r = friendly[i];
-            var row = _rows[i];
-            row.Name = r.Name;
-            row.Fraction = top > 0 ? r.Total / top : 0;
-            row.ValueText = $"{FormatDps(r.Dps)}  ({FormatNum(r.Total)}, {r.Percent:0}%)";
-            row.Fill = FillFor(r.Name);
-        }
+        if (_soloMode) RefreshSoloRows();
+        else RefreshGroupRows();
 
         int enemyCount = 0; double enemyTotal = 0, enemyDps = 0;
+        var ranked = _parser.GetRows(_showHealing);
         foreach (var r in ranked)
         {
             if (!r.Enemy) continue;
@@ -252,6 +272,91 @@ public partial class MeterWindow : Window
         UpdateIncoming();
         RefreshSkills();
         RefreshProcs();
+    }
+
+    /// <summary>GROUP scope: rank players/pets; enemy-shaped sources collapse
+    /// into one dim row below (same-named mobs are indistinguishable anyway).</summary>
+    private void RefreshGroupRows()
+    {
+        PetSection.Visibility = Visibility.Collapsed;
+
+        var friendly = _parser.GetRows(_showHealing).Where(r => !r.Enemy).ToList();
+        int count = Math.Min(MaxRows, friendly.Count);
+        double top = count > 0 ? friendly[0].Total : 0;
+
+        while (_rows.Count > count) _rows.RemoveAt(_rows.Count - 1);
+        while (_rows.Count < count) _rows.Add(new MeterRowViewModel());
+
+        for (int i = 0; i < count; i++)
+        {
+            var r = friendly[i];
+            var row = _rows[i];
+            row.Name = r.Name;
+            row.Fraction = top > 0 ? r.Total / top : 0;
+            row.ValueText = $"{FormatDps(r.Dps)}  ({FormatNum(r.Total)}, {r.Percent:0}%)";
+            row.Detail = "";
+            row.Fill = FillFor(r.Name);
+        }
+    }
+
+    /// <summary>SOLO scope: YOUR abilities ranked (spells, melee, dots, procs),
+    /// with the pet folded into a collapsible drill-down of its own.</summary>
+    private void RefreshSoloRows()
+    {
+        var mine = _showHealing
+            ? _parser.GetHealAbilityRows(_parser.SelfName)
+            : _parser.GetAbilityRows(_parser.SelfName);
+        FillAbilityRows(_rows, mine, MaxSoloRows);
+
+        bool hasPet = !string.IsNullOrWhiteSpace(_parser.PetName);
+        var pet = hasPet
+            ? _showHealing
+                ? _parser.GetHealAbilityRows(_parser.PetName)
+                : _parser.GetAbilityRows(_parser.PetName)
+            : new List<CombatParser.Row>();
+        PetSection.Visibility = hasPet && pet.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (pet.Count > 0)
+        {
+            double dur = _parser.DurationSeconds;
+            double petTotal = pet.Sum(r => r.Total);
+            PetHeaderLabel.Text = $"{_parser.PetName.Trim()} (pet)";
+            PetHeaderValue.Text = $"{FormatDps(dur > 0 ? petTotal / dur : 0)}  ({FormatNum(petTotal)})";
+            FillAbilityRows(_petRows, _petExpanded ? pet : new List<CombatParser.Row>(), MaxSoloRows);
+        }
+        else
+        {
+            _petRows.Clear();
+        }
+    }
+
+    /// <summary>Ability rows with the drill-down details on a second look
+    /// (tooltip): hits, crits, range, misses/resists.</summary>
+    private void FillAbilityRows(ObservableCollection<MeterRowViewModel> rows,
+        List<CombatParser.Row> src, int max)
+    {
+        int count = Math.Min(max, src.Count);
+        double top = count > 0 ? src[0].Total : 0;
+
+        while (rows.Count > count) rows.RemoveAt(rows.Count - 1);
+        while (rows.Count < count) rows.Add(new MeterRowViewModel());
+
+        for (int i = 0; i < count; i++)
+        {
+            var r = src[i];
+            var row = rows[i];
+            row.Name = r.Name;
+            row.Fraction = top > 0 ? r.Total / top : 0;
+            row.ValueText = $"{FormatDps(r.Dps)}  ({FormatNum(r.Total)}, {r.Percent:0}%)";
+            row.Fill = FillFor(r.Name);
+
+            var extra = new List<string>();
+            if (r.Hits > 0) extra.Add($"{r.Hits} hit{(r.Hits == 1 ? "" : "s")}");
+            if (r.Crits > 0) extra.Add($"{r.Crits} crit");
+            if (r.Misses > 0) extra.Add($"{r.Misses} missed");
+            if (r.Resists > 0) extra.Add($"{r.Resists} resisted");
+            if (r.Max > 0) extra.Add(r.Min < r.Max ? $"{r.Min:N0}–{r.Max:N0}" : $"max {r.Max:N0}");
+            row.Detail = string.Join(" · ", extra);
+        }
     }
 
     // Rates hide below these floors rather than lying: 1 proc in a 5-second

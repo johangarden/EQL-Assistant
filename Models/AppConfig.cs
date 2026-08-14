@@ -86,6 +86,10 @@ public sealed class OverlayConfig
     /// <summary>Whether the DPS meter panel is shown (toggled from toolbar / tray / Ctrl+Alt+D).</summary>
     public bool MeterVisible { get; set; } = true;
 
+    /// <summary>Meter scope: solo (your abilities ranked, pet collapsible) vs
+    /// group (everyone the log shows, ranked). EQL is solo-first.</summary>
+    public bool MeterSoloMode { get; set; } = true;
+
     /// <summary>Your pet's name — enables the pet line in the DPS meter's incoming footer.</summary>
     public string PetName { get; set; } = "";
 

@@ -65,6 +65,10 @@
                         Click="OnToggleMetric" Margin="6,0,0,0" Padding="7,1" Content="DPS"
                         AutomationProperties.AutomationId="MeterModeBtn"
                         ToolTip="Toggle between damage (DPS) and healing (HPS)"/>
+                <Button x:Name="ScopeBtn" DockPanel.Dock="Right" Style="{StaticResource ToolBtn}"
+                        Click="OnToggleScope" Margin="6,0,0,0" Padding="7,1" Content="SOLO"
+                        AutomationProperties.AutomationId="MeterScopeBtn"
+                        ToolTip="SOLO ranks your own abilities (pet folds out below); GROUP ranks everyone the log shows"/>
                 <TextBlock x:Name="TitleText" Text="DPS meter" Foreground="#C9D4E3" FontWeight="SemiBold"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
@@ -72,8 +76,26 @@
             <TextBlock x:Name="SummaryText" Text="waiting for combat…" Foreground="#7F93AD"
                        FontSize="11" Margin="0,0,0,6"/>
 
-            <!-- Ranked sources: name + proportional bar + dps (total, %). -->
+            <!-- Ranked sources: name + proportional bar + dps (total, %).
+                 SOLO scope: your abilities. GROUP scope: everyone in the log. -->
             <ItemsControl x:Name="RowsControl" ItemTemplate="{StaticResource BarRow}"/>
+
+            <!-- Pet drill-down (solo scope, pet name set): header row sums the
+                 pet, the chevron folds its per-ability split in and out. -->
+            <StackPanel x:Name="PetSection" Visibility="Collapsed">
+                <DockPanel Margin="2,1,2,0" MouseLeftButtonDown="PetHeader_Click"
+                           Background="Transparent" Cursor="Hand"
+                           ToolTip="Click to fold the pet's per-ability split in and out">
+                    <TextBlock x:Name="PetHeaderValue" DockPanel.Dock="Right" Text=""
+                               Foreground="#8FA6C4" FontSize="11"/>
+                    <TextBlock x:Name="PetHeaderChevron" Text="&#x25B6;" Foreground="#5C6B82"
+                               FontSize="8" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBlock x:Name="PetHeaderLabel" Text="Pet" Foreground="#C9D4E3" FontSize="11"
+                               TextTrimming="CharacterEllipsis"/>
+                </DockPanel>
+                <ItemsControl x:Name="PetRowsControl" ItemTemplate="{StaticResource BarRow}"
+                              Margin="12,3,0,0" Visibility="Collapsed"/>
+            </StackPanel>
 
             <!-- All enemy-shaped sources combined (same-named mobs can't be told
                  apart in the log, so they never pollute the player rankings). -->

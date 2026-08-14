@@ -220,11 +220,17 @@ running, the watch shows the **soonest spawn** big, the rest as secondary rows.
 
 ## DPS meter, fight history and timeline
 
-The meter shows live ranked damage (or healing — toggle **DPS/HPS**) per
-source, with your character highlighted, same-named mobs merged into a combined
-**Enemies** row (log lines can't tell two "a royal guard" apart), and a
-**DAMAGE TAKEN** footer for you and your pet. A fight ends ~10s after combat
-goes quiet.
+The meter has two scopes (**SOLO/GROUP** button, solo by default — EQL is a
+solo-first game). **SOLO** ranks *your own abilities* live: every spell, melee
+skill, DoT and proc as its own bar with real-time DPS, total and share, plus
+hits/crits/misses/range on hover. A detected pet gets a fold-out row of its
+own (click the ▶ to expand its per-ability split). **GROUP** ranks everyone
+the log shows — nearby players' melee and spells appear in your log, so this
+is the classic party meter. Both scopes honor the **DPS/HPS** toggle (solo
+HPS = your healing per spell), keep your character highlighted, merge
+same-named mobs into a combined **Enemies** row (log lines can't tell two
+"a royal guard" apart), and show the **DAMAGE TAKEN** footer for you and your
+pet. A fight ends ~10s after combat goes quiet.
 
 **Fight history** (📜 on the meter) keeps the last 50 fights — Ctrl-click up to
 three to compare side by side. **★ Keep** saves a fight permanently, so you can

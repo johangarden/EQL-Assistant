@@ -1109,6 +1109,16 @@ public partial class App : Application
                 inc3.First(r => r.Name == "thorns") is { Total: 6 });
             Check("unattributed non-melee incoming (100)",
                 inc3.First(r => r.Name == "non-melee") is { Total: 100 });
+            // Solo HPS view: heals split per spell, bare heals under "heal",
+            // other healers' spells never bleed into your lanes.
+            var heals = p.GetHealAbilityRows("Johan");
+            Check("solo heals: per-spell split with bare-heal fallback",
+                heals.First(r => r.Name == "heal") is { Total: 25 }
+                && heals.First(r => r.Name == "Sprouting Heal") is { Total: 30 }
+                && heals.All(r => r.Name != "Light Healing"));
+            Check("solo heals: the other healer keeps their own lane",
+                // 65 on Snik (Ts10) + 40 on Johan (Ts17), same fight
+                p.GetHealAbilityRows("Malahoja").First(r => r.Name == "Light Healing") is { Total: 105 });
             Check("SCT: bare heal fires HealOut with 'heal' label",
                 sct.Any(e => e is { Kind: CombatParser.SctKind.HealOut, Ability: "heal", Amount: 25 }));
             Check("SCT: HoT tick fires HealOut with spell label",
