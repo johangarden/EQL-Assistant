@@ -16,6 +16,7 @@
             <local:FillStarConverter x:Key="FillStar"/>
             <local:RestStarConverter x:Key="RestStar"/>
             <local:BottomSpacingConverter x:Key="BottomSpacing"/>
+            <local:MultiplyConverter x:Key="Multiply"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -182,7 +182,10 @@ DoTs, Debuffs, Cooldowns, then the matrices, repop timers and flash alerts),
 and **each type owns its color** — buffs blue, HoTs green, DoTs red, debuffs
 yellow, cooldowns purple — everywhere the trigger shows up (bars, flash text,
 the list swatch). No per-trigger color picking. Disabled triggers gray out in
-place.
+place. **HoTs mean short rotational heals** (Slugs Healing and kin, ~24s) —
+the regen line (Chloroplast, Regeneration, Regrowth…) and other long-running
+heal effects are Buffs. HoT bars render **1.4× taller** than the rest:
+they're the ones keeping you alive.
 
 Per-trigger alerts are **two independent notices**, each with its own toggle
 and its own channel — a spoken phrase (Windows TTS, prefilled "X is about to

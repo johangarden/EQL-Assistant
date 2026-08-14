@@ -83,7 +83,12 @@ these, so merged cross-machine history survives a reset).
 ## Design rules that keep recurring
 
 - **Types own colors** (`TriggerColors`): buffs blue, HoTs green, DoTs red,
-  debuffs yellow, cooldowns purple. No per-trigger color picking.
+  debuffs yellow, cooldowns purple. No per-trigger color picking. HoTs =
+  SHORT rotational heals only (≤120s): the regen line ("You begin to
+  regenerate." — Chloroplast & kin) and any heal effect running longer are
+  Buffs (`SpellLibrary.TriggerCategory`; HealLibraryTriggers retypes old
+  HoT-typed regen on load). HoT bars render 1.4× tall (`HeightScale`) — the
+  stay-alive bars.
 - **Alerts are two notices** (2.11+): *notify before it fades* (default 15s)
   and *notify when it faded* (doubles as cooldown "ready"), each a toggle +
   Phrase OR Sound (one channel, never both). Phrases prefill "<Name> is about

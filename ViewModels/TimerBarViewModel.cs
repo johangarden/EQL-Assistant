@@ -16,7 +16,13 @@ public sealed class TimerBarViewModel : ViewModelBase
         Category = category;
         Fill = fill;
         Fill.Freeze();
+        // HoTs are the bars you actively watch to stay alive — render taller.
+        HeightScale = Services.TriggerColors.ForCategory(category) == Services.TriggerColors.Heal
+            ? 1.4 : 1.0;
     }
+
+    /// <summary>Multiplier on the configured bar height (HoTs 1.4×, rest 1×).</summary>
+    public double HeightScale { get; }
 
     /// <summary>A normal countdown bar. <paramref name="waitsForFade"/> = the
     /// trigger has an end pattern: on expiry the bar OVERRUNS (grays out and

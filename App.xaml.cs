@@ -502,7 +502,11 @@ public partial class App : Application
             Check("typing: Snails Healing is a HoT (wiki type)", CatOf("Snails Healing") == "HoTs");
             Check("typing: Envenomed Bolt is a DoT (poison landing)", CatOf("Envenomed Bolt") == "DoTs");
             Check("typing: Boil Blood is a DoT (blood boils)", CatOf("Boil Blood") == "DoTs");
-            Check("typing: Regeneration is a HoT (regenerate landing)", CatOf("Regeneration") == "HoTs");
+            // The regen line is maintenance, not rotational healing (2.12).
+            Check("typing: Regeneration/Chloroplast are regen BUFFS, not HoTs",
+                CatOf("Regeneration") == "Buffs" && CatOf("Chloroplast") == "Buffs");
+            Check("typing: a long 'Regen'-typed spell is a buff too",
+                CatOf("Spiritual Light") == "Buffs");
             Check("typing: Quickness stays a buff", CatOf("Quickness") == "Buffs");
             var retype = new[]
             {
@@ -519,6 +523,21 @@ public partial class App : Application
                 && retype[3].Category == "Debuffs" && retype[3].StartPattern.Length == 0
                 && retype[1].StartPattern == System.Text.RegularExpressions.Regex
                     .Escape("You feel much faster."));
+            // Pre-2.12 files carry the regen line as HoTs — heals back to Buffs.
+            var regen = new Models.TriggerDefinition
+                { Id = "lib-chloroplast", Name = "Chloroplast", Category = "HoTs" };
+            lib2.HealLibraryTriggers(new[] { regen });
+            Check("typing: an existing HoT-typed Chloroplast heals to Buffs",
+                regen.Category == "Buffs");
+
+            // HoT bars carry extra height (the stay-alive bars).
+            Check("bars: HoT bars render 1.4x tall, others 1x",
+                ViewModels.TimerBarViewModel.CreateTimer("h1", "Slugs Healing", "HoTs", 24,
+                    DateTime.Now.AddSeconds(24), Brushes.Green, 0, false, null, null)
+                    .HeightScale == 1.4
+                && ViewModels.TimerBarViewModel.CreateTimer("h2", "Quickness", "Buffs", 660,
+                    DateTime.Now.AddSeconds(660), Brushes.Blue, 0, false, null, null)
+                    .HeightScale == 1.0);
 
             // Junk landing text ("You .") falls back to the begin-cast line —
             // and already-added broken triggers heal to it on load.
