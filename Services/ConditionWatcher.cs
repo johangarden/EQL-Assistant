@@ -128,12 +128,12 @@ public sealed class ConditionWatcher
 
     public void Clear() => _active.Clear();
 
-    /// <summary>Test hook: a stun + fear pair that self-clears after ~12s.</summary>
+    /// <summary>Test hook: all four badges, self-clearing after ~12s.</summary>
     public void AddDemo()
     {
         var now = DateTime.Now;
-        _active[Stunned] = (now, now.AddSeconds(12));
-        _active[Feared] = (now, now.AddSeconds(12));
+        foreach (string kind in new[] { Stunned, Feared, Charmed, Mezzed })
+            _active[kind] = (now, now.AddSeconds(12));
     }
 
     private static DateTime ExtractTimestamp(string rawLine, out string body)
