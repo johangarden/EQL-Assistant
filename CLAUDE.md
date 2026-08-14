@@ -126,11 +126,18 @@ these, so merged cross-machine history survives a reset).
   below sample floors instead of lying.
 - **Enemy DoTs**: automatic per-mob bars ("a froglok 01/02") grouped per
   spell, driven by own tick lines. Instance identity = tick heartbeat: a tick
-  belongs to the instance DUE one (≥4.5s since its last); nobody due = new
-  mob = next free number. NON-ticking debuffs enter via your begin-cast +
-  the spell's third-person landing suffix ("A froglok has been poisoned.",
-  SpellLibrary.OtherLanding); anonymous landings without your cast are
-  ignored. Censors: wear-off closes the OLDEST bar, mob death clears
+  belongs to the instance DUE one (≥4.5s since its last); a never-ticked
+  instance (fresh landing) owns its first tick whenever it comes; nobody
+  due = new mob = next free number. NON-ticking debuffs enter via your
+  begin-cast + the spell's third-person landing suffix ("A froglok has been
+  poisoned.", SpellLibrary.OtherLanding); anonymous landings without your
+  cast are ignored. **Landings never grow a ghost bar** (Companion JOS-140
+  bounded reading): a landing refreshes an instance that's overrun,
+  tick-stale (>7.5s silent), or in its last stretch (≤max(6s, 20%)); it
+  reads as a SECOND MOB (append) only when every instance runs comfortably
+  on a KNOWN clock; unknown duration always refreshes the newest —
+  under-counts self-correct via the heartbeat, over-counts never do.
+  Refresh resets Ticks to 0 (awaiting first tick again). Censors: wear-off closes the OLDEST bar, mob death clears
   single-instance groups (twins wait for silence), zoning, own death; ticking
   bars die by 13s silence, landing-only ones by duration+60s (90s hygiene cap
   when no duration). Unknown durations count UP, never guess.

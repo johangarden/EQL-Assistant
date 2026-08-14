@@ -307,10 +307,13 @@ public sealed class CombatParser
             _enemyDots[key] = g = new DotGroup { Spell = spell.Trim(), Target = target };
 
         // The most-overdue due instance owns this tick; nobody due = new mob.
-        // (A tick past the known duration keeps the instance — the view shows
-        // it as OVERRUN; the re-cast's own landing line resets the clock.)
+        // A never-ticked instance (fresh landing) owns its FIRST tick whenever
+        // it comes — the landing line is not a tick, so the cadence window
+        // doesn't apply yet. (A tick past the known duration keeps the
+        // instance — the view shows it as OVERRUN; the re-cast's own landing
+        // line resets the clock.)
         var inst = g.Instances
-            .Where(i => (time - i.LastTick).TotalSeconds >= DotTickDueSec)
+            .Where(i => i.Ticks == 0 || (time - i.LastTick).TotalSeconds >= DotTickDueSec)
             .OrderByDescending(i => time - i.LastTick)
             .FirstOrDefault();
         if (inst is null)
@@ -323,10 +326,25 @@ public sealed class CombatParser
         inst.Ticks++;
     }
 
+    // A ticking instance that misses its tick window is STALE — EQ dots tick
+    // every ~6s, so >7.5s of silence means the dot ended (early break, resist
+    // of the remaining ticks, or an estimate that ran long).
+    private const double DotStaleTickSec = 7.5;
+
     /// <summary>Your cast's landing on an enemy ("A froglok has been
-    /// poisoned.") — the entry point for NON-ticking debuffs (and the recast
-    /// reset for ticking ones): an OVERRUN instance is refreshed, otherwise
-    /// a new bar opens.</summary>
+    /// poisoned.") — the entry point for NON-ticking debuffs and the re-cast
+    /// reset for ticking ones.
+    ///
+    /// THE BOUNDED READING (the Companion's JOS-140 round rule): a re-landing
+    /// is either the same mob re-hit or a second mob of that name newly hit,
+    /// and no log line separates them — so a landing must never grow a ghost
+    /// bar. It REFRESHES an instance whose dot has plausibly ended (overrun /
+    /// tick-stale / in the last stretch of its clock), and only reads as a
+    /// SECOND MOB when every instance is comfortably mid-duration with a
+    /// known clock (you spread to a tab target). With no known duration it
+    /// always refreshes — under-counting self-corrects (a real twin's ticks
+    /// split it via the heartbeat within one cadence), over-counting never
+    /// does.</summary>
     private void NoteDotLanding(string spell, string target, DateTime time)
     {
         target = Normalize(target);
@@ -335,22 +353,51 @@ public sealed class CombatParser
         if (!_enemyDots.TryGetValue(key, out var g))
             _enemyDots[key] = g = new DotGroup { Spell = spell.Trim(), Target = target };
 
-        double? dur = DotDurationLookup?.Invoke(g.Spell) is double d && d > 1 ? d : null;
-        var overrun = g.Instances
-            .Where(i => dur is double dd && (time - i.Start).TotalSeconds > dd)
-            .OrderByDescending(i => time - i.Start)
-            .FirstOrDefault();
-        if (overrun is not null)
-        {
-            overrun.Start = time;   // the re-cast: same bar, fresh clock
-            overrun.LastTick = time;
-        }
-        else
+        void Append()
         {
             int ordinal = 1;
             while (g.Instances.Any(i => i.Ordinal == ordinal)) ordinal++;
             g.Instances.Add(new DotInstance { Ordinal = ordinal, Start = time, LastTick = time });
         }
+
+        if (g.Instances.Count == 0) { Append(); return; }
+
+        double? dur = DotDurationLookup?.Invoke(g.Spell) is double d && d > 1 ? d : null;
+
+        // The instance this landing most plausibly re-casts, in order of proof:
+        // past its known duration; ticking but silent past a tick window; or
+        // inside the final stretch (≤ max(6s, 20%)) of its clock.
+        var refresh =
+            g.Instances.Where(i => dur is double dd && (time - i.Start).TotalSeconds > dd)
+                .OrderByDescending(i => time - i.Start).FirstOrDefault()
+            ?? g.Instances.Where(i => i.Ticks > 0 && (time - i.LastTick).TotalSeconds > DotStaleTickSec)
+                .OrderByDescending(i => time - i.LastTick).FirstOrDefault()
+            ?? g.Instances.Where(i => dur is double dd
+                    && dd - (time - i.Start).TotalSeconds <= Math.Max(6, 0.2 * dd))
+                .OrderBy(i => dur!.Value - (time - i.Start).TotalSeconds).FirstOrDefault();
+
+        if (refresh is not null)
+        {
+            Refresh(refresh);
+            return;
+        }
+
+        if (dur is null)
+        {
+            // No clock to argue with — bounded reading, refresh the newest.
+            Refresh(g.Instances.OrderByDescending(i => i.Start).First());
+            return;
+        }
+
+        void Refresh(DotInstance i)
+        {
+            i.Start = time;    // the re-cast: same bar, fresh clock
+            i.LastTick = time;
+            i.Ticks = 0;       // awaiting its first tick again — the cadence
+                               // window must not ghost an early first tick
+        }
+
+        Append(); // everything running comfortably: a second mob of the name
     }
 
     private void RemoveDotsFor(string mobName)
