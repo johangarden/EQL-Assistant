@@ -505,7 +505,11 @@ public sealed class CombatParser
     /// <summary>Raised on "You died." / "You have been slain by X!" (caller's thread).</summary>
     public event Action<DeathEvent>? PlayerDied;
 
-    private const int RecapCapacity = 40;
+    // Sized for a raid: ~8 events/s on you × the 15s recap window.
+    private const int RecapCapacity = 120;
+
+    /// <summary>The recap shows this many seconds before the death.</summary>
+    public const double RecapWindowSec = 15;
     private readonly List<RecapEntry> _recap = new();
     private DateTime _lastDeathAt = DateTime.MinValue;
 
