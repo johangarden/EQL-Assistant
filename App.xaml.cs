@@ -1189,6 +1189,12 @@ public partial class App : Application
             Check("raid kill: normal line no match",
                 !RaidKills.TryParseKill("You slash a rat for 5 points of damage.", out _));
 
+            // Target renames observed in real logs migrate old target files —
+            // Innoruuk's actual death line names him in full.
+            Check("raid targets: short Innoruuk migrates to the observed full name",
+                RaidKills.MigrateTargetName("Innoruuk") == "Innoruuk, the Prince of Hate"
+                && RaidKills.MigrateTargetName("Lady Vox") == "Lady Vox");
+
             // Global respawns: the auto-generated death pattern matches both forms.
             var resp = ConfigService.BuildRespawnTrigger(
                 new Models.RespawnEntry { Name = "Lady Vox", Seconds = 400 });
