@@ -59,6 +59,13 @@ public sealed class ConditionWatcher
 
     public ConditionWatcher(SpellLibrary library)
     {
+        // The plain forms print for melee stuns too (bash/slam), not only for
+        // spells — seeded outright so they never depend on the library
+        // happening to carry a spell that uses the bare sentence.
+        _onLines["You are stunned."] = Stunned;
+        _onLines["You are mesmerized."] = Mezzed;
+        _onLines["You have been charmed."] = Charmed;
+
         foreach (var s in library.Spells)
         {
             if (!OffLines.TryGetValue(s.WearsOff, out string? kind)) continue;

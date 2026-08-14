@@ -617,6 +617,10 @@ public partial class App : Application
             cw.ProcessLine($"[{AT(0)}] You are struck by a sudden force.");
             Check("conditions: a stun landing raises the badge",
                 cw.Active(new DateTime(2026, 8, 10, 23, 0, 5)) is [{ Kind: ConditionWatcher.Stunned }]);
+            cw.ProcessLine($"[{AT(2)}] You are no longer stunned.");
+            cw.ProcessLine($"[{AT(3)}] You are stunned."); // plain form: melee bash/slam too
+            Check("conditions: the plain melee-stun line raises the badge",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 4)) is [{ Kind: ConditionWatcher.Stunned }]);
             cw.ProcessLine($"[{AT(6)}] You are no longer stunned.");
             Check("conditions: the wear-off line clears it",
                 cw.Active(new DateTime(2026, 8, 10, 23, 0, 7)).Count == 0);
