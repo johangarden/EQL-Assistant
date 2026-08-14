@@ -417,13 +417,24 @@ their names often aren't castable spell names.
 ## Death recap
 
 When a death line appears ("You have been slain by …" / "You died."), a recap
-window pops up over the game (without stealing focus) showing the last 15
-things that happened **to you**: hits with attacker + ability + amount, misses
-dimmed, heals in green — each with the time offset back from the moment of
-death. The biggest hit is tinted, and the header sums damage taken (and
-healing received) over the visible window. Reopen the latest recap any time
-from the tray (**Death recap…**); the auto-popup can be turned off on the
-Manager's General page.
+window pops up over the game (without stealing focus) covering the **last 15
+seconds** — sized for a raid, where 15 *events* used to be four seconds of
+misses. It answers the question in layers:
+
+- **The story** — one line naming the verdict: "*The burst that killed you:
+  −595 in the last 2s (an ire ghast · Harm Touch −453 …)*" when a final spike
+  carried ≥40% of the damage, or "*Worn down — no single burst*" when it
+  didn't.
+- **The death graph** — one column per second: damage hangs down in red,
+  healing stands up in green, the killing-burst seconds glow brighter. Burst
+  or attrition is visible in half a second.
+- **The grouped ledger** — repeats of the same *attacker · ability* merge
+  into one ×N row with the summed total ("Specter Lifetap ×6 · −294"), the
+  killing blow's row is tinted, and **misses collapse into chips** at the
+  bottom ("a loathling lich ×7") instead of eating rows.
+
+Reopen the latest recap any time from the tray (**Death recap…**); the
+auto-popup can be turned off on the Manager's General page.
 
 ## Scrolling combat text
 

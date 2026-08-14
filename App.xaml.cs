@@ -321,6 +321,38 @@ public partial class App : Application
             Check("recap: later plain death fires fresh and empty",
                 deaths.Count == 2 && deaths[1].Killer == "" && deaths[1].Events.Count == 0);
 
+            // Recap presentation (the C+A rebuild): repeats merge into ×N
+            // rows, misses never make rows, and the story names the burst.
+            DateTime RD(int s) => new DateTime(2026, 8, 15, 22, 0, 0).AddSeconds(s);
+            var rev = new List<CombatParser.RecapEntry>
+            {
+                new(RD(-14), "A spite golem", "hit", 87, Heal: false, Crit: false),
+                new(RD(-12), "a loathling lich", "Specter Lifetap", 49, Heal: false, Crit: false),
+                new(RD(-10), "a loathling lich", "Specter Lifetap", 49, Heal: false, Crit: false),
+                new(RD(-9), "Thorrak", "Siphon Life", 163, Heal: true, Crit: false),
+                new(RD(-8), "a loathling lich", "slice", 0, Heal: false, Crit: false, Miss: true),
+                new(RD(-1), "an ire ghast", "Harm Touch", 453, Heal: false, Crit: false),
+                new(RD(0), "A spite golem", "hit", 142, Heal: false, Crit: false),
+            };
+            var dev2 = new CombatParser.DeathEvent(RD(0), "a loathling lich", rev);
+            var biggestHit = rev.Where(e => !e.Heal && !e.Miss).MaxBy(e => e.Amount);
+            var grp = Views.DeathRecapWindow.GroupEvents(rev, biggestHit);
+            Check("recap: repeats merge into ×N rows and misses are excluded",
+                grp.Count == 4
+                && grp.First(x => x.Ability == "Specter Lifetap") is { Count: 2, Total: 98 }
+                && grp.First(x => x.Ability == "hit") is { Count: 2, Total: 229 }
+                && grp.All(x => x.Ability != "slice"));
+            Check("recap: the killing-blow group is flagged",
+                grp.Single(x => x.HasBiggestHit).Ability == "Harm Touch");
+            string story = Views.DeathRecapWindow.BuildStory(dev2, rev,
+                taken: 780, healed: 163, span: 14);
+            Check("recap: the story names the killing burst",
+                story.Contains("595") && story.Contains("Harm Touch"));
+            var slow = rev.Where(e => (RD(0) - e.When).TotalSeconds > 2).ToList();
+            Check("recap: no burst reads as worn down",
+                Views.DeathRecapWindow.BuildStory(new CombatParser.DeathEvent(RD(0), "x", slow),
+                    slow, taken: 185, healed: 163, span: 14).StartsWith("Worn down"));
+
             // Trigger duration modes: auto-learn follows the estimate in EITHER
             // direction; manual enforces the configured value exactly.
             var modeCfg = new Models.AppConfig();
