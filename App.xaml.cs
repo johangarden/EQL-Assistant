@@ -1581,6 +1581,48 @@ public partial class App : Application
             Check("debuffs: a landing outside the cast window is ignored",
                 eb.EnemyDots(BT(182)).Count == 2);
 
+            // Ghost-bar defence (the Companion's bounded reading, JOS-140):
+            // one mob, re-dot around expiry — the bar refreshes in place, it
+            // never grows a phantom "02".
+            var rd = new CombatParser { SelfName = "Johan" };
+            rd.OtherLandingLookup = s => SpellDurations.BaseKey(s) == "venom of the snake"
+                ? ("has been poisoned.", true) : ((string, bool)?)null;
+            string RTs(int s) => new DateTime(2026, 8, 12, 23, 0, 0).AddSeconds(s)
+                .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+            DateTime RT(int s) => new DateTime(2026, 8, 12, 23, 0, 0).AddSeconds(s);
+            rd.ProcessLine($"[{RTs(0)}] You begin casting Venom of the Snake.");
+            rd.ProcessLine($"[{RTs(2)}] A froglok has been poisoned.");
+            rd.ProcessLine($"[{RTs(4)}] A froglok has taken 40 damage from your Venom of the Snake.");
+            Check("dots: the first tick joins the fresh landing — no ghost 02",
+                rd.EnemyDots(RT(5)) is [{ Ordinal: 1 }]);
+            rd.ProcessLine($"[{RTs(10)}] A froglok has taken 40 damage from your Venom of the Snake.");
+            rd.ProcessLine($"[{RTs(16)}] A froglok has taken 40 damage from your Venom of the Snake.");
+            // The dot ends (ticks stop); the re-cast lands inside the cull window.
+            rd.ProcessLine($"[{RTs(26)}] You begin casting Venom of the Snake.");
+            rd.ProcessLine($"[{RTs(29)}] A froglok has been poisoned.");
+            Check("dots: a re-dot after the ticks stop refreshes the SAME bar",
+                rd.EnemyDots(RT(30)) is [{ Ordinal: 1 }]);
+            rd.ProcessLine($"[{RTs(33)}] A froglok has taken 40 damage from your Venom of the Snake.");
+            rd.ProcessLine($"[{RTs(36)}] You begin casting Venom of the Snake.");
+            rd.ProcessLine($"[{RTs(39)}] A froglok has been poisoned.");
+            Check("dots: unknown duration always refreshes — a bar never grows a ghost",
+                rd.EnemyDots(RT(40)) is [{ Ordinal: 1 }]);
+
+            // Known duration: a re-dot in the last stretch refreshes; a landing
+            // while the clock runs comfortably is a SECOND MOB (tab spread).
+            var tl = new CombatParser { SelfName = "Johan" };
+            tl.DotDurationLookup = s => SpellDurations.BaseKey(s) == "envenomed bolt" ? 36.0 : null;
+            tl.OtherLandingLookup = s => SpellDurations.BaseKey(s) == "envenomed bolt"
+                ? ("has been poisoned.", true) : ((string, bool)?)null;
+            tl.ProcessLine($"[{RTs(100)}] You begin casting Envenomed Bolt V.");
+            tl.ProcessLine($"[{RTs(103)}] A froglok has been poisoned.");
+            tl.ProcessLine($"[{RTs(130)}] You begin casting Envenomed Bolt V.");
+            tl.ProcessLine($"[{RTs(133)}] A froglok has been poisoned."); // 6s left = tail
+            var tail = tl.EnemyDots(RT(134));
+            Check("debuffs: a re-dot in the last stretch refreshes in place",
+                tail is [{ Ordinal: 1, RemainingSeconds: not null }]
+                && Math.Abs(tail[0].RemainingSeconds!.Value - 35) < 0.01);
+
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions
             {
