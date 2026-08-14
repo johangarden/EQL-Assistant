@@ -61,17 +61,6 @@ public sealed class AlertService
         catch { /* ignore playback errors */ }
     }
 
-    /// <summary>A short system "bip" (used by repop timers). Respects Muted.</summary>
-    public void Beep()
-    {
-        if (Muted) return;
-        try { MessageBeep(0xFFFFFFFF); } // 0xFFFFFFFF = simple beep, async
-        catch { /* ignore */ }
-    }
-
-    [DllImport("user32.dll")]
-    private static extern bool MessageBeep(uint uType);
-
     [DllImport("winmm.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool PlaySound(string? pszSound, nint hmod, uint fdwSound);
 
