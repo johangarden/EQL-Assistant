@@ -1343,6 +1343,29 @@ public partial class App : Application
                 RaidKills.MigrateTargetName("Innoruuk") == "Innoruuk, the Prince of Hate"
                 && RaidKills.MigrateTargetName("Lady Vox") == "Lady Vox");
 
+            // The weekly loot lockout (the Companion's research): the window
+            // starts on the most recent Tuesday 08:00 PACIFIC and runs 7 days.
+            var (wkStart, wkNext) = RaidKills.WeekBoundsLocal(DateTime.Now);
+            var startPac = TimeZoneInfo.ConvertTime(
+                DateTime.SpecifyKind(wkStart, DateTimeKind.Unspecified),
+                TimeZoneInfo.Local, TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"));
+            Check("lockout: week starts Tuesday 08:00 Pacific and contains now",
+                startPac.DayOfWeek == DayOfWeek.Tuesday && startPac.Hour == 8
+                && wkStart <= DateTime.Now && DateTime.Now < wkNext
+                && Math.Abs((wkNext - wkStart).TotalDays - 7) < 0.05); // DST edge ±1h
+            string rkwPath = Path.Combine(Path.GetTempPath(), "eql_rkw_test.json");
+            File.Delete(rkwPath);
+            var rkw = new RaidKills(new ConfigService(), rkwPath);
+            rkw.ProcessLine("[x] Lady Vox has been slain by Johan!", wkStart.AddDays(-1)); // last week
+            rkw.ProcessLine("[x] Lady Vox has been slain by Johan!", wkStart.AddHours(5)); // this week
+            Check("lockout: the This-week view counts only this week's kills",
+                rkw.GetView(wkStart).Single(t => t.Name == "Open World")
+                    .Targets.Single(x => x.Name == "Lady Vox").Count == 1
+                && rkw.GetView().Single(t => t.Name == "Open World")
+                    .Targets.Single(x => x.Name == "Lady Vox").Count == 2
+                && rkw.KillsFor("Lady Vox", wkStart).Count == 1);
+            File.Delete(rkwPath);
+
             // Global respawns: the auto-generated death pattern matches both forms.
             var resp = ConfigService.BuildRespawnTrigger(
                 new Models.RespawnEntry { Name = "Lady Vox", Seconds = 400 });

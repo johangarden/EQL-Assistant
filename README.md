@@ -357,7 +357,10 @@ Both open from the Fight History window (and raid kills from the tray):
 
 - **Raid kills** — a tiered target list (Open World, Fear, Hate, Sky — edit
   `raid-targets.json` to taste) with kill counts and dates, detected from death
-  lines and remembered forever. Every target wears a **hand-drawn vector badge**
+  lines and remembered forever. A **This week / All time** toggle scopes the
+  whole view to the current **loot lockout week** (resets Tuesday 08:00
+  Pacific — per boss, per difficulty; the header counts down to the reset), so
+  "what's still worth killing this week" is one glance. Every target wears a **hand-drawn vector badge**
   (dragon, skull, demon, golem, spiroc, wasp, eye, spirit, claw — original
   silhouettes, no game assets) in its own tint: full color once defeated, a
   faded tease while it still lives. Targets you add yourself get a monogram

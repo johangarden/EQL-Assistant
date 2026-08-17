@@ -105,10 +105,41 @@ public sealed class RaidKills
         LoadKills();
     }
 
-    public IReadOnlyList<TierView> GetView() =>
+    // ---- the weekly loot lockout ---------------------------------------------
+    // The Companion's research (its lockout.ts, 2026-08-06): the weekly reset
+    // is Tuesday 08:00 on the PACIFIC WALL CLOCK — the hour is double-sourced
+    // (patch notes + community wiki), the TUESDAY single-sourced (verify in
+    // game; a correction is a one-constant edit). Never a fixed UTC offset:
+    // the same wall clock is UTC-7 under PDT and UTC-8 under PST.
+
+    private static readonly TimeZoneInfo Pacific =
+        TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
+
+    public const DayOfWeek ResetWeekday = DayOfWeek.Tuesday;
+    public const int ResetHourPacific = 8;
+
+    /// <summary>The current lockout week's [start, next-reset) in LOCAL time.</summary>
+    public static (DateTime StartLocal, DateTime NextLocal) WeekBoundsLocal(DateTime nowLocal)
+    {
+        var pac = TimeZoneInfo.ConvertTime(
+            DateTime.SpecifyKind(nowLocal, DateTimeKind.Unspecified), TimeZoneInfo.Local, Pacific);
+        int back = ((int)pac.DayOfWeek - (int)ResetWeekday + 7) % 7;
+        var start = pac.Date.AddDays(-back).AddHours(ResetHourPacific);
+        if (start > pac) start = start.AddDays(-7); // it's Tuesday, before 08:00
+        static DateTime ToLocal(DateTime p) =>
+            TimeZoneInfo.ConvertTime(p, Pacific, TimeZoneInfo.Local);
+        return (ToLocal(start), ToLocal(start.AddDays(7)));
+    }
+
+    public IReadOnlyList<TierView> GetView() => GetView(null);
+
+    /// <summary><paramref name="since"/> filters to kills at/after that instant
+    /// (the This-week view passes the lockout week's start); null = all time.</summary>
+    public IReadOnlyList<TierView> GetView(DateTime? since) =>
         _tiers.Select(t => new TierView(t.Name, t.Targets.Select(name =>
         {
-            _kills.TryGetValue(name, out var kills);
+            _kills.TryGetValue(name, out var all);
+            var kills = since is DateTime s ? all?.Where(k => k.When >= s).ToList() : all;
             return new TargetView(name, kills?.Count ?? 0,
                 kills is { Count: > 0 } ? kills.Max(k => k.When) : null,
                 kills is { Count: > 0 } ? kills.Select(k => k.D).ToHashSet() : new HashSet<int>());
@@ -188,10 +219,12 @@ public sealed class RaidKills
         return true;
     }
 
-    /// <summary>All recorded kills of one target, newest first (empty if none).</summary>
-    public IReadOnlyList<Kill> KillsFor(string target) =>
+    /// <summary>Recorded kills of one target, newest first (empty if none);
+    /// <paramref name="since"/> filters like <see cref="GetView(DateTime?)"/>.</summary>
+    public IReadOnlyList<Kill> KillsFor(string target, DateTime? since = null) =>
         _kills.TryGetValue(target, out var list)
-            ? list.OrderByDescending(k => k.When).ToList()
+            ? list.Where(k => since is not DateTime s || k.When >= s)
+                .OrderByDescending(k => k.When).ToList()
             : Array.Empty<Kill>();
 
     /// <summary>Attach a loot entry to the raid kill it came from (no-op for

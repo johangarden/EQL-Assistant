@@ -44,6 +44,13 @@ public partial class RaidKillsWindow : Window
     private static readonly Brush BadgeOffFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
     private static readonly Brush ItemsFg = Freeze(Color.FromRgb(0x8F, 0xA6, 0xC4));
     private static readonly Brush NoItemsFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
+    private static readonly Brush SegOnBg = Freeze(Color.FromRgb(0x16, 0x28, 0x3E));
+    private static readonly Brush SegOnFg = Freeze(Color.FromRgb(0x4F, 0xC3, 0xF7));
+    private static readonly Brush SegOffFg = Freeze(Color.FromRgb(0x7F, 0x93, 0xAD));
+
+    /// <summary>This-week (the loot lockout window) vs all-time. Week default:
+    /// the lockout is the question you open this window to answer.</summary>
+    private bool _weekMode = true;
 
     public RaidKillsWindow(RaidKills raids)
     {
@@ -59,11 +66,33 @@ public partial class RaidKillsWindow : Window
         Closed += (_, _) => _tick.Stop();
     }
 
+    private void WeekBtn_Click(object sender, MouseButtonEventArgs e) { _weekMode = true; Refresh(); }
+    private void AllBtn_Click(object sender, MouseButtonEventArgs e) { _weekMode = false; Refresh(); }
+
     private void Refresh()
     {
-        SummaryText.Text = $"{_raids.TotalKilled} / {_raids.TotalTargets} defeated";
+        (DateTime weekStart, DateTime nextReset) = RaidKills.WeekBoundsLocal(DateTime.Now);
+        DateTime? since = _weekMode ? weekStart : null;
 
-        TiersControl.ItemsSource = _raids.GetView().Select(t => new TierRow(
+        WeekBtn.Background = _weekMode ? SegOnBg : Brushes.Transparent;
+        WeekBtnText.Foreground = _weekMode ? SegOnFg : SegOffFg;
+        WeekBtnText.FontWeight = _weekMode ? FontWeights.SemiBold : FontWeights.Normal;
+        AllBtn.Background = _weekMode ? Brushes.Transparent : SegOnBg;
+        AllBtnText.Foreground = _weekMode ? SegOffFg : SegOnFg;
+        AllBtnText.FontWeight = _weekMode ? FontWeights.Normal : FontWeights.SemiBold;
+
+        var view = _raids.GetView(since);
+        int killed = view.Sum(t => t.Killed);
+        SummaryText.Text = _weekMode
+            ? $"{killed} / {_raids.TotalTargets} this week"
+            : $"{killed} / {_raids.TotalTargets} defeated";
+
+        var left = nextReset - DateTime.Now;
+        ResetText.Text = _weekMode
+            ? $"resets in {(int)left.TotalDays}d {left.Hours}h (Tue 08:00 Pacific)"
+            : "";
+
+        TiersControl.ItemsSource = view.Select(t => new TierRow(
             $"{t.Name}  ({t.Killed}/{t.Targets.Count})",
             t.Cleared ? Visibility.Visible : Visibility.Collapsed,
             t.Targets.Select(x =>
@@ -71,7 +100,7 @@ public partial class RaidKillsWindow : Window
                 bool killed = x.Count > 0;
                 bool expanded = killed && _expanded.Contains(x.Name);
                 int drops = killed
-                    ? _raids.KillsFor(x.Name).Sum(k => k.Items.Sum(i => i.Count)) : 0;
+                    ? _raids.KillsFor(x.Name, since).Sum(k => k.Items.Sum(i => i.Count)) : 0;
                 var badge = RaidGlyphs.For(x.Name);
                 var c = badge.Tint;
                 return new KillRow(
@@ -88,7 +117,7 @@ public partial class RaidKillsWindow : Window
                         : new List<BadgeVm>(),
                     killed ? (expanded ? "▾" : "▸") : "",
                     expanded ? Visibility.Visible : Visibility.Collapsed,
-                    expanded ? BuildDetails(x.Name) : new List<KillDetailVm>(),
+                    expanded ? BuildDetails(x.Name, since) : new List<KillDetailVm>(),
                     badge.Glyph,
                     Freeze(c),
                     Freeze(Color.FromArgb(40, c.R, c.G, c.B)),
@@ -101,10 +130,10 @@ public partial class RaidKillsWindow : Window
 
     /// <summary>One line per recorded kill, newest first: timestamp · difficulty
     /// · time-to-kill (when the fight was captured live) · the drops.</summary>
-    private List<KillDetailVm> BuildDetails(string name)
+    private List<KillDetailVm> BuildDetails(string name, DateTime? since)
     {
         var list = new List<KillDetailVm>();
-        var kills = _raids.KillsFor(name);
+        var kills = _raids.KillsFor(name, since);
         foreach (var k in kills.Take(MaxDetailKills))
         {
             var parts = new List<string> { $"{k.When:ddd dd MMM yyyy HH:mm}", $"D{k.D}" };
