@@ -15,6 +15,8 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        EnsureStandardMenuAlignment();
+
         // Self-update finisher: this process IS the freshly downloaded exe in
         // %TEMP%. Overwrite the real exe once the old app exits, relaunch it, die.
         int fu = Array.IndexOf(e.Args, "--finish-update");
@@ -124,6 +126,26 @@ public partial class App : Application
         DispatcherUnhandledException += OnDispatcherUnhandledException;
     }
 
+    /// <summary>Touch/pen-capable machines often report LEFT-HANDED menu
+    /// alignment ("show menus to the left of the hand"), and WPF is nearly
+    /// the only UI stack that honors it — every popup and submenu then opens
+    /// leftward while the rest of the desktop opens right. The standard
+    /// workaround: flip WPF's cached flag so menus behave like every other
+    /// app on the machine. (Near the screen's right edge menus still flip
+    /// left to stay on screen — that part is correct everywhere.)</summary>
+    private static void EnsureStandardMenuAlignment()
+    {
+        try
+        {
+            if (!SystemParameters.MenuDropAlignment) return;
+            typeof(SystemParameters)
+                .GetField("_menuDropAlignment",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                ?.SetValue(null, false);
+        }
+        catch { /* cosmetic only — never block startup over it */ }
+    }
+
     private void RunSelfTest()
     {
         try
@@ -147,6 +169,11 @@ public partial class App : Application
             var recap = new Views.DeathRecapWindow(death);
             recap.Show();
             recap.Close();
+
+            // Sky window builds its class-badge strip (arcs included).
+            var skyWin = new Views.SkyWindow(new SkyQuests(cs, new LootTracker(cs)));
+            skyWin.Show();
+            skyWin.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
             Environment.ExitCode = 0;
         }
@@ -352,6 +379,12 @@ public partial class App : Application
             Check("recap: no burst reads as worn down",
                 Views.DeathRecapWindow.BuildStory(new CombatParser.DeathEvent(RD(0), "x", slow),
                     slow, taken: 185, healed: 163, span: 14).StartsWith("Worn down"));
+            // The raid puzzle: +304 healing over −285 taken and dead anyway —
+            // the window doesn't explain it, and the story must say so instead
+            // of claiming "worn down".
+            Check("recap: healing that covered the damage admits it doesn't add up",
+                Views.DeathRecapWindow.BuildStory(new CombatParser.DeathEvent(RD(0), "x", slow),
+                    slow, taken: 285, healed: 304, span: 15).Contains("don't add up"));
 
             // Trigger duration modes: auto-learn follows the estimate in EITHER
             // direction; manual enforces the configured value exactly.
@@ -637,6 +670,13 @@ public partial class App : Application
             Check("anchor: library flags the shared haste landing as ambiguous",
                 lib2.IsSharedLanding(Esc("You feel much faster."))
                 && !lib2.IsSharedLanding("not a spell line at all"));
+
+            // A zero-duration detrimental is an instant nuke/lifetap — its
+            // landing must never open an enemy-DoT bar (Siphon Life field
+            // report); real duration-carrying debuffs still arm.
+            Check("dots: a zero-duration detrimental (Siphon Life) never arms a bar",
+                lib2.OtherLanding("Siphon Life") is null
+                && lib2.OtherLanding("Togor's Insects") is { Detrimental: true });
 
             // Condition badges: landings derive from the library's uniform
             // wear-off families — no keyword guessing, buffs never match.
@@ -1330,6 +1370,29 @@ public partial class App : Application
                 RaidKills.MigrateTargetName("Innoruuk") == "Innoruuk, the Prince of Hate"
                 && RaidKills.MigrateTargetName("Lady Vox") == "Lady Vox");
 
+            // The weekly loot lockout (the Companion's research): the window
+            // starts on the most recent Tuesday 08:00 PACIFIC and runs 7 days.
+            var (wkStart, wkNext) = RaidKills.WeekBoundsLocal(DateTime.Now);
+            var startPac = TimeZoneInfo.ConvertTime(
+                DateTime.SpecifyKind(wkStart, DateTimeKind.Unspecified),
+                TimeZoneInfo.Local, TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time"));
+            Check("lockout: week starts Tuesday 08:00 Pacific and contains now",
+                startPac.DayOfWeek == DayOfWeek.Tuesday && startPac.Hour == 8
+                && wkStart <= DateTime.Now && DateTime.Now < wkNext
+                && Math.Abs((wkNext - wkStart).TotalDays - 7) < 0.05); // DST edge ±1h
+            string rkwPath = Path.Combine(Path.GetTempPath(), "eql_rkw_test.json");
+            File.Delete(rkwPath);
+            var rkw = new RaidKills(new ConfigService(), rkwPath);
+            rkw.ProcessLine("[x] Lady Vox has been slain by Johan!", wkStart.AddDays(-1)); // last week
+            rkw.ProcessLine("[x] Lady Vox has been slain by Johan!", wkStart.AddHours(5)); // this week
+            Check("lockout: the This-week view counts only this week's kills",
+                rkw.GetView(wkStart).Single(t => t.Name == "Open World")
+                    .Targets.Single(x => x.Name == "Lady Vox").Count == 1
+                && rkw.GetView().Single(t => t.Name == "Open World")
+                    .Targets.Single(x => x.Name == "Lady Vox").Count == 2
+                && rkw.KillsFor("Lady Vox", wkStart).Count == 1);
+            File.Delete(rkwPath);
+
             // Global respawns: the auto-generated death pattern matches both forms.
             var resp = ConfigService.BuildRespawnTrigger(
                 new Models.RespawnEntry { Name = "Lady Vox", Seconds = 400 });
@@ -1510,6 +1573,38 @@ public partial class App : Application
             Check("procs: the session reset clears lanes and active time",
                 pw.SessionProcs.Count == 0 && pw.SessionActiveSeconds == 0 && pw.SessionSwings == 0);
 
+            // The raid report: Leech Touch (an activated AA) and Harnessing of
+            // Spirit (a buff) are not procs. Activations open the cast window;
+            // known beneficial spells never count at all.
+            pw.ProcessLine($"[{PTs(90)}] You activate Leech Touch.");
+            pw.ProcessLine($"[{PTs(91)}] Johan hit a gnoll pup for 300 points of magic damage by Leech Touch I.");
+            pw.ProcessLine($"[{PTs(92)}] Johan healed himself for 300 hit points by Leech Touch I.");
+            Check("procs: an activated AA's damage and heal are not procs",
+                !pw.SessionProcs.ContainsKey("Leech Touch I"));
+            pw.BeneficialLookup = n => SpellDurations.BaseKey(n) == "harnessing of spirit";
+            pw.ProcessLine($"[{PTs(95)}] Johan healed himself for 20 hit points by Harnessing of Spirit.");
+            Check("procs: a known beneficial spell landing cast-less is a buff, not a proc",
+                !pw.SessionProcs.ContainsKey("Harnessing of Spirit"));
+
+            // Pet auto-detect: the summon prints nothing, but the pet names
+            // itself on any order (lines observed 15 Aug 2026).
+            var pd = new CombatParser { SelfName = "Thorrak" };
+            var petBinds = new List<string>();
+            pd.PetDetected += n => petBinds.Add(n);
+            pd.ProcessLine($"[{PTs(0)}] Venarab says, 'Following you, Master.'");
+            Check("pet: the follow response binds the pet", pd.PetName == "Venarab");
+            pd.ProcessLine($"[{PTs(1)}] Venarab says, 'Following you, Master.'");
+            Check("pet: re-ordering the same pet fires no rebind", petBinds.Count == 1);
+            pd.ProcessLine($"[{PTs(2)}] Lober says, 'As you wish, oh great one.'");
+            Check("pet: the dismiss response rebinds the newer name", pd.PetName == "Lober");
+            pd.ProcessLine($"[{PTs(3)}] Guard says, 'Hail, Thorrak'");
+            pd.ProcessLine($"[{PTs(3)}] Tindel says, 'so run a parser, and check the ppm'");
+            Check("pet: ordinary NPC/player chatter never binds", pd.PetName == "Lober");
+            pd.ProcessLine($"[{PTs(4)}] Xanuusaz told you, 'Attacking a gnoll reaver, Master.'");
+            Check("pet: the private Master-tell binds (the unforgeable route)", pd.PetName == "Xanuusaz");
+            pd.ProcessLine($"[{PTs(5)}] Jabantik says, 'My leader is Thorrak.'");
+            Check("pet: the /pet leader answer binds by your own name", pd.PetName == "Jabantik");
+
             // Raid badges: every default target resolves to a drawn silhouette;
             // unknown (user-added) names get a stable monogram fallback.
             var allTargets = new RaidKills(new ConfigService()).GetView()
@@ -1655,6 +1750,20 @@ public partial class App : Application
                 tail is [{ Ordinal: 1, RemainingSeconds: not null }]
                 && Math.Abs(tail[0].RemainingSeconds!.Value - 35) < 0.01);
 
+            // Orange vs red: a landing-only known debuff flags Debuff; a bar
+            // that has TICKED is damage regardless of what the library says.
+            var od = new CombatParser { SelfName = "Johan" };
+            od.OtherLandingLookup = s => SpellDurations.BaseKey(s) == "malosini"
+                ? ("looks very uncomfortable.", true) : ((string, bool)?)null;
+            od.DebuffLookup = s => SpellDurations.BaseKey(s) == "malosini";
+            od.ProcessLine($"[{RTs(200)}] You begin casting Malosini.");
+            od.ProcessLine($"[{RTs(203)}] A froglok looks very uncomfortable.");
+            od.ProcessLine($"[{RTs(205)}] A froglok has taken 50 damage from your Curse.");
+            var tinted = od.EnemyDots(RT(206));
+            Check("dots: landing-only debuffs flag orange, ticked bars stay red",
+                tinted.First(r => r.Spell == "Malosini").Debuff
+                && !tinted.First(r => r.Spell == "Curse").Debuff);
+
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions
             {
@@ -1796,8 +1905,10 @@ public partial class App : Application
 
         int glyphRows = (keys.Count + cols - 1) / cols;
         int stripCols = 4, stripRows = (targets.Count + stripCols - 1) / stripCols;
+        int clsCount = Views.ClassGlyphs.ClassNames.Count();
+        int clsRows = (clsCount + cols - 1) / cols;
         int width = Math.Max(cols * cellW, stripCols * stripCell);
-        int height = glyphRows * cellH + 40 + stripRows * stripRowH + 30;
+        int height = glyphRows * cellH + 40 + stripRows * stripRowH + 30 + 26 + clsRows * cellH + 20;
 
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen())
@@ -1826,6 +1937,22 @@ public partial class App : Application
                 var ft = new FormattedText(targets[i], System.Globalization.CultureInfo.InvariantCulture,
                     FlowDirection.LeftToRight, face, 10, Brushes.Gray, 1.0);
                 dc.DrawText(ft, new Point(x + 18, y - ft.Height / 2));
+            }
+
+            // Class glyphs (Plane of Sky badge strip) — big for detail work,
+            // small for the at-size read.
+            var classes = Views.ClassGlyphs.ClassNames.ToList();
+            double clsTop = stripTop + stripRows * stripRowH + 26;
+            for (int i = 0; i < classes.Count; i++)
+            {
+                double cx = i % cols * cellW + cellW / 2.0;
+                double cy = clsTop + i / cols * cellH + 52;
+                DrawBadge(dc, Views.ClassGlyphs.For(classes[i]), Color.FromRgb(0x9F, 0xB6, 0xD4), null, cx, cy, 84);
+                DrawBadge(dc, Views.ClassGlyphs.For(classes[i]), Color.FromRgb(0x9F, 0xB6, 0xD4), null,
+                    cx + cellW / 2.0 - 22, cy - 30, 30);
+                var ft = new FormattedText(classes[i], System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, face, 12, Brushes.LightGray, 1.0);
+                dc.DrawText(ft, new Point(cx - ft.Width / 2, cy + 50));
             }
         }
 

@@ -122,7 +122,10 @@ these, so merged cross-machine history survives a reset).
   teaches "Quickness"); ranks run base→X, `[IVX]{1,7}` covers them.
 - **Proc detection**: a spell damage/heal line of yours with no own begin-cast
   within 12s. Never DoT ticks, never thorns; a HEAL you've EVER cast this
-  session is your spell (HoT ticks arrive outside any window). Rates hide
+  session is your spell (HoT ticks arrive outside any window). "You activate
+  <X>." (AA/item, no begin-cast line — Leech Touch) opens the same window;
+  known BENEFICIAL library spells never count at all (a buff's own component
+  landing cast-less — Quick Buff bursts — is a buff, not a proc). Rates hide
   below sample floors instead of lying.
 - **Enemy DoTs**: automatic per-mob bars ("a froglok 01/02") grouped per
   spell, driven by own tick lines. Instance identity = tick heartbeat: a tick

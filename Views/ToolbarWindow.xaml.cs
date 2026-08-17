@@ -20,8 +20,10 @@ public partial class ToolbarWindow : Window
     public Action? LockRequested { get; set; }
     public Action? MuteRequested { get; set; }
     public Action? ManageRequested { get; set; }
-    public Action? MenuRequested { get; set; }
-    public Action<object>? LoadoutMenuRequested { get; set; }
+    public Action<object>? MenuRequested { get; set; }
+    public Action? RaidRequested { get; set; }
+    public Action? QuestsRequested { get; set; }
+    public Action? LootRequested { get; set; }
 
     public ToolbarWindow(ConfigService config)
     {
@@ -46,6 +48,8 @@ public partial class ToolbarWindow : Window
     private void OnLock(object sender, RoutedEventArgs e) => LockRequested?.Invoke();
     private void OnMute(object sender, RoutedEventArgs e) => MuteRequested?.Invoke();
     private void OnManage(object sender, RoutedEventArgs e) => ManageRequested?.Invoke();
-    private void OnMenu(object sender, RoutedEventArgs e) => MenuRequested?.Invoke();
-    private void OnLoadout(object sender, RoutedEventArgs e) => LoadoutMenuRequested?.Invoke(sender);
+    private void OnMenu(object sender, RoutedEventArgs e) => MenuRequested?.Invoke(sender);
+    private void OnRaid(object sender, RoutedEventArgs e) => RaidRequested?.Invoke();
+    private void OnQuests(object sender, RoutedEventArgs e) => QuestsRequested?.Invoke();
+    private void OnLoot(object sender, RoutedEventArgs e) => LootRequested?.Invoke();
 }

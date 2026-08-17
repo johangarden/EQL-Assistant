@@ -106,6 +106,10 @@ public sealed class OverlayConfig
     /// materializes on screen while it has rows, or while unlocked).</summary>
     public bool EnemyDotsVisible { get; set; } = true;
 
+    /// <summary>Enemy DoTs grouping: by MOB name (default — the tab-target
+    /// view: one header per mob, its dots under it) or by SPELL.</summary>
+    public bool EnemyDotsGroupByMob { get; set; } = true;
+
     /// <summary>Whether the big stun/fear/charm/mez condition badges are shown
     /// (materializes only while a condition is active, or unlocked).</summary>
     public bool ConditionsVisible { get; set; } = true;

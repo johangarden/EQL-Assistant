@@ -93,6 +93,10 @@ public static class RaidGlyphs
     /// <summary>All glyph keys (the --render-glyphs sheet iterates these).</summary>
     public static IEnumerable<string> GlyphKeys => GlyphPaths.Keys;
 
+    /// <summary>Raw path data for reuse by other glyph sets (ClassGlyphs
+    /// borrows the skull and the eye).</summary>
+    internal static string RawPath(string key) => GlyphPaths[key];
+
     public static Geometry GlyphFor(string key)
     {
         if (!GeometryCache.TryGetValue(key, out var g))

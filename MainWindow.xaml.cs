@@ -118,6 +118,13 @@ public partial class MainWindow : Window
             spell.StartsWith("Demo ", StringComparison.Ordinal) ? 30 // Ctrl+Alt+T bars
             : _durations.LearnedMaxSeconds(spell)
               ?? (_spellLib.FindByBaseName(spell)?.DurationSec is > 0 and var libSec ? libSec : null);
+        // A known beneficial spell's own heal/damage component is a buff at
+        // work (Quick Buff bursts land them with no cast line) — never a proc.
+        _combat.BeneficialLookup = name => _spellLib.FindByBaseName(name)?.Bucket == "Buff";
+        // Non-damaging debuffs (slow/malo/cripple) tint orange in the panel.
+        _combat.DebuffLookup = name =>
+            name.StartsWith("Demo ", StringComparison.Ordinal) ? name.Contains("Slow")
+            : _spellLib.FindByBaseName(name) is { } sp && SpellLibrary.TriggerCategory(sp) == "Debuffs";
         _combat.OtherLandingLookup = _spellLib.OtherLanding;
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
@@ -128,6 +135,15 @@ public partial class MainWindow : Window
         _barsHidden = !_config.Overlay.BarsVisible;
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
+        // The pet names itself on any /pet order — remember it so the meter's
+        // pet lanes work without ever typing the name into the Manager.
+        _combat.PetDetected += pet => Dispatcher.BeginInvoke(() =>
+        {
+            _config.Overlay.PetName = pet;
+            _configService.SaveSettings(_config);
+            _vm.Flash($"Pet detected: {pet}");
+            Log.Info($"Pet auto-detected: {pet}");
+        });
         _combat.SctEvent += OnSctEvent;
         _combat.PlayerDied += OnPlayerDied;
         _combat.FightArchived += OnFightArchived;
@@ -779,7 +795,8 @@ public partial class MainWindow : Window
     {
         if (_enemyDotsWin is not null) { try { _enemyDotsWin.Close(); } catch { /* ignore */ } _enemyDotsWin = null; }
         if (!_config.Overlay.EnemyDotsVisible) return;
-        _enemyDotsWin = new EnemyDotsWindow(_combat, _configService, _config.Overlay.Opacity);
+        _enemyDotsWin = new EnemyDotsWindow(_combat, _configService, _config.Overlay.Opacity,
+            _config.Overlay.EnemyDotsGroupByMob);
         _enemyDotsWin.Show();
         _enemyDotsWin.SetLocked(_vm.Locked);
         _enemyDotsWin.SetHidden(_hidden);
@@ -1054,7 +1071,8 @@ public partial class MainWindow : Window
     {
         if (_manager is null)
         {
-            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations)
+            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations,
+                logStatus: () => _vm.LogStatus)
             {
                 ReparseFullLogRequested = ReparseFullLog,
                 ReparseOtherRequested = MergeLogFile,
@@ -1233,8 +1251,10 @@ public partial class MainWindow : Window
             LockRequested = ToggleLock,
             MuteRequested = ToggleMute,
             ManageRequested = () => OpenManager(),
-            MenuRequested = ShowMainMenu,
-            LoadoutMenuRequested = el => OnLoadoutMenu(el, new RoutedEventArgs()),
+            MenuRequested = el => ShowMainMenu(el as UIElement),
+            RaidRequested = OpenRaidKills,
+            QuestsRequested = OpenSkyQuests,
+            LootRequested = OpenLootHistory,
         };
         _toolbarWin.Show();
         UpdateToolbarVisibility();
@@ -1270,13 +1290,130 @@ public partial class MainWindow : Window
         UpdateBarsVisibility();
     }
 
-    /// <summary>Toolbar ☰ — show the SAME menu as the tray icon (one source of
-    /// truth: panels with checkmarks, histories, updates, everything).</summary>
-    private void ShowMainMenu()
+    /// <summary>Toolbar ☰ — the SLIM play-time menu: what isn't already a
+    /// toolbar button. A WPF ContextMenu, so it wears the app's dark theme
+    /// (the WinForms tray menu stays native — the OS look is expected there)
+    /// and each Panels row carries a REAL settings-cog button.</summary>
+    private ContextMenu? _burgerMenu;
+
+    private void ShowMainMenu(UIElement? target)
     {
-        var menu = _tray?.ContextMenuStrip;
-        if (menu is null) return;
-        menu.Show(System.Windows.Forms.Cursor.Position);
+        _burgerMenu ??= BuildBurgerMenu();
+        // A PlacementTarget is load-bearing, not cosmetic: without one a
+        // programmatically-opened ContextMenu has no tree context — Windows'
+        // handedness setting decides which side it opens on, and SUBMENUS
+        // silently refuse to open at all.
+        _burgerMenu.PlacementTarget = target;
+        _burgerMenu.Placement = target is null
+            ? System.Windows.Controls.Primitives.PlacementMode.MousePoint
+            : System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        _burgerMenu.IsOpen = true;
+    }
+
+    private ContextMenu BuildBurgerMenu()
+    {
+        var menu = new ContextMenu();
+
+        // The most common play-time task sits on top.
+        var create = new MenuItem { Header = "Create trigger…" };
+        create.Click += (_, _) => OpenManager("Triggers");
+        menu.Items.Add(create);
+        menu.Items.Add(new Separator());
+
+        var panels = new MenuItem { Header = "Panels" };
+        panels.Items.Add(BurgerPanelRow("Toolbar", ToggleToolbar, "General", () => !_toolbarHidden));
+        panels.Items.Add(BurgerPanelRow("Buff bars", ToggleBars, "Bars & matrices", () => !_barsHidden));
+        panels.Items.Add(BurgerPanelRow("Self-buffs matrix", ToggleSelfMatrix, "Bars & matrices", () => _config.Overlay.SelfMatrixVisible));
+        panels.Items.Add(BurgerPanelRow("Target-debuffs matrix", ToggleTargetMatrix, "Bars & matrices", () => _config.Overlay.TargetMatrixVisible));
+        panels.Items.Add(BurgerPanelRow("Rebuff reminders", ToggleReminders, "Bars & matrices", () => _config.Overlay.RemindersVisible));
+        panels.Items.Add(BurgerPanelRow("Enemy DoTs", ToggleEnemyDots, "Bars & matrices", () => _config.Overlay.EnemyDotsVisible));
+        panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, null, () => _config.Overlay.ConditionsVisible));
+        panels.Items.Add(BurgerPanelRow("Repop timer", ToggleTimer, "Repop timer", () => !_timerHidden));
+        panels.Items.Add(BurgerPanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs", () => !_meterHidden));
+        panels.Items.Add(BurgerPanelRow("DPS meter · skills section", ToggleSkills, "DPS + Skills, Procs", () => !_skillsHidden));
+        panels.Items.Add(BurgerPanelRow("DPS meter · proc watcher", ToggleProcs, "DPS + Skills, Procs", () => _config.Overlay.ProcWatcherVisible));
+        panels.Items.Add(BurgerPanelRow("Combat text", ToggleSct, "Combat text", () => !_sctHidden));
+        panels.Items.Add(BurgerPanelRow("Flash alerts", ToggleFlash, "Flash alerts", () => !_flashHidden));
+        panels.SubmenuOpened += (_, _) =>
+        {
+            foreach (var it in panels.Items.OfType<MenuItem>())
+                if (it.Tag is Func<bool> isOn) it.IsChecked = isOn();
+        };
+        menu.Items.Add(panels);
+
+        var loadout = new MenuItem { Header = "Loadout" };
+        loadout.Items.Add(new MenuItem { Header = "…" }); // arrow seed; replaced on open
+        loadout.SubmenuOpened += (_, _) =>
+        {
+            loadout.Items.Clear();
+            foreach (var name in _configService.ListLoadouts().Select(l => l.Name))
+            {
+                string captured = name;
+                var mi = new MenuItem
+                {
+                    Header = name,
+                    IsChecked = string.Equals(name, _config.ActiveLoadout, StringComparison.OrdinalIgnoreCase),
+                };
+                mi.Click += (_, _) => ApplyLoadout(captured);
+                loadout.Items.Add(mi);
+            }
+            loadout.Items.Add(new Separator());
+            var manage = new MenuItem { Header = "Manage loadouts…" };
+            manage.Click += (_, _) => OpenManager("Loadouts");
+            loadout.Items.Add(manage);
+        };
+        menu.Items.Add(loadout);
+
+        menu.Items.Add(new Separator());
+        var recap = new MenuItem { Header = "Show last death recap" };
+        recap.Click += (_, _) => OpenDeathRecap();
+        menu.Items.Add(recap);
+        var catchUp = new MenuItem { Header = "Catch up from today's log" };
+        catchUp.Click += (_, _) => CatchUpToday();
+        menu.Items.Add(catchUp);
+
+        return menu;
+    }
+
+    /// <summary>One Panels row: the NAME toggles the panel (with a live
+    /// checkmark); the right-aligned ⚙ — a real button — jumps to that
+    /// panel's settings page. Rows without a page carry no cog.</summary>
+    private MenuItem BurgerPanelRow(string text, Action toggle, string? settingsPage, Func<bool> isOn)
+    {
+        var item = new MenuItem { Tag = isOn };
+        if (settingsPage is null)
+        {
+            item.Header = text;
+        }
+        else
+        {
+            var dock = new DockPanel { LastChildFill = true, MinWidth = 220 };
+            var cog = new Button
+            {
+                Content = "\uE713", // MDL2 gear, same as the toolbar cog
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                FontSize = 12,
+                Padding = new Thickness(4, 1, 4, 1),
+                Margin = new Thickness(10, 0, 0, 0),
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x7F, 0x93, 0xAD)),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ToolTip = $"Settings — {settingsPage}",
+            };
+            cog.Click += (_, e) =>
+            {
+                e.Handled = true;
+                if (_burgerMenu is not null) _burgerMenu.IsOpen = false;
+                OpenManager(settingsPage);
+            };
+            DockPanel.SetDock(cog, Dock.Right);
+            dock.Children.Add(cog);
+            dock.Children.Add(new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center });
+            item.Header = dock;
+        }
+        item.Click += (_, _) => toggle();
+        return item;
     }
 
     /// <summary>A "timerAuto" trigger matched (e.g. a named mob death) — start the watch.</summary>
@@ -1376,7 +1513,11 @@ public partial class MainWindow : Window
     {
         if (_lastDeath is null)
         {
-            _vm.Flash("No deaths this session — long may it last.");
+            // A visible answer — the toolbar status flash was easy to miss.
+            // (Catch-up replays today's log, so today's deaths survive a restart.)
+            System.Windows.MessageBox.Show(
+                "No deaths recorded from today's log — long may it last.",
+                "EQL Assistant", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (_recapWindow is null)
@@ -1427,27 +1568,6 @@ public partial class MainWindow : Window
     /// <summary>Test hook: add a demo bar so a self-test can force the bar template to render.</summary>
     internal void AddDemoForTest() => _engine?.AddDemoTimer();
 
-    /// <summary>Open a popup menu to pick a loadout directly (toolbar dropdown).</summary>
-    private void OnLoadoutMenu(object sender, RoutedEventArgs e)
-    {
-        var menu = new ContextMenu();
-        foreach (var name in _configService.ListLoadouts().Select(l => l.Name))
-        {
-            var item = new MenuItem
-            {
-                Header = name,
-                IsChecked = string.Equals(name, _config.ActiveLoadout, StringComparison.OrdinalIgnoreCase),
-            };
-            string captured = name;
-            item.Click += (_, _) => ApplyLoadout(captured);
-            menu.Items.Add(item);
-        }
-        if (menu.Items.Count == 0) return;
-        menu.PlacementTarget = (UIElement)sender;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-        menu.IsOpen = true;
-    }
-
     // ---- system tray --------------------------------------------------------
 
     private void SetupTrayIcon()
@@ -1469,7 +1589,31 @@ public partial class MainWindow : Window
         menu.Items.Add("Lock / Unlock", null, (_, _) => ToggleLock());
         menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add(BuildPanelsMenu());
+        menu.Items.Add(BuildLoadoutMenu());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
+        menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
+        menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
+        menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
+        menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
+        menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
+        menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdates(manual: true));
+        menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
+        menu.Items.Add("Reset position", null, (_, _) => ResetPosition());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Quit", null, (_, _) => Close());
+
+        _tray.ContextMenuStrip = menu;
+        _tray.DoubleClick += (_, _) => ToggleHide();
+    }
+
+    /// <summary>The Panels submenu with live checkmarks — built fresh per menu
+    /// (a WinForms item can only live in one strip at a time).</summary>
+    private System.Windows.Forms.ToolStripMenuItem BuildPanelsMenu()
+    {
         var panelsItem = new System.Windows.Forms.ToolStripMenuItem("Panels");
         var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Repop timer", null, (_, _) => ToggleTimer());
         var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
@@ -1503,9 +1647,17 @@ public partial class MainWindow : Window
             panelSct.Checked = !_sctHidden;
             panelFlash.Checked = !_flashHidden;
         };
-        menu.Items.Add(panelsItem);
+        return panelsItem;
+    }
 
+    /// <summary>The Loadout submenu, rebuilt with checkmarks on open.</summary>
+    private System.Windows.Forms.ToolStripMenuItem BuildLoadoutMenu()
+    {
         var loadoutItem = new System.Windows.Forms.ToolStripMenuItem("Loadout");
+        // Seed a dummy so the submenu ARROW renders before first open —
+        // WinForms only draws it when DropDownItems is non-empty, and the
+        // real list is built lazily on DropDownOpening.
+        loadoutItem.DropDownItems.Add("…");
         loadoutItem.DropDownOpening += (_, _) =>
         {
             loadoutItem.DropDownItems.Clear();
@@ -1519,25 +1671,10 @@ public partial class MainWindow : Window
                 mi.Click += (_, _) => ApplyLoadout(captured);
                 loadoutItem.DropDownItems.Add(mi);
             }
+            loadoutItem.DropDownItems.Add(new System.Windows.Forms.ToolStripSeparator());
+            loadoutItem.DropDownItems.Add("Manage loadouts…", null, (_, _) => OpenManager("Loadouts"));
         };
-        menu.Items.Add(loadoutItem);
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-
-        menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
-        menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
-        menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
-        menu.Items.Add("Death recap…", null, (_, _) => OpenDeathRecap());
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-
-        menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
-        menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdates(manual: true));
-        menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
-        menu.Items.Add("Reset position", null, (_, _) => ResetPosition());
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-        menu.Items.Add("Quit", null, (_, _) => Close());
-
-        _tray.ContextMenuStrip = menu;
-        _tray.DoubleClick += (_, _) => ToggleHide();
+        return loadoutItem;
     }
 
     /// <summary>The app's embedded exe icon (falls back to a drawn one).</summary>

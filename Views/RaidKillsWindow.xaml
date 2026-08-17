@@ -19,12 +19,31 @@
     </Window.Resources>
 
     <DockPanel Margin="12">
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-            <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="#FFD54F"
-                       FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
-            <TextBlock Foreground="#7F93AD" FontSize="11" TextWrapping="Wrap"
-                       Text="Kills are detected from death lines in the log and remembered forever. Click a defeated target to unfold its kill history. Edit raid-targets.json in the config folder to change the target list."/>
-        </DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <DockPanel>
+                <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="#FFD54F"
+                           FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                <!-- This week / All time (the loot lockout is weekly) -->
+                <Border CornerRadius="15" BorderBrush="#3A4560" BorderThickness="1"
+                        Padding="2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Border x:Name="WeekBtn" CornerRadius="13" Padding="12,3" Cursor="Hand"
+                                MouseLeftButtonUp="WeekBtn_Click">
+                            <TextBlock x:Name="WeekBtnText" Text="This week" FontSize="12"/>
+                        </Border>
+                        <Border x:Name="AllBtn" CornerRadius="13" Padding="12,3" Cursor="Hand"
+                                MouseLeftButtonUp="AllBtn_Click">
+                            <TextBlock x:Name="AllBtnText" Text="All time" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                <TextBlock x:Name="ResetText" Foreground="#7F93AD" FontSize="11"
+                           Margin="10,0,0,0" VerticalAlignment="Center"
+                           ToolTip="The weekly loot lockout resets Tuesday 08:00 Pacific (per boss, per difficulty)"/>
+            </DockPanel>
+            <TextBlock Foreground="#5C6B82" FontSize="10.5" TextWrapping="Wrap" Margin="0,6,0,0"
+                       Text="Kills are detected from death lines and remembered forever. Click a defeated target to unfold its kill history. Edit raid-targets.json in the config folder to change the target list."/>
+        </StackPanel>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="TiersControl">
@@ -62,14 +81,20 @@
                                                                        FontSize="11" FontWeight="Bold"
                                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         </Grid>
+                                                        <!-- Fixed-width columns: the D-pills and the detail text
+                                                             each get a constant slot, so pills line up row to
+                                                             row instead of trailing the timestamp's width. -->
                                                         <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}"
                                                                    Foreground="#8FA6C4" FontSize="11" Margin="8,0,0,0"
+                                                                   Width="182" TextAlignment="Right"
+                                                                   TextTrimming="CharacterEllipsis"
                                                                    VerticalAlignment="Center"/>
                                                         <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Badges}"
-                                                                      Margin="8,0,0,0" VerticalAlignment="Center">
+                                                                      Margin="8,0,0,0" Width="132"
+                                                                      VerticalAlignment="Center">
                                                             <ItemsControl.ItemsPanel>
                                                                 <ItemsPanelTemplate>
-                                                                    <StackPanel Orientation="Horizontal"/>
+                                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"/>
                                                                 </ItemsPanelTemplate>
                                                             </ItemsControl.ItemsPanel>
                                                             <ItemsControl.ItemTemplate>

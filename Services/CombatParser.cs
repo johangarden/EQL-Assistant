@@ -22,6 +22,38 @@ public sealed class CombatParser
     /// <summary>Optional pet name — enables the pet line in the incoming footer.</summary>
     public string PetName { get; set; } = "";
 
+    // ---- pet auto-detect ------------------------------------------------------
+    // The summon prints nothing, but an ORDERED pet names itself: command
+    // responses are fixed phrases in a say line ("Venarab says, 'Following
+    // you, Master.'" — observed 15 Aug 2026), order acknowledgements can
+    // arrive as a private "… Master." tell (the Companion's unforgeable
+    // route), and the /pet leader answer names YOU outright.
+
+    /// <summary>Raised (watcher thread) when a pet names itself yours.</summary>
+    public event Action<string>? PetDetected;
+
+    private static readonly Regex PetSpeechRx = new(
+        @"^(?<pet>[A-Z][a-z]+) (?<via>says|told you), '(?<msg>.+)'$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly HashSet<string> PetSayPhrases = new(StringComparer.Ordinal)
+    {
+        "Following you, Master.",     // /pet follow (observed)
+        "As you wish, oh great one.", // /pet get lost (observed)
+        // Classic command responses — harmless if EQL words them differently
+        // (an unmatched phrase simply never binds):
+        "At your service Master.",
+        "At your service, Master.",
+        "Guarding with my life..oh splendid one.",
+        "Changing position, Master.",
+        "Sorry, Master..calming down.",
+    };
+
+    private bool IsPetSpeech(bool tell, string msg) =>
+        tell ? msg.EndsWith(" Master.", StringComparison.Ordinal)
+             : PetSayPhrases.Contains(msg)
+               || msg == $"My leader is {SelfName}."; // /pet leader
+
     /// <summary>How many finished fights the session keeps for the history window
     /// (★-kept fights are stored separately and never expire).</summary>
     public const int MaxHistory = 50;
@@ -217,8 +249,16 @@ public sealed class CombatParser
         .Where(kv => IsMeleeAbility(kv.Key))
         .Sum(kv => kv.Value.Hits + kv.Value.Misses);
 
+    /// <summary>Optional lookup (SpellLibrary): is this name a known BENEFICIAL
+    /// spell? A buff's own heal/damage component landing without a cast line
+    /// (Quick Buff bursts print none) is a buff, never a weapon proc —
+    /// Harnessing of Spirit ×1 in the proc panel was a lie.</summary>
+    public Func<string, bool>? BeneficialLookup { get; set; }
+
     private void NoteProc(string ability, double amount, bool heal, DateTime time, bool crit)
     {
+        if (BeneficialLookup?.Invoke(ability) == true) return; // a buff, not a proc
+
         if (_recentCasts.TryGetValue(SpellDurations.BaseKey(ability), out var castAt))
         {
             // A HEAL you've ever cast is your spell: HoT ticks name the spell
@@ -249,8 +289,12 @@ public sealed class CombatParser
     // self-corrects as mobs die. Censors: exact wear-off, mob death, zoning,
     // your own death, and 18s of tick silence (three missed ticks).
 
+    /// <summary><paramref name="Debuff"/>: a non-damaging detrimental (slow /
+    /// malo / cripple — orange in the panel). A bar that has TICKED is damage
+    /// (red) regardless of what the library calls it.</summary>
     public sealed record EnemyDotView(string Spell, string Target, int Ordinal,
-        double? RemainingSeconds, double SinceSeconds, bool Overrun, double OverrunSeconds);
+        double? RemainingSeconds, double SinceSeconds, bool Overrun, double OverrunSeconds,
+        bool Debuff = false);
 
     private sealed class DotInstance
     {
@@ -286,6 +330,10 @@ public sealed class CombatParser
     /// third-person landing suffix ("has been poisoned.") — arms the
     /// non-ticking-debuff detector on your begin-cast.</summary>
     public Func<string, (string Suffix, bool Detrimental)?>? OtherLandingLookup { get; set; }
+
+    /// <summary>Optional lookup (SpellLibrary): is this a NON-DAMAGING debuff
+    /// (slow / malo / cripple)? Drives the panel's orange tint.</summary>
+    public Func<string, bool>? DebuffLookup { get; set; }
 
     private static readonly Regex WornOffOfRx = new(
         @"^Your (?<spell>.+?) spell has worn off of (?<mob>.+?)\.",
@@ -444,7 +492,8 @@ public sealed class CombatParser
                 bool overrun = dur is double dd && since > dd;
                 rows.Add(new EnemyDotView(g.Spell, g.Target, i.Ordinal,
                     dur is double dd3 ? Math.Max(0, dd3 - since) : null, since,
-                    overrun, overrun ? since - dur!.Value : 0));
+                    overrun, overrun ? since - dur!.Value : 0,
+                    Debuff: i.Ticks == 0 && (DebuffLookup?.Invoke(g.Spell) ?? false)));
             }
         }
         return rows.OrderBy(r => r.Spell, StringComparer.OrdinalIgnoreCase)
@@ -475,6 +524,8 @@ public sealed class CombatParser
         curse.Instances.Add(new DotInstance { Ordinal = 2, Start = now.AddSeconds(-4), LastTick = now });
         var venom = G("Demo Venom", "a demo froglok");
         venom.Instances.Add(new DotInstance { Ordinal = 1, Start = now.AddSeconds(-38), LastTick = now });
+        var slow = G("Demo Slow", "a demo froglok"); // landing-only → orange debuff tint
+        slow.Instances.Add(new DotInstance { Ordinal = 1, Start = now.AddSeconds(-8), LastTick = now.AddSeconds(-8) });
     }
 
     /// <summary>Event cap per fight — a 10-minute raid fight sits well under this.</summary>
@@ -783,6 +834,30 @@ public sealed class CombatParser
             // per-mob bar even when the spell never ticks.
             if (OtherLandingLookup?.Invoke(castName) is { Detrimental: true } ol)
                 _pendingEnemyLanding = (castName, ol.Suffix, time);
+            return;
+        }
+
+        // AA and item activations cast with NO begin-cast line ("You activate
+        // Leech Touch.") — they open the same proc window a cast does, so an
+        // activated ability's damage/heal never reads as a weapon proc.
+        if (body.StartsWith("You activate ", StringComparison.Ordinal) && body.EndsWith('.'))
+        {
+            _recentCasts[SpellDurations.BaseKey(body["You activate ".Length..^1])] = time;
+            return;
+        }
+
+        // Pet auto-detect: a pet-only phrase names the speaker as YOUR pet.
+        if ((body.Contains(" says, '", StringComparison.Ordinal)
+             || body.Contains(" told you, '", StringComparison.Ordinal))
+            && PetSpeechRx.Match(body) is { Success: true } pet
+            && IsPetSpeech(pet.Groups["via"].Value == "told you", pet.Groups["msg"].Value))
+        {
+            string name = pet.Groups["pet"].Value;
+            if (!name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                PetName = name;
+                PetDetected?.Invoke(name);
+            }
             return;
         }
 

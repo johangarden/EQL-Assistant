@@ -101,12 +101,18 @@ from today's log, Check for updates, Open config folder, **Reset position**
 (also unlocks and unhides everything — the fixer if a panel is lost
 off-screen), and Quit.
 
-**Toolbar** — a detached command strip that stays visible and clickable even
-while locked: ✕ quit · version · **Loadout ▾** picker · **☰ menu** (mirrors
-the tray menu exactly) · **Manage** · 🔊 mute · 🔒 padlock (governs all other
-panels; glows accent-blue while unlocked as a "lock me before playing"
-reminder). Drag to place it; hide it via ☰ → Panels if you want a clean
-screen.
+**Toolbar** — a detached one-row command strip that stays visible and
+clickable even while locked, organized app · features · state: ✕ quit ·
+version · **Loadout ▾** picker · one-click **feature icons** (💀 Raid kills ·
+📜 Quests · 💰 Loot history — hover any icon for what it does) · **☰ menu**
+(the slim play-time set: Panels ▸, Loadout ▸, Show/Hide, last death recap,
+catch-up — maintenance like updates and config-folder access stays on the
+full tray menu) · 🔊 mute · 🔒 padlock (governs all other panels;
+glows accent-blue while unlocked as a "lock me before playing" reminder) —
+and the **⚙ cog** alone at the far end: settings are a different mode.
+Confirmations ("Switched to: Raid", "Pet detected: Lober") appear as a
+**toast** under the strip that fades after ~4s; the "Following eqlog_…" line
+lives on the Manager's General page now, under Log source.
 
 ## The Manager
 
@@ -127,7 +133,9 @@ everything else is **GLOBAL**.
   (columns, anchors), and the **rebuff reminders** timing (warn threshold +
   repeat interval for triggers marked "remind when missing").
 - **Repop timer** — visibility and anchor of the watch panel.
-- **DPS & Skills** — meter visibility, anchor, the **pet name**, and the
+- **DPS & Skills** — meter visibility, anchor, the **pet name** (auto-detected
+  the moment your pet answers any /pet order — "Following you, Master." names
+  it; the field is just the manual override), and the
   **skills section** (which skills to grind-track, with the picker).
 - **Combat text** — which lanes exist, sizes, big-hit threshold.
 - **Flash alerts** — text size, area width, anchor.
@@ -349,13 +357,22 @@ where, hover the reward for its full stats. A quest **checks itself off when
 its reward item appears in the log** (with a celebration flash) — or tick it
 manually. Progress persists in `sky-progress.json`.
 
+The Sky window opens on a **class badge strip** — 16 class monograms plus an
+**ALL** badge, each ringed by a completion arc (class tint while in progress,
+green with a ✓ when every quest is done, count underneath). **Click a badge**
+to see that class's quests; search, slot filter and hide-completed narrow
+further.
+
 ## Raid kills and loot history
 
 Both open from the Fight History window (and raid kills from the tray):
 
 - **Raid kills** — a tiered target list (Open World, Fear, Hate, Sky — edit
   `raid-targets.json` to taste) with kill counts and dates, detected from death
-  lines and remembered forever. Every target wears a **hand-drawn vector badge**
+  lines and remembered forever. A **This week / All time** toggle scopes the
+  whole view to the current **loot lockout week** (resets Tuesday 08:00
+  Pacific — per boss, per difficulty; the header counts down to the reset), so
+  "what's still worth killing this week" is one glance. Every target wears a **hand-drawn vector badge**
   (dragon, skull, demon, golem, spiroc, wasp, eye, spirit, claw — original
   silhouettes, no game assets) in its own tint: full color once defeated, a
   faded tease while it still lives. Targets you add yourself get a monogram

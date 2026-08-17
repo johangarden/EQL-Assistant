@@ -143,9 +143,11 @@ public partial class TriggerManagerWindow : Window
 
     public TriggerManagerWindow(ConfigService configService, AppConfig config,
         LogBus bus, AlertService alerts, RaidKills raids, SpellLibrary spellLibrary,
-        CombatParser combat, Action<string> onApplied, SpellDurations? durations = null)
+        CombatParser combat, Action<string> onApplied, SpellDurations? durations = null,
+        Func<string>? logStatus = null)
     {
         _durations = durations;
+        _logStatus = logStatus;
         InitializeComponent();
         WindowTheme.ApplyDark(this);
 
@@ -240,6 +242,7 @@ public partial class TriggerManagerWindow : Window
     // ---- spell library --------------------------------------------------------
 
     private readonly SpellLibrary _spellLibrary;
+    private readonly Func<string>? _logStatus;
     private SpellLibraryWindow? _libraryWindow;
 
     private void Library_Click(object sender, RoutedEventArgs e)
@@ -897,6 +900,9 @@ public partial class TriggerManagerWindow : Window
     {
         LogDirBox.Text = _config.Log.Directory;
         FilePatternBox.Text = _config.Log.FilePattern;
+        // The live "Following eqlog_…" line moved here from the toolbar —
+        // it's diagnostics, not play-time information.
+        FollowingText.Text = _logStatus?.Invoke() ?? "";
 
         WidthBox.Text = _config.Overlay.Width.ToString(CultureInfo.InvariantCulture);
         BarHeightBox.Text = _config.Overlay.BarHeight.ToString(CultureInfo.InvariantCulture);
@@ -933,6 +939,7 @@ public partial class TriggerManagerWindow : Window
         SctLaneHeightBox.Text = _config.Overlay.SctLaneHeight.ToString(CultureInfo.InvariantCulture);
 
         EnemyDotsVisibleCheck.IsChecked = _config.Overlay.EnemyDotsVisible;
+        EnemyDotsGroupBox.SelectedValue = _config.Overlay.EnemyDotsGroupByMob ? "mob" : "spell";
         EnemyDotsAnchorBox.SelectedValue = (_configService.LoadPlacement("enemyDots")?.Anchor ?? Anchor.TopLeft).ToString();
         RemindersAnchorBox.SelectedValue = (_configService.LoadPlacement("reminders")?.Anchor ?? Anchor.TopLeft).ToString();
         BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
@@ -1016,6 +1023,9 @@ public partial class TriggerManagerWindow : Window
                 TargetMatrixVisible = _config.Overlay.TargetMatrixVisible, // tray-toggled
                 RemindersVisible = _config.Overlay.RemindersVisible,       // tray-toggled
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
+                EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
+                ConditionsVisible = _config.Overlay.ConditionsVisible,   // tray-toggled
+                MeterSoloMode = _config.Overlay.MeterSoloMode,           // meter-toggled
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,

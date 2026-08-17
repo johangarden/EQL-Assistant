@@ -17,16 +17,22 @@
     </Window.Resources>
 
     <!-- The app's command strip: always visible and clickable, locked or not.
-         The padlock governs the OTHER panels; hide this one via ☰/tray → Panels. -->
-    <Border Background="#E01B2130" CornerRadius="5" Padding="8,5" Width="320"
-            MouseLeftButtonDown="Root_DragMove">
-        <StackPanel>
+         The padlock governs the OTHER panels; hide this one via ☰/tray → Panels.
+         One row, three zones: app · features · state — the cog (settings mode)
+         stands alone behind its own separator. -->
+    <StackPanel>
+        <Border Background="#E01B2130" CornerRadius="5" Padding="8,5" Width="384"
+                MouseLeftButtonDown="Root_DragMove">
             <DockPanel LastChildFill="True">
                 <Button DockPanel.Dock="Left" Content="✕" Click="OnQuit" Style="{StaticResource CloseBtn}"
                         ToolTip="Quit EQL Assistant"/>
 
-                <TextBlock DockPanel.Dock="Left" Text="{Binding Version}" Foreground="#6E7C93"
-                           FontSize="10" VerticalAlignment="Center" Margin="7,0,0,0"/>
+                <!-- settings mode, isolated at the far end -->
+                <Button DockPanel.Dock="Right" Click="OnManage" Style="{StaticResource IconBtn}"
+                        Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE713;"
+                        AutomationProperties.AutomationId="ManageBtn"
+                        ToolTip="Manage settings — triggers, panels, everything"/>
+                <Border DockPanel.Dock="Right" Width="1" Height="18" Background="#3A4560" Margin="6,0,0,0"/>
 
                 <Button DockPanel.Dock="Right" Click="OnLock" Margin="6,0,0,0"
                         FontFamily="Segoe MDL2 Assets"
@@ -66,24 +72,56 @@
                     </Button.Style>
                 </Button>
 
-                <Button DockPanel.Dock="Right" Content="Manage" Click="OnManage"
-                        Style="{StaticResource AccentBtn}" Margin="6,0,0,0"
-                        ToolTip="Open Trigger Manager"/>
-
                 <Button DockPanel.Dock="Right" Click="OnMenu" Style="{StaticResource IconBtn}"
                         Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE700;"
                         AutomationProperties.AutomationId="MainMenuBtn"
-                        ToolTip="Menu — panels, histories, updates (same as the tray)"/>
+                        ToolTip="Menu — panel toggles, loadouts, show/hide, catch-up"/>
 
-                <!-- fill: loadout dropdown, truncates to fit -->
-                <Button Click="OnLoadout" Style="{StaticResource ToolBtn}"
-                        Margin="8,0,0,0" HorizontalContentAlignment="Left" ToolTip="Switch loadout">
-                    <TextBlock Text="{Binding LoadoutName, StringFormat='{}{0}  ▾'}"
-                               TextTrimming="CharacterEllipsis"/>
+                <Border DockPanel.Dock="Right" Width="1" Height="18" Background="#3A4560" Margin="6,0,0,0"/>
+
+                <!-- feature shortcuts: the play-time windows, one click each -->
+                <Button DockPanel.Dock="Right" Click="OnLoot" Style="{StaticResource IconBtn}"
+                        Margin="6,0,0,0" AutomationProperties.AutomationId="LootBtn"
+                        ToolTip="Loot history — upgrades, kept items, vendor income">
+                    <Path Fill="#E8C15A" Width="14" Height="14" Stretch="Uniform"
+                          Data="M9.5 3 L14.5 3 L16 6.1 C19.5 7.9 21.5 11 21.5 14 C21.5 18.2 17.3 21 12 21 C6.7 21 2.5 18.2 2.5 14 C2.5 11 4.5 7.9 8 6.1 Z M8.7 6.6 L15.3 6.6 L15.3 7.9 L8.7 7.9 Z M12 10.6 C13.9 10.6 15.4 12.1 15.4 14 C15.4 15.9 13.9 17.4 12 17.4 C10.1 17.4 8.6 15.9 8.6 14 C8.6 12.1 10.1 10.6 12 10.6 Z"/>
                 </Button>
+                <Button DockPanel.Dock="Right" Click="OnQuests" Style="{StaticResource IconBtn}"
+                        Margin="6,0,0,0" AutomationProperties.AutomationId="QuestsBtn"
+                        ToolTip="Quests — Plane of Sky tests (class badges, turn-in progress)">
+                    <Path Fill="#64B5F6" Width="14" Height="14" Stretch="Uniform"
+                          Data="M6 2.5 L14.5 2.5 L18.5 6.5 L18.5 21.5 L6 21.5 Z M14 3.6 L17.4 7 L14 7 Z M8.5 10 L16 10 L16 11.5 L8.5 11.5 Z M8.5 13.5 L16 13.5 L16 15 L8.5 15 Z M8.5 17 L13.5 17 L13.5 18.5 L8.5 18.5 Z"/>
+                </Button>
+                <Button DockPanel.Dock="Right" Click="OnRaid" Style="{StaticResource IconBtn}"
+                        Margin="6,0,0,0" AutomationProperties.AutomationId="RaidBtn"
+                        ToolTip="Raid kills — targets, weekly lockout, drops">
+                    <Path Fill="#E57373" Width="14" Height="14" Stretch="Uniform"
+                          Data="M12 2 C6.5 2 3 5.8 3 10.5 C3 13.3 4.3 15.4 6.2 16.8 L6.2 19.5 C6.2 20.9 7.3 22 8.7 22 L15.3 22 C16.7 22 17.8 20.9 17.8 19.5 L17.8 16.8 C19.7 15.4 21 13.3 21 10.5 C21 5.8 17.5 2 12 2 Z M8.6 9.2 C9.9 9.2 10.9 10.3 10.9 11.6 C10.9 12.9 9.9 14 8.6 14 C7.3 14 6.3 12.9 6.3 11.6 C6.3 10.3 7.3 9.2 8.6 9.2 Z M15.4 9.2 C16.7 9.2 17.7 10.3 17.7 11.6 C17.7 12.9 16.7 14 15.4 14 C14.1 14 13.1 12.9 13.1 11.6 C13.1 10.3 14.1 9.2 15.4 9.2 Z M12 14.6 L13.3 17.4 L10.7 17.4 Z"/>
+                </Button>
+
+                <!-- room for the NEXT features: placeholder slots -->
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Margin="6,0,0,0"
+                        IsEnabled="False" Opacity="0.35" Content="?" FontSize="11"
+                        ToolTip="Reserved for the next feature"/>
+                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Margin="6,0,0,0"
+                        IsEnabled="False" Opacity="0.35" Content="?" FontSize="11"
+                        ToolTip="Reserved for the next feature"/>
+
+                <!-- fill: the active loadout's NAME only, kept short — switching
+                     lives in the ☰ menu's Loadout submenu (one picker is enough). -->
+                <TextBlock Text="{Binding LoadoutName}" Foreground="#6E7C93" FontSize="10"
+                           VerticalAlignment="Center" Margin="8,0,6,0" MaxWidth="86"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding LoadoutName}"/>
             </DockPanel>
-            <TextBlock Text="{Binding Status}" Foreground="#7F93AD"
-                       FontSize="11" Margin="0,5,0,0" TextWrapping="Wrap"/>
-        </StackPanel>
-    </Border>
+        </Border>
+
+        <!-- Toast: short-lived confirmations ("Switched to: Raid", "Pet
+             detected: Lober") — fades after ~4s instead of a permanent line. -->
+        <Border Background="#E01B2130" CornerRadius="5" Padding="9,4" Margin="0,4,0,0"
+                HorizontalAlignment="Left" MaxWidth="384"
+                Visibility="{Binding ToastVisible, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding Toast}" Foreground="#C9D4E3" FontSize="11" TextWrapping="Wrap"/>
+        </Border>
+    </StackPanel>
 </Window>

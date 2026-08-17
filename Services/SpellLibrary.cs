@@ -280,6 +280,11 @@ public sealed class SpellLibrary
     public (string Suffix, bool Detrimental)? OtherLanding(string spellName)
     {
         if (FindByBaseName(spellName) is not { } s) return null;
+        // A zero-duration detrimental is an instant nuke or lifetap (Siphon
+        // Life: "Someone staggers.", dur 0) — nothing runs on the mob, so its
+        // landing must never open an enemy-DoT bar. Real DoTs with unknown
+        // durations still enter through their tick lines.
+        if (s.DurationSec <= 0) return null;
         const string prefix = "Someone ";
         if (!s.CastOnOther.StartsWith(prefix, StringComparison.Ordinal)) return null;
         string suffix = s.CastOnOther[prefix.Length..].Trim();
