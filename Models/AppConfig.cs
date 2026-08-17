@@ -114,6 +114,20 @@ public sealed class OverlayConfig
     /// (materializes only while a condition is active, or unlocked).</summary>
     public bool ConditionsVisible { get; set; } = true;
 
+    /// <summary>Whether the Session stats panel (XP/AA/motes per hour) is shown.</summary>
+    public bool SessionStatsVisible { get; set; } = false;
+
+    /// <summary>Session stats slice: "zoneSession" (default), "session", "zone", "all".</summary>
+    public string SessionStatsSlice { get; set; } = "zoneSession";
+
+    /// <summary>Session stats tier scoping: count only the exact zone spelling
+    /// ("Befallen 3 (Fused)") vs every tier of the camp.</summary>
+    public bool SessionStatsExactTier { get; set; } = true;
+
+    /// <summary>Session stats rate denominator: elapsed (default — your evening)
+    /// vs active (minus 5+ minute silences — the camp's pace).</summary>
+    public bool SessionStatsActiveBasis { get; set; } = false;
+
     /// <summary>Panels-menu master toggles: every panel that can appear gets
     /// one. Matrices still need cells, reminders still need a missing buff.</summary>
     public bool SelfMatrixVisible { get; set; } = true;

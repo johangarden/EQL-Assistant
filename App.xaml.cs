@@ -174,6 +174,28 @@ public partial class App : Application
             var skyWin = new Views.SkyWindow(new SkyQuests(cs, new LootTracker(cs)));
             skyWin.Show();
             skyWin.Close();
+
+            // Session stats panel renders a demo evening (rows + pills + caption).
+            var demoStats = new SessionStats();
+            demoStats.AddDemo(DateTime.Now);
+            var statsWin = new Views.SessionStatsWindow(demoStats, cs, 1.0,
+                SessionStats.Slice.ZoneSession, exactTier: true, SessionStats.Basis.Elapsed);
+            statsWin.Show();
+            statsWin.Refresh();
+            statsWin.Close();
+
+            // Inventory window renders the ledger from a real-format dump —
+            // and the empty-state instructions when no dump exists.
+            string invDir = Path.Combine(Path.GetTempPath(), "eql_selftest_inv");
+            Directory.CreateDirectory(invDir);
+            File.WriteAllText(Path.Combine(invDir, "Testchar_paineel-Inventory.txt"),
+                "Location\tName\tID\tCount\tSlots\r\nHead\tValorium Helmet +1\t4851\t1\t10\r\n");
+            var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
+            invWin.Show();
+            invWin.Close();
+            var invEmpty = new Views.InventoryWindow(Path.Combine(invDir, "no_such_dir"), "X", "y");
+            invEmpty.Show();
+            invEmpty.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
             Environment.ExitCode = 0;
         }
@@ -1042,6 +1064,229 @@ public partial class App : Application
                 && DurationText.Compact(45) == "45s"
                 && DurationText.Compact(4805) == "1h20m5s"
                 && DurationText.Parse(DurationText.Compact(1200)) == 1200);
+
+            // ---- session stats (XP/AA/motes per hour, Companion design) -------
+            {
+                var ss = new SessionStats { SelfName = "Thorrak" };
+                var s0 = new DateTime(2026, 8, 14, 20, 0, 0);
+                string S(int sec) => s0.AddSeconds(sec)
+                    .ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                DateTime N(int sec) => s0.AddSeconds(sec);
+
+                Check("stats: mote tier extraction (incl. the tierless member)",
+                    SessionStats.MoteTier("Mote of Minor Potential") == "Minor"
+                    && SessionStats.MoteTier("Mote of Potential") == "Potential"
+                    && SessionStats.MoteTier("Mote of Infinite Potential") == "Infinite");
+                Check("stats: zone name folds place, tier + instance away",
+                    SessionStats.ZoneKey("Befallen 3 (Fused)") == "befallen"
+                    && SessionStats.ZoneKey("Nagafen's Lair - Solo 4 (Refined)") == "nagafen's lair"
+                    && SessionStats.ZoneKey("The Ruins of Old Guk") == "ruins of old guk");
+
+                ss.ProcessLine($"[{S(0)}] Welcome to EverQuest Legends!");
+                ss.ProcessLine($"[{S(5)}] You have entered Befallen 3 (Fused).");
+                // 30 min of steady killing: 1.5%/kill, one every 100s = 18 kills = 27%.
+                for (int i = 0; i < 18; i++)
+                    ss.ProcessLine($"[{S(60 + i * 100)}] You gain experience! (1.500%)");
+                ss.ProcessLine($"[{S(200)}] You have gained an ability point!  You now have 1 ability point.");
+                ss.ProcessLine($"[{S(900)}] You have gained 2 ability point(s)!  You now have 3 ability point(s).");
+                ss.ProcessLine($"[{S(300)}] You looted a Mote of Minor Potential from a zol ghoul knight's corpse and stored it in your currency");
+                ss.ProcessLine($"[{S(600)}] You looted a Mote of Minor Potential from a wan ghoul knight's corpse and stored it in your currency");
+                ss.ProcessLine($"[{S(650)}] You looted a Mote of Lesser Potential from a ghoul cavalier's corpse and stored it in your currency");
+                ss.ProcessLine($"[{S(700)}] this is a retro experience"); // chat must not count
+                ss.ProcessLine($"[{S(710)}] You gain experience?");       // near-miss must not count
+
+                var v = ss.Snapshot(N(1800), SessionStats.Slice.ZoneSession, exactTier: true,
+                    SessionStats.Basis.Elapsed);
+                // 27% over 30 min elapsed = 0.54 lvl/hr.
+                Check("stats: lvl/hr = Σ stated % / 100 per elapsed hour",
+                    v.Rows.FirstOrDefault(r => r.Label == "XP") is { Value: "0.54", Unit: "lvl/hr" });
+                // 2 gain lines (1 + 2 points) over 1795s elapsed ≈ 4.01 AA/hr, 6.02 pts/hr.
+                Check("stats: AA counts gain lines, points ride as the detail",
+                    v.Rows.FirstOrDefault(r => r.Label == "AA") is { Value: "4.01" } aa
+                    && aa.Detail == "6.02 pts/hr");
+                Check("stats: mote rows per tier, most drops first, N× counts",
+                    v.Rows.Where(r => r.Unit == "drops/hr").Select(r => (r.Label, r.Detail)).SequenceEqual(
+                        new[] { ("MINOR", "2×"), ("LESSER", "1×") }));
+                // The zone was entered 5s into the session, so 1795s ≈ 29m.
+                Check("stats: caption carries zone, session and tier scoping",
+                    v.Caption == "Befallen 3 (Fused) this session, this tier only"
+                    && v.Span == "over 29m elapsed");
+                Check("stats: no ding yet -> the ETA refuses, never guesses",
+                    v.Rows.First(r => r.Label == "NEXT LEVEL").Value == "–");
+
+                // A ding resets the bar; later percentages feed the ETA.
+                ss.ProcessLine($"[{S(1810)}] You have gained a level! Welcome to level 35!");
+                for (int i = 0; i < 6; i++)
+                    ss.ProcessLine($"[{S(1900 + i * 100)}] You gain experience! (1.500%)");
+                var v2 = ss.Snapshot(N(2700), SessionStats.Slice.ZoneSession, true, SessionStats.Basis.Elapsed);
+                var eta = v2.Rows.First(r => r.Label == "NEXT LEVEL");
+                // 9% into the bar; 36% over 45m elapsed = 0.48 lvl/hr -> 91%/0.48 ≈ 1h53m.
+                Check("stats: ETA = bar remainder over the elapsed pace",
+                    eta.Value == "~1h 53m" && eta.Detail == "to 36");
+                Check("stats: the header level follows the ding",
+                    v2.LevelText == "lvl 35");
+
+                // /who states the level between dings — and must be YOUR row.
+                ss.ProcessLine($"[{S(2800)}] [47 WAR/SHM/NEC] Humlesnurr (Gnome) <Petrichor> ZONE: Befallen (befallen)  ");
+                ss.ProcessLine($"[{S(2810)}] [36 SHD/ROG/SHM] Thorrak (Ogre) <The Chosen Alliance> ZONE: Befallen (befallen)  ");
+                Check("stats: own /who row updates the level, a stranger's never",
+                    ss.Snapshot(N(2820), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed)
+                        .LevelText == "lvl 36 /who");
+
+                // Percent-less exp (the cap) is UNKNOWN, never zero.
+                var capSs = new SessionStats();
+                capSs.ProcessLine($"[{S(0)}] You have entered Befallen 3 (Fused).");
+                for (int i = 0; i < 5; i++)
+                    capSs.ProcessLine($"[{S(60 + i * 100)}] You gain experience!");
+                var capV = capSs.Snapshot(N(600), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed);
+                Check("stats: all-unstated exp -> no XP rate, not 0.00",
+                    capV.Rows.First(r => r.Label == "XP").Value == "–");
+
+                // Tier scoping: only the exact spelling counts under THIS TIER —
+                // and the admitted time is the denominator too.
+                var tz = new SessionStats();
+                tz.ProcessLine($"[{S(0)}] You have entered Befallen 2 (Adaptive).");
+                for (int i = 0; i < 6; i++)
+                    tz.ProcessLine($"[{S(10 + i * 100)}] You gain experience! (1.000%)");
+                tz.ProcessLine($"[{S(600)}] You have entered Befallen 3 (Fused).");
+                for (int i = 0; i < 6; i++)
+                    tz.ProcessLine($"[{S(610 + i * 100)}] You gain experience! (2.000%)");
+                var exact = tz.Snapshot(N(1200), SessionStats.Slice.Zone, true, SessionStats.Basis.Elapsed);
+                var folded = tz.Snapshot(N(1200), SessionStats.Slice.Zone, false, SessionStats.Basis.Elapsed);
+                Check("stats: exact tier narrows both the events and the clock",
+                    exact.Rows.First(r => r.Label == "XP").Value == "0.72"   // 12% / 10min
+                    && exact.Span == "over 10m elapsed"
+                    && folded.Rows.First(r => r.Label == "XP").Value == "0.54" // 18% / 20min
+                    && folded.Span == "over 20m elapsed");
+
+                // Offline: a ≥60s silence ending in a Welcome is absence, and a
+                // second Welcome restarts the session slice.
+                var off = new SessionStats();
+                off.ProcessLine($"[{S(0)}] Welcome to EverQuest Legends!");
+                for (int i = 0; i < 6; i++)
+                    off.ProcessLine($"[{S(10 + i * 100)}] You gain experience! (1.000%)");
+                off.ProcessLine($"[{S(4000)}] Welcome to EverQuest Legends!");
+                for (int i = 0; i < 6; i++)
+                    off.ProcessLine($"[{S(4010 + i * 100)}] You gain experience! (1.000%)");
+                var offAll = off.Snapshot(N(4610), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed);
+                var offSes = off.Snapshot(N(4610), SessionStats.Slice.Session, true, SessionStats.Basis.Elapsed);
+                // All: the 4610s span minus the 3490s logout = 1120s ≈ 18m.
+                Check("stats: the logout gap leaves the elapsed denominator",
+                    offAll.Span == "over 18m elapsed"
+                    && offSes.Caption == "this session" && offSes.Span == "over 10m elapsed");
+
+                // Active basis: a mid-camp 10-minute silence is idle — it leaves
+                // ACTIVE but stays in ELAPSED (medding is time you spent).
+                var idle = new SessionStats();
+                idle.ProcessLine($"[{S(0)}] You have entered Befallen 3 (Fused).");
+                for (int i = 0; i < 6; i++)
+                    idle.ProcessLine($"[{S(i * 60)}] You gain experience! (1.000%)");
+                for (int i = 0; i < 6; i++)
+                    idle.ProcessLine($"[{S(900 + i * 60)}] You gain experience! (1.000%)");
+                var idleEl = idle.Snapshot(N(1260), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed);
+                var idleAc = idle.Snapshot(N(1260), SessionStats.Slice.All, true, SessionStats.Basis.Active);
+                Check("stats: idle leaves ACTIVE but stays in ELAPSED",
+                    idleEl.Span == "over 21m elapsed" && idleAc.Span == "over 11m active");
+
+                // Under 5 minutes nothing is stated as a rate — but counts stay.
+                var young = new SessionStats();
+                young.ProcessLine($"[{S(0)}] You gain experience! (1.000%)");
+                young.ProcessLine($"[{S(30)}] You looted a Mote of Minor Potential from a ghoul's corpse and stored it in your currency");
+                var youngV = young.Snapshot(N(90), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed);
+                Check("stats: under 5 minutes rates refuse, the mote count stays",
+                    !youngV.Measurable
+                    && youngV.Rows.First(r => r.Label == "XP").Value == "–"
+                    && youngV.Rows.First(r => r.Unit == "drops/hr") is { Value: "–", Detail: "1×" });
+
+                // Reset + refeed (the catch-up path) lands on the same numbers.
+                var again = new SessionStats { SelfName = "Thorrak" };
+                foreach (var line in new[]
+                {
+                    $"[{S(0)}] Welcome to EverQuest Legends!",
+                    $"[{S(5)}] You have entered Befallen 3 (Fused).",
+                    $"[{S(60)}] You gain experience! (1.500%)",
+                })
+                    again.ProcessLine(line);
+                again.Reset();
+                Check("stats: reset wipes the record", !again.HasData);
+            }
+
+            // ---- inventory dump parser (Companion's measured grammar) ---------
+            {
+                // A verbatim slice of the real fixture dump (tab-separated;
+                // the KeyRing header really ends in a bare tab).
+                string dumpText = string.Join("\r\n", new[]
+                {
+                    "Location\tName\tID\tCount\tSlots",
+                    "Ear\tDrop of Crystallized Flame +7\t177839\t1\t10",
+                    "Ear-Slot7\tEmpty\t0\t0\t0",
+                    "Ear\tEarring of Disease Reflection +4\t10302\t1\t10",
+                    "Wrist\tValorium Bracers +2\t4854\t1\t10",
+                    "Wrist\tLustrous Russet Bracer +1\t4834\t1\t10",
+                    "Primary\tThelvorn, Blade of Light +5\t27709\t1\t10",
+                    "Primary-Slot10\tThelvorn, Blade of Light (Exaltation)\t27709\t1\t10",
+                    "Ammo\tEmpty\t0\t0\t0",
+                    "General 1\tSpacious Rucksack\t177751\t1\t24",
+                    "General 1-Slot1\tTiny Dagger\t13080\t86\t10",
+                    "General 1-Slot5\tBandages*\t21779\t20\t10",
+                    "General 1-Slot9\tKelin`s Seven Stringed Lute +1\t11573\t1\t10",
+                    "General 1-Slot9-Slot7\tKelin`s Seven Stringed Lute (Exaltation)\t11573\t1\t10",
+                    "General 1-Slot24\tEmpty\t0\t0\t0",
+                    "Bank1\tEmpty\t0\t0\t0",
+                    "SharedBank1\tEmpty\t0\t0\t0",
+                    "Personal-Depot1\tGriffenne Blood\t22526\t2\t10",
+                    "Held\tEmpty\t0\t0\t0",
+                    "",
+                    "KeyRing\tName\tID\t",
+                    "Activated\tGuise of the Deceiver\t2469",
+                    "Equipment\tBoots of the Long Road\t177708",
+                    "Equipment\tBoots of the Long Road +1\t177708",
+                });
+                var dump = InventoryStore.Parse(dumpText);
+
+                Check("inventory: the -Slot chain nests, Personal-Depot1 keeps its hyphen",
+                    InventoryStore.SplitBase("General 1-Slot9-Slot7") == "General 1"
+                    && InventoryStore.SplitBase("Personal-Depot1") == "Personal-Depot1"
+                    && InventoryStore.SplitBase("Any Slot-Slot2") == "Any Slot");
+                Check("inventory: duplicate slots are real, children attach to the LAST seen",
+                    dump.Items.Count(e => e.Base == "Ear") == 2
+                    // Ear-Slot7 sits under the FIRST Ear (it came before the second).
+                    && dump.Items.First(e => e.Base == "Ear").Children is [{ Empty: true }]);
+                Check("inventory: nesting reaches the exaltation socket in the bag",
+                    dump.Items.First(e => e.Location == "General 1").Children
+                        .First(c => c.Location == "General 1-Slot9").Children
+                        is [{ Name: "Kelin`s Seven Stringed Lute (Exaltation)" }]);
+                Check("inventory: the keyring table parses through its bare-tab header",
+                    dump.KeyRing.Count == 3 && dump.Sections.SequenceEqual(new[] { "Location", "KeyRing" })
+                    && dump.MalformedCount == 0);
+
+                var (rows, lanes) = InventoryStore.CarryAll(dump);
+                Check("inventory: empty rows leave the ledger, real ones keep file order",
+                    rows.All(r => r.Name != "Empty")
+                    && rows.Select(r => r.Line).SequenceEqual(rows.Select(r => r.Line).OrderBy(n => n)));
+                Check("inventory: lanes cover worn/bags/depot/keyring, none empty",
+                    lanes.Select(l => l.Id).SequenceEqual(new[] { "worn", "bags", "depot", "keyring" }));
+                Check("inventory: stack counts survive, keyring rows count one",
+                    rows.First(r => r.Name == "Tiny Dagger").Count == 86
+                    && rows.First(r => r.Name == "Griffenne Blood") is { Count: 2, Lane: "depot" }
+                    && rows.Count(r => r.Lane == "keyring") == 3);
+
+                var held = InventoryStore.HeldCounts(dump);
+                Check("inventory: held counts sum stacks; Activated is a look, not an item",
+                    held["tiny dagger"] == 86
+                    && held["boots of the long road"] == 1 && held["boots of the long road +1"] == 1
+                    && !held.ContainsKey("guise of the deceiver"));
+
+                // A malformed row is counted, never thrown on; an unknown-shaped
+                // section is carried as uninterpreted rows.
+                var odd = InventoryStore.Parse("Location\tName\tID\tCount\tSlots\r\nJunkRowWithoutTabs\r\n"
+                    + "Hoard\tName\tMystery\t\r\nHoardSlot1\tShiny Thing\t1\t1");
+                Check("inventory: malformed and unknown rows are counted, not fatal",
+                    odd.MalformedCount == 1 && odd.UnknownSectionRows == 1);
+
+                Check("inventory: log name yields char + server for the preferred dump name",
+                    InventoryStore.ParseLogName(@"C:\x\Logs\eqlog_Thorrak_paineel.txt") == ("Thorrak", "paineel"));
+            }
         }
         catch (Exception ex)
         {
