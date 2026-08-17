@@ -1883,8 +1883,10 @@ public partial class App : Application
 
         int glyphRows = (keys.Count + cols - 1) / cols;
         int stripCols = 4, stripRows = (targets.Count + stripCols - 1) / stripCols;
+        int clsCount = Views.ClassGlyphs.ClassNames.Count();
+        int clsRows = (clsCount + cols - 1) / cols;
         int width = Math.Max(cols * cellW, stripCols * stripCell);
-        int height = glyphRows * cellH + 40 + stripRows * stripRowH + 30;
+        int height = glyphRows * cellH + 40 + stripRows * stripRowH + 30 + 26 + clsRows * cellH + 20;
 
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen())
@@ -1913,6 +1915,22 @@ public partial class App : Application
                 var ft = new FormattedText(targets[i], System.Globalization.CultureInfo.InvariantCulture,
                     FlowDirection.LeftToRight, face, 10, Brushes.Gray, 1.0);
                 dc.DrawText(ft, new Point(x + 18, y - ft.Height / 2));
+            }
+
+            // Class glyphs (Plane of Sky badge strip) — big for detail work,
+            // small for the at-size read.
+            var classes = Views.ClassGlyphs.ClassNames.ToList();
+            double clsTop = stripTop + stripRows * stripRowH + 26;
+            for (int i = 0; i < classes.Count; i++)
+            {
+                double cx = i % cols * cellW + cellW / 2.0;
+                double cy = clsTop + i / cols * cellH + 52;
+                DrawBadge(dc, Views.ClassGlyphs.For(classes[i]), Color.FromRgb(0x9F, 0xB6, 0xD4), null, cx, cy, 84);
+                DrawBadge(dc, Views.ClassGlyphs.For(classes[i]), Color.FromRgb(0x9F, 0xB6, 0xD4), null,
+                    cx + cellW / 2.0 - 22, cy - 30, 30);
+                var ft = new FormattedText(classes[i], System.Globalization.CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, face, 12, Brushes.LightGray, 1.0);
+                dc.DrawText(ft, new Point(cx - ft.Width / 2, cy + 50));
             }
         }
 

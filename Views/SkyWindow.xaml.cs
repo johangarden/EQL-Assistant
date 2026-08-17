@@ -27,9 +27,13 @@ public partial class SkyWindow : Window
 
     public sealed record ChipVm(string Text, Brush Bg, Brush Fg, string Tip);
 
-    /// <summary>One class badge: monogram ring + completion arc; "" = All Quests.</summary>
+    /// <summary>One class badge: glyph (or ALL-text) ring + completion arc.</summary>
     public sealed record BadgeVm(string ClassName, string Abbr, string CountText, string Tip,
-        Brush Ring, Brush Ink, Brush SelBg, Geometry? Arc, Visibility DoneVisibility);
+        Brush Ring, Brush Ink, Brush SelBg, Geometry? Arc, Visibility DoneVisibility,
+        Geometry? Glyph)
+    {
+        public Visibility AbbrVisibility => Glyph is null ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     // The 16 Sky test classes, each with a fixed badge tint (decoration — the
     // abbreviation is the identifier; tooltips carry the full name).
@@ -134,7 +138,8 @@ public partial class SkyWindow : Window
                 selected ? Brushes.White : Freeze(Color.FromArgb(0xD8, tint.R, tint.G, tint.B)),
                 selected ? Freeze(Color.FromArgb(0x50, tint.R, tint.G, tint.B)) : Brushes.Transparent,
                 BuildArc(done, quests.Count),
-                complete ? Visibility.Visible : Visibility.Collapsed));
+                complete ? Visibility.Visible : Visibility.Collapsed,
+                className.Length == 0 ? null : ClassGlyphs.For(className)));
         }
 
         Add("", "ALL", Color.FromRgb(0xFF, 0xC1, 0x2E));
