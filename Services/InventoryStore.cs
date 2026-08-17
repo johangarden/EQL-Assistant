@@ -48,11 +48,22 @@ public static class InventoryStore
         public List<string> Sections = new();
         public int MalformedCount;
         public int UnknownSectionRows;
+
+        /// <summary>Storages this dump gives EVIDENCE for — the row is the
+        /// evidence, an "Empty" bank slot still proves the bank was dumped.
+        /// Keys: worn, bags, bank, sharedBank, depot, keyring.</summary>
+        public HashSet<string> Covered = new(StringComparer.Ordinal);
+
+        /// <summary>A non-primary ITEM-shaped table exists (the never-sampled
+        /// Dragon's Hoard would arrive as one).</summary>
+        public bool HasExtraItemSection;
     }
 
-    /// <summary>One row of the flattened, searchable ledger.</summary>
+    /// <summary>One row of the flattened, searchable ledger. Host is the item
+    /// this row sits INSIDE (the bearer of an exaltation socket), "" at top
+    /// level.</summary>
     public sealed record CarryRow(string Name, string SearchKey, string Location, int Count,
-        string Lane, int Line);
+        string Lane, int Line, string Host = "");
 
     public const string PrimarySection = "Location";
     public const string LanePrefix = "section:";
@@ -126,6 +137,10 @@ public static class InventoryStore
                 section = cols[0].Trim();
                 shape = SectionShape(cols);
                 if (!dump.Sections.Contains(section)) dump.Sections.Add(section);
+                // The header itself is evidence: a keyring table with zero
+                // rows still says "the keyring was dumped".
+                if (shape == "keyRing") dump.Covered.Add("keyring");
+                else if (shape == "items" && section != PrimarySection) dump.HasExtraItemSection = true;
                 byPath.Clear(); // nothing nests across tables
                 continue;
             }
@@ -179,6 +194,29 @@ public static class InventoryStore
             dump.Items.Add(entry);
         }
         byPath[location] = entry; // last-writer-wins: duplicate Ears are real
+
+        if (section == PrimarySection)
+        {
+            string storage = StorageOfBase(entry.Base);
+            if (storage.Length > 0) dump.Covered.Add(storage);
+        }
+    }
+
+    private static readonly Regex SharedBankRx = new(@"^SharedBank\d+$", RegexOptions.Compiled);
+    private static readonly Regex BankRx = new(@"^Bank\d+$", RegexOptions.Compiled);
+    private static readonly Regex GeneralRx = new(@"^General \d+$", RegexOptions.Compiled);
+    private static readonly Regex DepotRx = new(@"^Personal-Depot\d+$", RegexOptions.Compiled);
+
+    /// <summary>Like <see cref="LaneOfBase"/> but keeps sharedBank distinct —
+    /// coverage speaks about the game's storages, not the ledger's chips.</summary>
+    private static string StorageOfBase(string baseToken)
+    {
+        if (EquipLocations.Contains(baseToken)) return "worn";
+        if (GeneralRx.IsMatch(baseToken)) return "bags";
+        if (SharedBankRx.IsMatch(baseToken)) return "sharedBank";
+        if (BankRx.IsMatch(baseToken)) return "bank";
+        if (DepotRx.IsMatch(baseToken)) return "depot";
+        return "";
     }
 
     private static void AddKeyRingRow(Dump dump, string section, string[] cols, int line)
@@ -210,13 +248,28 @@ public static class InventoryStore
 
     // ---- the flattened ledger -------------------------------------------------
 
+    /// <summary>An exaltation row: the socketed copy living inside an item's
+    /// exaltation socket ("Wicked Sallet (Exaltation)" under Head-Slot7).</summary>
+    public static bool IsExaltation(string name) =>
+        name.EndsWith(" (Exaltation)", StringComparison.Ordinal);
+
+    /// <summary>Which window tab a ledger row belongs to: the keyring table is
+    /// the game's focus-effect collection, socketed "(Exaltation)" copies get
+    /// their own tab, everything else is an item.</summary>
+    public static string TabOf(CarryRow row)
+    {
+        if (row.Lane == "keyring") return "focus";
+        if (IsExaltation(row.Name)) return "exalt";
+        return "items";
+    }
+
     /// <summary>Every non-empty row of every table, in FILE ORDER, plus the
     /// lane chips that actually have rows (a chip that filters to nothing is
     /// a control that can only disappoint).</summary>
     public static (List<CarryRow> Rows, List<(string Id, string Label)> Lanes) CarryAll(Dump dump)
     {
         var rows = new List<CarryRow>();
-        void Walk(Entry e)
+        void Walk(Entry e, Entry? parent)
         {
             if (!e.Empty && e.Name.Length > 0)
             {
@@ -226,12 +279,13 @@ public static class InventoryStore
                 string location = e.Section == PrimarySection
                     ? e.Location
                     : $"{e.Section} / {e.Location}";
+                string host = parent is { Empty: false } ? parent.Name : "";
                 rows.Add(new CarryRow(e.Name, e.Name.ToLowerInvariant(), location,
-                    e.Count > 0 ? e.Count : 1, lane, e.Line));
+                    e.Count > 0 ? e.Count : 1, lane, e.Line, host));
             }
-            foreach (var c in e.Children) Walk(c);
+            foreach (var c in e.Children) Walk(c, e);
         }
-        foreach (var e in dump.Items) Walk(e);
+        foreach (var e in dump.Items) Walk(e, null);
 
         foreach (var k in dump.KeyRing)
         {
@@ -241,7 +295,13 @@ public static class InventoryStore
         }
 
         rows.Sort((a, b) => a.Line.CompareTo(b.Line));
+        return (rows, LanesOf(rows, dump));
+    }
 
+    /// <summary>The lane chips a set of rows deserves: fixed lanes first, then
+    /// any extra section, only ever lanes that actually have rows.</summary>
+    public static List<(string Id, string Label)> LanesOf(IEnumerable<CarryRow> rows, Dump dump)
+    {
         var present = rows.Select(r => r.Lane).ToHashSet(StringComparer.Ordinal);
         var lanes = new List<(string, string)>();
         foreach (string id in FixedLaneOrder)
@@ -251,7 +311,22 @@ public static class InventoryStore
             string id = LanePrefix + section;
             if (present.Contains(id)) lanes.Add((id, section));
         }
-        return (rows, lanes);
+        return lanes;
+    }
+
+    /// <summary>The storages this dump does NOT speak for, in the order the
+    /// in-game ritual visits them. "Missing" means "the dump does not say" —
+    /// the game only writes a storage while its window is open. The Dragon's
+    /// Hoard has never been sampled, so ANY extra item table counts as it.</summary>
+    public static List<string> MissingStorages(Dump dump)
+    {
+        var missing = new List<string>();
+        if (!dump.Covered.Contains("bank")) missing.Add("bank");
+        else if (!dump.Covered.Contains("sharedBank")) missing.Add("shared bank");
+        if (!dump.Covered.Contains("depot")) missing.Add("tradeskill depot");
+        if (!dump.HasExtraItemSection) missing.Add("Dragon's Hoard");
+        if (!dump.Covered.Contains("keyring")) missing.Add("key rings");
+        return missing;
     }
 
     /// <summary>Flat name→count over everything held: every item row counts

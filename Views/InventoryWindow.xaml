@@ -25,8 +25,16 @@
                            FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"/>
                 <TextBlock Text="Inventory" Style="{StaticResource PageTitle}"/>
             </DockPanel>
-            <TextBlock x:Name="HintText" Style="{StaticResource Hint}" Margin="0,2,0,8"
+            <TextBlock x:Name="HintText" Style="{StaticResource Hint}" Margin="0,2,0,4"
                        Text="Everything the game's own inventory dump lists — worn, bags, bank, depot and key rings. Re-type /outputfile inventory in game whenever your gear or bags change."/>
+
+            <!-- Parse + coverage story: gold when the dump leaves storages unsaid. -->
+            <TextBlock x:Name="ParsedText" Foreground="{StaticResource Brush.Gold}" FontSize="11"
+                       Margin="0,0,0,2" Visibility="Collapsed"/>
+            <TextBlock x:Name="WarnText" Foreground="{StaticResource Brush.Gold}" FontSize="11"
+                       TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+
+            <WrapPanel x:Name="TabPanel" Margin="0,0,0,6"/>
 
             <DockPanel Margin="0,0,0,6">
                 <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.TextHint}"
@@ -37,6 +45,9 @@
             </DockPanel>
 
             <WrapPanel x:Name="LanePanel" Margin="0,0,0,8"/>
+
+            <TextBlock x:Name="EmptyTabText" Style="{StaticResource Hint}" Margin="2,2,0,8"
+                       Visibility="Collapsed"/>
         </StackPanel>
 
         <!-- Shown instead of the list until a dump exists. -->
@@ -58,6 +69,7 @@
                                    Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" FontSize="11"
                                    VerticalAlignment="Center" Margin="10,0,0,0"/>
                         <TextBlock DockPanel.Dock="Right" Text="{Binding Location}"
+                                   ToolTip="{Binding LocationTip}"
                                    Foreground="{StaticResource Brush.TextHint}" FontSize="11"
                                    VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="190"
                                    TextTrimming="CharacterEllipsis"/>

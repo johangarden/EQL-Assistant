@@ -1277,6 +1277,49 @@ public partial class App : Application
                     && held["boots of the long road"] == 1 && held["boots of the long road +1"] == 1
                     && !held.ContainsKey("guise of the deceiver"));
 
+                // Tabs partition the ledger: keyring rows are the focus-effect
+                // collection, "(Exaltation)" copies get their own tab, and an
+                // exaltation knows the item wearing it.
+                Check("inventory: tabs split items / exaltations / focus effects",
+                    rows.Count(r => InventoryStore.TabOf(r) == "exalt") == 2
+                    && rows.Count(r => InventoryStore.TabOf(r) == "focus") == 3
+                    && rows.Count(r => InventoryStore.TabOf(r) == "items") == rows.Count - 5);
+                Check("inventory: an exaltation names its host item",
+                    rows.First(r => r.Name == "Thelvorn, Blade of Light (Exaltation)").Host
+                        == "Thelvorn, Blade of Light +5"
+                    && rows.First(r => r.Name == "Kelin`s Seven Stringed Lute (Exaltation)").Host
+                        == "Kelin`s Seven Stringed Lute +1"
+                    && rows.First(r => r.Name == "Spacious Rucksack").Host == "");
+
+                // Coverage: the row is the evidence (an Empty bank slot still
+                // proves the bank was dumped); missing = "the dump does not
+                // say", and the never-sampled hoard only counts covered when
+                // an extra item table appears.
+                Check("inventory: coverage reads evidence, hoard stays unsaid",
+                    dump.Covered.SetEquals(new[] { "worn", "bags", "bank", "sharedBank", "depot", "keyring" })
+                    && InventoryStore.MissingStorages(dump).SequenceEqual(new[] { "Dragon's Hoard" }));
+                var partial = InventoryStore.Parse(string.Join("\r\n", new[]
+                {
+                    "Location\tName\tID\tCount\tSlots",
+                    "Head\tValorium Helmet +1\t4851\t1\t10",
+                    "General 1\tBackpack\t17005\t1\t8",
+                }));
+                Check("inventory: an old dump names everything it left unsaid",
+                    InventoryStore.MissingStorages(partial).SequenceEqual(
+                        new[] { "bank", "tradeskill depot", "Dragon's Hoard", "key rings" }));
+                var hoardish = InventoryStore.Parse(string.Join("\r\n", new[]
+                {
+                    "Location\tName\tID\tCount\tSlots",
+                    "Head\tValorium Helmet +1\t4851\t1\t10",
+                    "",
+                    "Hoard\tName\tID\tCount\tSlots",
+                    "Hoard1\tShiny Thing\t99\t1\t10",
+                }));
+                Check("inventory: an extra item table reads as the hoard, own lane chip",
+                    !InventoryStore.MissingStorages(hoardish).Contains("Dragon's Hoard")
+                    && InventoryStore.CarryAll(hoardish).Rows
+                        .Any(r => r.Lane == "section:Hoard" && r.Name == "Shiny Thing"));
+
                 // A malformed row is counted, never thrown on; an unknown-shaped
                 // section is carried as uninterpreted rows.
                 var odd = InventoryStore.Parse("Location\tName\tID\tCount\tSlots\r\nJunkRowWithoutTabs\r\n"
