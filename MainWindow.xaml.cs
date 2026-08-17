@@ -1393,7 +1393,11 @@ public partial class MainWindow : Window
     {
         if (_lastDeath is null)
         {
-            _vm.Flash("No deaths this session — long may it last.");
+            // A visible answer — the toolbar status flash was easy to miss.
+            // (Catch-up replays today's log, so today's deaths survive a restart.)
+            System.Windows.MessageBox.Show(
+                "No deaths recorded from today's log — long may it last.",
+                "EQL Assistant", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         if (_recapWindow is null)
@@ -1543,7 +1547,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
         menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
-        menu.Items.Add("Death recap…", null, (_, _) => OpenDeathRecap());
+        menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
         menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
