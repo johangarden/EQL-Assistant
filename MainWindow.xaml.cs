@@ -1255,7 +1255,6 @@ public partial class MainWindow : Window
             RaidRequested = OpenRaidKills,
             QuestsRequested = OpenSkyQuests,
             LootRequested = OpenLootHistory,
-            LoadoutMenuRequested = el => OnLoadoutMenu(el, new RoutedEventArgs()),
         };
         _toolbarWin.Show();
         UpdateToolbarVisibility();
@@ -1463,27 +1462,6 @@ public partial class MainWindow : Window
 
     /// <summary>Test hook: add a demo bar so a self-test can force the bar template to render.</summary>
     internal void AddDemoForTest() => _engine?.AddDemoTimer();
-
-    /// <summary>Open a popup menu to pick a loadout directly (toolbar dropdown).</summary>
-    private void OnLoadoutMenu(object sender, RoutedEventArgs e)
-    {
-        var menu = new ContextMenu();
-        foreach (var name in _configService.ListLoadouts().Select(l => l.Name))
-        {
-            var item = new MenuItem
-            {
-                Header = name,
-                IsChecked = string.Equals(name, _config.ActiveLoadout, StringComparison.OrdinalIgnoreCase),
-            };
-            string captured = name;
-            item.Click += (_, _) => ApplyLoadout(captured);
-            menu.Items.Add(item);
-        }
-        if (menu.Items.Count == 0) return;
-        menu.PlacementTarget = (UIElement)sender;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-        menu.IsOpen = true;
-    }
 
     // ---- system tray --------------------------------------------------------
 
