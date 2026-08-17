@@ -118,6 +118,9 @@ public partial class MainWindow : Window
             spell.StartsWith("Demo ", StringComparison.Ordinal) ? 30 // Ctrl+Alt+T bars
             : _durations.LearnedMaxSeconds(spell)
               ?? (_spellLib.FindByBaseName(spell)?.DurationSec is > 0 and var libSec ? libSec : null);
+        // A known beneficial spell's own heal/damage component is a buff at
+        // work (Quick Buff bursts land them with no cast line) — never a proc.
+        _combat.BeneficialLookup = name => _spellLib.FindByBaseName(name)?.Bucket == "Buff";
         _combat.OtherLandingLookup = _spellLib.OtherLanding;
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;

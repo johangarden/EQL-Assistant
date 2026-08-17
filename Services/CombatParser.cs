@@ -217,8 +217,16 @@ public sealed class CombatParser
         .Where(kv => IsMeleeAbility(kv.Key))
         .Sum(kv => kv.Value.Hits + kv.Value.Misses);
 
+    /// <summary>Optional lookup (SpellLibrary): is this name a known BENEFICIAL
+    /// spell? A buff's own heal/damage component landing without a cast line
+    /// (Quick Buff bursts print none) is a buff, never a weapon proc —
+    /// Harnessing of Spirit ×1 in the proc panel was a lie.</summary>
+    public Func<string, bool>? BeneficialLookup { get; set; }
+
     private void NoteProc(string ability, double amount, bool heal, DateTime time, bool crit)
     {
+        if (BeneficialLookup?.Invoke(ability) == true) return; // a buff, not a proc
+
         if (_recentCasts.TryGetValue(SpellDurations.BaseKey(ability), out var castAt))
         {
             // A HEAL you've ever cast is your spell: HoT ticks name the spell
@@ -783,6 +791,15 @@ public sealed class CombatParser
             // per-mob bar even when the spell never ticks.
             if (OtherLandingLookup?.Invoke(castName) is { Detrimental: true } ol)
                 _pendingEnemyLanding = (castName, ol.Suffix, time);
+            return;
+        }
+
+        // AA and item activations cast with NO begin-cast line ("You activate
+        // Leech Touch.") — they open the same proc window a cast does, so an
+        // activated ability's damage/heal never reads as a weapon proc.
+        if (body.StartsWith("You activate ", StringComparison.Ordinal) && body.EndsWith('.'))
+        {
+            _recentCasts[SpellDurations.BaseKey(body["You activate ".Length..^1])] = time;
             return;
         }
 

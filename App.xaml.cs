@@ -1510,6 +1510,19 @@ public partial class App : Application
             Check("procs: the session reset clears lanes and active time",
                 pw.SessionProcs.Count == 0 && pw.SessionActiveSeconds == 0 && pw.SessionSwings == 0);
 
+            // The raid report: Leech Touch (an activated AA) and Harnessing of
+            // Spirit (a buff) are not procs. Activations open the cast window;
+            // known beneficial spells never count at all.
+            pw.ProcessLine($"[{PTs(90)}] You activate Leech Touch.");
+            pw.ProcessLine($"[{PTs(91)}] Johan hit a gnoll pup for 300 points of magic damage by Leech Touch I.");
+            pw.ProcessLine($"[{PTs(92)}] Johan healed himself for 300 hit points by Leech Touch I.");
+            Check("procs: an activated AA's damage and heal are not procs",
+                !pw.SessionProcs.ContainsKey("Leech Touch I"));
+            pw.BeneficialLookup = n => SpellDurations.BaseKey(n) == "harnessing of spirit";
+            pw.ProcessLine($"[{PTs(95)}] Johan healed himself for 20 hit points by Harnessing of Spirit.");
+            Check("procs: a known beneficial spell landing cast-less is a buff, not a proc",
+                !pw.SessionProcs.ContainsKey("Harnessing of Spirit"));
+
             // Raid badges: every default target resolves to a drawn silhouette;
             // unknown (user-added) names get a stable monogram fallback.
             var allTargets = new RaidKills(new ConfigService()).GetView()
