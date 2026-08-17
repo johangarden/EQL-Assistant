@@ -15,6 +15,8 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        EnsureStandardMenuAlignment();
+
         // Self-update finisher: this process IS the freshly downloaded exe in
         // %TEMP%. Overwrite the real exe once the old app exits, relaunch it, die.
         int fu = Array.IndexOf(e.Args, "--finish-update");
@@ -122,6 +124,26 @@ public partial class App : Application
         // Don't let a stray exception (e.g. a bad regex in a user-edited config)
         // silently kill the overlay. Show it and keep running where possible.
         DispatcherUnhandledException += OnDispatcherUnhandledException;
+    }
+
+    /// <summary>Touch/pen-capable machines often report LEFT-HANDED menu
+    /// alignment ("show menus to the left of the hand"), and WPF is nearly
+    /// the only UI stack that honors it — every popup and submenu then opens
+    /// leftward while the rest of the desktop opens right. The standard
+    /// workaround: flip WPF's cached flag so menus behave like every other
+    /// app on the machine. (Near the screen's right edge menus still flip
+    /// left to stay on screen — that part is correct everywhere.)</summary>
+    private static void EnsureStandardMenuAlignment()
+    {
+        try
+        {
+            if (!SystemParameters.MenuDropAlignment) return;
+            typeof(SystemParameters)
+                .GetField("_menuDropAlignment",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                ?.SetValue(null, false);
+        }
+        catch { /* cosmetic only — never block startup over it */ }
     }
 
     private void RunSelfTest()
