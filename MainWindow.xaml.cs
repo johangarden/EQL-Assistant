@@ -1311,6 +1311,7 @@ public partial class MainWindow : Window
             RaidRequested = OpenRaidKills,
             QuestsRequested = OpenSkyQuests,
             LootRequested = OpenLootHistory,
+            InventoryRequested = OpenInventory,
         };
         _toolbarWin.Show();
         UpdateToolbarVisibility();
@@ -1552,6 +1553,24 @@ public partial class MainWindow : Window
         BringToFront(_lootWindow);
     }
 
+    private Views.InventoryWindow? _inventoryWindow;
+
+    /// <summary>The searchable carry ledger over the game's own inventory dump
+    /// (the install root is derived from the followed log's location).</summary>
+    private void OpenInventory()
+    {
+        if (_inventoryWindow is null)
+        {
+            string logPath = _watcher?.CurrentPath ?? "";
+            var (name, server) = InventoryStore.ParseLogName(logPath);
+            _inventoryWindow = new Views.InventoryWindow(
+                InventoryStore.EqRootOf(logPath), name, server);
+            _inventoryWindow.Closed += (_, _) => _inventoryWindow = null;
+            _inventoryWindow.Show();
+        }
+        BringToFront(_inventoryWindow);
+    }
+
     private Views.DeathRecapWindow? _recapWindow;
     private CombatParser.DeathEvent? _lastDeath;
 
@@ -1652,6 +1671,7 @@ public partial class MainWindow : Window
 
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
+        menu.Items.Add("Inventory…", null, (_, _) => OpenInventory());
         menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
         menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
@@ -1798,6 +1818,7 @@ public partial class MainWindow : Window
         try { _flash?.Close(); } catch { /* ignore */ }
         try { _toolbarWin?.Close(); } catch { /* ignore */ }
         try { _raidsWindow?.Close(); } catch { /* ignore */ }
+        try { _inventoryWindow?.Close(); } catch { /* ignore */ }
         foreach (var lane in _sctLanes.Values) { try { lane.Close(); } catch { /* ignore */ } }
         if (_tray is not null) { _tray.Visible = false; _tray.Dispose(); _tray = null; }
     }

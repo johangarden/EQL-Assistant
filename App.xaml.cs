@@ -183,6 +183,19 @@ public partial class App : Application
             statsWin.Show();
             statsWin.Refresh();
             statsWin.Close();
+
+            // Inventory window renders the ledger from a real-format dump —
+            // and the empty-state instructions when no dump exists.
+            string invDir = Path.Combine(Path.GetTempPath(), "eql_selftest_inv");
+            Directory.CreateDirectory(invDir);
+            File.WriteAllText(Path.Combine(invDir, "Testchar_paineel-Inventory.txt"),
+                "Location\tName\tID\tCount\tSlots\r\nHead\tValorium Helmet +1\t4851\t1\t10\r\n");
+            var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
+            invWin.Show();
+            invWin.Close();
+            var invEmpty = new Views.InventoryWindow(Path.Combine(invDir, "no_such_dir"), "X", "y");
+            invEmpty.Show();
+            invEmpty.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
             Environment.ExitCode = 0;
         }
@@ -1196,6 +1209,83 @@ public partial class App : Application
                     again.ProcessLine(line);
                 again.Reset();
                 Check("stats: reset wipes the record", !again.HasData);
+            }
+
+            // ---- inventory dump parser (Companion's measured grammar) ---------
+            {
+                // A verbatim slice of the real fixture dump (tab-separated;
+                // the KeyRing header really ends in a bare tab).
+                string dumpText = string.Join("\r\n", new[]
+                {
+                    "Location\tName\tID\tCount\tSlots",
+                    "Ear\tDrop of Crystallized Flame +7\t177839\t1\t10",
+                    "Ear-Slot7\tEmpty\t0\t0\t0",
+                    "Ear\tEarring of Disease Reflection +4\t10302\t1\t10",
+                    "Wrist\tValorium Bracers +2\t4854\t1\t10",
+                    "Wrist\tLustrous Russet Bracer +1\t4834\t1\t10",
+                    "Primary\tThelvorn, Blade of Light +5\t27709\t1\t10",
+                    "Primary-Slot10\tThelvorn, Blade of Light (Exaltation)\t27709\t1\t10",
+                    "Ammo\tEmpty\t0\t0\t0",
+                    "General 1\tSpacious Rucksack\t177751\t1\t24",
+                    "General 1-Slot1\tTiny Dagger\t13080\t86\t10",
+                    "General 1-Slot5\tBandages*\t21779\t20\t10",
+                    "General 1-Slot9\tKelin`s Seven Stringed Lute +1\t11573\t1\t10",
+                    "General 1-Slot9-Slot7\tKelin`s Seven Stringed Lute (Exaltation)\t11573\t1\t10",
+                    "General 1-Slot24\tEmpty\t0\t0\t0",
+                    "Bank1\tEmpty\t0\t0\t0",
+                    "SharedBank1\tEmpty\t0\t0\t0",
+                    "Personal-Depot1\tGriffenne Blood\t22526\t2\t10",
+                    "Held\tEmpty\t0\t0\t0",
+                    "",
+                    "KeyRing\tName\tID\t",
+                    "Activated\tGuise of the Deceiver\t2469",
+                    "Equipment\tBoots of the Long Road\t177708",
+                    "Equipment\tBoots of the Long Road +1\t177708",
+                });
+                var dump = InventoryStore.Parse(dumpText);
+
+                Check("inventory: the -Slot chain nests, Personal-Depot1 keeps its hyphen",
+                    InventoryStore.SplitBase("General 1-Slot9-Slot7") == "General 1"
+                    && InventoryStore.SplitBase("Personal-Depot1") == "Personal-Depot1"
+                    && InventoryStore.SplitBase("Any Slot-Slot2") == "Any Slot");
+                Check("inventory: duplicate slots are real, children attach to the LAST seen",
+                    dump.Items.Count(e => e.Base == "Ear") == 2
+                    // Ear-Slot7 sits under the FIRST Ear (it came before the second).
+                    && dump.Items.First(e => e.Base == "Ear").Children is [{ Empty: true }]);
+                Check("inventory: nesting reaches the exaltation socket in the bag",
+                    dump.Items.First(e => e.Location == "General 1").Children
+                        .First(c => c.Location == "General 1-Slot9").Children
+                        is [{ Name: "Kelin`s Seven Stringed Lute (Exaltation)" }]);
+                Check("inventory: the keyring table parses through its bare-tab header",
+                    dump.KeyRing.Count == 3 && dump.Sections.SequenceEqual(new[] { "Location", "KeyRing" })
+                    && dump.MalformedCount == 0);
+
+                var (rows, lanes) = InventoryStore.CarryAll(dump);
+                Check("inventory: empty rows leave the ledger, real ones keep file order",
+                    rows.All(r => r.Name != "Empty")
+                    && rows.Select(r => r.Line).SequenceEqual(rows.Select(r => r.Line).OrderBy(n => n)));
+                Check("inventory: lanes cover worn/bags/depot/keyring, none empty",
+                    lanes.Select(l => l.Id).SequenceEqual(new[] { "worn", "bags", "depot", "keyring" }));
+                Check("inventory: stack counts survive, keyring rows count one",
+                    rows.First(r => r.Name == "Tiny Dagger").Count == 86
+                    && rows.First(r => r.Name == "Griffenne Blood") is { Count: 2, Lane: "depot" }
+                    && rows.Count(r => r.Lane == "keyring") == 3);
+
+                var held = InventoryStore.HeldCounts(dump);
+                Check("inventory: held counts sum stacks; Activated is a look, not an item",
+                    held["tiny dagger"] == 86
+                    && held["boots of the long road"] == 1 && held["boots of the long road +1"] == 1
+                    && !held.ContainsKey("guise of the deceiver"));
+
+                // A malformed row is counted, never thrown on; an unknown-shaped
+                // section is carried as uninterpreted rows.
+                var odd = InventoryStore.Parse("Location\tName\tID\tCount\tSlots\r\nJunkRowWithoutTabs\r\n"
+                    + "Hoard\tName\tMystery\t\r\nHoardSlot1\tShiny Thing\t1\t1");
+                Check("inventory: malformed and unknown rows are counted, not fatal",
+                    odd.MalformedCount == 1 && odd.UnknownSectionRows == 1);
+
+                Check("inventory: log name yields char + server for the preferred dump name",
+                    InventoryStore.ParseLogName(@"C:\x\Logs\eqlog_Thorrak_paineel.txt") == ("Thorrak", "paineel"));
             }
         }
         catch (Exception ex)
