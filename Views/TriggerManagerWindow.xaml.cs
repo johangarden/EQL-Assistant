@@ -1026,6 +1026,10 @@ public partial class TriggerManagerWindow : Window
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
                 ConditionsVisible = _config.Overlay.ConditionsVisible,   // tray-toggled
                 MeterSoloMode = _config.Overlay.MeterSoloMode,           // meter-toggled
+                SessionStatsVisible = _config.Overlay.SessionStatsVisible,       // tray-toggled
+                SessionStatsSlice = _config.Overlay.SessionStatsSlice,           // panel-toggled
+                SessionStatsExactTier = _config.Overlay.SessionStatsExactTier,   // panel-toggled
+                SessionStatsActiveBasis = _config.Overlay.SessionStatsActiveBasis, // panel-toggled
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,

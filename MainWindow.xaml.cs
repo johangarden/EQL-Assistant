@@ -30,8 +30,10 @@ public partial class MainWindow : Window
     private MeterWindow? _meter;
     private EnemyDotsWindow? _enemyDotsWin;
     private ConditionsWindow? _conditionsWin;
+    private SessionStatsWindow? _sessionWin;
     private RemindersWindow? _remindersWin;
     private ConditionWatcher _conditions = null!;
+    private readonly SessionStats _session = new();
     private readonly CombatParser _combat = new();
     private RaidKills _raids = null!;
     private LootTracker _loot = null!;
@@ -332,6 +334,9 @@ public partial class MainWindow : Window
         int fightsBefore = _combat.History.Count;
         int lines = 0;
         _suppressSct = true;
+        // Session stats rebuild EXACTLY: the file read includes every line the
+        // live feed already processed, so reset-and-refeed never double-counts.
+        _session.Reset();
         try
         {
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
@@ -348,6 +353,7 @@ public partial class MainWindow : Window
                 _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
+                _session.ProcessLine(line);
                 NoteLineSeen(t);
                 lines++;
             }
@@ -756,6 +762,7 @@ public partial class MainWindow : Window
             _engine.TargetCells, defaultLeft: 420, defaultTop: 420);
         RebuildEnemyDotsWindow();
         RebuildConditionsWindow();
+        RebuildSessionStatsWindow();
         RebuildRemindersWindow();
         UpdateMatrixVisibility();
     }
@@ -819,6 +826,47 @@ public partial class MainWindow : Window
         RebuildConditionsWindow();
     }
 
+    private void RebuildSessionStatsWindow()
+    {
+        if (_sessionWin is not null) { try { _sessionWin.Close(); } catch { /* ignore */ } _sessionWin = null; }
+        if (!_config.Overlay.SessionStatsVisible) return;
+        _sessionWin = new SessionStatsWindow(_session, _configService, _config.Overlay.Opacity,
+            ParseStatsSlice(_config.Overlay.SessionStatsSlice),
+            _config.Overlay.SessionStatsExactTier,
+            _config.Overlay.SessionStatsActiveBasis ? SessionStats.Basis.Active : SessionStats.Basis.Elapsed);
+        _sessionWin.SettingsChanged += (slice, exactTier, basis) =>
+        {
+            _config.Overlay.SessionStatsSlice = slice switch
+            {
+                SessionStats.Slice.Session => "session",
+                SessionStats.Slice.Zone => "zone",
+                SessionStats.Slice.All => "all",
+                _ => "zoneSession",
+            };
+            _config.Overlay.SessionStatsExactTier = exactTier;
+            _config.Overlay.SessionStatsActiveBasis = basis == SessionStats.Basis.Active;
+            _configService.SaveSettings(_config);
+        };
+        _sessionWin.Show();
+        _sessionWin.SetLocked(_vm.Locked);
+        _sessionWin.SetHidden(_hidden);
+    }
+
+    private static SessionStats.Slice ParseStatsSlice(string s) => s switch
+    {
+        "session" => SessionStats.Slice.Session,
+        "zone" => SessionStats.Slice.Zone,
+        "all" => SessionStats.Slice.All,
+        _ => SessionStats.Slice.ZoneSession,
+    };
+
+    private void ToggleSessionStats()
+    {
+        _config.Overlay.SessionStatsVisible = !_config.Overlay.SessionStatsVisible;
+        _configService.SaveSettings(_config);
+        RebuildSessionStatsWindow();
+    }
+
     private MatrixWindow RebuildPanel(MatrixWindow? existing, string key, string title,
         System.Collections.ObjectModel.ObservableCollection<ViewModels.MatrixCellViewModel> cells,
         double defaultLeft, double defaultTop)
@@ -873,6 +921,7 @@ public partial class MainWindow : Window
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _conditions.ProcessLine(line); // live CC state — not fed on catch-up
+                _session.ProcessLine(line);    // leveling pace (rebuilt by catch-up)
                 if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
             }),
@@ -906,6 +955,7 @@ public partial class MainWindow : Window
             : _detectedName;
         if (string.IsNullOrWhiteSpace(name) || _combat.SelfName == name) return;
         _combat.SelfName = name;
+        _session.SelfName = name; // the /who level row must be YOUR row
         Log.Info($"Combat parser character name: '{name}'" +
                  (string.IsNullOrWhiteSpace(_config.CharacterName) ? " (auto-detected from log filename)" : ""));
     }
@@ -942,6 +992,8 @@ public partial class MainWindow : Window
                     _engine.AddDemoTimer(); _engine.AddDemoMatrixCell(); _engine.AddDemoTargetCell();
                     _engine.AddDemoReminder();
                     _combat.AddDemoFight(); _combat.AddDemoEnemyDots(); _conditions.AddDemo();
+                    if (_sessionWin is not null && !_session.HasData)
+                    { _session.AddDemo(DateTime.Now); _sessionWin.Refresh(); }
                     UpdateMatrixVisibility();
                     OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
                     if (!_hidden && !_sctHidden)
@@ -977,6 +1029,7 @@ public partial class MainWindow : Window
         _targetMatrix?.SetLocked(_vm.Locked);
         _enemyDotsWin?.SetLocked(_vm.Locked);
         _conditionsWin?.SetLocked(_vm.Locked);
+        _sessionWin?.SetLocked(_vm.Locked);
         _remindersWin?.SetLocked(_vm.Locked);
         _flash?.SetLocked(_vm.Locked);
         foreach (var lane in _sctLanes.Values) lane.SetLocked(_vm.Locked);
@@ -1004,6 +1057,7 @@ public partial class MainWindow : Window
         _hidden = !_hidden;
         _enemyDotsWin?.SetHidden(_hidden);
         _conditionsWin?.SetHidden(_hidden);
+        _sessionWin?.SetHidden(_hidden);
         _remindersWin?.SetHidden(_hidden);
         UpdateBarsVisibility();
         UpdateMatrixVisibility();
@@ -1035,6 +1089,7 @@ public partial class MainWindow : Window
             _targetMatrix?.SetLocked(false);
             _enemyDotsWin?.SetLocked(false);
             _conditionsWin?.SetLocked(false);
+            _sessionWin?.SetLocked(false);
             _remindersWin?.SetLocked(false);
             _flash?.SetLocked(false);
             foreach (var lane in _sctLanes.Values) lane.SetLocked(false);
@@ -1046,6 +1101,7 @@ public partial class MainWindow : Window
         _targetMatrix?.ResetPosition();
         _enemyDotsWin?.ResetPosition();
         _conditionsWin?.ResetPosition();
+        _sessionWin?.ResetPosition();
         _remindersWin?.ResetPosition();
         _timer?.ResetPosition();
         _meter?.ResetPosition();
@@ -1328,6 +1384,7 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("Rebuff reminders", ToggleReminders, "Bars & matrices", () => _config.Overlay.RemindersVisible));
         panels.Items.Add(BurgerPanelRow("Enemy DoTs", ToggleEnemyDots, "Bars & matrices", () => _config.Overlay.EnemyDotsVisible));
         panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, null, () => _config.Overlay.ConditionsVisible));
+        panels.Items.Add(BurgerPanelRow("Session stats (XP/AA/motes)", ToggleSessionStats, null, () => _config.Overlay.SessionStatsVisible));
         panels.Items.Add(BurgerPanelRow("Repop timer", ToggleTimer, "Repop timer", () => !_timerHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs", () => !_meterHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter · skills section", ToggleSkills, "DPS + Skills, Procs", () => !_skillsHidden));
@@ -1625,12 +1682,13 @@ public partial class MainWindow : Window
         var panelBars = new System.Windows.Forms.ToolStripMenuItem("Buff bars", null, (_, _) => ToggleBars());
         var panelDots = new System.Windows.Forms.ToolStripMenuItem("Enemy DoTs", null, (_, _) => ToggleEnemyDots());
         var panelConds = new System.Windows.Forms.ToolStripMenuItem("Condition badges (stun/fear)", null, (_, _) => ToggleConditions());
+        var panelSession = new System.Windows.Forms.ToolStripMenuItem("Session stats (XP/AA/motes)", null, (_, _) => ToggleSessionStats());
         var panelSelfM = new System.Windows.Forms.ToolStripMenuItem("Self-buffs matrix", null, (_, _) => ToggleSelfMatrix());
         var panelTargetM = new System.Windows.Forms.ToolStripMenuItem("Target-debuffs matrix", null, (_, _) => ToggleTargetMatrix());
         var panelRemind = new System.Windows.Forms.ToolStripMenuItem("Rebuff reminders", null, (_, _) => ToggleReminders());
         panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
             { panelToolbar, panelBars, panelSelfM, panelTargetM, panelRemind, panelDots,
-              panelConds, panelTimer, panelMeter, panelSkills, panelProcs, panelSct, panelFlash });
+              panelConds, panelSession, panelTimer, panelMeter, panelSkills, panelProcs, panelSct, panelFlash });
         panelsItem.DropDownOpening += (_, _) =>
         {
             panelToolbar.Checked = !_toolbarHidden;
@@ -1640,6 +1698,7 @@ public partial class MainWindow : Window
             panelRemind.Checked = _config.Overlay.RemindersVisible;
             panelDots.Checked = _config.Overlay.EnemyDotsVisible;
             panelConds.Checked = _config.Overlay.ConditionsVisible;
+            panelSession.Checked = _config.Overlay.SessionStatsVisible;
             panelTimer.Checked = !_timerHidden;
             panelMeter.Checked = !_meterHidden;
             panelSkills.Checked = !_skillsHidden;
@@ -1732,6 +1791,7 @@ public partial class MainWindow : Window
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
         try { _enemyDotsWin?.Close(); } catch { /* ignore */ }
         try { _conditionsWin?.Close(); } catch { /* ignore */ }
+        try { _sessionWin?.Close(); } catch { /* ignore */ }
         try { _remindersWin?.Close(); } catch { /* ignore */ }
         try { _timer?.Close(); } catch { /* ignore */ }
         try { _meter?.Close(); } catch { /* ignore */ }
