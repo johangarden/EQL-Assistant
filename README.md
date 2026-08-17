@@ -101,12 +101,16 @@ from today's log, Check for updates, Open config folder, **Reset position**
 (also unlocks and unhides everything — the fixer if a panel is lost
 off-screen), and Quit.
 
-**Toolbar** — a detached command strip that stays visible and clickable even
-while locked: ✕ quit · version · **Loadout ▾** picker · **☰ menu** (mirrors
-the tray menu exactly) · **Manage** · 🔊 mute · 🔒 padlock (governs all other
-panels; glows accent-blue while unlocked as a "lock me before playing"
-reminder). Drag to place it; hide it via ☰ → Panels if you want a clean
-screen.
+**Toolbar** — a detached one-row command strip that stays visible and
+clickable even while locked, organized app · features · state: ✕ quit ·
+version · **Loadout ▾** picker · one-click **feature icons** (💀 Raid kills ·
+📜 Quests · 💰 Loot history — hover any icon for what it does) · **☰ menu**
+(mirrors the tray exactly) · 🔊 mute · 🔒 padlock (governs all other panels;
+glows accent-blue while unlocked as a "lock me before playing" reminder) —
+and the **⚙ cog** alone at the far end: settings are a different mode.
+Confirmations ("Switched to: Raid", "Pet detected: Lober") appear as a
+**toast** under the strip that fades after ~4s; the "Following eqlog_…" line
+lives on the Manager's General page now, under Log source.
 
 ## The Manager
 

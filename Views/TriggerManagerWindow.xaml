@@ -489,6 +489,7 @@
 
                             <TextBlock Text="File pattern" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="FilePatternBox" Width="220" HorizontalAlignment="Left"/>
+                            <TextBlock x:Name="FollowingText" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Overlay" Style="{StaticResource SectionTitle}"/>

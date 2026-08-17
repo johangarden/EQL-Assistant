@@ -1071,7 +1071,8 @@ public partial class MainWindow : Window
     {
         if (_manager is null)
         {
-            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations)
+            _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations,
+                logStatus: () => _vm.LogStatus)
             {
                 ReparseFullLogRequested = ReparseFullLog,
                 ReparseOtherRequested = MergeLogFile,
@@ -1251,6 +1252,9 @@ public partial class MainWindow : Window
             MuteRequested = ToggleMute,
             ManageRequested = () => OpenManager(),
             MenuRequested = ShowMainMenu,
+            RaidRequested = OpenRaidKills,
+            QuestsRequested = OpenSkyQuests,
+            LootRequested = OpenLootHistory,
             LoadoutMenuRequested = el => OnLoadoutMenu(el, new RoutedEventArgs()),
         };
         _toolbarWin.Show();
