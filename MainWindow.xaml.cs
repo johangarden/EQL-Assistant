@@ -1314,6 +1314,12 @@ public partial class MainWindow : Window
     {
         var menu = new ContextMenu();
 
+        // The most common play-time task sits on top.
+        var create = new MenuItem { Header = "Create trigger…" };
+        create.Click += (_, _) => OpenManager("Triggers");
+        menu.Items.Add(create);
+        menu.Items.Add(new Separator());
+
         var panels = new MenuItem { Header = "Panels" };
         panels.Items.Add(BurgerPanelRow("Toolbar", ToggleToolbar, "General", () => !_toolbarHidden));
         panels.Items.Add(BurgerPanelRow("Buff bars", ToggleBars, "Bars & matrices", () => !_barsHidden));
