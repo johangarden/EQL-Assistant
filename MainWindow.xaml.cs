@@ -1304,7 +1304,6 @@ public partial class MainWindow : Window
             _burgerMenu.Items.Add(BuildPanelsMenu());
             _burgerMenu.Items.Add(BuildLoadoutMenu());
             _burgerMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-            _burgerMenu.Items.Add("Show / Hide", null, (_, _) => ToggleHide());
             _burgerMenu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
             _burgerMenu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
         }
@@ -1549,6 +1548,10 @@ public partial class MainWindow : Window
     private System.Windows.Forms.ToolStripMenuItem BuildLoadoutMenu()
     {
         var loadoutItem = new System.Windows.Forms.ToolStripMenuItem("Loadout");
+        // Seed a dummy so the submenu ARROW renders before first open —
+        // WinForms only draws it when DropDownItems is non-empty, and the
+        // real list is built lazily on DropDownOpening.
+        loadoutItem.DropDownItems.Add("…");
         loadoutItem.DropDownOpening += (_, _) =>
         {
             loadoutItem.DropDownItems.Clear();
