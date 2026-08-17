@@ -121,6 +121,10 @@ public partial class MainWindow : Window
         // A known beneficial spell's own heal/damage component is a buff at
         // work (Quick Buff bursts land them with no cast line) — never a proc.
         _combat.BeneficialLookup = name => _spellLib.FindByBaseName(name)?.Bucket == "Buff";
+        // Non-damaging debuffs (slow/malo/cripple) tint orange in the panel.
+        _combat.DebuffLookup = name =>
+            name.StartsWith("Demo ", StringComparison.Ordinal) ? name.Contains("Slow")
+            : _spellLib.FindByBaseName(name) is { } sp && SpellLibrary.TriggerCategory(sp) == "Debuffs";
         _combat.OtherLandingLookup = _spellLib.OtherLanding;
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;

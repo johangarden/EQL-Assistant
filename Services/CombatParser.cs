@@ -257,8 +257,12 @@ public sealed class CombatParser
     // self-corrects as mobs die. Censors: exact wear-off, mob death, zoning,
     // your own death, and 18s of tick silence (three missed ticks).
 
+    /// <summary><paramref name="Debuff"/>: a non-damaging detrimental (slow /
+    /// malo / cripple — orange in the panel). A bar that has TICKED is damage
+    /// (red) regardless of what the library calls it.</summary>
     public sealed record EnemyDotView(string Spell, string Target, int Ordinal,
-        double? RemainingSeconds, double SinceSeconds, bool Overrun, double OverrunSeconds);
+        double? RemainingSeconds, double SinceSeconds, bool Overrun, double OverrunSeconds,
+        bool Debuff = false);
 
     private sealed class DotInstance
     {
@@ -294,6 +298,10 @@ public sealed class CombatParser
     /// third-person landing suffix ("has been poisoned.") — arms the
     /// non-ticking-debuff detector on your begin-cast.</summary>
     public Func<string, (string Suffix, bool Detrimental)?>? OtherLandingLookup { get; set; }
+
+    /// <summary>Optional lookup (SpellLibrary): is this a NON-DAMAGING debuff
+    /// (slow / malo / cripple)? Drives the panel's orange tint.</summary>
+    public Func<string, bool>? DebuffLookup { get; set; }
 
     private static readonly Regex WornOffOfRx = new(
         @"^Your (?<spell>.+?) spell has worn off of (?<mob>.+?)\.",
@@ -452,7 +460,8 @@ public sealed class CombatParser
                 bool overrun = dur is double dd && since > dd;
                 rows.Add(new EnemyDotView(g.Spell, g.Target, i.Ordinal,
                     dur is double dd3 ? Math.Max(0, dd3 - since) : null, since,
-                    overrun, overrun ? since - dur!.Value : 0));
+                    overrun, overrun ? since - dur!.Value : 0,
+                    Debuff: i.Ticks == 0 && (DebuffLookup?.Invoke(g.Spell) ?? false)));
             }
         }
         return rows.OrderBy(r => r.Spell, StringComparer.OrdinalIgnoreCase)
@@ -483,6 +492,8 @@ public sealed class CombatParser
         curse.Instances.Add(new DotInstance { Ordinal = 2, Start = now.AddSeconds(-4), LastTick = now });
         var venom = G("Demo Venom", "a demo froglok");
         venom.Instances.Add(new DotInstance { Ordinal = 1, Start = now.AddSeconds(-38), LastTick = now });
+        var slow = G("Demo Slow", "a demo froglok"); // landing-only → orange debuff tint
+        slow.Instances.Add(new DotInstance { Ordinal = 1, Start = now.AddSeconds(-8), LastTick = now.AddSeconds(-8) });
     }
 
     /// <summary>Event cap per fight — a 10-minute raid fight sits well under this.</summary>

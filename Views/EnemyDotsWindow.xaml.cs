@@ -19,7 +19,7 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class EnemyDotsWindow : Window
 {
-    private sealed record RowVm(string Label, string TimeText, bool IsOverrun);
+    private sealed record RowVm(string Label, string TimeText, bool IsOverrun, bool IsDebuff);
     private sealed record GroupVm(string Spell, List<RowVm> Rows);
 
     private readonly CombatParser _parser;
@@ -106,11 +106,11 @@ public partial class EnemyDotsWindow : Window
         GroupsControl.ItemsSource = _groupByMob
             ? rows.GroupBy(r => r.Target, StringComparer.OrdinalIgnoreCase)
                 .Select(grp => new GroupVm(grp.Key.ToUpperInvariant(),
-                    grp.Select(r => new RowVm($"{r.Spell}{Chip(r)}", TimeOf(r), r.Overrun)).ToList()))
+                    grp.Select(r => new RowVm($"{r.Spell}{Chip(r)}", TimeOf(r), r.Overrun, r.Debuff)).ToList()))
                 .ToList()
             : rows.GroupBy(r => r.Spell, StringComparer.OrdinalIgnoreCase)
                 .Select(grp => new GroupVm(grp.Key.ToUpperInvariant(),
-                    grp.Select(r => new RowVm($"{r.Target}{Chip(r)}", TimeOf(r), r.Overrun)).ToList()))
+                    grp.Select(r => new RowVm($"{r.Target}{Chip(r)}", TimeOf(r), r.Overrun, r.Debuff)).ToList()))
                 .ToList();
 
         Placeholder.Visibility = !_locked && rows.Count == 0

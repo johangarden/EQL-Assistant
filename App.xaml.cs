@@ -644,6 +644,13 @@ public partial class App : Application
                 lib2.IsSharedLanding(Esc("You feel much faster."))
                 && !lib2.IsSharedLanding("not a spell line at all"));
 
+            // A zero-duration detrimental is an instant nuke/lifetap — its
+            // landing must never open an enemy-DoT bar (Siphon Life field
+            // report); real duration-carrying debuffs still arm.
+            Check("dots: a zero-duration detrimental (Siphon Life) never arms a bar",
+                lib2.OtherLanding("Siphon Life") is null
+                && lib2.OtherLanding("Togor's Insects") is { Detrimental: true });
+
             // Condition badges: landings derive from the library's uniform
             // wear-off families — no keyword guessing, buffs never match.
             var cw = new ConditionWatcher(lib2);
@@ -1673,6 +1680,20 @@ public partial class App : Application
             Check("debuffs: a re-dot in the last stretch refreshes in place",
                 tail is [{ Ordinal: 1, RemainingSeconds: not null }]
                 && Math.Abs(tail[0].RemainingSeconds!.Value - 35) < 0.01);
+
+            // Orange vs red: a landing-only known debuff flags Debuff; a bar
+            // that has TICKED is damage regardless of what the library says.
+            var od = new CombatParser { SelfName = "Johan" };
+            od.OtherLandingLookup = s => SpellDurations.BaseKey(s) == "malosini"
+                ? ("looks very uncomfortable.", true) : ((string, bool)?)null;
+            od.DebuffLookup = s => SpellDurations.BaseKey(s) == "malosini";
+            od.ProcessLine($"[{RTs(200)}] You begin casting Malosini.");
+            od.ProcessLine($"[{RTs(203)}] A froglok looks very uncomfortable.");
+            od.ProcessLine($"[{RTs(205)}] A froglok has taken 50 damage from your Curse.");
+            var tinted = od.EnemyDots(RT(206));
+            Check("dots: landing-only debuffs flag orange, ticked bars stay red",
+                tinted.First(r => r.Spell == "Malosini").Debuff
+                && !tinted.First(r => r.Spell == "Curse").Debuff);
 
             // Kept-fights persistence: FightRecord must survive a JSON round trip.
             var jsonOpts = new System.Text.Json.JsonSerializerOptions
