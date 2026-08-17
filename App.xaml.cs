@@ -1536,6 +1536,25 @@ public partial class App : Application
             Check("procs: a known beneficial spell landing cast-less is a buff, not a proc",
                 !pw.SessionProcs.ContainsKey("Harnessing of Spirit"));
 
+            // Pet auto-detect: the summon prints nothing, but the pet names
+            // itself on any order (lines observed 15 Aug 2026).
+            var pd = new CombatParser { SelfName = "Thorrak" };
+            var petBinds = new List<string>();
+            pd.PetDetected += n => petBinds.Add(n);
+            pd.ProcessLine($"[{PTs(0)}] Venarab says, 'Following you, Master.'");
+            Check("pet: the follow response binds the pet", pd.PetName == "Venarab");
+            pd.ProcessLine($"[{PTs(1)}] Venarab says, 'Following you, Master.'");
+            Check("pet: re-ordering the same pet fires no rebind", petBinds.Count == 1);
+            pd.ProcessLine($"[{PTs(2)}] Lober says, 'As you wish, oh great one.'");
+            Check("pet: the dismiss response rebinds the newer name", pd.PetName == "Lober");
+            pd.ProcessLine($"[{PTs(3)}] Guard says, 'Hail, Thorrak'");
+            pd.ProcessLine($"[{PTs(3)}] Tindel says, 'so run a parser, and check the ppm'");
+            Check("pet: ordinary NPC/player chatter never binds", pd.PetName == "Lober");
+            pd.ProcessLine($"[{PTs(4)}] Xanuusaz told you, 'Attacking a gnoll reaver, Master.'");
+            Check("pet: the private Master-tell binds (the unforgeable route)", pd.PetName == "Xanuusaz");
+            pd.ProcessLine($"[{PTs(5)}] Jabantik says, 'My leader is Thorrak.'");
+            Check("pet: the /pet leader answer binds by your own name", pd.PetName == "Jabantik");
+
             // Raid badges: every default target resolves to a drawn silhouette;
             // unknown (user-added) names get a stable monogram fallback.
             var allTargets = new RaidKills(new ConfigService()).GetView()

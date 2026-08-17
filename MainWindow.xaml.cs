@@ -135,6 +135,15 @@ public partial class MainWindow : Window
         _barsHidden = !_config.Overlay.BarsVisible;
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
+        // The pet names itself on any /pet order — remember it so the meter's
+        // pet lanes work without ever typing the name into the Manager.
+        _combat.PetDetected += pet => Dispatcher.BeginInvoke(() =>
+        {
+            _config.Overlay.PetName = pet;
+            _configService.SaveSettings(_config);
+            _vm.Flash($"Pet detected: {pet}");
+            Log.Info($"Pet auto-detected: {pet}");
+        });
         _combat.SctEvent += OnSctEvent;
         _combat.PlayerDied += OnPlayerDied;
         _combat.FightArchived += OnFightArchived;

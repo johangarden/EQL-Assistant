@@ -127,7 +127,9 @@ everything else is **GLOBAL**.
   (columns, anchors), and the **rebuff reminders** timing (warn threshold +
   repeat interval for triggers marked "remind when missing").
 - **Repop timer** — visibility and anchor of the watch panel.
-- **DPS & Skills** — meter visibility, anchor, the **pet name**, and the
+- **DPS & Skills** — meter visibility, anchor, the **pet name** (auto-detected
+  the moment your pet answers any /pet order — "Following you, Master." names
+  it; the field is just the manual override), and the
   **skills section** (which skills to grind-track, with the picker).
 - **Combat text** — which lanes exist, sizes, big-hit threshold.
 - **Flash alerts** — text size, area width, anchor.

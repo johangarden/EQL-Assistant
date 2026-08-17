@@ -22,6 +22,38 @@ public sealed class CombatParser
     /// <summary>Optional pet name — enables the pet line in the incoming footer.</summary>
     public string PetName { get; set; } = "";
 
+    // ---- pet auto-detect ------------------------------------------------------
+    // The summon prints nothing, but an ORDERED pet names itself: command
+    // responses are fixed phrases in a say line ("Venarab says, 'Following
+    // you, Master.'" — observed 15 Aug 2026), order acknowledgements can
+    // arrive as a private "… Master." tell (the Companion's unforgeable
+    // route), and the /pet leader answer names YOU outright.
+
+    /// <summary>Raised (watcher thread) when a pet names itself yours.</summary>
+    public event Action<string>? PetDetected;
+
+    private static readonly Regex PetSpeechRx = new(
+        @"^(?<pet>[A-Z][a-z]+) (?<via>says|told you), '(?<msg>.+)'$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly HashSet<string> PetSayPhrases = new(StringComparer.Ordinal)
+    {
+        "Following you, Master.",     // /pet follow (observed)
+        "As you wish, oh great one.", // /pet get lost (observed)
+        // Classic command responses — harmless if EQL words them differently
+        // (an unmatched phrase simply never binds):
+        "At your service Master.",
+        "At your service, Master.",
+        "Guarding with my life..oh splendid one.",
+        "Changing position, Master.",
+        "Sorry, Master..calming down.",
+    };
+
+    private bool IsPetSpeech(bool tell, string msg) =>
+        tell ? msg.EndsWith(" Master.", StringComparison.Ordinal)
+             : PetSayPhrases.Contains(msg)
+               || msg == $"My leader is {SelfName}."; // /pet leader
+
     /// <summary>How many finished fights the session keeps for the history window
     /// (★-kept fights are stored separately and never expire).</summary>
     public const int MaxHistory = 50;
@@ -811,6 +843,21 @@ public sealed class CombatParser
         if (body.StartsWith("You activate ", StringComparison.Ordinal) && body.EndsWith('.'))
         {
             _recentCasts[SpellDurations.BaseKey(body["You activate ".Length..^1])] = time;
+            return;
+        }
+
+        // Pet auto-detect: a pet-only phrase names the speaker as YOUR pet.
+        if ((body.Contains(" says, '", StringComparison.Ordinal)
+             || body.Contains(" told you, '", StringComparison.Ordinal))
+            && PetSpeechRx.Match(body) is { Success: true } pet
+            && IsPetSpeech(pet.Groups["via"].Value == "told you", pet.Groups["msg"].Value))
+        {
+            string name = pet.Groups["pet"].Value;
+            if (!name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                PetName = name;
+                PetDetected?.Invoke(name);
+            }
             return;
         }
 
