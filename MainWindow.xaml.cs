@@ -1351,6 +1351,10 @@ public partial class MainWindow : Window
                 mi.Click += (_, _) => ApplyLoadout(captured);
                 loadout.Items.Add(mi);
             }
+            loadout.Items.Add(new Separator());
+            var manage = new MenuItem { Header = "Manage loadouts…" };
+            manage.Click += (_, _) => OpenManager("Loadouts");
+            loadout.Items.Add(manage);
         };
         menu.Items.Add(loadout);
 
@@ -1661,6 +1665,8 @@ public partial class MainWindow : Window
                 mi.Click += (_, _) => ApplyLoadout(captured);
                 loadoutItem.DropDownItems.Add(mi);
             }
+            loadoutItem.DropDownItems.Add(new System.Windows.Forms.ToolStripSeparator());
+            loadoutItem.DropDownItems.Add("Manage loadouts…", null, (_, _) => OpenManager("Loadouts"));
         };
         return loadoutItem;
     }
