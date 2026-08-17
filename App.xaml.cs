@@ -352,6 +352,12 @@ public partial class App : Application
             Check("recap: no burst reads as worn down",
                 Views.DeathRecapWindow.BuildStory(new CombatParser.DeathEvent(RD(0), "x", slow),
                     slow, taken: 185, healed: 163, span: 14).StartsWith("Worn down"));
+            // The raid puzzle: +304 healing over −285 taken and dead anyway —
+            // the window doesn't explain it, and the story must say so instead
+            // of claiming "worn down".
+            Check("recap: healing that covered the damage admits it doesn't add up",
+                Views.DeathRecapWindow.BuildStory(new CombatParser.DeathEvent(RD(0), "x", slow),
+                    slow, taken: 285, healed: 304, span: 15).Contains("don't add up"));
 
             // Trigger duration modes: auto-learn follows the estimate in EITHER
             // direction; manual enforces the configured value exactly.

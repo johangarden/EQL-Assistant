@@ -76,8 +76,11 @@ public partial class DeathRecapWindow : Window
         StoryText.Text = story;
 
         // ---- the death graph ------------------------------------------------
-        BuildGraph(death, events);
+        bool burst = HasKillingBurst(death, events, taken);
+        BuildGraph(death, events, burst);
         GraphSection.Visibility = events.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        BurstLegendChip.Visibility = burst ? Visibility.Visible : Visibility.Collapsed;
+        BurstLegendText.Visibility = burst ? Visibility.Visible : Visibility.Collapsed;
 
         // ---- the grouped ledger ---------------------------------------------
         var groups = GroupEvents(events, biggest);
@@ -125,53 +128,76 @@ public partial class DeathRecapWindow : Window
             .ToList();
     }
 
-    /// <summary>Burst or attrition — the one-line verdict. A final-2s spike
-    /// carrying ≥40% of the window's damage is named outright; anything else
-    /// was a wearing-down.</summary>
+    /// <summary>Did a final-2s spike carry ≥40% of the window's damage?</summary>
+    public static bool HasKillingBurst(CombatParser.DeathEvent death,
+        IReadOnlyList<CombatParser.RecapEntry> events, double taken)
+    {
+        double burstDmg = events
+            .Where(e => !e.Heal && !e.Miss
+                        && (death.When - e.When).TotalSeconds <= BurstWindowSec)
+            .Sum(e => e.Amount);
+        return burstDmg > 0 && burstDmg >= 0.4 * taken;
+    }
+
+    /// <summary>The one-line verdict: the killing burst named outright; a
+    /// wearing-down; or — when healing covered everything the log shows — the
+    /// honest admission that this window doesn't explain the death.</summary>
     public static string BuildStory(CombatParser.DeathEvent death,
         IReadOnlyList<CombatParser.RecapEntry> events,
         double taken, double healed, double span)
     {
         if (taken <= 0) return "";
 
-        var burst = events
-            .Where(e => !e.Heal && !e.Miss
-                        && (death.When - e.When).TotalSeconds <= BurstWindowSec)
-            .ToList();
-        double burstDmg = burst.Sum(e => e.Amount);
-
-        if (burstDmg >= 0.4 * taken && burstDmg > 0)
+        if (HasKillingBurst(death, events, taken))
         {
+            var burst = events
+                .Where(e => !e.Heal && !e.Miss
+                            && (death.When - e.When).TotalSeconds <= BurstWindowSec)
+                .ToList();
             var top = burst
                 .GroupBy(e => (e.Source, e.Ability))
                 .Select(g => (g.Key.Source, g.Key.Ability, Total: g.Sum(x => x.Amount)))
                 .OrderByDescending(x => x.Total)
                 .Take(2)
                 .Select(x => $"{(x.Source.Length > 0 ? x.Source : "unknown")} · {x.Ability} −{x.Total:N0}");
-            return $"The burst that killed you: −{burstDmg:N0} in the last {BurstWindowSec:0}s ({string.Join(", ", top)}).";
+            return $"The burst that killed you: −{burst.Sum(e => e.Amount):N0} in the last {BurstWindowSec:0}s ({string.Join(", ", top)}).";
         }
+
+        // Healing covered everything the log shows, and you still died — the
+        // killing damage came before this window, or in a line form the
+        // parser doesn't know yet. Saying "worn down" here would be a lie.
+        if (healed >= taken)
+            return $"These {span:0}s don't add up to a death: +{healed:N0} healing covered the "
+                 + $"−{taken:N0} taken — the killing damage came earlier, or in a log line "
+                 + "the parser doesn't know yet.";
+
         return $"Worn down — no single burst: −{taken:N0} over {span:0}s"
                + (healed > 0 ? $" against +{healed:N0} healing." : ".");
     }
 
-    /// <summary>One column per second: damage hangs down, healing stands up,
-    /// the killing-burst seconds glow brighter. Scaled to the busiest second.</summary>
+    /// <summary>One column per second: damage hangs down, healing stands up
+    /// around the centre axis; the killing-burst seconds glow brighter (only
+    /// when a burst verdict fired — otherwise plain red throughout). Scaled
+    /// to the busiest second; hover a column for its events.</summary>
     private void BuildGraph(CombatParser.DeathEvent death,
-        IReadOnlyList<CombatParser.RecapEntry> events)
+        IReadOnlyList<CombatParser.RecapEntry> events, bool burstActive)
     {
         const double halfHeight = 54;
         int cols = (int)CombatParser.RecapWindowSec + 1; // −15 … 0
 
         var dmg = new double[cols];
         var heal = new double[cols];
+        var perSecond = new List<CombatParser.RecapEntry>[cols];
         foreach (var e in events)
         {
             if (e.Miss) continue;
             int back = (int)Math.Clamp((death.When - e.When).TotalSeconds, 0, cols - 1);
             int col = cols - 1 - back;
             if (e.Heal) heal[col] += e.Amount; else dmg[col] += e.Amount;
+            (perSecond[col] ??= new()).Add(e);
         }
         double max = Math.Max(1, Math.Max(dmg.Max(), heal.Max()));
+        PeakText.Text = $"peak −{dmg.Max():N0} / +{heal.Max():N0} per s";
 
         GraphGrid.Children.Clear();
         AxisGrid.Children.Clear();
@@ -180,9 +206,16 @@ public partial class DeathRecapWindow : Window
         for (int i = 0; i < cols; i++)
         {
             int back = cols - 1 - i;
-            bool inBurst = back <= BurstWindowSec;
+            bool inBurst = burstActive && back <= BurstWindowSec;
 
-            var cell = new Grid();
+            var cell = new Grid { Background = Brushes.Transparent };
+            if (perSecond[i] is { } list)
+            {
+                var tip = string.Join("\n", list.Select(e =>
+                    $"{(e.Source.Length > 0 ? e.Source : "(unknown)")} · {e.Ability}  "
+                    + (e.Heal ? $"+{e.Amount:N0}" : $"−{e.Amount:N0}")));
+                cell.ToolTip = $"{(back == 0 ? "the last second" : $"−{back}s")}\n{tip}";
+            }
             cell.RowDefinitions.Add(new RowDefinition { Height = new GridLength(halfHeight) });
             cell.RowDefinitions.Add(new RowDefinition { Height = new GridLength(halfHeight) });
             if (heal[i] > 0)

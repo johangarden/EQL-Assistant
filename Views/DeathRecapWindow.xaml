@@ -33,21 +33,29 @@
             </Border>
         </StackPanel>
 
-        <!-- The death graph: one column per second, damage down / healing up. -->
+        <!-- The death graph: one column per second, damage down / healing up,
+             the zero axis through the middle. Hover a column for its events. -->
         <StackPanel x:Name="GraphSection" DockPanel.Dock="Top" Margin="0,2,0,10">
-            <UniformGrid x:Name="GraphGrid" Rows="1"/>
-            <Border Height="1" Background="#3A4560"/>
+            <Grid>
+                <UniformGrid x:Name="GraphGrid" Rows="1"/>
+                <Border Height="1" Background="#3A4560" VerticalAlignment="Center"
+                        IsHitTestVisible="False"/>
+            </Grid>
             <UniformGrid x:Name="AxisGrid" Rows="1" Margin="0,2,0,0"/>
             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                 <Border Width="8" Height="8" CornerRadius="2" Background="#E57373" VerticalAlignment="Center"/>
-                <TextBlock Text="damage / second" Foreground="{StaticResource Brush.TextFaint}"
+                <TextBlock Text="damage / s" Foreground="{StaticResource Brush.TextFaint}"
                            FontSize="10" Margin="4,0,14,0" VerticalAlignment="Center"/>
                 <Border Width="8" Height="8" CornerRadius="2" Background="#81C784" VerticalAlignment="Center"/>
-                <TextBlock Text="healing / second" Foreground="{StaticResource Brush.TextFaint}"
+                <TextBlock Text="healing / s" Foreground="{StaticResource Brush.TextFaint}"
                            FontSize="10" Margin="4,0,14,0" VerticalAlignment="Center"/>
-                <Border Width="8" Height="8" CornerRadius="2" Background="#FF5A50" VerticalAlignment="Center"/>
-                <TextBlock Text="the killing burst" Foreground="{StaticResource Brush.TextFaint}"
-                           FontSize="10" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                <Border x:Name="BurstLegendChip" Width="8" Height="8" CornerRadius="2"
+                        Background="#FF5A50" VerticalAlignment="Center"/>
+                <TextBlock x:Name="BurstLegendText" Text="the killing burst"
+                           Foreground="{StaticResource Brush.TextFaint}"
+                           FontSize="10" Margin="4,0,14,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="PeakText" Foreground="{StaticResource Brush.TextFaint}"
+                           FontSize="10" VerticalAlignment="Center"/>
             </StackPanel>
         </StackPanel>
 
