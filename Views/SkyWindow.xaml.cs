@@ -27,6 +27,27 @@ public partial class SkyWindow : Window
 
     public sealed record ChipVm(string Text, Brush Bg, Brush Fg, string Tip);
 
+    /// <summary>One class badge: monogram ring + completion arc; "" = All Quests.</summary>
+    public sealed record BadgeVm(string ClassName, string Abbr, string CountText, string Tip,
+        Brush Ring, Brush Ink, Brush SelBg, Geometry? Arc, Visibility DoneVisibility);
+
+    // The 16 Sky test classes, each with a fixed badge tint (decoration — the
+    // abbreviation is the identifier; tooltips carry the full name).
+    private static readonly (string Name, string Abbr, string Hex)[] ClassBadges =
+    {
+        ("Warrior", "WAR", "#C97C5D"), ("Cleric", "CLR", "#EFE3B0"),
+        ("Paladin", "PAL", "#EFA9C4"), ("Ranger", "RNG", "#6FBF73"),
+        ("Shadow Knight", "SHD", "#A883D9"), ("Druid", "DRU", "#C9A15C"),
+        ("Monk", "MNK", "#9FD9C3"), ("Bard", "BRD", "#E8C15A"),
+        ("Rogue", "ROG", "#F2E063"), ("Shaman", "SHM", "#6FD3D3"),
+        ("Necromancer", "NEC", "#86E0B0"), ("Wizard", "WIZ", "#6FA8F0"),
+        ("Magician", "MAG", "#E06060"), ("Enchanter", "ENC", "#C883E8"),
+        ("Beastlord", "BST", "#D9A06F"), ("Berserker", "BER", "#E07F7F"),
+    };
+
+    /// <summary>The selected class filter; "" = all quests.</summary>
+    private string _selectedClass = "";
+
     public sealed record QuestVm(SkyQuests.SkyQuest Quest, string Title, string Subtitle,
         string Reward, string RewardStats, string Slot, string ProgressText, Brush ProgressBrush,
         bool Done, double CardOpacity, List<ChipVm> Chips)
@@ -39,11 +60,6 @@ public partial class SkyWindow : Window
         InitializeComponent();
         WindowTheme.ApplyDark(this);
         _sky = sky;
-
-        ClassBox.ItemsSource = new[] { "All classes" }
-            .Concat(_sky.Quests.Select(q => q.Class).Distinct().OrderBy(c => c))
-            .ToList();
-        ClassBox.SelectedIndex = 0;
 
         // Slots split into tokens — "FACE BACK" filters under both FACE and BACK.
         SlotBox.ItemsSource = new[] { "All slots" }
@@ -73,11 +89,67 @@ public partial class SkyWindow : Window
             _sky.SetCompleted(vm.Quest, done);
     }
 
+    private void Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not BadgeVm vm) return;
+        _selectedClass = vm.ClassName;
+        Refresh();
+    }
+
+    /// <summary>A completion arc: from 12 o'clock, clockwise, done/total of the
+    /// ring (radius 17 in the badge's 38px box). Full = the whole circle.</summary>
+    private static Geometry? BuildArc(int done, int total)
+    {
+        if (done <= 0 || total <= 0) return null;
+        const double cx = 19, cy = 19, r = 17;
+        double f = Math.Min(1.0, (double)done / total);
+        if (f >= 1.0) return new EllipseGeometry(new Point(cx, cy), r, r);
+        double angle = -Math.PI / 2 + f * 2 * Math.PI;
+        var start = new Point(cx, cy - r);
+        var end = new Point(cx + r * Math.Cos(angle), cy + r * Math.Sin(angle));
+        var fig = new PathFigure { StartPoint = start, IsClosed = false, IsFilled = false };
+        fig.Segments.Add(new ArcSegment(end, new Size(r, r), 0,
+            isLargeArc: f > 0.5, SweepDirection.Clockwise, isStroked: true));
+        var g = new PathGeometry();
+        g.Figures.Add(fig);
+        g.Freeze();
+        return g;
+    }
+
+    private void RefreshBadges()
+    {
+        var badges = new List<BadgeVm>();
+
+        void Add(string className, string abbr, Color tint)
+        {
+            var quests = className.Length == 0
+                ? (IReadOnlyList<SkyQuests.SkyQuest>)_sky.Quests
+                : _sky.Quests.Where(q => q.Class.Equals(className, StringComparison.OrdinalIgnoreCase)).ToList();
+            int done = quests.Count(_sky.IsCompleted);
+            bool complete = quests.Count > 0 && done == quests.Count;
+            bool selected = _selectedClass.Equals(className, StringComparison.OrdinalIgnoreCase);
+            badges.Add(new BadgeVm(className, abbr, $"{done}/{quests.Count}",
+                $"{(className.Length == 0 ? "All quests" : className)} — {done} of {quests.Count} complete",
+                complete ? Freeze(Color.FromRgb(0x81, 0xC7, 0x84)) : Freeze(tint),
+                selected ? Brushes.White : Freeze(Color.FromArgb(0xD8, tint.R, tint.G, tint.B)),
+                selected ? Freeze(Color.FromArgb(0x50, tint.R, tint.G, tint.B)) : Brushes.Transparent,
+                BuildArc(done, quests.Count),
+                complete ? Visibility.Visible : Visibility.Collapsed));
+        }
+
+        Add("", "ALL", Color.FromRgb(0xFF, 0xC1, 0x2E));
+        foreach (var (name, abbr, hex) in ClassBadges)
+            Add(name, abbr, (Color)ColorConverter.ConvertFromString(hex));
+
+        BadgesControl.ItemsSource = badges;
+    }
+
     private void Refresh()
     {
         if (_initializing || QuestsControl is null) return;
 
-        string cls = ClassBox.SelectedIndex > 0 ? (string)ClassBox.SelectedItem : "";
+        RefreshBadges();
+        string cls = _selectedClass;
         string slot = SlotBox.SelectedIndex > 0 ? (string)SlotBox.SelectedItem : "";
         string search = SearchBox.Text.Trim();
         bool hideDone = HideDoneCheck.IsChecked == true;

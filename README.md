@@ -351,6 +351,12 @@ where, hover the reward for its full stats. A quest **checks itself off when
 its reward item appears in the log** (with a celebration flash) — or tick it
 manually. Progress persists in `sky-progress.json`.
 
+The Sky window opens on a **class badge strip** — 16 class monograms plus an
+**ALL** badge, each ringed by a completion arc (class tint while in progress,
+green with a ✓ when every quest is done, count underneath). **Click a badge**
+to see that class's quests; search, slot filter and hide-completed narrow
+further.
+
 ## Raid kills and loot history
 
 Both open from the Fight History window (and raid kills from the tray):

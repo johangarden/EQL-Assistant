@@ -25,12 +25,41 @@
                            FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
                 <TextBlock Text="Plane of Sky — Test quests" Style="{StaticResource PageTitle}"/>
             </DockPanel>
-            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,8"
-                       Text="Turn-in items are counted from your loot history (kept items only). Quests sort closest-to-done; a quest checks itself off when its reward shows up in the log — or tick it yourself. Hover items for who drops them, hover the reward for its stats."/>
+            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,6"
+                       Text="Click a class badge to see its quests — the ring fills as they complete. Turn-in items are counted from your loot history (kept items only); a quest checks itself off when its reward shows up in the log, or tick it yourself."/>
+
+            <!-- Class badges: monogram ring + completion arc; click filters. -->
+            <ItemsControl x:Name="BadgesControl" Margin="0,2,0,8">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border CornerRadius="8" Padding="5,4" Margin="0,0,3,3" Cursor="Hand"
+                                Background="{Binding SelBg}" Tag="{Binding}"
+                                MouseLeftButtonUp="Badge_Click" ToolTip="{Binding Tip}">
+                            <StackPanel Width="46">
+                                <Grid Width="38" Height="38" HorizontalAlignment="Center">
+                                    <Ellipse Stroke="#2A3347" StrokeThickness="3"/>
+                                    <Path Data="{Binding Arc}" Stroke="{Binding Ring}"
+                                          StrokeThickness="3" StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"/>
+                                    <TextBlock Text="{Binding Abbr}" Foreground="{Binding Ink}"
+                                               FontSize="10.5" FontWeight="Bold"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock Text="✓" Foreground="#81C784" FontSize="11" FontWeight="Bold"
+                                               HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                               Margin="0,0,-2,-4" Visibility="{Binding DoneVisibility}"/>
+                                </Grid>
+                                <TextBlock Text="{Binding CountText}" Foreground="#7F93AD" FontSize="9.5"
+                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <DockPanel Margin="0,0,0,8">
-                <ComboBox x:Name="ClassBox" DockPanel.Dock="Right" Width="130" Margin="8,0,0,0"
-                          SelectionChanged="Filters_Changed"/>
                 <ComboBox x:Name="SlotBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0"
                           SelectionChanged="Filters_Changed"/>
                 <CheckBox x:Name="HideDoneCheck" DockPanel.Dock="Right" Content="Hide completed"

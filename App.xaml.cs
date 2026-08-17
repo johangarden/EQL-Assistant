@@ -147,6 +147,11 @@ public partial class App : Application
             var recap = new Views.DeathRecapWindow(death);
             recap.Show();
             recap.Close();
+
+            // Sky window builds its class-badge strip (arcs included).
+            var skyWin = new Views.SkyWindow(new SkyQuests(cs, new LootTracker(cs)));
+            skyWin.Show();
+            skyWin.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
             Environment.ExitCode = 0;
         }
