@@ -192,6 +192,7 @@ public partial class App : Application
                 "Location\tName\tID\tCount\tSlots\r\nHead\tValorium Helmet +1\t4851\t1\t10\r\n");
             var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
             invWin.Show();
+            invWin.ShowFocusTabForTest(); // instantiate the audit-board template
             invWin.Close();
             var invEmpty = new Views.InventoryWindow(Path.Combine(invDir, "no_such_dir"), "X", "y");
             invEmpty.Show();
@@ -1277,13 +1278,13 @@ public partial class App : Application
                     && held["boots of the long road"] == 1 && held["boots of the long road +1"] == 1
                     && !held.ContainsKey("guise of the deceiver"));
 
-                // Tabs partition the ledger: keyring rows are the focus-effect
-                // collection, "(Exaltation)" copies get their own tab, and an
-                // exaltation knows the item wearing it.
-                Check("inventory: tabs split items / exaltations / focus effects",
+                // Tabs partition the rows: "(Exaltation)" copies get their own
+                // tab, everything else (keyring included) is an item, and an
+                // exaltation knows the item wearing it. The Focus effects tab
+                // is not row-backed — it audits the dump (checked below).
+                Check("inventory: tabs split items / exaltations",
                     rows.Count(r => InventoryStore.TabOf(r) == "exalt") == 2
-                    && rows.Count(r => InventoryStore.TabOf(r) == "focus") == 3
-                    && rows.Count(r => InventoryStore.TabOf(r) == "items") == rows.Count - 5);
+                    && rows.Count(r => InventoryStore.TabOf(r) == "items") == rows.Count - 2);
                 Check("inventory: an exaltation names its host item",
                     rows.First(r => r.Name == "Thelvorn, Blade of Light (Exaltation)").Host
                         == "Thelvorn, Blade of Light +5"
@@ -1329,6 +1330,64 @@ public partial class App : Application
 
                 Check("inventory: log name yields char + server for the preferred dump name",
                     InventoryStore.ParseLogName(@"C:\x\Logs\eqlog_Thorrak_paineel.txt") == ("Thorrak", "paineel"));
+
+                // ---- focus-effect audit --------------------------------------
+                var focus = new FocusEffects();
+                Check("focus: 25 families / 69 tiers load from the embedded table",
+                    focus.Families.Count == 25
+                    && focus.Families.Sum(f => f.Tiers.Count) == 69);
+                var jolum = focus.Families.First(f => f.Name == "Jolum's Abatement");
+                Check("focus: named tiers order by the observed level caps",
+                    jolum.Tiers.Select(t => t.Effect).SequenceEqual(new[]
+                    {
+                        "Jolum's Minor Abatement", "Jolum's Abatement",
+                        "Jolum's Major Abatement", "Jolum's Superior Abatement",
+                    }));
+                Check("focus: the category page's missing tier and empty page carried honestly",
+                    focus.Families.First(f => f.Name == "Reanimation Efficiency").Tiers.Count == 3
+                    && focus.Families.First(f => f.Name == "Improved Healing")
+                        .Tiers.First(t => t.Effect == "Improved Healing II").Items.Count == 0);
+                Check("focus: item join folds +N, the star and the backtick",
+                    FocusEffects.ItemKey("Kelin`s Seven Stringed Lute +3") == "kelin's seven stringed lute"
+                    && FocusEffects.ItemKey("Bandages*") == "bandages");
+
+                var fams = new List<FocusEffects.Family>
+                {
+                    new()
+                    {
+                        Name = "Testing", Tiers = new List<FocusEffects.Tier>
+                        {
+                            new() { Effect = "Testing I", TierNum = 1, Items = new List<string> { "Item A" } },
+                            new() { Effect = "Testing II", TierNum = 2, Items = new List<string> { "Item B" } },
+                            new() { Effect = "Testing III", TierNum = 3, Items = new List<string> { "Item C" } },
+                        },
+                    },
+                    new()
+                    {
+                        Name = "Empty", Tiers = new List<FocusEffects.Tier>
+                        {
+                            new() { Effect = "Empty I", TierNum = 1, Items = new List<string> { "Item D" } },
+                        },
+                    },
+                };
+                var mini = new FocusEffects(fams);
+                var audit = mini.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("Item A +2", "item a +2", "Head", 1, "worn", 1),
+                    new InventoryStore.CarryRow("Item B", "item b", "Bank3", 1, "bank", 2),
+                    new InventoryStore.CarryRow("Item C (Exaltation)", "item c (exaltation)", "Head-Slot7", 1, "worn", 3),
+                });
+                Check("focus: audit finds the best OWNED tier, exaltation copies do not count",
+                    audit[0] is { BestTier: 2, BestItem: "Item B", BestPlace: "in bank", Status: 1 }
+                    && audit[0].OwnedTiers.SequenceEqual(new[] { true, true, false })
+                    && audit[1] is { BestTier: 0, Status: 0 });
+                var worn = mini.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("Item C", "item c", "Bank1", 1, "bank", 1),
+                    new InventoryStore.CarryRow("Item C", "item c", "Head", 1, "worn", 2),
+                });
+                Check("focus: top tier reads green and worn beats banked at the same tier",
+                    worn[0] is { BestTier: 3, Status: 2, BestPlace: "worn" });
             }
         }
         catch (Exception ex)

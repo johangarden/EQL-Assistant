@@ -1,0 +1,821 @@
+{
+  "source": "eqlwiki.com Category:Focus_Effects pages (fetched 2026-08-17) + jmoyers/everquest-companion items.json (MIT, (c) Josh Moyers)",
+  "families": [
+    {
+      "family": "Affliction Efficiency",
+      "tiers": [
+        {
+          "effect": "Affliction Efficiency I",
+          "tier": 1,
+          "description": "Reduces the mana cost of long term detrimental spells by up to 25%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Diamondine Earring",
+            "Impskin Gloves",
+            "Polished Bone Bracelet"
+          ]
+        },
+        {
+          "effect": "Affliction Efficiency II",
+          "tier": 2,
+          "description": "Reduces the mana cost of long term detrimental spells by up to 25%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Chipped Bone Bracelet",
+            "Squallsurge Shawl",
+            "White Gold Necklace"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Affliction Haste",
+      "tiers": [
+        {
+          "effect": "Affliction Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of long term detrimental spells by 33%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Granite Bracer",
+            "Ring of Goblin Lords"
+          ]
+        },
+        {
+          "effect": "Affliction Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of long term detrimental spells by 33%.",
+          "levelCap": null,
+          "items": [
+            "Chrysoberyl Talisman",
+            "Green Silken Drape"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Brass Resonance",
+      "tiers": [
+        {
+          "effect": "Brass Resonance 14",
+          "tier": 1,
+          "description": "Increases the power of brass instrument based bard songs by up to 140%",
+          "levelCap": null,
+          "items": [
+            "McVaxius' Horn of War",
+            "McVaxius` Horn of War"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Burning Affliction",
+      "tiers": [
+        {
+          "effect": "Burning Affliction I",
+          "tier": 1,
+          "description": "Increases the damage of long term detrimental spells by up to 20%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Allize Volew Medicine Bag",
+            "Aviak Charm",
+            "Burrowing Goggles",
+            "Golden Ear Stud",
+            "Hollowed Bone Bracers",
+            "Summoned: Rallican's Wooden Bracelet"
+          ]
+        },
+        {
+          "effect": "Burning Affliction II",
+          "tier": 2,
+          "description": "Increases the damage of long term detrimental spells by up to 20%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Black Tome with Silver Runes",
+            "Kobold-Hide Boots",
+            "Reed Belt",
+            "Serpentine Bracer",
+            "Siryn Hair Hood",
+            "Summoned: Rallican's Stone Bracelet"
+          ]
+        },
+        {
+          "effect": "Burning Affliction III",
+          "tier": 3,
+          "description": "Increases the damage of long term detrimental spells by up to 20%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Bone-Clasped Girdle",
+            "Cryosilk Cap",
+            "Summoned: Rallican's Iron Bracelet"
+          ]
+        },
+        {
+          "effect": "Burning Affliction IV",
+          "tier": 4,
+          "description": "Increases the damage of long term detrimental spells by up to 20%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            "Summoned: Rallican's Steel Bracelet"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Enhancement Haste",
+      "tiers": [
+        {
+          "effect": "Enhancement Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of long term beneficial spells by 30%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Braided Ivy Cords",
+            "Cape of Midnight Mist",
+            "Cat Skull Cap",
+            "Etched Iron Helm",
+            "Gatorscale Sleeves"
+          ]
+        },
+        {
+          "effect": "Enhancement Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of long term beneficial spells by 30%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Golden Efreeti Boots",
+            "Platinum Tiara"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Extended Enhancement",
+      "tiers": [
+        {
+          "effect": "Extended Enhancement I",
+          "tier": 1,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Bear-hide Boots",
+            "Damask Robe",
+            "Lockjaw Hide Vest",
+            "Shazda Turban"
+          ]
+        },
+        {
+          "effect": "Extended Enhancement II",
+          "tier": 2,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Batfang Headband",
+            "Chestplate of the Constant",
+            "Clawed Knuckle-Ring",
+            "Drakescale Belt",
+            "Totemic Breastplate"
+          ]
+        },
+        {
+          "effect": "Extended Enhancement III",
+          "tier": 3,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over lvl 60.",
+          "levelCap": 60,
+          "items": [
+            "Rokyls Channelling Crystal"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Extended Range",
+      "tiers": [
+        {
+          "effect": "Extended Range I",
+          "tier": 1,
+          "description": "Increases the range of spells by 15%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "An Elven Charm Necklace",
+            "Drake-hide Sleeves",
+            "Glowing Bone Collar",
+            "Elven Charm Necklace"
+          ]
+        },
+        {
+          "effect": "Extended Range II",
+          "tier": 2,
+          "description": "Increases the range of spells by 15%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Moonstone Ring"
+          ]
+        },
+        {
+          "effect": "Extended Range III",
+          "tier": 3,
+          "description": "Increases the range of spells by 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Cryosilk Sash"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Gallenite's Destruction",
+      "tiers": [
+        {
+          "effect": "Gallenite's Minor Destruction",
+          "tier": 1,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 34.",
+          "levelCap": 34,
+          "items": [
+            "Summoned: Gallenite's Jade Bracelet"
+          ]
+        },
+        {
+          "effect": "Gallenite's Destruction",
+          "tier": 2,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 52.",
+          "levelCap": 52,
+          "items": [
+            "Summoned: Gallenite's Opal Bracelet"
+          ]
+        },
+        {
+          "effect": "Gallenite's Major Destruction",
+          "tier": 3,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Summoned: Gallenite's Ruby Bracelet"
+          ]
+        },
+        {
+          "effect": "Gallenite's Chaos",
+          "tier": 4,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            "Summoned: Gallenite's Sapphire Bracelet"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Improved Damage",
+      "tiers": [
+        {
+          "effect": "Improved Damage I",
+          "tier": 1,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Azure Sleeves",
+            "Lupine Claw Gauntlets",
+            "Mammoth Hide Cloak",
+            "Robe of the Oracle",
+            "Spiked Buckler"
+          ]
+        },
+        {
+          "effect": "Improved Damage II",
+          "tier": 2,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Polished Mithril Mask"
+          ]
+        },
+        {
+          "effect": "Improved Damage III",
+          "tier": 3,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "White Dragonscale Cloak"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Improved Healing",
+      "tiers": [
+        {
+          "effect": "Improved Healing I",
+          "tier": 1,
+          "description": "Increases the potency of healing spells by up to 20%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Emissary Mask",
+            "Turtleshell Helm",
+            "Zaharn's Coronet"
+          ]
+        },
+        {
+          "effect": "Improved Healing II",
+          "tier": 2,
+          "description": "Increases the potency of healing spells by up to 20%",
+          "levelCap": null,
+          "items": []
+        },
+        {
+          "effect": "Improved Healing III",
+          "tier": 3,
+          "description": "Increases the potency of healing spells by up to 20%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Idol of the Underking"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Jedah's Conservation",
+      "tiers": [
+        {
+          "effect": "Jedah's Lesser Conservation",
+          "tier": 1,
+          "description": "Reduces the number of reagents consumed by spells by providing a 15% chance for the spell not to consume the reagent when cast.",
+          "levelCap": null,
+          "items": [
+            "Summoned: Jedah's Brass Choker"
+          ]
+        },
+        {
+          "effect": "Jedah's Conservation",
+          "tier": 2,
+          "description": "Reduces the number of reagents consumed by spells by providing a 15% chance for the spell not to consume the reagent when cast.",
+          "levelCap": null,
+          "items": [
+            "Summoned: Jedah's Silver Choker"
+          ]
+        },
+        {
+          "effect": "Jedah's Greater Conservation",
+          "tier": 3,
+          "description": "Reduces the number of reagents consumed by spells by providing a 15% chance for the spell not to consume the reagent when cast.",
+          "levelCap": null,
+          "items": [
+            "Summoned: Jedah's Golden Choker"
+          ]
+        },
+        {
+          "effect": "Jedah's Superior Conservation",
+          "tier": 4,
+          "description": "Reduces the number of reagents consumed by spells by providing a 15% chance for the spell not to consume the reagent when cast.",
+          "levelCap": null,
+          "items": [
+            "Summoned: Jedah's Platinum Choker"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Jolum's Abatement",
+      "tiers": [
+        {
+          "effect": "Jolum's Minor Abatement",
+          "tier": 1,
+          "description": "Reduces the mana cost of direct damage spells by up to 15%. This bonus will decay on spells over level 24.",
+          "levelCap": 24,
+          "items": [
+            "Summoned: Jolum's Tarnished Bauble"
+          ]
+        },
+        {
+          "effect": "Jolum's Abatement",
+          "tier": 2,
+          "description": "Reduces the mana cost of direct damage spells by up to 15%. This bonus will decay on spells over level 50.",
+          "levelCap": 50,
+          "items": [
+            "Summoned: Jolum's Shiny Bauble"
+          ]
+        },
+        {
+          "effect": "Jolum's Major Abatement",
+          "tier": 3,
+          "description": "Reduces the mana cost of direct damage spells by up to 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Summoned: Jolum's Brilliant Bauble"
+          ]
+        },
+        {
+          "effect": "Jolum's Superior Abatement",
+          "tier": 4,
+          "description": "Reduces the mana cost of direct damage spells by up to 15%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            "Summoned: Jolum's Glowing Bauble"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Mana Preservation",
+      "tiers": [
+        {
+          "effect": "Mana Preservation I",
+          "tier": 1,
+          "description": "Reduces the mana cost of spells by up to 10%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Platinum Armband",
+            "Polished Bone Hoop",
+            "Testament of Vanear",
+            "Vagrant's Tunic",
+            "Wicked Sallet"
+          ]
+        },
+        {
+          "effect": "Mana Preservation II",
+          "tier": 2,
+          "description": "Reduces the mana cost of spells by up to 10%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Black Alloy Medallion",
+            "Mane Attraction",
+            "Nisch Mas Ilkvel"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Minor Improved Damage",
+      "tiers": [
+        {
+          "effect": "Minor Improved Damage I",
+          "tier": 1,
+          "description": "Increases the damage of spells by up to 10%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Smoldering Robe"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Naki's Pernicity",
+      "tiers": [
+        {
+          "effect": "Naki's Lesser Pernicity",
+          "tier": 1,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 29.",
+          "levelCap": 29,
+          "items": [
+            "Summoned: Naki's Tiny Ring"
+          ]
+        },
+        {
+          "effect": "Naki's Charm of Pernicity",
+          "tier": 2,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 51.",
+          "levelCap": 51,
+          "items": [
+            "Summoned: Naki's Twisted Ring"
+          ]
+        },
+        {
+          "effect": "Naki's Greater Pernicity",
+          "tier": 3,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Summoned: Naki's Studded Ring"
+          ]
+        },
+        {
+          "effect": "Naki's Superior Pernicity",
+          "tier": 4,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            "Summoned: Naki's Spiked Ring"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Percussion Resonance",
+      "tiers": [
+        {
+          "effect": "Percussion Resonance 11",
+          "tier": 1,
+          "description": "Increases the power of percussion instrument based bard songs by up to 110%",
+          "levelCap": null,
+          "items": [
+            "Mistmoore Battle Drums"
+          ]
+        },
+        {
+          "effect": "Percussion Resonance 14",
+          "tier": 2,
+          "description": "Increases the power of percussion instrument based bard songs by up to 140%",
+          "levelCap": null,
+          "items": [
+            "Selo's Drums of the March",
+            "Selo`s Drums of the March"
+          ]
+        },
+        {
+          "effect": "Percussion Resonance 16",
+          "tier": 3,
+          "description": "Increases the power of percussion instrument based bard songs by up to 160%",
+          "levelCap": null,
+          "items": [
+            "Drums of the Beast"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Reagent Conservation",
+      "tiers": [
+        {
+          "effect": "Reagent Conservation I",
+          "tier": 1,
+          "description": "Reduces the chance that spell reagents will be consumed by up to 15%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Batskull Earring",
+            "Drake-hide Leggings",
+            "Happy Love Bracers",
+            "The Artist's Brush"
+          ]
+        },
+        {
+          "effect": "Reagent Conservation II",
+          "tier": 2,
+          "description": "Reduces the chance that spell reagents will be consumed by up to 15%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Amethyst Bracelet",
+            "Crown of Leaves",
+            "Fine Silk Turban",
+            "Savant's Cap"
+          ]
+        },
+        {
+          "effect": "Reagent Conservation III",
+          "tier": 3,
+          "description": "Reduces the chance that spell reagents will be consumed by up to 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Robe of the Kedge",
+            "Runed Mithril Bracer"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Reanimation Efficiency",
+      "tiers": [
+        {
+          "effect": "Reanimation Efficiency I",
+          "tier": 1,
+          "description": "Reduces the mana cost of summon undead spells by up to 25%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Dark Circlet",
+            "Flowing Black Robe",
+            "Lizardskin Tribal Mask",
+            "Ill-Fitting Robes"
+          ]
+        },
+        {
+          "effect": "Reanimation Efficiency II",
+          "tier": 2,
+          "description": "Reduces the mana cost of summon undead spells by up to 25%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Platinum Skull Ring",
+            "Runed Cowl"
+          ]
+        },
+        {
+          "effect": "Reanimation Efficiency III",
+          "tier": 3,
+          "description": "",
+          "levelCap": null,
+          "items": [
+            "Robe of the Ishva"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Reanimation Haste",
+      "tiers": [
+        {
+          "effect": "Reanimation Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of summon undead spells by 30%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Carved Ivory Mask",
+            "Ivory Bracelet",
+            "Nightshade Wreath"
+          ]
+        },
+        {
+          "effect": "Reanimation Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of summon undead spells by 30%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Robe of Enshroudment",
+            "Ishva Mas Leggings"
+          ]
+        },
+        {
+          "effect": "Reanimation Haste III",
+          "tier": 3,
+          "description": "Reduces the cast time of summon undead spells by 30%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Grotesque Girdle"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Spell Haste",
+      "tiers": [
+        {
+          "effect": "Spell Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Beaded Slime Necklace",
+            "Bracelet of Woven Grass",
+            "Gilded Cloth",
+            "Wolf Fur Slippers"
+          ]
+        },
+        {
+          "effect": "Spell Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Djarns Amethyst Ring",
+            "Mithril-Runed Tunic",
+            "Shining Metallic Robes",
+            "Shiny Robe of the Underfoot"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "String Resonance",
+      "tiers": [
+        {
+          "effect": "String Resonance 11",
+          "tier": 1,
+          "description": "Increases the power of stringed instrument based bard songs by up to 110%",
+          "levelCap": null,
+          "items": [
+            "Gypsy Lute"
+          ]
+        },
+        {
+          "effect": "String Resonance 14",
+          "tier": 2,
+          "description": "Increases the power of stringed instrument based bard songs by up to 140%",
+          "levelCap": null,
+          "items": [
+            "Kelin's Seven Stringed Lute"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Summoning Efficiency",
+      "tiers": [
+        {
+          "effect": "Summoning Efficiency I",
+          "tier": 1,
+          "description": "Reduces the mana cost of summon creature spells by up to 25%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Band of Flesh",
+            "Dusty Bloodstained Gloves",
+            "Gossamer Robe"
+          ]
+        },
+        {
+          "effect": "Summoning Efficiency II",
+          "tier": 2,
+          "description": "Reduces the mana cost of summon creature spells by up to 25%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Embroidered Black Sleeves",
+            "Robe of the Ishva"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Summoning Haste",
+      "tiers": [
+        {
+          "effect": "Summoning Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of summon creature spells by 30%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "A Shimmering Orb",
+            "Adamantite Band"
+          ]
+        },
+        {
+          "effect": "Summoning Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of summon creature spells by 30%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            "Incandescent Mask",
+            "Robe of the Elements"
+          ]
+        },
+        {
+          "effect": "Summoning Haste III",
+          "tier": 3,
+          "description": "Reduces the cast time of summon creature spells by 30%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Brell's Girdle"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Tavee's Diuturnity",
+      "tiers": [
+        {
+          "effect": "Tavee's Lesser Diuturnity",
+          "tier": 1,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 16.",
+          "levelCap": 16,
+          "items": [
+            "Summoned: Tavee's Linen Mantle"
+          ]
+        },
+        {
+          "effect": "Tavee's Charm of Diuturnity",
+          "tier": 2,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 49.",
+          "levelCap": 49,
+          "items": [
+            "Summoned: Tavee's Leather Mantle"
+          ]
+        },
+        {
+          "effect": "Tavee's Greater Diuturnity",
+          "tier": 3,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            "Summoned: Tavee's Silken Mantle"
+          ]
+        },
+        {
+          "effect": "Tavee's Superior Diuturnity",
+          "tier": 4,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            "Summoned: Tavee's Runed Mantle"
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Wind Resonance",
+      "tiers": [
+        {
+          "effect": "Wind Resonance 10",
+          "tier": 1,
+          "description": "Increases the power of wind instrument based bard songs by up to 100%",
+          "levelCap": null,
+          "items": [
+            "Minotaur Horn"
+          ]
+        },
+        {
+          "effect": "Wind Resonance 14",
+          "tier": 2,
+          "description": "Increases the power of wind instrument based bard songs by up to 140%",
+          "levelCap": null,
+          "items": [
+            "Lyssa`s Darkwood Piccolo"
+          ]
+        }
+      ]
+    }
+  ]
+}

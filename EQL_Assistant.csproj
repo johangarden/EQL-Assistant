@@ -54,6 +54,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="data\sky-quests.json" />
+    <!-- Focus-effect families (eqlwiki Category:Focus_Effects + Companion items.json, MIT). -->
+    <None Update="data\focus-effects.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <EmbeddedResource Include="data\focus-effects.json" />
   </ItemGroup>
 
 </Project>

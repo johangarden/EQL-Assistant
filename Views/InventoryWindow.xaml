@@ -58,26 +58,68 @@
                        Text="The game writes it for us — in game:&#10;&#10;  1.  Stand at a banker and open your Bank.&#10;  2.  Open the Dragon's Hoard too — it only dumps while its window is open.&#10;  3.  Open your Tradeskill Depot once if you keep anything in it.&#10;  4.  Type  /outputfile inventory&#10;&#10;The file lands next to the game's exe and this window picks it up on its own. A storage whose window was closed is simply missing from the dump — not empty. Motes and other currency-tab items are never in it; the game leaves them out."/>
         </StackPanel>
 
-        <ListBox x:Name="ResultsList"
-                 HorizontalContentAlignment="Stretch"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 VirtualizingPanel.VirtualizationMode="Recycling">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <DockPanel Margin="2,2">
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}"
-                                   Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" FontSize="11"
-                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding Location}"
-                                   ToolTip="{Binding LocationTip}"
-                                   Foreground="{StaticResource Brush.TextHint}" FontSize="11"
-                                   VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="190"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                    </DockPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        <Grid>
+            <ListBox x:Name="ResultsList"
+                     HorizontalContentAlignment="Stretch"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.VirtualizationMode="Recycling">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="2,2">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}"
+                                       Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" FontSize="11"
+                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Location}"
+                                       ToolTip="{Binding LocationTip}"
+                                       Foreground="{StaticResource Brush.TextHint}" FontSize="11"
+                                       VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="190"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- The focus-effect audit: one row per family, a pill per tier,
+                 color = how close you are to the best tier that exists. -->
+            <ListBox x:Name="FocusList" Visibility="Collapsed"
+                     HorizontalContentAlignment="Stretch"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="2,3">
+                            <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,9,0"
+                                     VerticalAlignment="Center" Fill="{Binding StatusBrush}"/>
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding Family}" FontWeight="SemiBold"
+                                       Width="180" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding FamilyTip}"/>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding BestText}"
+                                       ToolTip="{Binding BestTip}"
+                                       Foreground="{StaticResource Brush.TextHint}" FontSize="11"
+                                       VerticalAlignment="Center" Margin="10,0,0,0"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <ItemsControl ItemsSource="{Binding Pills}" VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" Padding="7,1,7,2" Margin="0,0,4,0"
+                                                Background="{Binding Bg}" BorderBrush="{Binding Border}"
+                                                BorderThickness="1" ToolTip="{Binding Tip}">
+                                            <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="{Binding Fg}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
     </DockPanel>
 </Window>

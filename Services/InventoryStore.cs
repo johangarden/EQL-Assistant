@@ -253,14 +253,13 @@ public static class InventoryStore
     public static bool IsExaltation(string name) =>
         name.EndsWith(" (Exaltation)", StringComparison.Ordinal);
 
-    /// <summary>Which window tab a ledger row belongs to: the keyring table is
-    /// the game's focus-effect collection, socketed "(Exaltation)" copies get
-    /// their own tab, everything else is an item.</summary>
+    /// <summary>Which window tab a ledger row belongs to: socketed
+    /// "(Exaltation)" copies get their own tab, everything else — key ring
+    /// rows included — is an item. (The Focus effects tab is not row-backed:
+    /// it audits the whole dump against the focus-effect families.)</summary>
     public static string TabOf(CarryRow row)
     {
-        if (row.Lane == "keyring") return "focus";
-        if (IsExaltation(row.Name)) return "exalt";
-        return "items";
+        return IsExaltation(row.Name) ? "exalt" : "items";
     }
 
     /// <summary>Every non-empty row of every table, in FILE ORDER, plus the

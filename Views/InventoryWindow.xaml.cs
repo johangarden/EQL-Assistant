@@ -21,6 +21,9 @@ namespace EQLOverlay.Views;
 public partial class InventoryWindow : Window
 {
     private sealed record RowVm(string Name, string Location, string? LocationTip, string CountText);
+    private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
+    private sealed record FocusVm(string Family, string FamilyTip, Brush StatusBrush,
+        List<PillVm> Pills, string BestText, string? BestTip);
 
     private static readonly (string Id, string Label)[] Tabs =
     {
@@ -33,6 +36,15 @@ public partial class InventoryWindow : Window
     private static readonly Brush SegOnFg = Freeze("#4FC3F7");
     private static readonly Brush SegOffFg = Freeze("#7F93AD");
 
+    // Audit stoplight: green = best tier that exists, orange = below it,
+    // red = none owned. Same tints the Enemy DoTs panel uses.
+    private static readonly Brush[] StatusFg =
+        { Freeze("#E57373"), Freeze("#FFB74D"), Freeze("#66BB6A") };
+    private static readonly Brush[] StatusBg =
+        { Freeze("#2DE57373"), Freeze("#2DFFB74D"), Freeze("#2D66BB6A") };
+    private static readonly Brush PillOffBorder = Freeze("#3A4560");
+    private static readonly Brush PillOffFg = Freeze("#5F7189");
+
     private readonly string _eqRoot;
     private readonly string _charName;
     private readonly string _server;
@@ -40,7 +52,9 @@ public partial class InventoryWindow : Window
     private readonly DispatcherTimer _reloadDebounce;
     private readonly DispatcherTimer _freshnessTick;
 
+    private readonly FocusEffects _focus = new();
     private List<InventoryStore.CarryRow> _rows = new();
+    private List<FocusEffects.AuditRow> _audit = new();
     private InventoryStore.Dump? _dump;
     private string _tab = "items";
     private string? _lane;            // null = All
@@ -103,9 +117,11 @@ public partial class InventoryWindow : Window
         if (_dumpPath is null)
         {
             _rows = new List<InventoryStore.CarryRow>();
+            _audit = new List<FocusEffects.AuditRow>();
             _dump = null;
             NoDumpPanel.Visibility = Visibility.Visible;
             ResultsList.Visibility = Visibility.Collapsed;
+            FocusList.Visibility = Visibility.Collapsed;
             TabPanel.Children.Clear();
             LanePanel.Children.Clear();
             ParsedText.Visibility = Visibility.Collapsed;
@@ -132,6 +148,7 @@ public partial class InventoryWindow : Window
 
         _dump = InventoryStore.Parse(text);
         (_rows, _) = InventoryStore.CarryAll(_dump);
+        _audit = _focus.Audit(_rows);
         if (fromWatch) _parsedAt = DateTime.Now;
 
         NoDumpPanel.Visibility = Visibility.Collapsed;
@@ -149,8 +166,12 @@ public partial class InventoryWindow : Window
         TabPanel.Children.Clear();
         foreach (var (id, label) in Tabs)
         {
-            int n = _rows.Count(r => InventoryStore.TabOf(r) == id);
-            AddPill(TabPanel, n > 0 ? $"{label}  {n}" : label, id, id == _tab, picked =>
+            // The focus tab counts green families over the total — the gap
+            // report in two digits. Row tabs count their rows.
+            string text = id == "focus"
+                ? $"{label}  {_audit.Count(a => a.Status == 2)}/{_audit.Count}"
+                : $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}";
+            AddPill(TabPanel, text, id, id == _tab, picked =>
             {
                 _tab = picked!;
                 RepaintPills(TabPanel, _tab);
@@ -181,6 +202,13 @@ public partial class InventoryWindow : Window
 
     private void BuildLaneChips()
     {
+        // The audit is not row-backed; place is spelled per family instead.
+        if (_tab == "focus")
+        {
+            LanePanel.Children.Clear();
+            LanePanel.Visibility = Visibility.Collapsed;
+            return;
+        }
         var tabRows = _rows.Where(r => InventoryStore.TabOf(r) == _tab).ToList();
         var lanes = _dump is null
             ? new List<(string Id, string Label)>()
@@ -267,6 +295,11 @@ public partial class InventoryWindow : Window
     private void ApplyFilters()
     {
         string q = SearchBox.Text.Trim().ToLowerInvariant();
+        bool focus = _tab == "focus";
+        FocusList.Visibility = focus ? Visibility.Visible : Visibility.Collapsed;
+        ResultsList.Visibility = focus ? Visibility.Collapsed : Visibility.Visible;
+        if (focus) { ApplyFocusFilter(q); return; }
+
         var tabRows = _rows.Where(r => InventoryStore.TabOf(r) == _tab).ToList();
         var matched = tabRows
             .Where(r => (_lane is null || r.Lane == _lane)
@@ -275,19 +308,70 @@ public partial class InventoryWindow : Window
             .ToList();
         ResultsList.ItemsSource = matched;
         CountText.Text = $"{matched.Count} of {tabRows.Count}";
-
-        // "Table present but empty" and "table never written" are different
-        // claims — the first is evidence of nothing owned, the second is
-        // silence.
-        bool keyringDumped = _dump?.Covered.Contains("keyring") == true;
-        EmptyTabText.Text = _tab switch
-        {
-            "exalt" => "No exaltation sockets in this dump.",
-            "focus" when keyringDumped => "No focus effects — the dump's key ring table is there, just empty.",
-            "focus" => "No key ring table in this dump — the game didn't write one.",
-            _ => "Nothing in this dump.",
-        };
+        EmptyTabText.Text = _tab == "exalt" ? "No exaltation sockets in this dump." : "Nothing in this dump.";
         EmptyTabText.Visibility = tabRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The audit board: every family always renders (the gaps ARE
+    /// the content); search narrows by family, effect or carrier item name.</summary>
+    private void ApplyFocusFilter(string q)
+    {
+        var shown = _audit.Where(a => q.Length == 0
+                || a.Family.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || a.Family.Tiers.Any(t => t.Effect.Contains(q, StringComparison.OrdinalIgnoreCase)
+                    || t.Items.Any(i => i.Contains(q, StringComparison.OrdinalIgnoreCase))))
+            .Select(MakeFocusVm)
+            .ToList();
+        FocusList.ItemsSource = shown;
+        CountText.Text = $"{shown.Count} of {_audit.Count} effects";
+        EmptyTabText.Visibility = Visibility.Collapsed;
+    }
+
+    private FocusVm MakeFocusVm(FocusEffects.AuditRow a)
+    {
+        var pills = new List<PillVm>();
+        for (int i = 0; i < a.Family.Tiers.Count; i++)
+        {
+            var tier = a.Family.Tiers[i];
+            bool owned = a.OwnedTiers[i];
+            string items = tier.Items.Count == 0
+                ? "No item is known to carry this tier."
+                : "Items: " + string.Join(", ", tier.Items);
+            string tip = tier.Effect
+                + (tier.Description.Length > 0 ? "\n" + tier.Description : "")
+                + "\n" + items;
+            pills.Add(owned
+                ? new PillVm(TierLabel(tier.Effect, tier.TierNum), StatusBg[a.Status],
+                    StatusFg[a.Status], StatusFg[a.Status], tip)
+                : new PillVm(TierLabel(tier.Effect, tier.TierNum), Brushes.Transparent,
+                    PillOffBorder, PillOffFg, tip));
+        }
+        string best = a.BestTier == 0 ? "none owned" : $"{a.BestItem} · {a.BestPlace}";
+        return new FocusVm(a.Family.Name, a.Family.Tiers[0].Description, StatusFg[a.Status],
+            pills, best, a.BestTier == 0 ? null : a.BestEffect);
+    }
+
+    /// <summary>Selftest hook: front the audit board so its template
+    /// actually instantiates (a collapsed list renders nothing and would
+    /// hide a binding typo).</summary>
+    public void ShowFocusTabForTest()
+    {
+        _tab = "focus";
+        RepaintPills(TabPanel, _tab);
+        BuildLaneChips();
+        ApplyFilters();
+        UpdateLayout();
+    }
+
+    /// <summary>What a tier pill says: the effect's own tier token when its
+    /// name ends in one (III, 14, Superior…), the tier number otherwise.</summary>
+    private static string TierLabel(string effect, int tierNum)
+    {
+        string last = effect.Split(' ')[^1];
+        if (System.Text.RegularExpressions.Regex.IsMatch(last, @"^([IVX]{1,4}|\d{1,2})$")) return last;
+        foreach (string word in new[] { "Minor", "Lesser", "Greater", "Major", "Superior" })
+            if (effect.Contains(word + " ", StringComparison.Ordinal)) return word;
+        return tierNum.ToString();
     }
 
     /// <summary>An exaltation's interesting "where" is the item wearing it,
