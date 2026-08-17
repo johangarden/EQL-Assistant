@@ -105,7 +105,9 @@ off-screen), and Quit.
 clickable even while locked, organized app · features · state: ✕ quit ·
 version · **Loadout ▾** picker · one-click **feature icons** (💀 Raid kills ·
 📜 Quests · 💰 Loot history — hover any icon for what it does) · **☰ menu**
-(mirrors the tray exactly) · 🔊 mute · 🔒 padlock (governs all other panels;
+(the slim play-time set: Panels ▸, Loadout ▸, Show/Hide, last death recap,
+catch-up — maintenance like updates and config-folder access stays on the
+full tray menu) · 🔊 mute · 🔒 padlock (governs all other panels;
 glows accent-blue while unlocked as a "lock me before playing" reminder) —
 and the **⚙ cog** alone at the far end: settings are a different mode.
 Confirmations ("Switched to: Raid", "Pet detected: Lober") appear as a

@@ -1291,13 +1291,25 @@ public partial class MainWindow : Window
         UpdateBarsVisibility();
     }
 
-    /// <summary>Toolbar ☰ — show the SAME menu as the tray icon (one source of
-    /// truth: panels with checkmarks, histories, updates, everything).</summary>
+    /// <summary>Toolbar ☰ — the SLIM play-time menu: what isn't already a
+    /// toolbar button. Feature windows are the icons, settings is the cog,
+    /// lock/mute/quit are buttons; maintenance (updates, config folder,
+    /// reset) lives on the full tray menu, where you go between sessions.</summary>
+    private System.Windows.Forms.ContextMenuStrip? _burgerMenu;
+
     private void ShowMainMenu()
     {
-        var menu = _tray?.ContextMenuStrip;
-        if (menu is null) return;
-        menu.Show(System.Windows.Forms.Cursor.Position);
+        if (_burgerMenu is null)
+        {
+            _burgerMenu = new System.Windows.Forms.ContextMenuStrip();
+            _burgerMenu.Items.Add(BuildPanelsMenu());
+            _burgerMenu.Items.Add(BuildLoadoutMenu());
+            _burgerMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+            _burgerMenu.Items.Add("Show / Hide", null, (_, _) => ToggleHide());
+            _burgerMenu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
+            _burgerMenu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
+        }
+        _burgerMenu.Show(System.Windows.Forms.Cursor.Position);
     }
 
     /// <summary>A "timerAuto" trigger matched (e.g. a named mob death) — start the watch.</summary>
@@ -1494,7 +1506,31 @@ public partial class MainWindow : Window
         menu.Items.Add("Lock / Unlock", null, (_, _) => ToggleLock());
         menu.Items.Add("Mute / Unmute", null, (_, _) => ToggleMute());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add(BuildPanelsMenu());
+        menu.Items.Add(BuildLoadoutMenu());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
+        menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
+        menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
+        menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
+        menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
+        menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
+        menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdates(manual: true));
+        menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
+        menu.Items.Add("Reset position", null, (_, _) => ResetPosition());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Quit", null, (_, _) => Close());
+
+        _tray.ContextMenuStrip = menu;
+        _tray.DoubleClick += (_, _) => ToggleHide();
+    }
+
+    /// <summary>The Panels submenu with live checkmarks — built fresh per menu
+    /// (a WinForms item can only live in one strip at a time).</summary>
+    private System.Windows.Forms.ToolStripMenuItem BuildPanelsMenu()
+    {
         var panelsItem = new System.Windows.Forms.ToolStripMenuItem("Panels");
         var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Repop timer", null, (_, _) => ToggleTimer());
         var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
@@ -1528,8 +1564,12 @@ public partial class MainWindow : Window
             panelSct.Checked = !_sctHidden;
             panelFlash.Checked = !_flashHidden;
         };
-        menu.Items.Add(panelsItem);
+        return panelsItem;
+    }
 
+    /// <summary>The Loadout submenu, rebuilt with checkmarks on open.</summary>
+    private System.Windows.Forms.ToolStripMenuItem BuildLoadoutMenu()
+    {
         var loadoutItem = new System.Windows.Forms.ToolStripMenuItem("Loadout");
         loadoutItem.DropDownOpening += (_, _) =>
         {
@@ -1545,24 +1585,7 @@ public partial class MainWindow : Window
                 loadoutItem.DropDownItems.Add(mi);
             }
         };
-        menu.Items.Add(loadoutItem);
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-
-        menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
-        menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
-        menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
-        menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-
-        menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
-        menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdates(manual: true));
-        menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
-        menu.Items.Add("Reset position", null, (_, _) => ResetPosition());
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-        menu.Items.Add("Quit", null, (_, _) => Close());
-
-        _tray.ContextMenuStrip = menu;
-        _tray.DoubleClick += (_, _) => ToggleHide();
+        return loadoutItem;
     }
 
     /// <summary>The app's embedded exe icon (falls back to a drawn one).</summary>

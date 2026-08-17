@@ -75,7 +75,7 @@
                 <Button DockPanel.Dock="Right" Click="OnMenu" Style="{StaticResource IconBtn}"
                         Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE700;"
                         AutomationProperties.AutomationId="MainMenuBtn"
-                        ToolTip="Menu — panels, histories, updates (same as the tray)"/>
+                        ToolTip="Menu — panel toggles, loadouts, show/hide, catch-up"/>
 
                 <Border DockPanel.Dock="Right" Width="1" Height="18" Background="#3A4560" Margin="6,0,0,0"/>
 
