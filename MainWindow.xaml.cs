@@ -1504,24 +1504,46 @@ public partial class MainWindow : Window
         _tray.DoubleClick += (_, _) => ToggleHide();
     }
 
+    /// <summary>One Panels row: click the NAME to toggle the panel, click the
+    /// right-aligned ⚙ to jump to its settings page in the Manager. WinForms
+    /// menus have one click target per row, so the split is a mouse-position
+    /// test against the shortcut slot the cog is drawn in.</summary>
+    private System.Windows.Forms.ToolStripMenuItem PanelRow(string text, Action toggle, string? settingsPage)
+    {
+        var item = new System.Windows.Forms.ToolStripMenuItem(text);
+        if (settingsPage is not null) item.ShortcutKeyDisplayString = "⚙";
+        item.MouseUp += (_, e) =>
+        {
+            if (e.Button != System.Windows.Forms.MouseButtons.Left) return;
+            bool cog = settingsPage is not null && e.X >= item.Width - 40;
+            // Close the whole chain (no Click handler, so nothing auto-closes).
+            System.Windows.Forms.ToolStripItem top = item;
+            while (top.OwnerItem is not null) top = top.OwnerItem;
+            (top.Owner as System.Windows.Forms.ContextMenuStrip)?.Close();
+            if (cog) OpenManager(settingsPage);
+            else toggle();
+        };
+        return item;
+    }
+
     /// <summary>The Panels submenu with live checkmarks — built fresh per menu
     /// (a WinForms item can only live in one strip at a time).</summary>
     private System.Windows.Forms.ToolStripMenuItem BuildPanelsMenu()
     {
         var panelsItem = new System.Windows.Forms.ToolStripMenuItem("Panels");
-        var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Repop timer", null, (_, _) => ToggleTimer());
-        var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
-        var panelSkills = new System.Windows.Forms.ToolStripMenuItem("DPS meter · skills section", null, (_, _) => ToggleSkills());
-        var panelProcs = new System.Windows.Forms.ToolStripMenuItem("DPS meter · proc watcher", null, (_, _) => ToggleProcs());
-        var panelSct = new System.Windows.Forms.ToolStripMenuItem("Combat text", null, (_, _) => ToggleSct());
-        var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
-        var panelToolbar = new System.Windows.Forms.ToolStripMenuItem("Toolbar", null, (_, _) => ToggleToolbar());
-        var panelBars = new System.Windows.Forms.ToolStripMenuItem("Buff bars", null, (_, _) => ToggleBars());
-        var panelDots = new System.Windows.Forms.ToolStripMenuItem("Enemy DoTs", null, (_, _) => ToggleEnemyDots());
-        var panelConds = new System.Windows.Forms.ToolStripMenuItem("Condition badges (stun/fear)", null, (_, _) => ToggleConditions());
-        var panelSelfM = new System.Windows.Forms.ToolStripMenuItem("Self-buffs matrix", null, (_, _) => ToggleSelfMatrix());
-        var panelTargetM = new System.Windows.Forms.ToolStripMenuItem("Target-debuffs matrix", null, (_, _) => ToggleTargetMatrix());
-        var panelRemind = new System.Windows.Forms.ToolStripMenuItem("Rebuff reminders", null, (_, _) => ToggleReminders());
+        var panelTimer = PanelRow("Repop timer", ToggleTimer, "Repop timer");
+        var panelMeter = PanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs");
+        var panelSkills = PanelRow("DPS meter · skills section", ToggleSkills, "DPS + Skills, Procs");
+        var panelProcs = PanelRow("DPS meter · proc watcher", ToggleProcs, "DPS + Skills, Procs");
+        var panelSct = PanelRow("Combat text", ToggleSct, "Combat text");
+        var panelFlash = PanelRow("Flash alerts", ToggleFlash, "Flash alerts");
+        var panelToolbar = PanelRow("Toolbar", ToggleToolbar, "General");
+        var panelBars = PanelRow("Buff bars", ToggleBars, "Bars & matrices");
+        var panelDots = PanelRow("Enemy DoTs", ToggleEnemyDots, "Bars & matrices");
+        var panelConds = PanelRow("Condition badges (stun/fear)", ToggleConditions, null);
+        var panelSelfM = PanelRow("Self-buffs matrix", ToggleSelfMatrix, "Bars & matrices");
+        var panelTargetM = PanelRow("Target-debuffs matrix", ToggleTargetMatrix, "Bars & matrices");
+        var panelRemind = PanelRow("Rebuff reminders", ToggleReminders, "Bars & matrices");
         panelsItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[]
             { panelToolbar, panelBars, panelSelfM, panelTargetM, panelRemind, panelDots,
               panelConds, panelTimer, panelMeter, panelSkills, panelProcs, panelSct, panelFlash });
