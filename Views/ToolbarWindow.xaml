@@ -27,9 +27,6 @@
                 <Button DockPanel.Dock="Left" Content="✕" Click="OnQuit" Style="{StaticResource CloseBtn}"
                         ToolTip="Quit EQL Assistant"/>
 
-                <TextBlock DockPanel.Dock="Left" Text="{Binding Version}" Foreground="#6E7C93"
-                           FontSize="10" VerticalAlignment="Center" Margin="7,0,0,0"/>
-
                 <!-- settings mode, isolated at the far end -->
                 <Button DockPanel.Dock="Right" Click="OnManage" Style="{StaticResource IconBtn}"
                         Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE713;"
