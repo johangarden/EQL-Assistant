@@ -1251,7 +1251,7 @@ public partial class MainWindow : Window
             LockRequested = ToggleLock,
             MuteRequested = ToggleMute,
             ManageRequested = () => OpenManager(),
-            MenuRequested = ShowMainMenu,
+            MenuRequested = el => ShowMainMenu(el as UIElement),
             RaidRequested = OpenRaidKills,
             QuestsRequested = OpenSkyQuests,
             LootRequested = OpenLootHistory,
@@ -1296,10 +1296,17 @@ public partial class MainWindow : Window
     /// and each Panels row carries a REAL settings-cog button.</summary>
     private ContextMenu? _burgerMenu;
 
-    private void ShowMainMenu()
+    private void ShowMainMenu(UIElement? target)
     {
         _burgerMenu ??= BuildBurgerMenu();
-        _burgerMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        // A PlacementTarget is load-bearing, not cosmetic: without one a
+        // programmatically-opened ContextMenu has no tree context — Windows'
+        // handedness setting decides which side it opens on, and SUBMENUS
+        // silently refuse to open at all.
+        _burgerMenu.PlacementTarget = target;
+        _burgerMenu.Placement = target is null
+            ? System.Windows.Controls.Primitives.PlacementMode.MousePoint
+            : System.Windows.Controls.Primitives.PlacementMode.Bottom;
         _burgerMenu.IsOpen = true;
     }
 
