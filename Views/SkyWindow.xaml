@@ -39,6 +39,8 @@
                                 Background="{Binding SelBg}" Tag="{Binding}"
                                 MouseLeftButtonUp="Badge_Click" ToolTip="{Binding Tip}">
                             <StackPanel Width="46">
+                                <TextBlock Text="{Binding TopLabel}" Foreground="#7F93AD" FontSize="9.5"
+                                           HorizontalAlignment="Center" Margin="0,0,0,2"/>
                                 <Grid Width="38" Height="38" HorizontalAlignment="Center">
                                     <Ellipse Stroke="#2A3347" StrokeThickness="3"/>
                                     <Path Data="{Binding Arc}" Stroke="{Binding Ring}"

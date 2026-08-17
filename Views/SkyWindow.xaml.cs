@@ -33,6 +33,10 @@ public partial class SkyWindow : Window
         Geometry? Glyph)
     {
         public Visibility AbbrVisibility => Glyph is null ? Visibility.Visible : Visibility.Collapsed;
+
+        /// <summary>Class abbreviation over the icon (these aren't the game's
+        /// icons, so the name rides along); ALL names itself in the ring.</summary>
+        public string TopLabel => Glyph is null ? "" : Abbr;
     }
 
     // The 16 Sky test classes, each with a fixed badge tint (decoration — the
