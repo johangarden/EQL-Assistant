@@ -112,7 +112,7 @@
                 <TextBlock Text="{Binding LoadoutName}" Foreground="#6E7C93" FontSize="10"
                            VerticalAlignment="Center" Margin="8,0,6,0" MaxWidth="86"
                            TextTrimming="CharacterEllipsis"
-                           ToolTip="Active loadout — switch via ☰ → Loadout"/>
+                           ToolTip="{Binding LoadoutName}"/>
             </DockPanel>
         </Border>
 
