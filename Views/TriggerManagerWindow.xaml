@@ -605,9 +605,17 @@
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Enemy DoTs (automatic)" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="A self-filling panel: every DoT of YOURS ticking on an enemy gets a row — spell, mob, and time left — with a ×N chip when several same-named mobs carry it (counted from tick frequency; EQ logs genuinely can't tell twins apart). Rows clear on the wear-off line, the mob's death, zoning, or 18s of tick silence. No triggers needed."/>
+                                       Text="A self-filling panel: every DoT of YOURS on an enemy gets a bar — same-named mobs split into 01/02 rows (told apart by tick timing; EQ logs genuinely can't name twins). Bars clear on the wear-off line, the mob's death, zoning, or tick silence. No triggers needed."/>
 
                             <CheckBox x:Name="EnemyDotsVisibleCheck" Content="Show the Enemy DoTs panel" Margin="0,10,0,0"/>
+
+                            <TextBlock Text="Group the bars by" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox x:Name="EnemyDotsGroupBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Mob — its dots under it" Tag="mob"/>
+                                <ComboBoxItem Content="Spell — its mobs under it" Tag="spell"/>
+                            </ComboBox>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="By mob = the tab-target view: one header per mob name, every dot you have on it below. 01/02 chips only appear when twins actually split."/>
 
                             <TextBlock Text="Enemy-DoTs anchor" Style="{StaticResource FieldLabel}"/>
                             <ComboBox x:Name="EnemyDotsAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">

@@ -933,6 +933,7 @@ public partial class TriggerManagerWindow : Window
         SctLaneHeightBox.Text = _config.Overlay.SctLaneHeight.ToString(CultureInfo.InvariantCulture);
 
         EnemyDotsVisibleCheck.IsChecked = _config.Overlay.EnemyDotsVisible;
+        EnemyDotsGroupBox.SelectedValue = _config.Overlay.EnemyDotsGroupByMob ? "mob" : "spell";
         EnemyDotsAnchorBox.SelectedValue = (_configService.LoadPlacement("enemyDots")?.Anchor ?? Anchor.TopLeft).ToString();
         RemindersAnchorBox.SelectedValue = (_configService.LoadPlacement("reminders")?.Anchor ?? Anchor.TopLeft).ToString();
         BarsAnchorBox.SelectedValue = (_configService.LoadPlacement("main")?.Anchor ?? Anchor.TopLeft).ToString();
@@ -1016,6 +1017,9 @@ public partial class TriggerManagerWindow : Window
                 TargetMatrixVisible = _config.Overlay.TargetMatrixVisible, // tray-toggled
                 RemindersVisible = _config.Overlay.RemindersVisible,       // tray-toggled
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
+                EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
+                ConditionsVisible = _config.Overlay.ConditionsVisible,   // tray-toggled
+                MeterSoloMode = _config.Overlay.MeterSoloMode,           // meter-toggled
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,

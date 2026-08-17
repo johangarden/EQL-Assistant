@@ -782,7 +782,8 @@ public partial class MainWindow : Window
     {
         if (_enemyDotsWin is not null) { try { _enemyDotsWin.Close(); } catch { /* ignore */ } _enemyDotsWin = null; }
         if (!_config.Overlay.EnemyDotsVisible) return;
-        _enemyDotsWin = new EnemyDotsWindow(_combat, _configService, _config.Overlay.Opacity);
+        _enemyDotsWin = new EnemyDotsWindow(_combat, _configService, _config.Overlay.Opacity,
+            _config.Overlay.EnemyDotsGroupByMob);
         _enemyDotsWin.Show();
         _enemyDotsWin.SetLocked(_vm.Locked);
         _enemyDotsWin.SetHidden(_hidden);
