@@ -268,16 +268,47 @@ public partial class InventoryWindow : Window
             RepaintPills(LanePanel, _lane);
             ApplyFilters();
         }
-        AddPill(LanePanel, "All", null, _lane is null, Pick);
-        string prevGroup = "";
-        foreach (var (id, label) in lanes)
+
+        // The chips read as labeled families: All | Carried (on you) |
+        // Stored (away) | anything else — vertical rules between them.
+        StackPanel ChipGroup(string subtitle, IEnumerable<(string Id, string Label)> chips, Brush? tint)
         {
-            string group = InventoryStore.LaneGroup(id);
-            // A breath of air where one family ends and the next begins.
-            bool gap = prevGroup.Length > 0 && group != prevGroup;
-            AddPill(LanePanel, label, id, _lane == id, Pick, GroupTint(group), gap);
-            prevGroup = group;
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            foreach (var (id, label) in chips)
+                AddPill(row, label, id, _lane == id, Pick, tint);
+            var group = new StackPanel();
+            group.Children.Add(row);
+            group.Children.Add(new TextBlock
+            {
+                Text = subtitle,
+                FontSize = 9,
+                Foreground = (Brush)FindResource("Brush.TextHint"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 1, 5, 0),
+            });
+            return group;
         }
+        Border Rule() => new()
+        {
+            Width = 1,
+            Height = 26,
+            VerticalAlignment = VerticalAlignment.Top,
+            Background = Freeze("#2A3648"),
+            Margin = new Thickness(2, 2, 9, 0),
+        };
+
+        var carry = lanes.Where(l => InventoryStore.LaneGroup(l.Id) == "carry").ToList();
+        var stash = lanes.Where(l => InventoryStore.LaneGroup(l.Id) == "stash").ToList();
+        var other = lanes.Where(l => InventoryStore.LaneGroup(l.Id) == "").ToList();
+
+        var all = new StackPanel();
+        var allRow = new StackPanel { Orientation = Orientation.Horizontal };
+        AddPill(allRow, "All", null, _lane is null, Pick);
+        all.Children.Add(allRow);
+        LanePanel.Children.Add(all);
+        if (carry.Count > 0) { LanePanel.Children.Add(Rule()); LanePanel.Children.Add(ChipGroup("Carried", carry, CarryTint)); }
+        if (stash.Count > 0) { LanePanel.Children.Add(Rule()); LanePanel.Children.Add(ChipGroup("Stored", stash, StashTint)); }
+        if (other.Count > 0) { LanePanel.Children.Add(Rule()); LanePanel.Children.Add(ChipGroup("", other, null)); }
     }
 
     private static Brush? GroupTint(string group) => group switch
@@ -287,15 +318,15 @@ public partial class InventoryWindow : Window
         _ => null,
     };
 
-    private void AddPill(WrapPanel panel, string label, string? id, bool on, Action<string?> onPick,
-        Brush? offTint = null, bool gapBefore = false)
+    private void AddPill(Panel panel, string label, string? id, bool on, Action<string?> onPick,
+        Brush? offTint = null)
     {
         var text = new TextBlock { Text = label, FontSize = 11 };
         var chip = new Border
         {
             CornerRadius = new CornerRadius(9),
             Padding = new Thickness(9, 2, 9, 3),
-            Margin = new Thickness(gapBefore ? 14 : 0, 0, 5, 0),
+            Margin = new Thickness(0, 0, 5, 0),
             BorderBrush = Freeze("#3A4560"),
             BorderThickness = new Thickness(1),
             Cursor = Cursors.Hand,
@@ -308,14 +339,22 @@ public partial class InventoryWindow : Window
         panel.Children.Add(chip);
     }
 
-    private static void RepaintPills(WrapPanel panel, string? activeId)
+    /// <summary>Repaint every pill under the panel — chips may sit inside
+    /// group stacks, so this walks the tree.</summary>
+    private static void RepaintPills(Panel panel, string? activeId)
     {
-        foreach (Border b in panel.Children)
+        foreach (object child in panel.Children)
         {
-            var (id, offTint) = ((string?, Brush?))b.Tag;
-            bool isOn = Equals(id, activeId);
-            b.Background = isOn ? SegOnBg : offTint ?? Brushes.Transparent;
-            ((TextBlock)b.Child).Foreground = isOn ? SegOnFg : SegOffFg;
+            if (child is Border b && b.Tag is ValueTuple<string?, Brush?> tag)
+            {
+                bool isOn = Equals(tag.Item1, activeId);
+                b.Background = isOn ? SegOnBg : tag.Item2 ?? Brushes.Transparent;
+                ((TextBlock)b.Child).Foreground = isOn ? SegOnFg : SegOffFg;
+            }
+            else if (child is Panel p)
+            {
+                RepaintPills(p, activeId);
+            }
         }
     }
 
