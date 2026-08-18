@@ -22,8 +22,13 @@ public partial class InventoryWindow : Window
 {
     private sealed record RowVm(string Name, string Location, string? LocationTip, string CountText);
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
-    private sealed record FocusVm(string Family, string FamilyTip, Brush StatusBrush,
-        List<PillVm> Pills, string BestText, string? BestTip);
+    private sealed record FocusVm(string Family, string Kind, string? FamilyTip, Brush StatusBrush,
+        List<PillVm> Pills, string BestText, string? BestTip,
+        Visibility HeaderVis = Visibility.Collapsed, Visibility RowVis = Visibility.Visible);
+
+    /// <summary>A section header row ("Spells", "Songs & instruments").</summary>
+    private static FocusVm FocusHeader(string title) => new(title, "", null, Brushes.Transparent,
+        new List<PillVm>(), "", null, HeaderVis: Visibility.Visible, RowVis: Visibility.Collapsed);
 
     private static readonly (string Id, string Label)[] Tabs =
     {
@@ -336,17 +341,33 @@ public partial class InventoryWindow : Window
     }
 
     /// <summary>The audit board: every family always renders (the gaps ARE
-    /// the content); search narrows by family, effect or carrier item name.</summary>
+    /// the content), spells first, the bard instrument resonances under
+    /// their own header. Search narrows by family, effect, kind or carrier
+    /// item name.</summary>
     private void ApplyFocusFilter(string q)
     {
-        var shown = _audit.Where(a => q.Length == 0
-                || a.Family.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
-                || a.Family.Tiers.Any(t => t.Effect.Contains(q, StringComparison.OrdinalIgnoreCase)
-                    || t.Items.Any(i => i.Contains(q, StringComparison.OrdinalIgnoreCase))))
-            .Select(MakeFocusVm)
-            .ToList();
+        bool Match(FocusEffects.AuditRow a) => q.Length == 0
+            || a.Family.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || a.Family.Kind.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || a.Family.Tiers.Any(t => t.Effect.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || t.Items.Any(i => i.Contains(q, StringComparison.OrdinalIgnoreCase)));
+
+        var spells = _audit.Where(a => a.Family.Group != "song" && Match(a)).ToList();
+        var songs = _audit.Where(a => a.Family.Group == "song" && Match(a)).ToList();
+
+        var shown = new List<FocusVm>();
+        if (spells.Count > 0)
+        {
+            shown.Add(FocusHeader("Spells"));
+            shown.AddRange(spells.Select(MakeFocusVm));
+        }
+        if (songs.Count > 0)
+        {
+            shown.Add(FocusHeader("Songs & instruments"));
+            shown.AddRange(songs.Select(MakeFocusVm));
+        }
         FocusList.ItemsSource = shown;
-        CountText.Text = $"{shown.Count} of {_audit.Count} effects";
+        CountText.Text = $"{spells.Count + songs.Count} of {_audit.Count} effects";
         EmptyTabText.Visibility = Visibility.Collapsed;
     }
 
@@ -370,8 +391,8 @@ public partial class InventoryWindow : Window
                     PillOffBorder, PillOffFg, tip));
         }
         string best = a.BestTier == 0 ? "none owned" : $"{a.BestItem} · {a.BestPlace}";
-        return new FocusVm(a.Family.Name, a.Family.Tiers[0].Description, StatusFg[a.Status],
-            pills, best, a.BestTier == 0 ? null : a.BestEffect);
+        return new FocusVm(a.Family.Name, a.Family.Kind, a.Family.Tiers[0].Description,
+            StatusFg[a.Status], pills, best, a.BestTier == 0 ? null : a.BestEffect);
     }
 
     /// <summary>Selftest hook: front the audit board so its template
@@ -386,14 +407,14 @@ public partial class InventoryWindow : Window
         UpdateLayout();
     }
 
-    /// <summary>What a tier pill says: the effect's own tier token when its
-    /// name ends in one (III, 14, Superior…), the tier number otherwise.</summary>
+    /// <summary>What a tier pill says: the effect's own trailing token when
+    /// it's a numeral (III, 14 — the resonances' numbers are the mod
+    /// strength), the plain tier number otherwise ("Jolum's Minor Abatement"
+    /// → 1; the exact name lives on the tooltip).</summary>
     private static string TierLabel(string effect, int tierNum)
     {
         string last = effect.Split(' ')[^1];
         if (System.Text.RegularExpressions.Regex.IsMatch(last, @"^([IVX]{1,4}|\d{1,2})$")) return last;
-        foreach (string word in new[] { "Minor", "Lesser", "Greater", "Major", "Superior" })
-            if (effect.Contains(word + " ", StringComparison.Ordinal)) return word;
         return tierNum.ToString();
     }
 

@@ -3,6 +3,8 @@
   "families": [
     {
       "family": "Affliction Efficiency",
+      "group": "spell",
+      "kind": "DoT mana",
       "tiers": [
         {
           "effect": "Affliction Efficiency I",
@@ -30,6 +32,8 @@
     },
     {
       "family": "Affliction Haste",
+      "group": "spell",
+      "kind": "DoT cast speed",
       "tiers": [
         {
           "effect": "Affliction Haste I",
@@ -55,6 +59,8 @@
     },
     {
       "family": "Brass Resonance",
+      "group": "song",
+      "kind": "brass instruments",
       "tiers": [
         {
           "effect": "Brass Resonance 14",
@@ -70,6 +76,8 @@
     },
     {
       "family": "Burning Affliction",
+      "group": "spell",
+      "kind": "DoT damage",
       "tiers": [
         {
           "effect": "Burning Affliction I",
@@ -123,6 +131,8 @@
     },
     {
       "family": "Enhancement Haste",
+      "group": "spell",
+      "kind": "buff cast speed",
       "tiers": [
         {
           "effect": "Enhancement Haste I",
@@ -151,6 +161,8 @@
     },
     {
       "family": "Extended Enhancement",
+      "group": "spell",
+      "kind": "buff duration",
       "tiers": [
         {
           "effect": "Extended Enhancement I",
@@ -190,6 +202,8 @@
     },
     {
       "family": "Extended Range",
+      "group": "spell",
+      "kind": "spell range",
       "tiers": [
         {
           "effect": "Extended Range I",
@@ -225,6 +239,8 @@
     },
     {
       "family": "Gallenite's Destruction",
+      "group": "spell",
+      "kind": "spell damage",
       "tiers": [
         {
           "effect": "Gallenite's Minor Destruction",
@@ -266,6 +282,8 @@
     },
     {
       "family": "Improved Damage",
+      "group": "spell",
+      "kind": "spell damage",
       "tiers": [
         {
           "effect": "Improved Damage I",
@@ -302,6 +320,8 @@
     },
     {
       "family": "Improved Healing",
+      "group": "spell",
+      "kind": "healing",
       "tiers": [
         {
           "effect": "Improved Healing I",
@@ -334,6 +354,8 @@
     },
     {
       "family": "Jedah's Conservation",
+      "group": "spell",
+      "kind": "reagent saver",
       "tiers": [
         {
           "effect": "Jedah's Lesser Conservation",
@@ -375,6 +397,8 @@
     },
     {
       "family": "Jolum's Abatement",
+      "group": "spell",
+      "kind": "nuke mana",
       "tiers": [
         {
           "effect": "Jolum's Minor Abatement",
@@ -416,6 +440,8 @@
     },
     {
       "family": "Mana Preservation",
+      "group": "spell",
+      "kind": "spell mana",
       "tiers": [
         {
           "effect": "Mana Preservation I",
@@ -445,6 +471,8 @@
     },
     {
       "family": "Minor Improved Damage",
+      "group": "spell",
+      "kind": "spell damage",
       "tiers": [
         {
           "effect": "Minor Improved Damage I",
@@ -459,6 +487,8 @@
     },
     {
       "family": "Naki's Pernicity",
+      "group": "spell",
+      "kind": "cast speed",
       "tiers": [
         {
           "effect": "Naki's Lesser Pernicity",
@@ -500,6 +530,8 @@
     },
     {
       "family": "Percussion Resonance",
+      "group": "song",
+      "kind": "percussion instruments",
       "tiers": [
         {
           "effect": "Percussion Resonance 11",
@@ -533,6 +565,8 @@
     },
     {
       "family": "Reagent Conservation",
+      "group": "spell",
+      "kind": "reagent saver",
       "tiers": [
         {
           "effect": "Reagent Conservation I",
@@ -572,6 +606,8 @@
     },
     {
       "family": "Reanimation Efficiency",
+      "group": "spell",
+      "kind": "undead pet mana",
       "tiers": [
         {
           "effect": "Reanimation Efficiency I",
@@ -608,6 +644,8 @@
     },
     {
       "family": "Reanimation Haste",
+      "group": "spell",
+      "kind": "undead pet cast speed",
       "tiers": [
         {
           "effect": "Reanimation Haste I",
@@ -643,6 +681,8 @@
     },
     {
       "family": "Spell Haste",
+      "group": "spell",
+      "kind": "cast speed",
       "tiers": [
         {
           "effect": "Spell Haste I",
@@ -672,6 +712,8 @@
     },
     {
       "family": "String Resonance",
+      "group": "song",
+      "kind": "string instruments",
       "tiers": [
         {
           "effect": "String Resonance 11",
@@ -695,6 +737,8 @@
     },
     {
       "family": "Summoning Efficiency",
+      "group": "spell",
+      "kind": "summon mana",
       "tiers": [
         {
           "effect": "Summoning Efficiency I",
@@ -721,6 +765,8 @@
     },
     {
       "family": "Summoning Haste",
+      "group": "spell",
+      "kind": "summon cast speed",
       "tiers": [
         {
           "effect": "Summoning Haste I",
@@ -755,6 +801,8 @@
     },
     {
       "family": "Tavee's Diuturnity",
+      "group": "spell",
+      "kind": "buff duration",
       "tiers": [
         {
           "effect": "Tavee's Lesser Diuturnity",
@@ -796,6 +844,8 @@
     },
     {
       "family": "Wind Resonance",
+      "group": "song",
+      "kind": "wind instruments",
       "tiers": [
         {
           "effect": "Wind Resonance 10",

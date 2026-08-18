@@ -1359,6 +1359,21 @@ public partial class App : Application
                         "Jolum's Minor Abatement", "Jolum's Abatement",
                         "Jolum's Major Abatement", "Jolum's Superior Abatement",
                     }));
+                // The JSON's field names must actually reach the model — an
+                // unmapped "tier" once deserialized as 0 everywhere and the
+                // audit read "none owned" forever (0/25 in the field).
+                Check("focus: tier numbers, groups and kinds survive the JSON round trip",
+                    focus.Families.All(f => f.Tiers.Select(t => t.TierNum)
+                        .SequenceEqual(Enumerable.Range(1, f.Tiers.Count)))
+                    && focus.Families.Count(f => f.Group == "song") == 4
+                    && focus.Families.All(f => f.Kind.Length > 0));
+                var realAudit = focus.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("White Dragonscale Cloak", "white dragonscale cloak", "Back", 1, "worn", 1),
+                });
+                Check("focus: a real carrier joins the loaded table end to end",
+                    realAudit.First(a => a.Family.Name == "Improved Damage")
+                        is { BestTier: 3, Status: 2, BestPlace: "worn" });
                 Check("focus: the category page's missing tier and empty page carried honestly",
                     focus.Families.First(f => f.Name == "Reanimation Efficiency").Tiers.Count == 3
                     && focus.Families.First(f => f.Name == "Improved Healing")

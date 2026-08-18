@@ -88,35 +88,45 @@
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <DockPanel Margin="2,3">
-                            <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,9,0"
-                                     VerticalAlignment="Center" Fill="{Binding StatusBrush}"/>
-                            <TextBlock DockPanel.Dock="Left" Text="{Binding Family}" FontWeight="SemiBold"
-                                       Width="180" VerticalAlignment="Center"
-                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding FamilyTip}"/>
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding BestText}"
-                                       ToolTip="{Binding BestTip}"
-                                       Foreground="{StaticResource Brush.TextHint}" FontSize="11"
-                                       VerticalAlignment="Center" Margin="10,0,0,0"
-                                       TextTrimming="CharacterEllipsis"/>
-                            <ItemsControl ItemsSource="{Binding Pills}" VerticalAlignment="Center">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border CornerRadius="8" Padding="7,1,7,2" Margin="0,0,4,0"
-                                                Background="{Binding Bg}" BorderBrush="{Binding Border}"
-                                                BorderThickness="1" ToolTip="{Binding Tip}">
-                                            <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold"
-                                                       Foreground="{Binding Fg}"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </DockPanel>
+                        <StackPanel>
+                            <!-- Section header ("Spells" / "Songs & instruments") -->
+                            <TextBlock Text="{Binding Family}" Visibility="{Binding HeaderVis}"
+                                       Foreground="{StaticResource Brush.TextDim}" FontWeight="SemiBold"
+                                       FontSize="11" Margin="2,7,0,3"/>
+                            <DockPanel Margin="2,3" Visibility="{Binding RowVis}">
+                                <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,9,0"
+                                         VerticalAlignment="Center" Fill="{Binding StatusBrush}"/>
+                                <StackPanel DockPanel.Dock="Left" Width="196" VerticalAlignment="Center"
+                                            ToolTip="{Binding FamilyTip}">
+                                    <TextBlock Text="{Binding Family}" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Kind}" Foreground="{StaticResource Brush.TextHint}"
+                                               FontSize="10" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding BestText}"
+                                           ToolTip="{Binding BestTip}"
+                                           Foreground="{StaticResource Brush.TextHint}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="10,0,0,0"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <ItemsControl ItemsSource="{Binding Pills}" VerticalAlignment="Center">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="8" Padding="7,1,7,2" Margin="0,0,4,0"
+                                                    Background="{Binding Bg}" BorderBrush="{Binding Border}"
+                                                    BorderThickness="1" ToolTip="{Binding Tip}">
+                                                <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="{Binding Fg}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DockPanel>
+                        </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

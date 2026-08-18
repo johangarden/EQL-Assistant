@@ -20,6 +20,9 @@ public sealed class FocusEffects
     public sealed class Tier
     {
         public string Effect { get; set; } = "";
+        // The JSON spells it "tier" — an unmapped rename here once made every
+        // tier deserialize as 0 and the audit read "none owned" forever.
+        [System.Text.Json.Serialization.JsonPropertyName("tier")]
         public int TierNum { get; set; }
         public string Description { get; set; } = "";
         public int? LevelCap { get; set; }
@@ -30,6 +33,10 @@ public sealed class FocusEffects
     {
         [System.Text.Json.Serialization.JsonPropertyName("family")]
         public string Name { get; set; } = "";
+        /// <summary>"spell" or "song" (the bard instrument resonances).</summary>
+        public string Group { get; set; } = "spell";
+        /// <summary>Short what-it-does label ("cast speed", "DoT damage").</summary>
+        public string Kind { get; set; } = "";
         public List<Tier> Tiers { get; set; } = new();
     }
 
