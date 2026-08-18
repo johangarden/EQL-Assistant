@@ -296,6 +296,8 @@ public sealed class RaidKills
     {
         // Observed 13 Aug 2026: "Innoruuk, the Prince of Hate has been slain by …"
         ["Innoruuk"] = "Innoruuk, the Prince of Hate",
+        // Observed 17 Aug 2026: "You have slain Cazic-Thule!" — the game hyphenates.
+        ["Cazic Thule"] = "Cazic-Thule",
     };
 
     /// <summary>The current canonical name for a (possibly outdated) target name.</summary>
@@ -371,7 +373,7 @@ public sealed class RaidKills
       },
       {
         "name": "Plane of Fear",
-        "targets": [ "Cazic Thule", "Dread", "Fright", "Terror", "A dracoliche" ]
+        "targets": [ "Cazic-Thule", "Dread", "Fright", "Terror", "A dracoliche" ]
       },
       {
         "name": "Plane of Hate",

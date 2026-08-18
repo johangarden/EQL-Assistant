@@ -120,7 +120,7 @@ public static class RaidGlyphs
         ["Master Yael"] = ("skull", "#E6DBC8"),            // bone golem
 
         // Plane of Fear
-        ["Cazic Thule"] = ("demon", "#66BB6A"),            // the god of fear
+        ["Cazic-Thule"] = ("demon", "#66BB6A"),            // the god of fear (log spelling, hyphenated)
         ["Dread"] = ("golem", "#E57373"),
         ["Fright"] = ("golem", "#FFB74D"),
         ["Terror"] = ("golem", "#9575CD"),

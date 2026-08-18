@@ -1748,6 +1748,9 @@ public partial class App : Application
             Check("raid targets: short Innoruuk migrates to the observed full name",
                 RaidKills.MigrateTargetName("Innoruuk") == "Innoruuk, the Prince of Hate"
                 && RaidKills.MigrateTargetName("Lady Vox") == "Lady Vox");
+            // "You have slain Cazic-Thule!" (17 Aug) — the game hyphenates.
+            Check("raid targets: Cazic Thule migrates to the hyphenated log spelling",
+                RaidKills.MigrateTargetName("Cazic Thule") == "Cazic-Thule");
 
             // The weekly loot lockout (the Companion's research): the window
             // starts on the most recent Tuesday 08:00 PACIFIC and runs 7 days.
