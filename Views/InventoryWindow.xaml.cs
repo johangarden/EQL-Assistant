@@ -360,9 +360,19 @@ public partial class InventoryWindow : Window
             || a.Family.Tiers.Any(t => t.Effect.Contains(q, StringComparison.OrdinalIgnoreCase)
                 || t.Items.Any(i => i.Contains(q, StringComparison.OrdinalIgnoreCase)));
 
-        var spells = _audit.Where(a => a.Family.Group is not ("song" or "summoned") && Match(a)).ToList();
-        var songs = _audit.Where(a => a.Family.Group == "song" && Match(a)).ToList();
-        var summoned = _audit.Where(a => a.Family.Group == "summoned" && Match(a)).ToList();
+        // Within a section: what you WEAR first, then what you own in
+        // storage, the gaps last — alphabetical inside each bucket.
+        static int OwnBucket(FocusEffects.AuditRow a) =>
+            a.WornTier > 0 ? 0 : a.BestTier > 0 ? 1 : 2;
+        List<FocusEffects.AuditRow> Section(Func<FocusEffects.AuditRow, bool> pick) => _audit
+            .Where(a => pick(a) && Match(a))
+            .OrderBy(OwnBucket)
+            .ThenBy(a => a.Family.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var spells = Section(a => a.Family.Group is not ("song" or "summoned"));
+        var songs = Section(a => a.Family.Group == "song");
+        var summoned = Section(a => a.Family.Group == "summoned");
 
         var shown = new List<FocusVm>();
         if (spells.Count > 0)

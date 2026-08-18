@@ -90,10 +90,14 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel>
-                            <!-- Section header ("Spells" / "Songs & instruments") -->
-                            <TextBlock Text="{Binding Family}" Visibility="{Binding HeaderVis}"
-                                       Foreground="{StaticResource Brush.TextDim}" FontWeight="SemiBold"
-                                       FontSize="11" Margin="2,7,0,3"/>
+                            <!-- Section header ("Spells" / "Songs & instruments") + rule line -->
+                            <DockPanel Visibility="{Binding HeaderVis}" Margin="2,7,4,3">
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Family}"
+                                           Foreground="{StaticResource Brush.TextDim}" FontWeight="SemiBold"
+                                           FontSize="11" Margin="0,0,8,0"/>
+                                <Border Height="1" Background="{StaticResource Brush.Border}"
+                                        VerticalAlignment="Center"/>
+                            </DockPanel>
                             <DockPanel Margin="2,3" Visibility="{Binding RowVis}">
                                 <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,9,0"
                                          VerticalAlignment="Center" Fill="{Binding StatusBrush}"/>
