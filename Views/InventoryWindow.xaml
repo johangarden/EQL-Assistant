@@ -100,11 +100,15 @@
                             </DockPanel>
                             <Border Visibility="{Binding RowVis}" Background="{Binding RowBg}"
                                     CornerRadius="4" Margin="0,1" Padding="6,3">
+                            <StackPanel>
                             <DockPanel>
-                                <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,9,0"
+                                <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,7,0"
                                          VerticalAlignment="Center" Fill="{Binding StatusBrush}"
                                          ToolTip="{Binding StatusTip}"/>
-                                <StackPanel DockPanel.Dock="Left" Width="196" VerticalAlignment="Center"
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Chevron}"
+                                           Foreground="{StaticResource Brush.TextHint}" FontSize="10"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <StackPanel DockPanel.Dock="Left" Width="188" VerticalAlignment="Center"
                                             ToolTip="{Binding FamilyTip}">
                                     <TextBlock Text="{Binding Family}" FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis"/>
@@ -140,6 +144,19 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </DockPanel>
+                            <!-- The fold-out: tiers, effect text, every known
+                                 carrier with slot/classes and your copy's place. -->
+                            <ItemsControl ItemsSource="{Binding Details}" Visibility="{Binding DetailsVis}"
+                                          Margin="21,5,0,3">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
+                                                   FontWeight="{Binding Weight}" FontSize="11"
+                                                   TextWrapping="Wrap" Margin="0,1"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            </StackPanel>
                             </Border>
                         </StackPanel>
                     </DataTemplate>

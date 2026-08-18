@@ -1403,16 +1403,16 @@ public partial class App : Application
                     {
                         Name = "Testing", Tiers = new List<FocusEffects.Tier>
                         {
-                            new() { Effect = "Testing I", TierNum = 1, Items = new List<string> { "Item A" } },
-                            new() { Effect = "Testing II", TierNum = 2, Items = new List<string> { "Item B" } },
-                            new() { Effect = "Testing III", TierNum = 3, Items = new List<string> { "Item C" } },
+                            new() { Effect = "Testing I", TierNum = 1, Items = new() { new() { Name = "Item A" } } },
+                            new() { Effect = "Testing II", TierNum = 2, Items = new() { new() { Name = "Item B" } } },
+                            new() { Effect = "Testing III", TierNum = 3, Items = new() { new() { Name = "Item C" } } },
                         },
                     },
                     new()
                     {
                         Name = "Empty", Tiers = new List<FocusEffects.Tier>
                         {
-                            new() { Effect = "Empty I", TierNum = 1, Items = new List<string> { "Item D" } },
+                            new() { Effect = "Empty I", TierNum = 1, Items = new() { new() { Name = "Item D" } } },
                         },
                     },
                 };
@@ -1454,10 +1454,10 @@ public partial class App : Application
                     {
                         Name = "Capped", Tiers = new List<FocusEffects.Tier>
                         {
-                            new() { Effect = "Capped I", TierNum = 1, Items = new List<string> { "Item D" } },
-                            new() { Effect = "Capped II", TierNum = 2, Items = new List<string> { "Item E" } },
+                            new() { Effect = "Capped I", TierNum = 1, Items = new() { new() { Name = "Item D" } } },
+                            new() { Effect = "Capped II", TierNum = 2, Items = new() { new() { Name = "Item E" } } },
                             new() { Effect = "Capped III", TierNum = 3, SummonedOnly = true,
-                                Items = new List<string> { "Summoned: Item F" } },
+                                Items = new() { new() { Name = "Summoned: Item F" } } },
                         },
                     },
                 });

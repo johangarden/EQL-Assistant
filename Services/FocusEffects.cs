@@ -17,6 +17,15 @@ namespace EQLOverlay.Services;
 /// </summary>
 public sealed class FocusEffects
 {
+    /// <summary>One carrier item, with the wiki's slot/class info when it has
+    /// any (Companion-only items arrive name-only).</summary>
+    public sealed class ItemRef
+    {
+        public string Name { get; set; } = "";
+        public string Slot { get; set; } = "";
+        public string Classes { get; set; } = "";
+    }
+
     public sealed class Tier
     {
         public string Effect { get; set; } = "";
@@ -26,7 +35,7 @@ public sealed class FocusEffects
         public int TierNum { get; set; }
         public string Description { get; set; } = "";
         public int? LevelCap { get; set; }
-        public List<string> Items { get; set; } = new();
+        public List<ItemRef> Items { get; set; } = new();
         /// <summary>Every carrier is a conjured "Summoned:" temporary — the
         /// tier exists but can't be hunted as permanent gear.</summary>
         public bool SummonedOnly { get; set; }
@@ -87,9 +96,9 @@ public sealed class FocusEffects
         Families = families;
         foreach (var fam in families)
             foreach (var tier in fam.Tiers)
-                foreach (string item in tier.Items)
+                foreach (var item in tier.Items)
                 {
-                    string key = ItemKey(item);
+                    string key = ItemKey(item.Name);
                     if (!_byItem.TryGetValue(key, out var list))
                         _byItem[key] = list = new List<(Family, Tier)>();
                     list.Add((fam, tier));

@@ -22,11 +22,14 @@ public partial class InventoryWindow : Window
 {
     private sealed record RowVm(string Name, string Location, string? LocationTip, string CountText);
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
+    private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight);
     private sealed record FocusVm(string Family, string Kind, string? FamilyTip, Brush StatusBrush,
         List<PillVm> Pills, string BestText, string? BestTip, string PlaceText, Brush PlaceBrush,
         Visibility PlaceVis = Visibility.Visible,
         Visibility HeaderVis = Visibility.Collapsed, Visibility RowVis = Visibility.Visible,
-        bool IsFoldToggle = false, string? StatusTip = null, Brush? RowBg = null);
+        bool IsFoldToggle = false, string? StatusTip = null, Brush? RowBg = null,
+        string Chevron = "▸", List<DetailVm>? Details = null,
+        Visibility DetailsVis = Visibility.Collapsed);
 
     /// <summary>A section header row ("Spells", "Songs & instruments").</summary>
     private static FocusVm FocusHeader(string title, bool foldToggle = false) => new(title, "", null,
@@ -35,6 +38,8 @@ public partial class InventoryWindow : Window
         IsFoldToggle: foldToggle);
 
     private bool _summonedOpen; // the summoned-charm section starts folded
+    private readonly HashSet<string> _openFamilies = new(StringComparer.Ordinal);
+    private Dictionary<string, string> _ownedByKey = new(StringComparer.Ordinal);
 
     private static readonly (string Id, string Label)[] Tabs =
     {
@@ -172,6 +177,15 @@ public partial class InventoryWindow : Window
         _dump = InventoryStore.Parse(text);
         (_rows, _) = InventoryStore.CarryAll(_dump);
         _audit = _focus.Audit(_rows);
+        // Best place per item key, for the fold-out's "you: worn/in bank".
+        _ownedByKey = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var row in _rows)
+        {
+            string key = FocusEffects.ItemKey(row.Name);
+            if (!_ownedByKey.TryGetValue(key, out string? cur)
+                || OwnRank(row.Lane) < OwnRank(cur))
+                _ownedByKey[key] = row.Lane;
+        }
         if (fromWatch) _parsedAt = DateTime.Now;
 
         NoDumpPanel.Visibility = Visibility.Collapsed;
@@ -364,7 +378,7 @@ public partial class InventoryWindow : Window
             || a.Family.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
             || a.Family.Kind.Contains(q, StringComparison.OrdinalIgnoreCase)
             || a.Family.Tiers.Any(t => t.Effect.Contains(q, StringComparison.OrdinalIgnoreCase)
-                || t.Items.Any(i => i.Contains(q, StringComparison.OrdinalIgnoreCase)));
+                || t.Items.Any(i => i.Name.Contains(q, StringComparison.OrdinalIgnoreCase)));
 
         // Within a section: what you WEAR first, then what you own in
         // storage, the gaps last — alphabetical inside each bucket.
@@ -407,12 +421,42 @@ public partial class InventoryWindow : Window
 
     private void FocusList_Click(object sender, MouseButtonEventArgs e)
     {
-        if ((e.OriginalSource as FrameworkElement)?.DataContext is FocusVm { IsFoldToggle: true })
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not FocusVm vm) return;
+        if (vm.IsFoldToggle)
         {
             _summonedOpen = !_summonedOpen;
-            ApplyFocusFilter(SearchBox.Text.Trim().ToLowerInvariant());
         }
+        else if (vm.RowVis == Visibility.Visible)
+        {
+            // Any click on a family row folds its item details in or out.
+            if (!_openFamilies.Remove(vm.Family)) _openFamilies.Add(vm.Family);
+        }
+        else return;
+        ApplyFocusFilter(SearchBox.Text.Trim().ToLowerInvariant());
     }
+
+    /// <summary>Where you keep an item, for the fold-out: lower = closer to
+    /// being used.</summary>
+    private static int OwnRank(string lane) => lane switch
+    {
+        "worn" => 0,
+        "activated" => 1,
+        "storage" or "keyring" => 2,
+        _ => 3,
+    };
+
+    private static string OwnLabel(string lane) => lane switch
+    {
+        "worn" => "worn",
+        "activated" => "activated item",
+        "storage" => "in storage",
+        "keyring" => "key ring",
+        "bags" => "in bags",
+        "bank" => "in bank",
+        "depot" => "in depot",
+        "hoard" => "in hoard",
+        _ => lane,
+    };
 
     private static readonly Brush WornPillFg = Freeze("#0F1620");
 
@@ -435,7 +479,9 @@ public partial class InventoryWindow : Window
             string? lane = a.TierLanes[i];
             string items = tier.Items.Count == 0
                 ? "No item is known to carry this tier."
-                : "Items: " + string.Join(", ", tier.Items);
+                : tier.Items.Count == 1
+                    ? "Item: " + tier.Items[0].Name
+                    : $"{tier.Items.Count} items — click the row for details.";
             string tip = tier.Effect
                 + (tier.Description.Length > 0 ? "\n" + tier.Description : "")
                 + "\n" + items
@@ -472,6 +518,7 @@ public partial class InventoryWindow : Window
             _ => "None owned.",
         };
         string place = a.BestTier == 0 ? "" : wornIsBest ? "WORN" : a.BestPlace.ToUpperInvariant();
+        bool open = _openFamilies.Contains(a.Family.Name);
         return new FocusVm(a.Family.Name, a.Family.Kind, a.Family.Tiers[0].Description,
             StatusFg[a.Status], pills, best, a.BestTier == 0 ? null : a.BestEffect,
             place, wornIsBest ? StatusFg[2] : StatusFg[1],
@@ -479,7 +526,41 @@ public partial class InventoryWindow : Window
             StatusTip: statusTip,
             // The wash follows the sort bands — wearing / stored / missing —
             // so the background and the row order always agree.
-            RowBg: RowWash[a.WornTier > 0 ? 2 : a.BestTier > 0 ? 1 : 0]);
+            RowBg: RowWash[a.WornTier > 0 ? 2 : a.BestTier > 0 ? 1 : 0],
+            Chevron: open ? "▾" : "▸",
+            Details: open ? MakeDetails(a) : null,
+            DetailsVis: open ? Visibility.Visible : Visibility.Collapsed);
+    }
+
+    private static readonly Brush DetailHeaderFg = Freeze("#9FB4D0");
+    private static readonly Brush DetailDimFg = Freeze("#5F7189");
+
+    /// <summary>The fold-out: every tier with its effect text and every known
+    /// carrier item — slot, classes, and where YOUR copy sits, if anywhere.</summary>
+    private List<DetailVm> MakeDetails(FocusEffects.AuditRow a)
+    {
+        var details = new List<DetailVm>();
+        foreach (var tier in a.Family.Tiers)
+        {
+            string cap = tier.LevelCap is { } c ? $" · decays over lvl {c}" : "";
+            string summoned = tier.SummonedOnly ? " · summoned only" : "";
+            details.Add(new DetailVm($"{tier.Effect}{cap}{summoned}", DetailHeaderFg, FontWeights.SemiBold));
+            if (tier.Description.Length > 0)
+                details.Add(new DetailVm(tier.Description, DetailDimFg, FontWeights.Normal));
+            if (tier.Items.Count == 0)
+                details.Add(new DetailVm("   no item is known to carry this tier", DetailDimFg, FontWeights.Normal));
+            foreach (var item in tier.Items)
+            {
+                var parts = new List<string> { item.Name };
+                if (item.Slot.Length > 0) parts.Add(item.Slot);
+                if (item.Classes.Length > 0) parts.Add(item.Classes);
+                bool owned = _ownedByKey.TryGetValue(FocusEffects.ItemKey(item.Name), out string? lane);
+                if (owned) parts.Add("you: " + OwnLabel(lane!));
+                Brush fg = !owned ? DetailDimFg : lane == "worn" ? StatusFg[2] : StatusFg[1];
+                details.Add(new DetailVm("   " + string.Join("  ·  ", parts), fg, FontWeights.Normal));
+            }
+        }
+        return details;
     }
 
     /// <summary>Selftest hook: front the audit board so its template
