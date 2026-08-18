@@ -273,6 +273,22 @@ public static class InventoryStore
     public static bool IsExaltation(string name) =>
         name.EndsWith(" (Exaltation)", StringComparison.Ordinal);
 
+    /// <summary>The game's slot types, correlated from an in-game item window
+    /// (Aldryn, Blade of the Ocean: Ornamentation / Focus / Click / Worn /
+    /// Proc Exaltation) against observed dump ladders (1|2, 7, 8, 9, 10):
+    /// Slot7 occupants are always focus exaltations, Slot8 held the Golem
+    /// Metal Wand clicky, Slot10 holds weapon procs — 9 and 1/2 follow from
+    /// the window's order. An unmapped number stays a number.</summary>
+    public static (string Short, string Name) SlotType(int n) => n switch
+    {
+        1 or 2 => ("O", "Ornamentation"),
+        7 => ("F", "Focus Exaltation"),
+        8 => ("C", "Click Exaltation"),
+        9 => ("W", "Worn Exaltation"),
+        10 => ("P", "Proc Exaltation"),
+        _ => (n.ToString(), $"Slot {n}"),
+    };
+
     /// <summary>A CONTAINER's children are its contents; an ITEM's children
     /// are its sockets. The observable tells: socket occupants are always
     /// "(Exaltation)" rows, and every ordinary item declares 10 child slots

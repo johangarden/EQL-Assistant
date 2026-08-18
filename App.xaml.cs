@@ -1321,6 +1321,16 @@ public partial class App : Application
                     "Head\tValorium Helmet +1\t4851\t1\t10",
                     "General 1\tBackpack\t17005\t1\t8",
                 }));
+                // Slot types correlated from the in-game item window against
+                // observed ladders (Aldryn's five typed rows = 1|2,7,8,9,10).
+                Check("inventory: slot numbers speak their game types",
+                    InventoryStore.SlotType(7) == ("F", "Focus Exaltation")
+                    && InventoryStore.SlotType(8) == ("C", "Click Exaltation")
+                    && InventoryStore.SlotType(9) == ("W", "Worn Exaltation")
+                    && InventoryStore.SlotType(10) == ("P", "Proc Exaltation")
+                    && InventoryStore.SlotType(1) == ("O", "Ornamentation")
+                    && InventoryStore.SlotType(2) == ("O", "Ornamentation")
+                    && InventoryStore.SlotType(3) == ("3", "Slot 3"));
                 Check("inventory: bags are containers, socketed items are not",
                     InventoryStore.IsContainer(dump.Items.First(e => e.Name == "Spacious Rucksack"))
                     && !InventoryStore.IsContainer(dump.Items.First(e => e.Base == "Ear" && e.Children.Count > 0))

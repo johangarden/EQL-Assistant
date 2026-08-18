@@ -675,12 +675,12 @@ public partial class InventoryWindow : Window
             pills = new List<PillVm>();
             foreach (var child in entry.Children)
             {
-                string n = SlotNumRx.Match(child.Location) is { Success: true } m ? m.Groups[1].Value : "?";
+                var (label, slotName) = SlotTypeOf(child.Location);
                 pills.Add(child.Empty
-                    ? new PillVm(n, Brushes.Transparent, PillOffBorder, PillOffFg,
-                        $"Slot {n} — empty")
-                    : new PillVm(n, StatusBg[2], StatusFg[2], StatusFg[2],
-                        $"Slot {n} — {child.Name}"));
+                    ? new PillVm(label, Brushes.Transparent, PillOffBorder, PillOffFg,
+                        $"{slotName} — empty")
+                    : new PillVm(label, StatusBg[2], StatusFg[2], StatusFg[2],
+                        $"{slotName} — {child.Name}"));
             }
         }
 
@@ -707,20 +707,30 @@ public partial class InventoryWindow : Window
         if (entry is not null)
             foreach (var child in entry.Children)
             {
-                string n = SlotNumRx.Match(child.Location) is { Success: true } m ? m.Groups[1].Value : "?";
+                var (_, slotName) = SlotTypeOf(child.Location);
                 if (child.Empty)
                 {
-                    details.Add(new DetailVm($"slot {n}: empty", DetailDimFg, FontWeights.Normal));
+                    details.Add(new DetailVm($"{slotName}: empty", DetailDimFg, FontWeights.Normal));
                     continue;
                 }
                 var socketFx = _focus.EffectsOf(child.Name);
                 string fx = socketFx.Count > 0
                     ? " — " + string.Join(", ", socketFx.Select(e => $"{e.Tier.Effect} ({e.Fam.Kind})"))
                     : "";
-                details.Add(new DetailVm($"slot {n}: {child.Name}{fx}",
+                details.Add(new DetailVm($"{slotName}: {child.Name}{fx}",
                     socketFx.Count > 0 ? StatusFg[2] : DetailHeaderFg, FontWeights.Normal));
             }
         return details;
+    }
+
+    /// <summary>A child location's slot type ("Head-Slot7" → F / Focus
+    /// Exaltation), unmapped numbers verbatim.</summary>
+    private static (string Label, string Name) SlotTypeOf(string location)
+    {
+        var m = SlotNumRx.Match(location);
+        return m.Success
+            ? InventoryStore.SlotType(int.Parse(m.Groups[1].Value))
+            : ("?", "slot ?");
     }
 
     private static SolidColorBrush Freeze(string hex)
