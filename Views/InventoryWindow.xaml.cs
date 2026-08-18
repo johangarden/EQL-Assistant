@@ -20,7 +20,9 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class InventoryWindow : Window
 {
-    private sealed record RowVm(string Name, string Location, string? LocationTip, string CountText);
+    private sealed record RowVm(string Name, string Location, string? LocationTip, string CountText,
+        List<PillVm>? Pills = null, string Chevron = "", List<DetailVm>? Details = null,
+        Visibility DetailsVis = Visibility.Collapsed, string RowKey = "");
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
     private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight);
     private sealed record FocusVm(string Family, string Kind, string? FamilyTip, Brush StatusBrush,
@@ -39,6 +41,8 @@ public partial class InventoryWindow : Window
 
     private bool _summonedOpen; // the summoned-charm section starts folded
     private string? _openFamily; // accordion: at most one family unfolded
+    private string? _openItem;   // same accordion rule on the Items tab
+    private Dictionary<string, InventoryStore.Entry> _entryByLoc = new(StringComparer.Ordinal);
     private Dictionary<string, string> _ownedByKey = new(StringComparer.Ordinal);
 
     private static readonly (string Id, string Label)[] Tabs =
@@ -179,6 +183,14 @@ public partial class InventoryWindow : Window
         _dump = InventoryStore.Parse(text);
         (_rows, _) = InventoryStore.CarryAll(_dump);
         _audit = _focus.Audit(_rows);
+        // Location → tree entry, for the Items tab's socket pills.
+        _entryByLoc = new Dictionary<string, InventoryStore.Entry>(StringComparer.Ordinal);
+        void WalkEntries(InventoryStore.Entry e)
+        {
+            _entryByLoc[e.Location] = e;
+            foreach (var c in e.Children) WalkEntries(c);
+        }
+        foreach (var e in _dump.Items) WalkEntries(e);
         // Best place per item key, for the fold-out's "you: worn/in bank".
         _ownedByKey = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var row in _rows)
@@ -460,6 +472,14 @@ public partial class InventoryWindow : Window
         EmptyTabText.Visibility = Visibility.Collapsed;
     }
 
+    private void ResultsList_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not RowVm vm) return;
+        if (vm.Chevron.Length == 0) return; // nothing to unfold
+        _openItem = _openItem == vm.RowKey ? null : vm.RowKey;
+        ApplyFilters();
+    }
+
     private void FocusList_Click(object sender, MouseButtonEventArgs e)
     {
         if ((e.OriginalSource as FrameworkElement)?.DataContext is not FocusVm vm) return;
@@ -631,15 +651,74 @@ public partial class InventoryWindow : Window
         return tierNum.ToString();
     }
 
+    private static readonly System.Text.RegularExpressions.Regex SlotNumRx =
+        new(@"-Slot(\d+)$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     /// <summary>An exaltation's interesting "where" is the item wearing it,
-    /// not the socket path — the verbatim spelling stays on the tooltip.</summary>
+    /// not the socket path — the verbatim spelling stays on the tooltip.
+    /// Items with sockets wear a pill per slot (green = occupied, gray =
+    /// empty; numbers are the dump's spelling — the game's slot TYPES are
+    /// not stated anywhere observable) and unfold for the details.</summary>
     private RowVm MakeRowVm(InventoryStore.CarryRow r)
     {
         string count = r.Count > 1 ? $"{r.Count}×" : "";
         if (_tab == "exalt" && r.Host.Length > 0)
             return new RowVm(r.Name, "in " + r.Host, r.Location, count);
+
+        List<PillVm>? pills = null;
+        var ownEffects = _focus.EffectsOf(r.Name);
+        _entryByLoc.TryGetValue(r.Location, out var entry);
+        if (entry is { Children.Count: > 0 })
+        {
+            pills = new List<PillVm>();
+            foreach (var child in entry.Children)
+            {
+                string n = SlotNumRx.Match(child.Location) is { Success: true } m ? m.Groups[1].Value : "?";
+                pills.Add(child.Empty
+                    ? new PillVm(n, Brushes.Transparent, PillOffBorder, PillOffFg,
+                        $"Slot {n} — empty")
+                    : new PillVm(n, StatusBg[2], StatusFg[2], StatusFg[2],
+                        $"Slot {n} — {child.Name}"));
+            }
+        }
+
+        bool foldable = pills is not null || ownEffects.Count > 0;
+        bool open = foldable && _openItem == r.Location;
         return new RowVm(r.Name, r.Location,
-            r.Host.Length > 0 ? "inside " + r.Host : null, count);
+            r.Host.Length > 0 ? "inside " + r.Host : null, count,
+            pills,
+            Chevron: foldable ? (open ? "▾" : "▸") : "",
+            Details: open ? MakeItemDetails(r, entry, ownEffects) : null,
+            DetailsVis: open ? Visibility.Visible : Visibility.Collapsed,
+            RowKey: r.Location);
+    }
+
+    /// <summary>The item fold-out: what the item itself grants, then each
+    /// socket with its occupant and anything we can PROVE about it (its
+    /// focus effect via the audit table — slot types are the game's secret).</summary>
+    private List<DetailVm> MakeItemDetails(InventoryStore.CarryRow r,
+        InventoryStore.Entry? entry, IReadOnlyList<(FocusEffects.Family Fam, FocusEffects.Tier Tier)> ownEffects)
+    {
+        var details = new List<DetailVm>();
+        foreach (var (fam, tier) in ownEffects)
+            details.Add(new DetailVm($"focus: {tier.Effect} · {fam.Kind}", StatusFg[2], FontWeights.SemiBold));
+        if (entry is not null)
+            foreach (var child in entry.Children)
+            {
+                string n = SlotNumRx.Match(child.Location) is { Success: true } m ? m.Groups[1].Value : "?";
+                if (child.Empty)
+                {
+                    details.Add(new DetailVm($"slot {n}: empty", DetailDimFg, FontWeights.Normal));
+                    continue;
+                }
+                var socketFx = _focus.EffectsOf(child.Name);
+                string fx = socketFx.Count > 0
+                    ? " — " + string.Join(", ", socketFx.Select(e => $"{e.Tier.Effect} ({e.Fam.Kind})"))
+                    : "";
+                details.Add(new DetailVm($"slot {n}: {child.Name}{fx}",
+                    socketFx.Count > 0 ? StatusFg[2] : DetailHeaderFg, FontWeights.Normal));
+            }
+        return details;
     }
 
     private static SolidColorBrush Freeze(string hex)

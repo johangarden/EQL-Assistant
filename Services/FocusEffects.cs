@@ -155,6 +155,13 @@ public sealed class FocusEffects
         return s.Replace("`", "").Replace("'", "").ToLowerInvariant();
     }
 
+    /// <summary>Every focus effect a named item is known to carry (empty for
+    /// items the table has never heard of).</summary>
+    public IReadOnlyList<(Family Fam, Tier Tier)> EffectsOf(string itemName) =>
+        _byItem.TryGetValue(ItemKey(itemName), out var hits)
+            ? hits
+            : Array.Empty<(Family, Tier)>();
+
     /// <summary>Audit the dump's rows: for every family, the best tier among
     /// the items owned anywhere (worn, bags, bank, depot, key ring), and
     /// where the granting item sits. Preference among equal tiers: worn

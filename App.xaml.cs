@@ -1399,6 +1399,10 @@ public partial class App : Application
                     // The game says "Djarn's", the wiki page says "Djarns" —
                     // the audit once missed a WORN Spell Haste II over it.
                     && FocusEffects.ItemKey("Djarn's Amethyst Ring +2") == FocusEffects.ItemKey("Djarns Amethyst Ring"));
+                Check("focus: EffectsOf answers per item for the socket fold-outs",
+                    focus.EffectsOf("Wicked Sallet +5").Any(e => e.Tier.Effect == "Mana Preservation I")
+                    && focus.EffectsOf("Wicked Sallet (Exaltation)").Any(e => e.Tier.Effect == "Mana Preservation I")
+                    && focus.EffectsOf("A Perfectly Ordinary Rock").Count == 0);
                 var djarns = focus.Audit(new[]
                 {
                     new InventoryStore.CarryRow("Djarn's Amethyst Ring +2", "djarn's amethyst ring +2", "Fingers", 1, "worn", 1),

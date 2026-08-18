@@ -61,22 +61,57 @@
         <Grid>
             <ListBox x:Name="ResultsList"
                      HorizontalContentAlignment="Stretch"
+                     PreviewMouseLeftButtonUp="ResultsList_Click"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      VirtualizingPanel.VirtualizationMode="Recycling">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <DockPanel Margin="2,2">
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}"
-                                       Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" FontSize="11"
-                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding Location}"
-                                       ToolTip="{Binding LocationTip}"
-                                       Foreground="{StaticResource Brush.TextHint}" FontSize="11"
-                                       VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="190"
-                                       TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                        </DockPanel>
+                        <StackPanel Margin="2,2">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Chevron}" Width="12"
+                                           Foreground="{StaticResource Brush.TextHint}" FontSize="10"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}"
+                                           Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" FontSize="11"
+                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding Location}"
+                                           ToolTip="{Binding LocationTip}"
+                                           Foreground="{StaticResource Brush.TextHint}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="190"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <!-- socket pills: green = occupied, gray = empty -->
+                                <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Pills}"
+                                              VerticalAlignment="Center" Margin="8,0,0,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="8" Padding="6,0,6,1" Margin="0,0,4,0"
+                                                    Background="{Binding Bg}" BorderBrush="{Binding Border}"
+                                                    BorderThickness="1" ToolTip="{Binding Tip}">
+                                                <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="{Binding Fg}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding Details}" Visibility="{Binding DetailsVis}"
+                                          Margin="26,4,0,2">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
+                                                   FontWeight="{Binding Weight}" FontSize="11"
+                                                   TextWrapping="Wrap" Margin="0,1"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
