@@ -27,6 +27,9 @@ public sealed class FocusEffects
         public string Description { get; set; } = "";
         public int? LevelCap { get; set; }
         public List<string> Items { get; set; } = new();
+        /// <summary>Every carrier is a conjured "Summoned:" temporary — the
+        /// tier exists but can't be hunted as permanent gear.</summary>
+        public bool SummonedOnly { get; set; }
     }
 
     public sealed class Family
@@ -51,7 +54,14 @@ public sealed class FocusEffects
         string BestItem, string BestPlace, IReadOnlyList<string?> TierLanes, int WornTier)
     {
         public IReadOnlyList<bool> OwnedTiers => TierLanes.Select(l => l is not null).ToList();
-        public int Status => BestTier == 0 ? 0 : WornTier == Family.Tiers.Count ? 2 : 1;
+
+        /// <summary>The green line: the highest tier obtainable as PERMANENT
+        /// gear (summoned-only tiers can't be hunted); a family that is all
+        /// summoned judges against its own ladder.</summary>
+        public int HuntableMax => Family.Tiers.Where(t => !t.SummonedOnly)
+            .Select(t => t.TierNum).DefaultIfEmpty(Family.Tiers.Count).Max();
+
+        public int Status => BestTier == 0 ? 0 : WornTier >= HuntableMax ? 2 : 1;
     }
 
     public IReadOnlyList<Family> Families { get; }

@@ -1445,6 +1445,30 @@ public partial class App : Application
                 });
                 Check("focus: best tier in the bank reads orange, never green",
                     banked[0] is { BestTier: 3, WornTier: 0, Status: 1, BestPlace: "in bank" });
+
+                // A summoned-only top tier can't be hunted — wearing the best
+                // PERMANENT tier is green (Burning Affliction IV is only a
+                // conjured Rallican bracelet).
+                var capped = new FocusEffects(new List<FocusEffects.Family>
+                {
+                    new()
+                    {
+                        Name = "Capped", Tiers = new List<FocusEffects.Tier>
+                        {
+                            new() { Effect = "Capped I", TierNum = 1, Items = new List<string> { "Item D" } },
+                            new() { Effect = "Capped II", TierNum = 2, Items = new List<string> { "Item E" } },
+                            new() { Effect = "Capped III", TierNum = 3, SummonedOnly = true,
+                                Items = new List<string> { "Summoned: Item F" } },
+                        },
+                    },
+                });
+                Check("focus: the green line stops at the best huntable tier",
+                    capped.Audit(new[]
+                    {
+                        new InventoryStore.CarryRow("Item E", "item e", "Head", 1, "worn", 1),
+                    })[0] is { WornTier: 2, HuntableMax: 2, Status: 2 }
+                    && new FocusEffects().Families.First(f => f.Name == "Burning Affliction")
+                        .Tiers.Single(t => t.Effect == "Burning Affliction IV").SummonedOnly);
             }
         }
         catch (Exception ex)

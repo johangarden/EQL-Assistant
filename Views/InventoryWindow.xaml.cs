@@ -55,6 +55,9 @@ public partial class InventoryWindow : Window
         { Freeze("#2DE57373"), Freeze("#2DFFB74D"), Freeze("#2D66BB6A") };
     private static readonly Brush PillOffBorder = Freeze("#3A4560");
     private static readonly Brush PillOffFg = Freeze("#5F7189");
+    // A summoned-only tier can't be hunted — it ghosts instead of nagging.
+    private static readonly Brush PillGhostBorder = Freeze("#232C3E");
+    private static readonly Brush PillGhostFg = Freeze("#404E63");
 
     // Lane chips wear their family: a cool wash for what's ON you (worn,
     // bags, the keyring collections), a warm wash for what's STASHED (bank,
@@ -412,11 +415,15 @@ public partial class InventoryWindow : Window
 
     private FocusVm MakeFocusVm(FocusEffects.AuditRow a)
     {
-        // "Minor Improved Damage I" and "Improved Damage I" share a trailing
-        // numeral — when labels collide inside a family, number them 1..N.
+        // Pills speak the game's numerals ("Improved Damage II" wears a II).
+        // "Minor Improved Damage I" collides with "Improved Damage I" — the
+        // variant that doesn't start with the family name keeps its first
+        // word: Minor I · I · II · III.
         var labels = a.Family.Tiers.Select(t => TierLabel(t.Effect, t.TierNum)).ToList();
         if (labels.Distinct().Count() != labels.Count)
-            labels = a.Family.Tiers.Select(t => t.TierNum.ToString()).ToList();
+            for (int i = 0; i < labels.Count; i++)
+                if (!a.Family.Tiers[i].Effect.StartsWith(a.Family.Name, StringComparison.Ordinal))
+                    labels[i] = a.Family.Tiers[i].Effect.Split(' ')[0] + " " + labels[i];
 
         var pills = new List<PillVm>();
         for (int i = 0; i < a.Family.Tiers.Count; i++)
@@ -428,16 +435,20 @@ public partial class InventoryWindow : Window
                 : "Items: " + string.Join(", ", tier.Items);
             string tip = tier.Effect
                 + (tier.Description.Length > 0 ? "\n" + tier.Description : "")
-                + "\n" + items;
+                + "\n" + items
+                + (tier.SummonedOnly ? "\n(summoned only — a conjured temporary, not huntable gear)" : "");
             string label = labels[i];
-            // Three states: WORN fills solid, owned-but-stored keeps the
-            // translucent wash, unowned stays a gray outline.
+            // Four states: WORN fills solid, owned-but-stored keeps the
+            // translucent wash, unowned stays a gray outline — and an unowned
+            // summoned-only tier ghosts out (it never counts against you).
             pills.Add(lane switch
             {
                 "worn" => new PillVm(label, StatusFg[a.Status], StatusFg[a.Status], WornPillFg,
                     tip + "\n(worn)"),
                 not null => new PillVm(label, StatusBg[a.Status], StatusFg[a.Status], StatusFg[a.Status],
                     tip + "\n(owned, not worn)"),
+                null when tier.SummonedOnly => new PillVm(label, Brushes.Transparent,
+                    PillGhostBorder, PillGhostFg, tip),
                 null => new PillVm(label, Brushes.Transparent, PillOffBorder, PillOffFg, tip),
             });
         }

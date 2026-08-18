@@ -125,7 +125,8 @@
           "levelCap": 65,
           "items": [
             "Summoned: Rallican's Steel Bracelet"
-          ]
+          ],
+          "summonedOnly": true
         }
       ]
     },
@@ -249,7 +250,8 @@
           "levelCap": 34,
           "items": [
             "Summoned: Gallenite's Jade Bracelet"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Gallenite's Destruction",
@@ -258,7 +260,8 @@
           "levelCap": 52,
           "items": [
             "Summoned: Gallenite's Opal Bracelet"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Gallenite's Major Destruction",
@@ -267,7 +270,8 @@
           "levelCap": 60,
           "items": [
             "Summoned: Gallenite's Ruby Bracelet"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Gallenite's Chaos",
@@ -276,7 +280,8 @@
           "levelCap": 65,
           "items": [
             "Summoned: Gallenite's Sapphire Bracelet"
-          ]
+          ],
+          "summonedOnly": true
         }
       ]
     },
@@ -373,7 +378,8 @@
           "levelCap": null,
           "items": [
             "Summoned: Jedah's Brass Choker"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Jedah's Conservation",
@@ -382,7 +388,8 @@
           "levelCap": null,
           "items": [
             "Summoned: Jedah's Silver Choker"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Jedah's Greater Conservation",
@@ -391,7 +398,8 @@
           "levelCap": null,
           "items": [
             "Summoned: Jedah's Golden Choker"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Jedah's Superior Conservation",
@@ -400,7 +408,8 @@
           "levelCap": null,
           "items": [
             "Summoned: Jedah's Platinum Choker"
-          ]
+          ],
+          "summonedOnly": true
         }
       ]
     },
@@ -416,7 +425,8 @@
           "levelCap": 24,
           "items": [
             "Summoned: Jolum's Tarnished Bauble"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Jolum's Abatement",
@@ -425,7 +435,8 @@
           "levelCap": 50,
           "items": [
             "Summoned: Jolum's Shiny Bauble"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Jolum's Major Abatement",
@@ -434,7 +445,8 @@
           "levelCap": 60,
           "items": [
             "Summoned: Jolum's Brilliant Bauble"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Jolum's Superior Abatement",
@@ -443,7 +455,8 @@
           "levelCap": 65,
           "items": [
             "Summoned: Jolum's Glowing Bauble"
-          ]
+          ],
+          "summonedOnly": true
         }
       ]
     },
@@ -490,7 +503,8 @@
           "levelCap": 29,
           "items": [
             "Summoned: Naki's Tiny Ring"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Naki's Charm of Pernicity",
@@ -499,7 +513,8 @@
           "levelCap": 51,
           "items": [
             "Summoned: Naki's Twisted Ring"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Naki's Greater Pernicity",
@@ -508,7 +523,8 @@
           "levelCap": 60,
           "items": [
             "Summoned: Naki's Studded Ring"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Naki's Superior Pernicity",
@@ -517,7 +533,8 @@
           "levelCap": 65,
           "items": [
             "Summoned: Naki's Spiked Ring"
-          ]
+          ],
+          "summonedOnly": true
         }
       ]
     },
@@ -804,7 +821,8 @@
           "levelCap": 16,
           "items": [
             "Summoned: Tavee's Linen Mantle"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Tavee's Charm of Diuturnity",
@@ -813,7 +831,8 @@
           "levelCap": 49,
           "items": [
             "Summoned: Tavee's Leather Mantle"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Tavee's Greater Diuturnity",
@@ -822,7 +841,8 @@
           "levelCap": 60,
           "items": [
             "Summoned: Tavee's Silken Mantle"
-          ]
+          ],
+          "summonedOnly": true
         },
         {
           "effect": "Tavee's Superior Diuturnity",
@@ -831,7 +851,8 @@
           "levelCap": 65,
           "items": [
             "Summoned: Tavee's Runed Mantle"
-          ]
+          ],
+          "summonedOnly": true
         }
       ]
     },
