@@ -657,6 +657,13 @@ public sealed class CombatParser
         @"^(?<tgt>.+?) has taken (?<dmg>\d+)(?: \(\d+\))? damage from your (?<spell>.+?)\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Ticks ON YOU are second person — "You have taken 29 damage from Searing
+    // Arrow by Gynok Moltor pet." (observed at the 2026-08-16 Gynok death; the
+    // form that killed Thorrak and fell through every regex here).
+    private static readonly Regex DotYouRx = new(
+        @"^You have taken (?<dmg>\d+)(?: \(\d+\))? damage from (?<spell>.+?) by (?<att>.+?)\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     // "by <spell>" is optional — plain "You healed Thorrak for 12 hit points."
     // exists too, as does "healed <tgt> over time for" on HoT ticks.
     private static readonly Regex HealRx = new(
@@ -664,7 +671,7 @@ public sealed class CombatParser
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex MeleeRx = new(
-        @"^(?<att>.+?) (?<verb>slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?|gores?|mauls?|stings?|rends?|slams?|reaves?) (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of damage\.",
+        @"^(?<att>.+?) (?<verb>slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?|gores?|mauls?|stings?|rends?|slams?|reaves?|strikes?) (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of damage\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // Damage shields: "Orc slaver is pierced by YOUR thorns for 8 points of
@@ -676,6 +683,12 @@ public sealed class CombatParser
 
     private static readonly Regex ThornsInRx = new(
         @"^YOU are pierced by (?<att>.+?)'s thorns for (?<dmg>\d+)(?: \(\d+\))? points? of non-melee damage!",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // The fire variant of the same shield: "YOU are burned by a hardened
+    // skeleton's flames for 6 points of non-melee damage!" (observed 2026-08-16).
+    private static readonly Regex FlamesInRx = new(
+        @"^YOU are burned by (?<att>.+?)'s flames for (?<dmg>\d+)(?: \(\d+\))? points? of non-melee damage!",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // Unattributed spell damage on you: "You were hit by non-melee for 100 damage."
@@ -691,6 +704,7 @@ public sealed class CombatParser
         ["claws"] = "claw", ["backstabs"] = "backstab", ["cleaves"] = "cleave", ["gores"] = "gore",
         ["mauls"] = "maul", ["stings"] = "sting", ["rends"] = "rend", ["slams"] = "slam",
         ["reaves"] = "reave", // EQL shadowknight skill; rider damage logs separately as "Reaving Strike"
+        ["strikes"] = "strike", // observed on hardened skeletons (2026-08-16)
     };
 
     private static readonly HashSet<string> MeleeAbilities =
@@ -897,6 +911,13 @@ public sealed class CombatParser
             return;
         }
 
+        m = DotYouRx.Match(body);
+        if (m.Success)
+        {
+            AddDamage(m.Groups["att"].Value, Self(), m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            return;
+        }
+
         m = HealRx.Match(body);
         if (m.Success)
         {
@@ -921,6 +942,9 @@ public sealed class CombatParser
 
         m = ThornsInRx.Match(body);
         if (m.Success) { AddDamage(m.Groups["att"].Value, Self(), "thorns", Amount(m, "dmg"), time, SctFlavor.Proc, crit); return; }
+
+        m = FlamesInRx.Match(body);
+        if (m.Success) { AddDamage(m.Groups["att"].Value, Self(), "flames", Amount(m, "dmg"), time, SctFlavor.Proc, crit); return; }
 
         m = NonMeleeYouRx.Match(body);
         if (m.Success) { AddIncomingOnly("non-melee", Amount(m, "dmg"), time, crit); return; }

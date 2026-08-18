@@ -1677,6 +1677,30 @@ public partial class App : Application
                 CombatParser.IsMeleeAbility("backstab") && CombatParser.IsMeleeAbility("slash")
                 && !CombatParser.IsMeleeAbility("thorns") && !CombatParser.IsMeleeAbility("Tainted Breath"));
 
+            // ---- forms observed at the 2026-08-16 Gynok Moltor death ------------
+            // The killing blow was a second-person DoT tick that no regex
+            // caught; the raid also swung "strikes" and burned with a flame
+            // damage shield.
+            var pg = new CombatParser();
+            var deaths = new List<CombatParser.DeathEvent>();
+            pg.PlayerDied += d => deaths.Add(d);
+            pg.ProcessLine("[Sun Aug 16 23:09:58 2026] A hardened skeleton strikes YOU for 8 points of damage.");
+            pg.ProcessLine("[Sun Aug 16 23:09:58 2026] YOU are burned by a hardened skeleton's flames for 6 points of non-melee damage!");
+            pg.ProcessLine("[Sun Aug 16 23:10:02 2026] You have taken 1 damage from Rabies by a greater mummy.");
+            pg.ProcessLine("[Sun Aug 16 23:10:02 2026] You have taken 29 damage from Searing Arrow by Gynok Moltor pet.");
+            pg.ProcessLine("[Sun Aug 16 23:10:02 2026] You died.");
+            var ginc = pg.GetIncomingAbilityRows(pet: false);
+            Check("incoming: 'strikes' melee verb tracked",
+                ginc.First(r => r.Name == "strike") is { Total: 8 });
+            Check("incoming: flame damage shield tracked",
+                ginc.First(r => r.Name == "flames") is { Total: 6 });
+            Check("incoming: second-person DoT tick attributed to its caster",
+                ginc.First(r => r.Name == "Searing Arrow") is { Total: 29 }
+                && ginc.First(r => r.Name == "Rabies") is { Total: 1 });
+            Check("recap: the killing tick reaches the death event",
+                deaths is [{ } gd]
+                && gd.Events.Any(e => e.Ability == "Searing Arrow" && (int)e.Amount == 29));
+
             // Plane of Sky quest tracker: data loads, completion watcher works
             // (temp progress path so tests never touch real progress).
             string skyProgress = Path.Combine(Path.GetTempPath(), "eql_sky_test.json");
