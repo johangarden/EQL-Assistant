@@ -1421,6 +1421,14 @@ public partial class App : Application
                 });
                 Check("focus: top tier reads green and worn beats banked at the same tier",
                     worn[0] is { BestTier: 3, Status: 2, BestPlace: "worn" });
+                // Green means WEARING the best — the top tier sitting in the
+                // bank is an orange, not a trophy.
+                var banked = mini.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("Item C", "item c", "Bank1", 1, "bank", 1),
+                });
+                Check("focus: best tier in the bank reads orange, never green",
+                    banked[0] is { BestTier: 3, WornTier: 0, Status: 1, BestPlace: "in bank" });
             }
         }
         catch (Exception ex)

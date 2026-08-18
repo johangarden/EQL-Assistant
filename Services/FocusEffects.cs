@@ -41,13 +41,17 @@ public sealed class FocusEffects
     }
 
     /// <summary>One family's audit row: the best tier among the items you
-    /// hold, and the item + place granting it. BestTier is 0 when you own
-    /// none. Status: 2 = best available (green), 1 = something but better
-    /// exists (orange), 0 = nothing (red).</summary>
+    /// hold, the item + place granting it, and the best tier you actually
+    /// WEAR. BestTier is 0 when you own none. Status answers "am I wearing
+    /// the best there is": 2 = wearing the top tier (green), 1 = owning
+    /// something — worn lower, or best sitting in storage (orange),
+    /// 0 = nothing (red). TierLanes carries WHERE each owned tier sits
+    /// (null = not owned).</summary>
     public sealed record AuditRow(Family Family, int BestTier, string BestEffect,
-        string BestItem, string BestPlace, IReadOnlyList<bool> OwnedTiers)
+        string BestItem, string BestPlace, IReadOnlyList<string?> TierLanes, int WornTier)
     {
-        public int Status => BestTier == 0 ? 0 : BestTier == Family.Tiers.Count ? 2 : 1;
+        public IReadOnlyList<bool> OwnedTiers => TierLanes.Select(l => l is not null).ToList();
+        public int Status => BestTier == 0 ? 0 : WornTier == Family.Tiers.Count ? 2 : 1;
     }
 
     public IReadOnlyList<Family> Families { get; }
@@ -187,10 +191,16 @@ public sealed class FocusEffects
         foreach (var fam in Families)
         {
             owned.TryGetValue(fam, out var tiers);
-            var ownedFlags = fam.Tiers.Select(t => tiers?.ContainsKey(t.TierNum) == true).ToList();
-            int best = 0;
+            var lanes = fam.Tiers
+                .Select(t => tiers is not null && tiers.TryGetValue(t.TierNum, out var hit)
+                    ? hit.Lane : null)
+                .ToList();
+            int best = 0, worn = 0;
             for (int i = fam.Tiers.Count - 1; i >= 0; i--)
-                if (ownedFlags[i]) { best = fam.Tiers[i].TierNum; break; }
+            {
+                if (best == 0 && lanes[i] is not null) best = fam.Tiers[i].TierNum;
+                if (worn == 0 && lanes[i] == "worn") worn = fam.Tiers[i].TierNum;
+            }
             string effect = "", item = "", place = "";
             if (best > 0 && tiers is not null)
             {
@@ -199,7 +209,7 @@ public sealed class FocusEffects
                 item = hit.Item;
                 place = PlaceLabel(hit.Lane);
             }
-            result.Add(new AuditRow(fam, best, effect, item, place, ownedFlags));
+            result.Add(new AuditRow(fam, best, effect, item, place, lanes, worn));
         }
         return result;
     }

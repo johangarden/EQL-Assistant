@@ -103,6 +103,12 @@
                                     <TextBlock Text="{Binding Kind}" Foreground="{StaticResource Brush.TextHint}"
                                                FontSize="10" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
+                                <!-- Place badge: green WORN when the best owned tier is on
+                                     your body, amber IN BANK / STORAGE / … when it isn't. -->
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding PlaceText}"
+                                           Visibility="{Binding PlaceVis}"
+                                           Foreground="{Binding PlaceBrush}" FontSize="10" FontWeight="Bold"
+                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding BestText}"
                                            ToolTip="{Binding BestTip}"
                                            Foreground="{StaticResource Brush.TextHint}" FontSize="11"

@@ -23,12 +23,14 @@ public partial class InventoryWindow : Window
     private sealed record RowVm(string Name, string Location, string? LocationTip, string CountText);
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
     private sealed record FocusVm(string Family, string Kind, string? FamilyTip, Brush StatusBrush,
-        List<PillVm> Pills, string BestText, string? BestTip,
+        List<PillVm> Pills, string BestText, string? BestTip, string PlaceText, Brush PlaceBrush,
+        Visibility PlaceVis = Visibility.Visible,
         Visibility HeaderVis = Visibility.Collapsed, Visibility RowVis = Visibility.Visible);
 
     /// <summary>A section header row ("Spells", "Songs & instruments").</summary>
     private static FocusVm FocusHeader(string title) => new(title, "", null, Brushes.Transparent,
-        new List<PillVm>(), "", null, HeaderVis: Visibility.Visible, RowVis: Visibility.Collapsed);
+        new List<PillVm>(), "", null, "", Brushes.Transparent, Visibility.Collapsed,
+        HeaderVis: Visibility.Visible, RowVis: Visibility.Collapsed);
 
     private static readonly (string Id, string Label)[] Tabs =
     {
@@ -371,28 +373,45 @@ public partial class InventoryWindow : Window
         EmptyTabText.Visibility = Visibility.Collapsed;
     }
 
+    private static readonly Brush WornPillFg = Freeze("#0F1620");
+
     private FocusVm MakeFocusVm(FocusEffects.AuditRow a)
     {
         var pills = new List<PillVm>();
         for (int i = 0; i < a.Family.Tiers.Count; i++)
         {
             var tier = a.Family.Tiers[i];
-            bool owned = a.OwnedTiers[i];
+            string? lane = a.TierLanes[i];
             string items = tier.Items.Count == 0
                 ? "No item is known to carry this tier."
                 : "Items: " + string.Join(", ", tier.Items);
             string tip = tier.Effect
                 + (tier.Description.Length > 0 ? "\n" + tier.Description : "")
                 + "\n" + items;
-            pills.Add(owned
-                ? new PillVm(TierLabel(tier.Effect, tier.TierNum), StatusBg[a.Status],
-                    StatusFg[a.Status], StatusFg[a.Status], tip)
-                : new PillVm(TierLabel(tier.Effect, tier.TierNum), Brushes.Transparent,
-                    PillOffBorder, PillOffFg, tip));
+            string label = TierLabel(tier.Effect, tier.TierNum);
+            // Three states: WORN fills solid, owned-but-stored keeps the
+            // translucent wash, unowned stays a gray outline.
+            pills.Add(lane switch
+            {
+                "worn" => new PillVm(label, StatusFg[a.Status], StatusFg[a.Status], WornPillFg,
+                    tip + "\n(worn)"),
+                not null => new PillVm(label, StatusBg[a.Status], StatusFg[a.Status], StatusFg[a.Status],
+                    tip + "\n(owned, not worn)"),
+                null => new PillVm(label, Brushes.Transparent, PillOffBorder, PillOffFg, tip),
+            });
         }
-        string best = a.BestTier == 0 ? "none owned" : $"{a.BestItem} · {a.BestPlace}";
+
+        bool wornIsBest = a.BestTier > 0 && a.WornTier == a.BestTier;
+        string best = a.BestTier == 0
+            ? "none owned"
+            : a.WornTier > 0 && !wornIsBest
+                ? $"{a.BestItem} (wearing {a.WornTier})"
+                : a.BestItem;
+        string place = a.BestTier == 0 ? "" : wornIsBest ? "WORN" : a.BestPlace.ToUpperInvariant();
         return new FocusVm(a.Family.Name, a.Family.Kind, a.Family.Tiers[0].Description,
-            StatusFg[a.Status], pills, best, a.BestTier == 0 ? null : a.BestEffect);
+            StatusFg[a.Status], pills, best, a.BestTier == 0 ? null : a.BestEffect,
+            place, wornIsBest ? StatusFg[2] : StatusFg[1],
+            a.BestTier == 0 ? Visibility.Collapsed : Visibility.Visible);
     }
 
     /// <summary>Selftest hook: front the audit board so its template
