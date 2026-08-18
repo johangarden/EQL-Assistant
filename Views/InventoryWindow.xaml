@@ -67,6 +67,8 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Margin="2,2">
+                            <Border Height="1" Background="{StaticResource Brush.Border}"
+                                    Margin="10,2,10,5" Visibility="{Binding RuleVis}"/>
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Left" Text="{Binding Chevron}" Width="12"
                                            Foreground="{StaticResource Brush.TextHint}" FontSize="10"

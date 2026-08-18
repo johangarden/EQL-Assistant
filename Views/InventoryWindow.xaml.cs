@@ -22,7 +22,8 @@ public partial class InventoryWindow : Window
 {
     private sealed record RowVm(string Name, string Location, string? LocationTip, string CountText,
         List<PillVm>? Pills = null, string Chevron = "", List<DetailVm>? Details = null,
-        Visibility DetailsVis = Visibility.Collapsed, string RowKey = "");
+        Visibility DetailsVis = Visibility.Collapsed, string RowKey = "",
+        Visibility RuleVis = Visibility.Collapsed);
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
     private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight);
     private sealed record FocusVm(string Family, string Kind, string? FamilyTip, Brush StatusBrush,
@@ -418,8 +419,17 @@ public partial class InventoryWindow : Window
             .OrderBy(r => r.Lane == "worn" ? 0 : 1)
             .ThenBy(r => r.Lane == "worn" ? InventoryStore.WornRank(r.Location) : 0)
             .ThenBy(r => r.Line)
-            .Select(MakeRowVm)
-            .ToList();
+            .ToList()
+            is var sorted ? sorted.Select((r, i) =>
+            {
+                // A thin rule where one worn band ends and the next begins
+                // (armor | jewelry | weapons | wildcards | everything else).
+                static int Band(InventoryStore.CarryRow x) =>
+                    x.Lane == "worn" ? InventoryStore.WornBand(x.Location) : 99;
+                bool rule = i > 0 && Band(sorted[i - 1]) != Band(r)
+                    && (Band(sorted[i - 1]) != 99 || Band(r) != 99);
+                return MakeRowVm(r) with { RuleVis = rule ? Visibility.Visible : Visibility.Collapsed };
+            }).ToList() : new List<RowVm>();
         ResultsList.ItemsSource = matched;
         CountText.Text = $"{matched.Count} of {tabRows.Count}";
         EmptyTabText.Text = _tab == "exalt" ? "No exaltation sockets in this dump." : "Nothing in this dump.";

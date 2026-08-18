@@ -295,6 +295,17 @@ public static class InventoryStore
         return i >= 0 ? i : WornOrder.Length;
     }
 
+    /// <summary>Which display band a worn token sits in — armor(0),
+    /// jewelry(1), weapons(2), wildcards(3) — for the thin rules between
+    /// them. Unknown tokens ride the last band.</summary>
+    public static int WornBand(string baseToken) => WornRank(baseToken) switch
+    {
+        <= 8 => 0,   // Head … Feet
+        <= 13 => 1,  // Ear … Back
+        <= 18 => 2,  // Primary … Held
+        _ => 3,      // Any Slot + unknown
+    };
+
     /// <summary>The game's slot types, correlated from an in-game item window
     /// (Aldryn, Blade of the Ocean: Ornamentation / Focus / Click / Worn /
     /// Proc Exaltation) against observed dump ladders (1|2, 7, 8, 9, 10):
