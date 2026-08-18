@@ -273,6 +273,19 @@ public static class InventoryStore
     public static bool IsExaltation(string name) =>
         name.EndsWith(" (Exaltation)", StringComparison.Ordinal);
 
+    /// <summary>A CONTAINER's children are its contents; an ITEM's children
+    /// are its sockets. The observable tells: socket occupants are always
+    /// "(Exaltation)" rows, and every ordinary item declares 10 child slots
+    /// while bags declare their bag size (8, 24…). An all-empty 10-slot bag
+    /// (Kavruul's) is indistinguishable and reads as sockets — the dump
+    /// does not say.</summary>
+    public static bool IsContainer(Entry e)
+    {
+        if (e.Children.Count == 0) return false;
+        if (e.Children.Any(c => !c.Empty && !IsExaltation(c.Name))) return true;
+        return e.Slots > 0 && e.Slots != 10;
+    }
+
     /// <summary>Which window tab a ledger row belongs to: socketed
     /// "(Exaltation)" copies get their own tab, everything else — key ring
     /// rows included — is an item. (The Focus effects tab is not row-backed:

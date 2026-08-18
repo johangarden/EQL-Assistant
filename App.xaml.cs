@@ -1321,6 +1321,10 @@ public partial class App : Application
                     "Head\tValorium Helmet +1\t4851\t1\t10",
                     "General 1\tBackpack\t17005\t1\t8",
                 }));
+                Check("inventory: bags are containers, socketed items are not",
+                    InventoryStore.IsContainer(dump.Items.First(e => e.Name == "Spacious Rucksack"))
+                    && !InventoryStore.IsContainer(dump.Items.First(e => e.Base == "Ear" && e.Children.Count > 0))
+                    && !InventoryStore.IsContainer(dump.Items.First(e => e.Location == "Hoard 1")));
                 Check("inventory: an old dump names everything it left unsaid",
                     InventoryStore.MissingStorages(partial).SequenceEqual(
                         new[] { "bank", "tradeskill depot", "Dragon's Hoard", "key rings" }));

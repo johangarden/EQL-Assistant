@@ -668,6 +668,8 @@ public partial class InventoryWindow : Window
         List<PillVm>? pills = null;
         var ownEffects = _focus.EffectsOf(r.Name);
         _entryByLoc.TryGetValue(r.Location, out var entry);
+        // A bag's children are its contents, not sockets — no pills for bags.
+        if (entry is not null && InventoryStore.IsContainer(entry)) entry = null;
         if (entry is { Children.Count: > 0 })
         {
             pills = new List<PillVm>();
