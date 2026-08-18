@@ -141,10 +141,10 @@ public sealed class FocusEffects
 
     /// <summary>The join key for an item name: the dump's spelling folded to
     /// the wiki's — " (Exaltation)" and " +N" and the trailing "*" stripped,
-    /// the apostrophe/backtick coin-flip settled, lowercased. The exaltation
-    /// suffix folds because in EQ Legends the exaltation IS the focus
-    /// carrier — "Runed Mithril Bracer (Exaltation)" grants what the wiki
-    /// lists under "Runed Mithril Bracer".</summary>
+    /// apostrophes and backticks REMOVED (the game says "Djarn's Amethyst
+    /// Ring", the wiki page says "Djarns" — the audit missed a worn Spell
+    /// Haste II over that apostrophe), lowercased. The exaltation suffix
+    /// folds because in EQ Legends the exaltation IS the focus carrier.</summary>
     public static string ItemKey(string name)
     {
         string s = name.Trim();
@@ -152,7 +152,7 @@ public sealed class FocusEffects
         if (s.EndsWith(exalt, StringComparison.Ordinal)) s = s[..^exalt.Length];
         if (s.EndsWith("*", StringComparison.Ordinal)) s = s[..^1];
         s = TierSuffixRx.Replace(s, "");
-        return s.Replace('`', '\'').ToLowerInvariant();
+        return s.Replace("`", "").Replace("'", "").ToLowerInvariant();
     }
 
     /// <summary>Audit the dump's rows: for every family, the best tier among

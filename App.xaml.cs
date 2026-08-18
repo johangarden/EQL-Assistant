@@ -1393,9 +1393,18 @@ public partial class App : Application
                     focus.Families.First(f => f.Name == "Reanimation Efficiency").Tiers.Count == 3
                     && focus.Families.First(f => f.Name == "Improved Healing")
                         .Tiers.First(t => t.Effect == "Improved Healing II").Items.Count == 0);
-                Check("focus: item join folds +N, the star and the backtick",
-                    FocusEffects.ItemKey("Kelin`s Seven Stringed Lute +3") == "kelin's seven stringed lute"
-                    && FocusEffects.ItemKey("Bandages*") == "bandages");
+                Check("focus: item join folds +N, the star, and drops the apostrophes",
+                    FocusEffects.ItemKey("Kelin`s Seven Stringed Lute +3") == "kelins seven stringed lute"
+                    && FocusEffects.ItemKey("Bandages*") == "bandages"
+                    // The game says "Djarn's", the wiki page says "Djarns" —
+                    // the audit once missed a WORN Spell Haste II over it.
+                    && FocusEffects.ItemKey("Djarn's Amethyst Ring +2") == FocusEffects.ItemKey("Djarns Amethyst Ring"));
+                var djarns = focus.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("Djarn's Amethyst Ring +2", "djarn's amethyst ring +2", "Fingers", 1, "worn", 1),
+                });
+                Check("focus: the apostrophe never hides a worn focus again",
+                    djarns.First(a => a.Family.Name == "Spell Haste") is { BestTier: 2, Status: 2, BestPlace: "worn" });
 
                 var fams = new List<FocusEffects.Family>
                 {
