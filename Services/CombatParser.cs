@@ -891,15 +891,18 @@ public sealed class CombatParser
 
         bool crit = body.Contains("(Critical)", StringComparison.Ordinal);
 
+        // Spell lanes pool on the rank-stripped base name: the game prints
+        // "by Envenomed Bolt VI" on the DD line but "from your Envenomed
+        // Bolt." on the ticks — one spell must not split into two lanes.
         Match m = NonMeleeRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true); return; }
+        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, SpellDurations.BaseName(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true); return; }
 
         m = DotRx.Match(body);
         if (m.Success)
         {
             if (IsSelf(Normalize(m.Groups["att"].Value)))
                 NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
-            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, SpellDurations.BaseName(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
             return;
         }
 
@@ -907,21 +910,21 @@ public sealed class CombatParser
         if (m.Success)
         {
             NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
-            AddDamage(Self(), m.Groups["tgt"].Value, m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            AddDamage(Self(), m.Groups["tgt"].Value, SpellDurations.BaseName(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
             return;
         }
 
         m = DotYouRx.Match(body);
         if (m.Success)
         {
-            AddDamage(m.Groups["att"].Value, Self(), m.Groups["spell"].Value, Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            AddDamage(m.Groups["att"].Value, Self(), SpellDurations.BaseName(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
             return;
         }
 
         m = HealRx.Match(body);
         if (m.Success)
         {
-            string spell = m.Groups["spell"].Success ? m.Groups["spell"].Value : "heal";
+            string spell = m.Groups["spell"].Success ? SpellDurations.BaseName(m.Groups["spell"].Value) : "heal";
             // Named heals only — a bare "You healed X" line can't identify a proc.
             AddHealing(m.Groups["att"].Value, m.Groups["tgt"].Value, spell, Amount(m, "amt"), time, crit,
                 procCandidate: m.Groups["spell"].Success);
@@ -1258,7 +1261,7 @@ public sealed class CombatParser
     private void AddOutgoingResist(string spell, DateTime time)
     {
         Touch(time);
-        Stat(Self(), spell.Trim()).Resists++;
+        Stat(Self(), SpellDurations.BaseName(spell)).Resists++;
         SessionSkill(spell.Trim()).Resists++;
         Note(time, spell.Trim(), 0, FightStream.SelfOut, resist: true);
     }
@@ -1267,7 +1270,7 @@ public sealed class CombatParser
     private void AddIncomingResist(string spell, DateTime time)
     {
         Touch(time);
-        StatIn(_incomingSelfAbility, spell.Trim()).Resists++;
+        StatIn(_incomingSelfAbility, SpellDurations.BaseName(spell)).Resists++;
         Note(time, spell.Trim(), 0, FightStream.SelfIn, resist: true);
     }
 

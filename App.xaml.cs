@@ -1701,6 +1701,16 @@ public partial class App : Application
                 deaths is [{ } gd]
                 && gd.Events.Any(e => e.Ability == "Searing Arrow" && (int)e.Amount == 29));
 
+            // Rank pooling: the DD line says "by Envenomed Bolt VI", the tick
+            // says "from Envenomed Bolt" — one spell, one lane.
+            var pr = new CombatParser();
+            pr.ProcessLine("[Sun Aug 16 23:11:00 2026] Johan hit a shiverback grizzly for 100 points of poison damage by Envenomed Bolt VI.");
+            pr.ProcessLine("[Sun Aug 16 23:11:06 2026] A shiverback grizzly has taken 40 damage from Envenomed Bolt by Johan.");
+            var ranked = pr.GetAbilityRows("Johan");
+            Check("spell lanes pool ranks (Envenomed Bolt VI + tick = one lane)",
+                ranked.First(r => r.Name == "Envenomed Bolt") is { Total: 140 }
+                && ranked.All(r => r.Name != "Envenomed Bolt VI"));
+
             // Plane of Sky quest tracker: data loads, completion watcher works
             // (temp progress path so tests never touch real progress).
             string skyProgress = Path.Combine(Path.GetTempPath(), "eql_sky_test.json");

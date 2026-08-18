@@ -79,6 +79,12 @@ public sealed class SpellDurations
     public static string BaseKey(string spellName) =>
         RankSuffixRx.Replace(spellName.Trim(), "").ToLowerInvariant();
 
+    /// <summary>Rank-stripped DISPLAY name: "Envenomed Bolt VI" -> "Envenomed
+    /// Bolt". The log itself is inconsistent — the cast and DD lines carry the
+    /// rank, DoT ticks drop it — so ability lanes pool on the base name.</summary>
+    public static string BaseName(string spellName) =>
+        RankSuffixRx.Replace(spellName.Trim(), "");
+
     /// <summary>The learner's contribution for a trigger/spell name: the max over
     /// the most recent samples of its base key, or null when nothing observed.
     /// The caller applies the floor (max with the configured duration).</summary>
