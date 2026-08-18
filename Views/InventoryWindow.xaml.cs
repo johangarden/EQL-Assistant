@@ -93,6 +93,7 @@ public partial class InventoryWindow : Window
     public InventoryWindow(string eqRoot, string charName, string server)
     {
         InitializeComponent();
+        Interop.WindowTheme.ApplyDark(this);
         _eqRoot = eqRoot;
         _charName = charName;
         _server = server;
