@@ -580,11 +580,14 @@ public partial class InventoryWindow : Window
     private List<DetailVm> MakeDetails(FocusEffects.AuditRow a)
     {
         var details = new List<DetailVm>();
-        foreach (var tier in a.Family.Tiers)
+        for (int i = 0; i < a.Family.Tiers.Count; i++)
         {
+            var tier = a.Family.Tiers[i];
             string cap = tier.LevelCap is { } c ? $" · decays over lvl {c}" : "";
             string summoned = tier.SummonedOnly ? " · summoned only" : "";
-            details.Add(new DetailVm($"{tier.Effect}{cap}{summoned}", DetailHeaderFg, FontWeights.SemiBold));
+            // The tier title wears its pill's color: green when you own it.
+            Brush headerFg = a.TierLanes[i] is not null ? StatusFg[2] : DetailHeaderFg;
+            details.Add(new DetailVm($"{tier.Effect}{cap}{summoned}", headerFg, FontWeights.SemiBold));
             if (tier.Description.Length > 0)
                 details.Add(new DetailVm(tier.Description, DetailDimFg, FontWeights.Normal));
             if (tier.Items.Count == 0)
