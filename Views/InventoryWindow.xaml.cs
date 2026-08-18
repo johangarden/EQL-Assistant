@@ -438,14 +438,15 @@ public partial class InventoryWindow : Window
                 + "\n" + items
                 + (tier.SummonedOnly ? "\n(summoned only — a conjured temporary, not huntable gear)" : "");
             string label = labels[i];
-            // Four states: WORN fills solid, owned-but-stored keeps the
-            // translucent wash, unowned stays a gray outline — and an unowned
+            // Pills speak PLACE, never the verdict (the dot does that): worn
+            // is always solid green like the WORN badge, stored is always the
+            // amber of IN BANK, missing is a gray outline, and an unowned
             // summoned-only tier ghosts out (it never counts against you).
             pills.Add(lane switch
             {
-                "worn" => new PillVm(label, StatusFg[a.Status], StatusFg[a.Status], WornPillFg,
+                "worn" => new PillVm(label, StatusFg[2], StatusFg[2], WornPillFg,
                     tip + "\n(worn)"),
-                not null => new PillVm(label, StatusBg[a.Status], StatusFg[a.Status], StatusFg[a.Status],
+                not null => new PillVm(label, StatusBg[1], StatusFg[1], StatusFg[1],
                     tip + "\n(owned, not worn)"),
                 null when tier.SummonedOnly => new PillVm(label, Brushes.Transparent,
                     PillGhostBorder, PillGhostFg, tip),
