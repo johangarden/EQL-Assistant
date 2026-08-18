@@ -1349,9 +1349,19 @@ public partial class App : Application
 
                 // ---- focus-effect audit --------------------------------------
                 var focus = new FocusEffects();
-                Check("focus: 25 families / 69 tiers load from the embedded table",
-                    focus.Families.Count == 25
+                Check("focus: 24 families / 69 tiers load from the embedded table",
+                    focus.Families.Count == 24
                     && focus.Families.Sum(f => f.Tiers.Count) == 69);
+                // Minor Improved Damage is the same ladder's bottom rung
+                // (10% vs 20% at the same level cap) — one family, four tiers.
+                Check("focus: Minor Improved Damage merges under Improved Damage",
+                    focus.Families.First(f => f.Name == "Improved Damage").Tiers
+                        .Select(t => t.Effect).SequenceEqual(new[]
+                        {
+                            "Minor Improved Damage I", "Improved Damage I",
+                            "Improved Damage II", "Improved Damage III",
+                        })
+                    && focus.Families.All(f => f.Name != "Minor Improved Damage"));
                 var jolum = focus.Families.First(f => f.Name == "Jolum's Abatement");
                 Check("focus: named tiers order by the observed level caps",
                     jolum.Tiers.Select(t => t.Effect).SequenceEqual(new[]
@@ -1379,7 +1389,7 @@ public partial class App : Application
                 });
                 Check("focus: a real carrier joins the loaded table end to end",
                     realAudit.First(a => a.Family.Name == "Improved Damage")
-                        is { BestTier: 3, Status: 2, BestPlace: "worn" });
+                        is { BestTier: 4, Status: 2, BestPlace: "worn" });
                 Check("focus: the category page's missing tier and empty page carried honestly",
                     focus.Families.First(f => f.Name == "Reanimation Efficiency").Tiers.Count == 3
                     && focus.Families.First(f => f.Name == "Improved Healing")

@@ -402,6 +402,12 @@ public partial class InventoryWindow : Window
 
     private FocusVm MakeFocusVm(FocusEffects.AuditRow a)
     {
+        // "Minor Improved Damage I" and "Improved Damage I" share a trailing
+        // numeral — when labels collide inside a family, number them 1..N.
+        var labels = a.Family.Tiers.Select(t => TierLabel(t.Effect, t.TierNum)).ToList();
+        if (labels.Distinct().Count() != labels.Count)
+            labels = a.Family.Tiers.Select(t => t.TierNum.ToString()).ToList();
+
         var pills = new List<PillVm>();
         for (int i = 0; i < a.Family.Tiers.Count; i++)
         {
@@ -413,7 +419,7 @@ public partial class InventoryWindow : Window
             string tip = tier.Effect
                 + (tier.Description.Length > 0 ? "\n" + tier.Description : "")
                 + "\n" + items;
-            string label = TierLabel(tier.Effect, tier.TierNum);
+            string label = labels[i];
             // Three states: WORN fills solid, owned-but-stored keeps the
             // translucent wash, unowned stays a gray outline.
             pills.Add(lane switch

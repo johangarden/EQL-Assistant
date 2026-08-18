@@ -286,8 +286,17 @@
       "kind": "spell damage",
       "tiers": [
         {
-          "effect": "Improved Damage I",
+          "effect": "Minor Improved Damage I",
           "tier": 1,
+          "description": "Increases the damage of spells by up to 10%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            "Smoldering Robe"
+          ]
+        },
+        {
+          "effect": "Improved Damage I",
+          "tier": 2,
           "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 20.",
           "levelCap": 20,
           "items": [
@@ -300,7 +309,7 @@
         },
         {
           "effect": "Improved Damage II",
-          "tier": 2,
+          "tier": 3,
           "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 44.",
           "levelCap": 44,
           "items": [
@@ -309,7 +318,7 @@
         },
         {
           "effect": "Improved Damage III",
-          "tier": 3,
+          "tier": 4,
           "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 60.",
           "levelCap": 60,
           "items": [
@@ -465,22 +474,6 @@
             "Black Alloy Medallion",
             "Mane Attraction",
             "Nisch Mas Ilkvel"
-          ]
-        }
-      ]
-    },
-    {
-      "family": "Minor Improved Damage",
-      "group": "spell",
-      "kind": "spell damage",
-      "tiers": [
-        {
-          "effect": "Minor Improved Damage I",
-          "tier": 1,
-          "description": "Increases the damage of spells by up to 10%. This bonus will decay on spells over level 20.",
-          "levelCap": 20,
-          "items": [
-            "Smoldering Robe"
           ]
         }
       ]
