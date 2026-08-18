@@ -38,7 +38,7 @@ public partial class InventoryWindow : Window
         IsFoldToggle: foldToggle);
 
     private bool _summonedOpen; // the summoned-charm section starts folded
-    private readonly HashSet<string> _openFamilies = new(StringComparer.Ordinal);
+    private string? _openFamily; // accordion: at most one family unfolded
     private Dictionary<string, string> _ownedByKey = new(StringComparer.Ordinal);
 
     private static readonly (string Id, string Label)[] Tabs =
@@ -428,8 +428,9 @@ public partial class InventoryWindow : Window
         }
         else if (vm.RowVis == Visibility.Visible)
         {
-            // Any click on a family row folds its item details in or out.
-            if (!_openFamilies.Remove(vm.Family)) _openFamilies.Add(vm.Family);
+            // Accordion: a click opens this family and closes whichever was
+            // open; clicking the open one folds it away.
+            _openFamily = _openFamily == vm.Family ? null : vm.Family;
         }
         else return;
         ApplyFocusFilter(SearchBox.Text.Trim().ToLowerInvariant());
@@ -518,7 +519,7 @@ public partial class InventoryWindow : Window
             _ => "None owned.",
         };
         string place = a.BestTier == 0 ? "" : wornIsBest ? "WORN" : a.BestPlace.ToUpperInvariant();
-        bool open = _openFamilies.Contains(a.Family.Name);
+        bool open = _openFamily == a.Family.Name;
         return new FocusVm(a.Family.Name, a.Family.Kind, a.Family.Tiers[0].Description,
             StatusFg[a.Status], pills, best, a.BestTier == 0 ? null : a.BestEffect,
             place, wornIsBest ? StatusFg[2] : StatusFg[1],
