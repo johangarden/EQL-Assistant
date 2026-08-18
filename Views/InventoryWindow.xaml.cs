@@ -440,16 +440,17 @@ public partial class InventoryWindow : Window
             string label = labels[i];
             // Pills speak PLACE, never the verdict (the dot does that): worn
             // is always solid green like the WORN badge, stored is always the
-            // amber of IN BANK, missing is a gray outline, and an unowned
-            // summoned-only tier ghosts out (it never counts against you).
+            // amber of IN BANK, missing is a gray outline. In a MIXED family
+            // an unowned summoned-only tier doesn't render at all — it can't
+            // be hunted, so it isn't a gap (a conjured one you HOLD still
+            // shows). Inside the Summoned fold the tiers are the content.
+            if (lane is null && tier.SummonedOnly && a.Family.Group != "summoned") continue;
             pills.Add(lane switch
             {
                 "worn" => new PillVm(label, StatusFg[2], StatusFg[2], WornPillFg,
                     tip + "\n(worn)"),
                 not null => new PillVm(label, StatusBg[1], StatusFg[1], StatusFg[1],
                     tip + "\n(owned, not worn)"),
-                null when tier.SummonedOnly => new PillVm(label, Brushes.Transparent,
-                    PillGhostBorder, PillGhostFg, tip),
                 null => new PillVm(label, Brushes.Transparent, PillOffBorder, PillOffFg, tip),
             });
         }
