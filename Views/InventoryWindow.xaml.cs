@@ -26,7 +26,7 @@ public partial class InventoryWindow : Window
         List<PillVm> Pills, string BestText, string? BestTip, string PlaceText, Brush PlaceBrush,
         Visibility PlaceVis = Visibility.Visible,
         Visibility HeaderVis = Visibility.Collapsed, Visibility RowVis = Visibility.Visible,
-        bool IsFoldToggle = false);
+        bool IsFoldToggle = false, string? StatusTip = null);
 
     /// <summary>A section header row ("Spells", "Songs & instruments").</summary>
     private static FocusVm FocusHeader(string title, bool foldToggle = false) => new(title, "", null,
@@ -462,11 +462,18 @@ public partial class InventoryWindow : Window
             : a.WornTier > 0 && !wornIsBest
                 ? $"{a.BestItem} (wearing {a.WornTier})"
                 : a.BestItem;
+        string statusTip = a.Status switch
+        {
+            2 => "You are wearing the best huntable tier of this effect.",
+            1 => "Upgradable: you own this effect, but a better tier exists — or your best copy is in storage.",
+            _ => "You own no tier of this effect.",
+        };
         string place = a.BestTier == 0 ? "" : wornIsBest ? "WORN" : a.BestPlace.ToUpperInvariant();
         return new FocusVm(a.Family.Name, a.Family.Kind, a.Family.Tiers[0].Description,
             StatusFg[a.Status], pills, best, a.BestTier == 0 ? null : a.BestEffect,
             place, wornIsBest ? StatusFg[2] : StatusFg[1],
-            a.BestTier == 0 ? Visibility.Collapsed : Visibility.Visible);
+            a.BestTier == 0 ? Visibility.Collapsed : Visibility.Visible,
+            StatusTip: statusTip);
     }
 
     /// <summary>Selftest hook: front the audit board so its template
