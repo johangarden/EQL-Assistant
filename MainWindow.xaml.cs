@@ -551,8 +551,9 @@ public partial class MainWindow : Window
                 o.Opacity, o.SctFontSize, o.SctBigHit,
                 o.SctLaneWidth, o.SctLaneHeight,
                 centerX + def.OffsetFromCenter - o.SctLaneWidth / 2, topY,
-                // xp/faction floats are rare and worth reading — drift up slowly.
-                lifetimeSeconds: def.Kind == CombatParser.SctKind.Progress ? 7 : 2.6);
+                // xp/faction floats are rare and worth reading — drift up slowly
+                // (how slowly is the player's call: Manager → Combat text).
+                lifetimeSeconds: def.Kind == CombatParser.SctKind.Progress ? o.SctXpLifetime : 2.6);
             lane.Show();
             lane.SetLocked(_vm.Locked);
             _sctLanes[def.Kind] = lane;

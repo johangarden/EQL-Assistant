@@ -876,6 +876,9 @@
                             <TextBox x:Name="SctLaneWidthBox" Width="120" HorizontalAlignment="Left"/>
                             <TextBlock Text="Lane height" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="SctLaneHeightBox" Width="120" HorizontalAlignment="Left"/>
+                            <TextBlock Text="XP &amp; faction float time (seconds, 1–15)" Style="{StaticResource FieldLabel}"/>
+                            <TextBox x:Name="SctXpLifetimeBox" Width="120" HorizontalAlignment="Left"
+                                     ToolTip="How long an XP/faction float takes to rise and fade. Combat lanes stay at 2.6s — these are rare and worth reading, so give them time."/>
                         </StackPanel>
                     </ScrollViewer>
 
