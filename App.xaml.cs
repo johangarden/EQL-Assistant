@@ -1323,6 +1323,12 @@ public partial class App : Application
                 }));
                 // Slot types correlated from the in-game item window against
                 // observed ladders (Aldryn's five typed rows = 1|2,7,8,9,10).
+                Check("inventory: worn display order runs armor, jewelry, weapons",
+                    InventoryStore.WornRank("Head") < InventoryStore.WornRank("Feet")
+                    && InventoryStore.WornRank("Feet") < InventoryStore.WornRank("Ear")
+                    && InventoryStore.WornRank("Fingers") < InventoryStore.WornRank("Primary")
+                    && InventoryStore.WornRank("Primary") < InventoryStore.WornRank("Any Slot")
+                    && InventoryStore.WornRank("SomethingNew") > InventoryStore.WornRank("Any Slot"));
                 Check("inventory: slot numbers speak their game types",
                     InventoryStore.SlotType(7) == ("F", "Focus Exaltation")
                     && InventoryStore.SlotType(8) == ("C", "Click Exaltation")

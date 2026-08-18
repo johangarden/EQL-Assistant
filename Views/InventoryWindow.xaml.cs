@@ -413,6 +413,11 @@ public partial class InventoryWindow : Window
         var matched = tabRows
             .Where(r => (_lane is null || r.Lane == _lane)
                         && (q.Length == 0 || r.SearchKey.Contains(q, StringComparison.Ordinal)))
+            // Worn gear sorts armor → jewelry → weapons (the dump's own order
+            // is the client's enumeration); everything else keeps file order.
+            .OrderBy(r => r.Lane == "worn" ? 0 : 1)
+            .ThenBy(r => r.Lane == "worn" ? InventoryStore.WornRank(r.Location) : 0)
+            .ThenBy(r => r.Line)
             .Select(MakeRowVm)
             .ToList();
         ResultsList.ItemsSource = matched;

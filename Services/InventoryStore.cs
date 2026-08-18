@@ -273,6 +273,28 @@ public static class InventoryStore
     public static bool IsExaltation(string name) =>
         name.EndsWith(" (Exaltation)", StringComparison.Ordinal);
 
+    // Worn rows in a dump come in the client's enumeration order (Any Slot,
+    // Ear, Head, Face, Ear…) — a player thinks armor head-to-toe, then
+    // jewelry, then weapons. This is the display order.
+    private static readonly string[] WornOrder =
+    {
+        // armor
+        "Head", "Face", "Chest", "Shoulders", "Arms", "Wrist", "Hands", "Legs", "Feet",
+        // jewelry & drapes
+        "Ear", "Neck", "Fingers", "Waist", "Back",
+        // weapons & held
+        "Primary", "Secondary", "Range", "Ammo", "Held",
+        // the wildcards last
+        "Any Slot",
+    };
+
+    /// <summary>Display rank of a worn base token (unknown tokens last).</summary>
+    public static int WornRank(string baseToken)
+    {
+        int i = Array.IndexOf(WornOrder, baseToken);
+        return i >= 0 ? i : WornOrder.Length;
+    }
+
     /// <summary>The game's slot types, correlated from an in-game item window
     /// (Aldryn, Blade of the Ocean: Ornamentation / Focus / Click / Worn /
     /// Proc Exaltation) against observed dump ladders (1|2, 7, 8, 9, 10):
