@@ -87,12 +87,15 @@ public static class InventoryStore
 
     // Note the client's own inconsistency: "General 1" has a space,
     // "Bank1" / "SharedBank1" do not, and the depot is a compound token.
+    // The Dragon's Hoard (first sampled 2026-08-18, Thorrak's dump) rides
+    // the PRIMARY table as "Hoard 1"… — spaced like General, nestable.
     private static readonly (Regex Rx, string Lane)[] ContainerLanes =
     {
         (new Regex(@"^General \d+$", RegexOptions.Compiled), "bags"),
         (new Regex(@"^Bank\d+$", RegexOptions.Compiled), "bank"),
         (new Regex(@"^SharedBank\d+$", RegexOptions.Compiled), "bank"), // one chip, deliberately
         (new Regex(@"^Personal-Depot\d+$", RegexOptions.Compiled), "depot"),
+        (new Regex(@"^Hoard \d+$", RegexOptions.Compiled), "hoard"),
     };
 
     // END-anchored so "Personal-Depot1" keeps its hyphen and yields no sub-slots.
@@ -108,12 +111,13 @@ public static class InventoryStore
             ["bags"] = "Bags",
             ["bank"] = "Bank",
             ["depot"] = "Depot",
+            ["hoard"] = "Hoard",
             ["keyring"] = "Key rings",
             ["elsewhere"] = "Elsewhere",
         };
 
     private static readonly string[] FixedLaneOrder =
-        { "worn", "bags", "bank", "depot", "keyring", "elsewhere" };
+        { "worn", "bags", "bank", "depot", "hoard", "keyring", "elsewhere" };
 
     // ---- parsing --------------------------------------------------------------
 
@@ -206,6 +210,7 @@ public static class InventoryStore
     private static readonly Regex BankRx = new(@"^Bank\d+$", RegexOptions.Compiled);
     private static readonly Regex GeneralRx = new(@"^General \d+$", RegexOptions.Compiled);
     private static readonly Regex DepotRx = new(@"^Personal-Depot\d+$", RegexOptions.Compiled);
+    private static readonly Regex HoardRx = new(@"^Hoard \d+$", RegexOptions.Compiled);
 
     /// <summary>Like <see cref="LaneOfBase"/> but keeps sharedBank distinct —
     /// coverage speaks about the game's storages, not the ledger's chips.</summary>
@@ -216,6 +221,7 @@ public static class InventoryStore
         if (SharedBankRx.IsMatch(baseToken)) return "sharedBank";
         if (BankRx.IsMatch(baseToken)) return "bank";
         if (DepotRx.IsMatch(baseToken)) return "depot";
+        if (HoardRx.IsMatch(baseToken)) return "hoard";
         return "";
     }
 
@@ -323,7 +329,9 @@ public static class InventoryStore
         if (!dump.Covered.Contains("bank")) missing.Add("bank");
         else if (!dump.Covered.Contains("sharedBank")) missing.Add("shared bank");
         if (!dump.Covered.Contains("depot")) missing.Add("tradeskill depot");
-        if (!dump.HasExtraItemSection) missing.Add("Dragon's Hoard");
+        // The hoard is "Hoard N" rows in the primary table (sampled); an
+        // unknown extra item table is still accepted as it, for older clients.
+        if (!dump.Covered.Contains("hoard") && !dump.HasExtraItemSection) missing.Add("Dragon's Hoard");
         if (!dump.Covered.Contains("keyring")) missing.Add("key rings");
         return missing;
     }

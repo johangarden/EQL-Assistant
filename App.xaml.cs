@@ -1236,10 +1236,16 @@ public partial class App : Application
                     "Bank1\tEmpty\t0\t0\t0",
                     "SharedBank1\tEmpty\t0\t0\t0",
                     "Personal-Depot1\tGriffenne Blood\t22526\t2\t10",
+                    // The Dragon's Hoard rides the primary table, spaced like
+                    // General and nestable (observed: Thorrak 2026-08-18).
+                    "Hoard 1\tFine Steel Scimitar\t5353\t1\t10",
+                    "Hoard 1-Slot2\tEmpty\t0\t0\t0",
                     "Held\tEmpty\t0\t0\t0",
                     "",
                     "KeyRing\tName\tID\t",
                     "Activated\tGuise of the Deceiver\t2469",
+                    // Collected exaltations live on the key ring too (observed).
+                    "Augmentation\tDamask Robe (Exaltation)\t1334",
                     "Equipment\tBoots of the Long Road\t177708",
                     "Equipment\tBoots of the Long Road +1\t177708",
                 });
@@ -1258,19 +1264,20 @@ public partial class App : Application
                         .First(c => c.Location == "General 1-Slot9").Children
                         is [{ Name: "Kelin`s Seven Stringed Lute (Exaltation)" }]);
                 Check("inventory: the keyring table parses through its bare-tab header",
-                    dump.KeyRing.Count == 3 && dump.Sections.SequenceEqual(new[] { "Location", "KeyRing" })
+                    dump.KeyRing.Count == 4 && dump.Sections.SequenceEqual(new[] { "Location", "KeyRing" })
                     && dump.MalformedCount == 0);
 
                 var (rows, lanes) = InventoryStore.CarryAll(dump);
                 Check("inventory: empty rows leave the ledger, real ones keep file order",
                     rows.All(r => r.Name != "Empty")
                     && rows.Select(r => r.Line).SequenceEqual(rows.Select(r => r.Line).OrderBy(n => n)));
-                Check("inventory: lanes cover worn/bags/depot/keyring, none empty",
-                    lanes.Select(l => l.Id).SequenceEqual(new[] { "worn", "bags", "depot", "keyring" }));
+                Check("inventory: lanes cover worn/bags/depot/hoard/keyring, none empty",
+                    lanes.Select(l => l.Id).SequenceEqual(new[] { "worn", "bags", "depot", "hoard", "keyring" }));
                 Check("inventory: stack counts survive, keyring rows count one",
                     rows.First(r => r.Name == "Tiny Dagger").Count == 86
                     && rows.First(r => r.Name == "Griffenne Blood") is { Count: 2, Lane: "depot" }
-                    && rows.Count(r => r.Lane == "keyring") == 3);
+                    && rows.First(r => r.Name == "Fine Steel Scimitar").Lane == "hoard"
+                    && rows.Count(r => r.Lane == "keyring") == 4);
 
                 var held = InventoryStore.HeldCounts(dump);
                 Check("inventory: held counts sum stacks; Activated is a look, not an item",
@@ -1282,9 +1289,9 @@ public partial class App : Application
                 // tab, everything else (keyring included) is an item, and an
                 // exaltation knows the item wearing it. The Focus effects tab
                 // is not row-backed — it audits the dump (checked below).
-                Check("inventory: tabs split items / exaltations",
-                    rows.Count(r => InventoryStore.TabOf(r) == "exalt") == 2
-                    && rows.Count(r => InventoryStore.TabOf(r) == "items") == rows.Count - 2);
+                Check("inventory: tabs split items / exaltations (keyring Augmentation included)",
+                    rows.Count(r => InventoryStore.TabOf(r) == "exalt") == 3
+                    && rows.Count(r => InventoryStore.TabOf(r) == "items") == rows.Count - 3);
                 Check("inventory: an exaltation names its host item",
                     rows.First(r => r.Name == "Thelvorn, Blade of Light (Exaltation)").Host
                         == "Thelvorn, Blade of Light +5"
@@ -1294,11 +1301,10 @@ public partial class App : Application
 
                 // Coverage: the row is the evidence (an Empty bank slot still
                 // proves the bank was dumped); missing = "the dump does not
-                // say", and the never-sampled hoard only counts covered when
-                // an extra item table appears.
-                Check("inventory: coverage reads evidence, hoard stays unsaid",
-                    dump.Covered.SetEquals(new[] { "worn", "bags", "bank", "sharedBank", "depot", "keyring" })
-                    && InventoryStore.MissingStorages(dump).SequenceEqual(new[] { "Dragon's Hoard" }));
+                // say". Hoard rows are hoard evidence.
+                Check("inventory: full coverage leaves nothing unsaid",
+                    dump.Covered.SetEquals(new[] { "worn", "bags", "bank", "sharedBank", "depot", "hoard", "keyring" })
+                    && InventoryStore.MissingStorages(dump).Count == 0);
                 var partial = InventoryStore.Parse(string.Join("\r\n", new[]
                 {
                     "Location\tName\tID\tCount\tSlots",
@@ -1371,15 +1377,17 @@ public partial class App : Application
                     },
                 };
                 var mini = new FocusEffects(fams);
+                // EQL delivers foci AS exaltations — the socketed copy in
+                // worn gear counts, wearing its host's lane.
                 var audit = mini.Audit(new[]
                 {
                     new InventoryStore.CarryRow("Item A +2", "item a +2", "Head", 1, "worn", 1),
                     new InventoryStore.CarryRow("Item B", "item b", "Bank3", 1, "bank", 2),
                     new InventoryStore.CarryRow("Item C (Exaltation)", "item c (exaltation)", "Head-Slot7", 1, "worn", 3),
                 });
-                Check("focus: audit finds the best OWNED tier, exaltation copies do not count",
-                    audit[0] is { BestTier: 2, BestItem: "Item B", BestPlace: "in bank", Status: 1 }
-                    && audit[0].OwnedTiers.SequenceEqual(new[] { true, true, false })
+                Check("focus: audit reads best owned tier; a worn exaltation socket counts",
+                    audit[0] is { BestTier: 3, BestItem: "Item C (Exaltation)", BestPlace: "worn", Status: 2 }
+                    && audit[0].OwnedTiers.SequenceEqual(new[] { true, true, true })
                     && audit[1] is { BestTier: 0, Status: 0 });
                 var worn = mini.Audit(new[]
                 {

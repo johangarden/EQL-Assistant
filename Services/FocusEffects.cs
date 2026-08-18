@@ -110,12 +110,16 @@ public sealed class FocusEffects
     private static readonly Regex TierSuffixRx = new(@" \+\d+$", RegexOptions.Compiled);
 
     /// <summary>The join key for an item name: the dump's spelling folded to
-    /// the wiki's — " +N" uplift and trailing "*" stripped, the apostrophe/
-    /// backtick coin-flip settled, lowercased. "(Exaltation)" rows are NOT
-    /// items and should not be joined at all.</summary>
+    /// the wiki's — " (Exaltation)" and " +N" and the trailing "*" stripped,
+    /// the apostrophe/backtick coin-flip settled, lowercased. The exaltation
+    /// suffix folds because in EQ Legends the exaltation IS the focus
+    /// carrier — "Runed Mithril Bracer (Exaltation)" grants what the wiki
+    /// lists under "Runed Mithril Bracer".</summary>
     public static string ItemKey(string name)
     {
         string s = name.Trim();
+        const string exalt = " (Exaltation)";
+        if (s.EndsWith(exalt, StringComparison.Ordinal)) s = s[..^exalt.Length];
         if (s.EndsWith("*", StringComparison.Ordinal)) s = s[..^1];
         s = TierSuffixRx.Replace(s, "");
         return s.Replace('`', '\'').ToLowerInvariant();
@@ -142,6 +146,7 @@ public sealed class FocusEffects
             "bags" => "in bags",
             "bank" => "in bank",
             "depot" => "in depot",
+            "hoard" => "in hoard",
             _ => lane,
         };
 
@@ -149,7 +154,13 @@ public sealed class FocusEffects
         var owned = new Dictionary<Family, Dictionary<int, (string Item, string Lane)>>();
         foreach (var row in rows)
         {
-            if (InventoryStore.IsExaltation(row.Name)) continue; // a socketed copy, not the item
+            // "(Exaltation)" rows COUNT: EQ Legends delivers the classic
+            // focus items as exaltations — the socketed copy in your worn
+            // gear IS the active focus (measured on Thorrak's 2026-08-18
+            // dump: Reagent Conservation III lives in a Wrist-Slot7 socket),
+            // and the key ring's Augmentation category is the collected
+            // pool. ItemKey folds the suffix, and a socket row inherits its
+            // host's lane, so places read right on their own.
             if (!_byItem.TryGetValue(ItemKey(row.Name), out var hits)) continue;
             foreach (var (fam, tier) in hits)
             {
