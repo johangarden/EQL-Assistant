@@ -55,6 +55,7 @@ public partial class RaidKillsWindow : Window
     public RaidKillsWindow(RaidKills raids)
     {
         InitializeComponent();
+        DialogPlacement.Persist(this, "raidkills");
         WindowTheme.ApplyDark(this);
         _raids = raids;
 

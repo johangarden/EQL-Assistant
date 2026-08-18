@@ -1,0 +1,1432 @@
+{
+  "source": "eqlwiki.com Category:Focus_Effects pages (fetched 2026-08-17) + jmoyers/everquest-companion items.json (MIT, (c) Josh Moyers)",
+  "families": [
+    {
+      "family": "Affliction Efficiency",
+      "group": "spell",
+      "kind": "DoT mana",
+      "tiers": [
+        {
+          "effect": "Affliction Efficiency I",
+          "tier": 1,
+          "description": "Reduces the mana cost of long term detrimental spells by up to 25%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Diamondine Earring",
+              "slot": "EAR",
+              "classes": "ALL"
+            },
+            {
+              "name": "Impskin Gloves",
+              "slot": "HANDS",
+              "classes": "ALL"
+            },
+            {
+              "name": "Polished Bone Bracelet",
+              "slot": "WRIST",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Affliction Efficiency II",
+          "tier": 2,
+          "description": "Reduces the mana cost of long term detrimental spells by up to 25%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Chipped Bone Bracelet",
+              "slot": "WRIST",
+              "classes": "ALL"
+            },
+            {
+              "name": "Squallsurge Shawl",
+              "slot": "SHOULDERS",
+              "classes": "NEC WIZ MAG ENC"
+            },
+            {
+              "name": "White Gold Necklace",
+              "slot": "NECK",
+              "classes": "ALL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Affliction Haste",
+      "group": "spell",
+      "kind": "DoT cast speed",
+      "tiers": [
+        {
+          "effect": "Affliction Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of long term detrimental spells by 33%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Granite Bracer",
+              "slot": "WRIST",
+              "classes": "ALL"
+            },
+            {
+              "name": "Ring of Goblin Lords",
+              "slot": "FINGER",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Affliction Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of long term detrimental spells by 33%.",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Chrysoberyl Talisman",
+              "slot": "NECK",
+              "classes": "ALL"
+            },
+            {
+              "name": "Green Silken Drape",
+              "slot": "CHEST",
+              "classes": "NEC WIZ MAG ENC"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Brass Resonance",
+      "group": "song",
+      "kind": "brass instruments",
+      "tiers": [
+        {
+          "effect": "Brass Resonance 14",
+          "tier": 1,
+          "description": "Increases the power of brass instrument based bard songs by up to 140%",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "McVaxius' Horn of War",
+              "slot": "PRIMARY SECONDARY",
+              "classes": "ALL"
+            },
+            {
+              "name": "McVaxius` Horn of War",
+              "slot": "",
+              "classes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Burning Affliction",
+      "group": "spell",
+      "kind": "DoT damage",
+      "tiers": [
+        {
+          "effect": "Burning Affliction I",
+          "tier": 1,
+          "description": "Increases the damage of long term detrimental spells by up to 20%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Allize Volew Medicine Bag",
+              "slot": "NECK",
+              "classes": "ALL"
+            },
+            {
+              "name": "Aviak Charm",
+              "slot": "NECK",
+              "classes": "ALL"
+            },
+            {
+              "name": "Burrowing Goggles",
+              "slot": "FACE",
+              "classes": "NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Golden Ear Stud",
+              "slot": "EAR",
+              "classes": "ALL"
+            },
+            {
+              "name": "Hollowed Bone Bracers",
+              "slot": "ARMS",
+              "classes": "CLR DRU BRD SHM NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Summoned: Rallican's Wooden Bracelet",
+              "slot": "WRIST",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ]
+        },
+        {
+          "effect": "Burning Affliction II",
+          "tier": 2,
+          "description": "Increases the damage of long term detrimental spells by up to 20%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Black Tome with Silver Runes",
+              "slot": "PRIMARY",
+              "classes": "NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Kobold-Hide Boots",
+              "slot": "FEET",
+              "classes": "ALL"
+            },
+            {
+              "name": "Reed Belt",
+              "slot": "WAIST",
+              "classes": "ALL"
+            },
+            {
+              "name": "Serpentine Bracer",
+              "slot": "WRIST",
+              "classes": "ALL"
+            },
+            {
+              "name": "Siryn Hair Hood",
+              "slot": "HEAD",
+              "classes": "ALL"
+            },
+            {
+              "name": "Summoned: Rallican's Stone Bracelet",
+              "slot": "WRIST",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ]
+        },
+        {
+          "effect": "Burning Affliction III",
+          "tier": 3,
+          "description": "Increases the damage of long term detrimental spells by up to 20%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Bone-Clasped Girdle",
+              "slot": "WAIST",
+              "classes": "CLR DRU BRD SHM NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Cryosilk Cap",
+              "slot": "HEAD",
+              "classes": "NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Summoned: Rallican's Iron Bracelet",
+              "slot": "WRIST",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ]
+        },
+        {
+          "effect": "Burning Affliction IV",
+          "tier": 4,
+          "description": "Increases the damage of long term detrimental spells by up to 20%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            {
+              "name": "Summoned: Rallican's Steel Bracelet",
+              "slot": "WRIST",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        }
+      ]
+    },
+    {
+      "family": "Enhancement Haste",
+      "group": "spell",
+      "kind": "buff cast speed",
+      "tiers": [
+        {
+          "effect": "Enhancement Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of long term beneficial spells by 30%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Braided Ivy Cords",
+              "slot": "SHOULDERS",
+              "classes": "DRU BRD ENC"
+            },
+            {
+              "name": "Cape of Midnight Mist",
+              "slot": "NECK",
+              "classes": "CLR DRU BRD SHM NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Cat Skull Cap",
+              "slot": "HEAD",
+              "classes": "ALL"
+            },
+            {
+              "name": "Etched Iron Helm",
+              "slot": "HEAD",
+              "classes": "WAR CLR PAL SHD BRD"
+            },
+            {
+              "name": "Gatorscale Sleeves",
+              "slot": "ARMS",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Enhancement Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of long term beneficial spells by 30%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Golden Efreeti Boots",
+              "slot": "FEET",
+              "classes": "ALL"
+            },
+            {
+              "name": "Platinum Tiara",
+              "slot": "HEAD",
+              "classes": "CLR DRU BRD SHM NEC WIZ MAG ENC"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Extended Enhancement",
+      "group": "spell",
+      "kind": "buff duration",
+      "tiers": [
+        {
+          "effect": "Extended Enhancement I",
+          "tier": 1,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Bear-hide Boots",
+              "slot": "FEET",
+              "classes": "ALL"
+            },
+            {
+              "name": "Damask Robe",
+              "slot": "CHEST",
+              "classes": "NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Lockjaw Hide Vest",
+              "slot": "CHEST",
+              "classes": "ALL except NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Shazda Turban",
+              "slot": "HEAD",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Extended Enhancement II",
+          "tier": 2,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Batfang Headband",
+              "slot": "HEAD",
+              "classes": "ALL"
+            },
+            {
+              "name": "Chestplate of the Constant",
+              "slot": "CHEST",
+              "classes": "CLR"
+            },
+            {
+              "name": "Clawed Knuckle-Ring",
+              "slot": "FINGER",
+              "classes": "ALL"
+            },
+            {
+              "name": "Drakescale Belt",
+              "slot": "WAIST",
+              "classes": "ALL"
+            },
+            {
+              "name": "Totemic Breastplate",
+              "slot": "CHEST",
+              "classes": "SHM"
+            }
+          ]
+        },
+        {
+          "effect": "Extended Enhancement III",
+          "tier": 3,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over lvl 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Rokyls Channelling Crystal",
+              "slot": "SECONDARY",
+              "classes": "BRD NEC WIZ MAG ENC"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Extended Range",
+      "group": "spell",
+      "kind": "spell range",
+      "tiers": [
+        {
+          "effect": "Extended Range I",
+          "tier": 1,
+          "description": "Increases the range of spells by 15%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "An Elven Charm Necklace",
+              "slot": "NECK",
+              "classes": "ALL"
+            },
+            {
+              "name": "Drake-hide Sleeves",
+              "slot": "ARMS",
+              "classes": "ALL"
+            },
+            {
+              "name": "Glowing Bone Collar",
+              "slot": "NECK",
+              "classes": "ALL"
+            },
+            {
+              "name": "Elven Charm Necklace",
+              "slot": "",
+              "classes": ""
+            }
+          ]
+        },
+        {
+          "effect": "Extended Range II",
+          "tier": 2,
+          "description": "Increases the range of spells by 15%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Moonstone Ring",
+              "slot": "FINGER",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Extended Range III",
+          "tier": 3,
+          "description": "Increases the range of spells by 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Cryosilk Sash",
+              "slot": "WAIST",
+              "classes": "NEC WIZ MAG ENC"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Gallenite's Destruction",
+      "group": "summoned",
+      "kind": "spell damage",
+      "tiers": [
+        {
+          "effect": "Gallenite's Minor Destruction",
+          "tier": 1,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 34.",
+          "levelCap": 34,
+          "items": [
+            {
+              "name": "Summoned: Gallenite's Jade Bracelet",
+              "slot": "WRIST",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Gallenite's Destruction",
+          "tier": 2,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 52.",
+          "levelCap": 52,
+          "items": [
+            {
+              "name": "Summoned: Gallenite's Opal Bracelet",
+              "slot": "WRIST",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Gallenite's Major Destruction",
+          "tier": 3,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Summoned: Gallenite's Ruby Bracelet",
+              "slot": "WRIST",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Gallenite's Chaos",
+          "tier": 4,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            {
+              "name": "Summoned: Gallenite's Sapphire Bracelet",
+              "slot": "WRIST",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        }
+      ]
+    },
+    {
+      "family": "Improved Damage",
+      "group": "spell",
+      "kind": "spell damage",
+      "tiers": [
+        {
+          "effect": "Improved Damage I",
+          "tier": 1,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Azure Sleeves",
+              "slot": "ARMS",
+              "classes": "ALL"
+            },
+            {
+              "name": "Lupine Claw Gauntlets",
+              "slot": "HANDS",
+              "classes": "ALL"
+            },
+            {
+              "name": "Mammoth Hide Cloak",
+              "slot": "BACK",
+              "classes": "ALL"
+            },
+            {
+              "name": "Robe of the Oracle",
+              "slot": "CHEST",
+              "classes": "MNK NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Spiked Buckler",
+              "slot": "SECONDARY",
+              "classes": "WAR CLR PAL RNG SHD DRU BRD ROG SHM"
+            }
+          ]
+        },
+        {
+          "effect": "Improved Damage II",
+          "tier": 2,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Polished Mithril Mask",
+              "slot": "FACE",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Improved Damage III",
+          "tier": 3,
+          "description": "Increases the damage of spells by up to 20%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "White Dragonscale Cloak",
+              "slot": "BACK",
+              "classes": "ALL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Improved Healing",
+      "group": "spell",
+      "kind": "healing",
+      "tiers": [
+        {
+          "effect": "Improved Healing I",
+          "tier": 1,
+          "description": "Increases the potency of healing spells by up to 20%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Emissary Mask",
+              "slot": "FACE",
+              "classes": "WAR CLR PAL SHD BRD"
+            },
+            {
+              "name": "Turtleshell Helm",
+              "slot": "HEAD",
+              "classes": "ALL"
+            },
+            {
+              "name": "Zaharn's Coronet",
+              "slot": "HEAD",
+              "classes": "CLR DRU SHM"
+            }
+          ]
+        },
+        {
+          "effect": "Improved Healing II",
+          "tier": 2,
+          "description": "Increases the potency of healing spells by up to 20%",
+          "levelCap": null,
+          "items": []
+        },
+        {
+          "effect": "Improved Healing III",
+          "tier": 3,
+          "description": "Increases the potency of healing spells by up to 20%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Idol of the Underking",
+              "slot": "RANGE PRIMARY SECONDARY",
+              "classes": "ALL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Jedah's Conservation",
+      "group": "summoned",
+      "kind": "reagent saver",
+      "tiers": [
+        {
+          "effect": "Jedah's Lesser Conservation",
+          "tier": 1,
+          "description": "Reduces the number of reagents consumed by spells by providing a 15% chance for the spell not to consume the reagent when cast.",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Summoned: Jedah's Brass Choker",
+              "slot": "NECK",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Jedah's Conservation",
+          "tier": 2,
+          "description": "Reduces the number of reagents consumed by spells by providing a 15% chance for the spell not to consume the reagent when cast.",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Summoned: Jedah's Silver Choker",
+              "slot": "NECK",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Jedah's Greater Conservation",
+          "tier": 3,
+          "description": "Reduces the number of reagents consumed by spells by providing a 15% chance for the spell not to consume the reagent when cast.",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Summoned: Jedah's Golden Choker",
+              "slot": "NECK",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Jedah's Superior Conservation",
+          "tier": 4,
+          "description": "Reduces the number of reagents consumed by spells by providing a 15% chance for the spell not to consume the reagent when cast.",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Summoned: Jedah's Platinum Choker",
+              "slot": "NECK",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        }
+      ]
+    },
+    {
+      "family": "Jolum's Abatement",
+      "group": "summoned",
+      "kind": "nuke mana",
+      "tiers": [
+        {
+          "effect": "Jolum's Minor Abatement",
+          "tier": 1,
+          "description": "Reduces the mana cost of direct damage spells by up to 15%. This bonus will decay on spells over level 24.",
+          "levelCap": 24,
+          "items": [
+            {
+              "name": "Summoned: Jolum's Tarnished Bauble",
+              "slot": "EAR",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Jolum's Abatement",
+          "tier": 2,
+          "description": "Reduces the mana cost of direct damage spells by up to 15%. This bonus will decay on spells over level 50.",
+          "levelCap": 50,
+          "items": [
+            {
+              "name": "Summoned: Jolum's Shiny Bauble",
+              "slot": "EAR",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Jolum's Major Abatement",
+          "tier": 3,
+          "description": "Reduces the mana cost of direct damage spells by up to 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Summoned: Jolum's Brilliant Bauble",
+              "slot": "EAR",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Jolum's Superior Abatement",
+          "tier": 4,
+          "description": "Reduces the mana cost of direct damage spells by up to 15%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            {
+              "name": "Summoned: Jolum's Glowing Bauble",
+              "slot": "EAR",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        }
+      ]
+    },
+    {
+      "family": "Mana Preservation",
+      "group": "spell",
+      "kind": "spell mana",
+      "tiers": [
+        {
+          "effect": "Mana Preservation I",
+          "tier": 1,
+          "description": "Reduces the mana cost of spells by up to 10%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Platinum Armband",
+              "slot": "ARMS",
+              "classes": "ALL"
+            },
+            {
+              "name": "Polished Bone Hoop",
+              "slot": "EAR",
+              "classes": "ALL"
+            },
+            {
+              "name": "Testament of Vanear",
+              "slot": "SECONDARY",
+              "classes": "ALL"
+            },
+            {
+              "name": "Vagrant's Tunic",
+              "slot": "CHEST",
+              "classes": "WAR CLR PAL RNG SHD DRU MNK BRD ROG SHM BST BER"
+            },
+            {
+              "name": "Wicked Sallet",
+              "slot": "HEAD",
+              "classes": "SHD"
+            }
+          ]
+        },
+        {
+          "effect": "Mana Preservation II",
+          "tier": 2,
+          "description": "Reduces the mana cost of spells by up to 10%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Black Alloy Medallion",
+              "slot": "NECK",
+              "classes": "ALL"
+            },
+            {
+              "name": "Mane Attraction",
+              "slot": "HEAD",
+              "classes": "ALL"
+            },
+            {
+              "name": "Nisch Mas Ilkvel",
+              "slot": "SECONDARY",
+              "classes": "CLR DRU SHM"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Naki's Pernicity",
+      "group": "summoned",
+      "kind": "cast speed",
+      "tiers": [
+        {
+          "effect": "Naki's Lesser Pernicity",
+          "tier": 1,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 29.",
+          "levelCap": 29,
+          "items": [
+            {
+              "name": "Summoned: Naki's Tiny Ring",
+              "slot": "FINGER",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Naki's Charm of Pernicity",
+          "tier": 2,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 51.",
+          "levelCap": 51,
+          "items": [
+            {
+              "name": "Summoned: Naki's Twisted Ring",
+              "slot": "FINGER",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Naki's Greater Pernicity",
+          "tier": 3,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Summoned: Naki's Studded Ring",
+              "slot": "FINGER",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Naki's Superior Pernicity",
+          "tier": 4,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            {
+              "name": "Summoned: Naki's Spiked Ring",
+              "slot": "FINGER",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        }
+      ]
+    },
+    {
+      "family": "Percussion Resonance",
+      "group": "song",
+      "kind": "percussion instruments",
+      "tiers": [
+        {
+          "effect": "Percussion Resonance 11",
+          "tier": 1,
+          "description": "Increases the power of percussion instrument based bard songs by up to 110%",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Mistmoore Battle Drums",
+              "slot": "PRIMARY SECONDARY",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Percussion Resonance 14",
+          "tier": 2,
+          "description": "Increases the power of percussion instrument based bard songs by up to 140%",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Selo's Drums of the March",
+              "slot": "PRIMARY SECONDARY",
+              "classes": "ALL"
+            },
+            {
+              "name": "Selo`s Drums of the March",
+              "slot": "",
+              "classes": ""
+            }
+          ]
+        },
+        {
+          "effect": "Percussion Resonance 16",
+          "tier": 3,
+          "description": "Increases the power of percussion instrument based bard songs by up to 160%",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Drums of the Beast",
+              "slot": "PRIMARY",
+              "classes": "BRD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Reagent Conservation",
+      "group": "spell",
+      "kind": "reagent saver",
+      "tiers": [
+        {
+          "effect": "Reagent Conservation I",
+          "tier": 1,
+          "description": "Reduces the chance that spell reagents will be consumed by up to 15%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Batskull Earring",
+              "slot": "EAR",
+              "classes": "ALL"
+            },
+            {
+              "name": "Drake-hide Leggings",
+              "slot": "LEGS",
+              "classes": "ALL"
+            },
+            {
+              "name": "Happy Love Bracers",
+              "slot": "WRIST",
+              "classes": "ALL"
+            },
+            {
+              "name": "The Artist's Brush",
+              "slot": "",
+              "classes": ""
+            }
+          ]
+        },
+        {
+          "effect": "Reagent Conservation II",
+          "tier": 2,
+          "description": "Reduces the chance that spell reagents will be consumed by up to 15%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Amethyst Bracelet",
+              "slot": "WRIST",
+              "classes": "ALL"
+            },
+            {
+              "name": "Crown of Leaves",
+              "slot": "HEAD",
+              "classes": "ALL"
+            },
+            {
+              "name": "Fine Silk Turban",
+              "slot": "HEAD",
+              "classes": "ALL"
+            },
+            {
+              "name": "Savant's Cap",
+              "slot": "HEAD",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Reagent Conservation III",
+          "tier": 3,
+          "description": "Reduces the chance that spell reagents will be consumed by up to 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Robe of the Kedge",
+              "slot": "CHEST",
+              "classes": "NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Runed Mithril Bracer",
+              "slot": "WRIST",
+              "classes": "ALL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Reanimation Efficiency",
+      "group": "spell",
+      "kind": "undead pet mana",
+      "tiers": [
+        {
+          "effect": "Reanimation Efficiency I",
+          "tier": 1,
+          "description": "Reduces the mana cost of summon undead spells by up to 25%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Dark Circlet",
+              "slot": "HEAD",
+              "classes": "NEC"
+            },
+            {
+              "name": "Flowing Black Robe",
+              "slot": "CHEST",
+              "classes": "NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Lizardskin Tribal Mask",
+              "slot": "FACE",
+              "classes": "ALL"
+            },
+            {
+              "name": "Ill-Fitting Robes",
+              "slot": "CHEST",
+              "classes": "NEC WIZ MAG ENC"
+            }
+          ]
+        },
+        {
+          "effect": "Reanimation Efficiency II",
+          "tier": 2,
+          "description": "Reduces the mana cost of summon undead spells by up to 25%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Platinum Skull Ring",
+              "slot": "FINGER",
+              "classes": "ALL"
+            },
+            {
+              "name": "Runed Cowl",
+              "slot": "HEAD",
+              "classes": "BRD NEC WIZ MAG ENC"
+            }
+          ]
+        },
+        {
+          "effect": "Reanimation Efficiency III",
+          "tier": 3,
+          "description": "",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Robe of the Ishva",
+              "slot": "",
+              "classes": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Reanimation Haste",
+      "group": "spell",
+      "kind": "undead pet cast speed",
+      "tiers": [
+        {
+          "effect": "Reanimation Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of summon undead spells by 30%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Carved Ivory Mask",
+              "slot": "FACE",
+              "classes": "ALL"
+            },
+            {
+              "name": "Ivory Bracelet",
+              "slot": "WRIST",
+              "classes": "ALL"
+            },
+            {
+              "name": "Nightshade Wreath",
+              "slot": "HEAD",
+              "classes": "CLR DRU BRD SHM NEC WIZ MAG ENC"
+            }
+          ]
+        },
+        {
+          "effect": "Reanimation Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of summon undead spells by 30%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Robe of Enshroudment",
+              "slot": "CHEST",
+              "classes": "NEC"
+            },
+            {
+              "name": "Ishva Mas Leggings",
+              "slot": "",
+              "classes": ""
+            }
+          ]
+        },
+        {
+          "effect": "Reanimation Haste III",
+          "tier": 3,
+          "description": "Reduces the cast time of summon undead spells by 30%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Grotesque Girdle",
+              "slot": "WAIST",
+              "classes": "CLR DRU SHM NEC WIZ MAG ENC"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Spell Haste",
+      "group": "spell",
+      "kind": "cast speed",
+      "tiers": [
+        {
+          "effect": "Spell Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Beaded Slime Necklace",
+              "slot": "NECK",
+              "classes": "ALL"
+            },
+            {
+              "name": "Bracelet of Woven Grass",
+              "slot": "WRIST",
+              "classes": "ALL"
+            },
+            {
+              "name": "Gilded Cloth",
+              "slot": "SHOULDERS",
+              "classes": "CLR DRU BRD SHM NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Wolf Fur Slippers",
+              "slot": "FEET",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Spell Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of spells by 15%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Djarns Amethyst Ring",
+              "slot": "FINGER",
+              "classes": "ALL"
+            },
+            {
+              "name": "Mithril-Runed Tunic",
+              "slot": "CHEST",
+              "classes": "ALL except NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Shining Metallic Robes",
+              "slot": "CHEST",
+              "classes": "NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Shiny Robe of the Underfoot",
+              "slot": "CHEST",
+              "classes": "NEC WIZ MAG ENC"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "String Resonance",
+      "group": "song",
+      "kind": "string instruments",
+      "tiers": [
+        {
+          "effect": "String Resonance 11",
+          "tier": 1,
+          "description": "Increases the power of stringed instrument based bard songs by up to 110%",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Gypsy Lute",
+              "slot": "PRIMARY SECONDARY",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "String Resonance 14",
+          "tier": 2,
+          "description": "Increases the power of stringed instrument based bard songs by up to 140%",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Kelin's Seven Stringed Lute",
+              "slot": "SECONDARY",
+              "classes": "BRD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Summoning Efficiency",
+      "group": "spell",
+      "kind": "summon mana",
+      "tiers": [
+        {
+          "effect": "Summoning Efficiency I",
+          "tier": 1,
+          "description": "Reduces the mana cost of summon creature spells by up to 25%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "Band of Flesh",
+              "slot": "FINGER",
+              "classes": "ALL"
+            },
+            {
+              "name": "Dusty Bloodstained Gloves",
+              "slot": "HANDS",
+              "classes": "NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Gossamer Robe",
+              "slot": "CHEST",
+              "classes": "NEC WIZ MAG ENC"
+            }
+          ]
+        },
+        {
+          "effect": "Summoning Efficiency II",
+          "tier": 2,
+          "description": "Reduces the mana cost of summon creature spells by up to 25%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Embroidered Black Sleeves",
+              "slot": "ARMS",
+              "classes": "CLR DRU BRD SHM NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Robe of the Ishva",
+              "slot": "CHEST",
+              "classes": "NEC WIZ MAG ENC"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Summoning Haste",
+      "group": "spell",
+      "kind": "summon cast speed",
+      "tiers": [
+        {
+          "effect": "Summoning Haste I",
+          "tier": 1,
+          "description": "Reduces the cast time of summon creature spells by 30%. This bonus will decay on spells over level 20.",
+          "levelCap": 20,
+          "items": [
+            {
+              "name": "A Shimmering Orb",
+              "slot": "SECONDARY",
+              "classes": "BRD NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Adamantite Band",
+              "slot": "FINGER",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Summoning Haste II",
+          "tier": 2,
+          "description": "Reduces the cast time of summon creature spells by 30%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Incandescent Mask",
+              "slot": "FACE",
+              "classes": "MNK ENC"
+            },
+            {
+              "name": "Robe of the Elements",
+              "slot": "CHEST",
+              "classes": "MAG"
+            }
+          ]
+        },
+        {
+          "effect": "Summoning Haste III",
+          "tier": 3,
+          "description": "Reduces the cast time of summon creature spells by 30%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Brell's Girdle",
+              "slot": "WAIST",
+              "classes": "ALL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Tavee's Diuturnity",
+      "group": "summoned",
+      "kind": "buff duration",
+      "tiers": [
+        {
+          "effect": "Tavee's Lesser Diuturnity",
+          "tier": 1,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 16.",
+          "levelCap": 16,
+          "items": [
+            {
+              "name": "Summoned: Tavee's Linen Mantle",
+              "slot": "SHOULDERS",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Tavee's Charm of Diuturnity",
+          "tier": 2,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 49.",
+          "levelCap": 49,
+          "items": [
+            {
+              "name": "Summoned: Tavee's Leather Mantle",
+              "slot": "SHOULDERS",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Tavee's Greater Diuturnity",
+          "tier": 3,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Summoned: Tavee's Silken Mantle",
+              "slot": "SHOULDERS",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        },
+        {
+          "effect": "Tavee's Superior Diuturnity",
+          "tier": 4,
+          "description": "Increases the duration of beneficial spells by 15%. This bonus will decay on spells over level 65.",
+          "levelCap": 65,
+          "items": [
+            {
+              "name": "Summoned: Tavee's Runed Mantle",
+              "slot": "SHOULDERS",
+              "classes": "BST CLR DRU ENC MAG NEC PAL RNG SHM SHD WIZ"
+            }
+          ],
+          "summonedOnly": true
+        }
+      ]
+    },
+    {
+      "family": "Wind Resonance",
+      "group": "song",
+      "kind": "wind instruments",
+      "tiers": [
+        {
+          "effect": "Wind Resonance 10",
+          "tier": 1,
+          "description": "Increases the power of wind instrument based bard songs by up to 100%",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Minotaur Horn",
+              "slot": "PRIMARY SECONDARY",
+              "classes": "ALL"
+            }
+          ]
+        },
+        {
+          "effect": "Wind Resonance 14",
+          "tier": 2,
+          "description": "Increases the power of wind instrument based bard songs by up to 140%",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Lyssa`s Darkwood Piccolo",
+              "slot": "SECONDARY",
+              "classes": "BRD"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

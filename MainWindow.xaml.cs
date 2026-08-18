@@ -551,8 +551,9 @@ public partial class MainWindow : Window
                 o.Opacity, o.SctFontSize, o.SctBigHit,
                 o.SctLaneWidth, o.SctLaneHeight,
                 centerX + def.OffsetFromCenter - o.SctLaneWidth / 2, topY,
-                // xp/faction floats are rare and worth reading — drift up slowly.
-                lifetimeSeconds: def.Kind == CombatParser.SctKind.Progress ? 7 : 2.6);
+                // xp/faction floats are rare and worth reading — drift up slowly
+                // (how slowly is the player's call: Manager → Combat text).
+                lifetimeSeconds: def.Kind == CombatParser.SctKind.Progress ? o.SctXpLifetime : 2.6);
             lane.Show();
             lane.SetLocked(_vm.Locked);
             _sctLanes[def.Kind] = lane;
@@ -782,6 +783,7 @@ public partial class MainWindow : Window
         _config.Overlay.SelfMatrixVisible = !_config.Overlay.SelfMatrixVisible;
         _configService.SaveSettings(_config);
         UpdateMatrixVisibility();
+        _vm.Flash(_config.Overlay.SelfMatrixVisible ? "Self buffs shown." : "Self buffs hidden.");
     }
 
     private void ToggleTargetMatrix()
@@ -789,6 +791,7 @@ public partial class MainWindow : Window
         _config.Overlay.TargetMatrixVisible = !_config.Overlay.TargetMatrixVisible;
         _configService.SaveSettings(_config);
         UpdateMatrixVisibility();
+        _vm.Flash(_config.Overlay.TargetMatrixVisible ? "Target debuffs shown." : "Target debuffs hidden.");
     }
 
     private void ToggleReminders()
@@ -796,6 +799,7 @@ public partial class MainWindow : Window
         _config.Overlay.RemindersVisible = !_config.Overlay.RemindersVisible;
         _configService.SaveSettings(_config);
         RebuildRemindersWindow();
+        _vm.Flash(_config.Overlay.RemindersVisible ? "Rebuff reminders shown." : "Rebuff reminders hidden.");
     }
 
     private void RebuildEnemyDotsWindow()
@@ -824,6 +828,7 @@ public partial class MainWindow : Window
         _config.Overlay.ConditionsVisible = !_config.Overlay.ConditionsVisible;
         _configService.SaveSettings(_config);
         RebuildConditionsWindow();
+        _vm.Flash(_config.Overlay.ConditionsVisible ? "Condition badges shown." : "Condition badges hidden.");
     }
 
     private void RebuildSessionStatsWindow()
@@ -865,6 +870,7 @@ public partial class MainWindow : Window
         _config.Overlay.SessionStatsVisible = !_config.Overlay.SessionStatsVisible;
         _configService.SaveSettings(_config);
         RebuildSessionStatsWindow();
+        _vm.Flash(_config.Overlay.SessionStatsVisible ? "Session stats shown." : "Session stats hidden.");
     }
 
     private MatrixWindow RebuildPanel(MatrixWindow? existing, string key, string title,
@@ -1050,6 +1056,7 @@ public partial class MainWindow : Window
         _config.Overlay.EnemyDotsVisible = !_config.Overlay.EnemyDotsVisible;
         _configService.SaveSettings(_config);
         RebuildEnemyDotsWindow();
+        _vm.Flash(_config.Overlay.EnemyDotsVisible ? "Enemy DoTs shown." : "Enemy DoTs hidden.");
     }
 
     private void ToggleHide()
@@ -1345,6 +1352,7 @@ public partial class MainWindow : Window
         _config.Overlay.BarsVisible = !_barsHidden;
         _configService.SaveSettings(_config);
         UpdateBarsVisibility();
+        _vm.Flash(_barsHidden ? "Buff bars hidden." : "Buff bars shown.");
     }
 
     /// <summary>Toolbar ☰ — the SLIM play-time menu: what isn't already a

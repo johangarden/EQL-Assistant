@@ -192,6 +192,7 @@ public partial class App : Application
                 "Location\tName\tID\tCount\tSlots\r\nHead\tValorium Helmet +1\t4851\t1\t10\r\n");
             var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
             invWin.Show();
+            invWin.ShowFocusTabForTest(); // instantiate the audit-board template
             invWin.Close();
             var invEmpty = new Views.InventoryWindow(Path.Combine(invDir, "no_such_dir"), "X", "y");
             invEmpty.Show();
@@ -1235,10 +1236,16 @@ public partial class App : Application
                     "Bank1\tEmpty\t0\t0\t0",
                     "SharedBank1\tEmpty\t0\t0\t0",
                     "Personal-Depot1\tGriffenne Blood\t22526\t2\t10",
+                    // The Dragon's Hoard rides the primary table, spaced like
+                    // General and nestable (observed: Thorrak 2026-08-18).
+                    "Hoard 1\tFine Steel Scimitar\t5353\t1\t10",
+                    "Hoard 1-Slot2\tEmpty\t0\t0\t0",
                     "Held\tEmpty\t0\t0\t0",
                     "",
                     "KeyRing\tName\tID\t",
                     "Activated\tGuise of the Deceiver\t2469",
+                    // Collected exaltations live on the key ring too (observed).
+                    "Augmentation\tDamask Robe (Exaltation)\t1334",
                     "Equipment\tBoots of the Long Road\t177708",
                     "Equipment\tBoots of the Long Road +1\t177708",
                 });
@@ -1257,25 +1264,98 @@ public partial class App : Application
                         .First(c => c.Location == "General 1-Slot9").Children
                         is [{ Name: "Kelin`s Seven Stringed Lute (Exaltation)" }]);
                 Check("inventory: the keyring table parses through its bare-tab header",
-                    dump.KeyRing.Count == 3 && dump.Sections.SequenceEqual(new[] { "Location", "KeyRing" })
+                    dump.KeyRing.Count == 4 && dump.Sections.SequenceEqual(new[] { "Location", "KeyRing" })
                     && dump.MalformedCount == 0);
 
                 var (rows, lanes) = InventoryStore.CarryAll(dump);
                 Check("inventory: empty rows leave the ledger, real ones keep file order",
                     rows.All(r => r.Name != "Empty")
                     && rows.Select(r => r.Line).SequenceEqual(rows.Select(r => r.Line).OrderBy(n => n)));
-                Check("inventory: lanes cover worn/bags/depot/keyring, none empty",
-                    lanes.Select(l => l.Id).SequenceEqual(new[] { "worn", "bags", "depot", "keyring" }));
-                Check("inventory: stack counts survive, keyring rows count one",
+                // The keyring is several in-game things: Equipment = Storage,
+                // Activated = Activated items, the rest (Augmentation) stays
+                // generic. Chips order carry-group first, stash-group after.
+                Check("inventory: lanes split the keyring and order carry before stash",
+                    lanes.Select(l => l.Id).SequenceEqual(new[]
+                        { "worn", "bags", "storage", "activated", "keyring", "depot", "hoard" }));
+                Check("inventory: stack counts survive, keyring categories land in their lanes",
                     rows.First(r => r.Name == "Tiny Dagger").Count == 86
                     && rows.First(r => r.Name == "Griffenne Blood") is { Count: 2, Lane: "depot" }
-                    && rows.Count(r => r.Lane == "keyring") == 3);
+                    && rows.First(r => r.Name == "Fine Steel Scimitar").Lane == "hoard"
+                    && rows.Count(r => r.Lane == "storage") == 2      // Equipment rows
+                    && rows.Count(r => r.Lane == "activated") == 1    // Guise of the Deceiver
+                    && rows.Count(r => r.Lane == "keyring") == 1);    // the Augmentation exaltation
+                Check("inventory: lane groups tell carry from stash",
+                    InventoryStore.LaneGroup("storage") == "carry"
+                    && InventoryStore.LaneGroup("hoard") == "stash"
+                    && InventoryStore.LaneGroup("elsewhere") == "");
 
                 var held = InventoryStore.HeldCounts(dump);
                 Check("inventory: held counts sum stacks; Activated is a look, not an item",
                     held["tiny dagger"] == 86
                     && held["boots of the long road"] == 1 && held["boots of the long road +1"] == 1
                     && !held.ContainsKey("guise of the deceiver"));
+
+                // Tabs partition the rows: "(Exaltation)" copies get their own
+                // tab, everything else (keyring included) is an item, and an
+                // exaltation knows the item wearing it. The Focus effects tab
+                // is not row-backed — it audits the dump (checked below).
+                Check("inventory: tabs split items / exaltations (keyring Augmentation included)",
+                    rows.Count(r => InventoryStore.TabOf(r) == "exalt") == 3
+                    && rows.Count(r => InventoryStore.TabOf(r) == "items") == rows.Count - 3);
+                Check("inventory: an exaltation names its host item",
+                    rows.First(r => r.Name == "Thelvorn, Blade of Light (Exaltation)").Host
+                        == "Thelvorn, Blade of Light +5"
+                    && rows.First(r => r.Name == "Kelin`s Seven Stringed Lute (Exaltation)").Host
+                        == "Kelin`s Seven Stringed Lute +1"
+                    && rows.First(r => r.Name == "Spacious Rucksack").Host == "");
+
+                // Coverage: the row is the evidence (an Empty bank slot still
+                // proves the bank was dumped); missing = "the dump does not
+                // say". Hoard rows are hoard evidence.
+                Check("inventory: full coverage leaves nothing unsaid",
+                    dump.Covered.SetEquals(new[] { "worn", "bags", "bank", "sharedBank", "depot", "hoard", "keyring" })
+                    && InventoryStore.MissingStorages(dump).Count == 0);
+                var partial = InventoryStore.Parse(string.Join("\r\n", new[]
+                {
+                    "Location\tName\tID\tCount\tSlots",
+                    "Head\tValorium Helmet +1\t4851\t1\t10",
+                    "General 1\tBackpack\t17005\t1\t8",
+                }));
+                // Slot types correlated from the in-game item window against
+                // observed ladders (Aldryn's five typed rows = 1|2,7,8,9,10).
+                Check("inventory: worn display order runs armor, jewelry, weapons",
+                    InventoryStore.WornRank("Head") < InventoryStore.WornRank("Feet")
+                    && InventoryStore.WornRank("Feet") < InventoryStore.WornRank("Ear")
+                    && InventoryStore.WornRank("Fingers") < InventoryStore.WornRank("Primary")
+                    && InventoryStore.WornRank("Primary") < InventoryStore.WornRank("Any Slot")
+                    && InventoryStore.WornRank("SomethingNew") > InventoryStore.WornRank("Any Slot"));
+                Check("inventory: slot numbers speak their game types",
+                    InventoryStore.SlotType(7) == ("F", "Focus Exaltation")
+                    && InventoryStore.SlotType(8) == ("C", "Click Exaltation")
+                    && InventoryStore.SlotType(9) == ("W", "Worn Exaltation")
+                    && InventoryStore.SlotType(10) == ("P", "Proc Exaltation")
+                    && InventoryStore.SlotType(1) == ("O", "Ornamentation")
+                    && InventoryStore.SlotType(2) == ("O", "Ornamentation")
+                    && InventoryStore.SlotType(3) == ("3", "Slot 3"));
+                Check("inventory: bags are containers, socketed items are not",
+                    InventoryStore.IsContainer(dump.Items.First(e => e.Name == "Spacious Rucksack"))
+                    && !InventoryStore.IsContainer(dump.Items.First(e => e.Base == "Ear" && e.Children.Count > 0))
+                    && !InventoryStore.IsContainer(dump.Items.First(e => e.Location == "Hoard 1")));
+                Check("inventory: an old dump names everything it left unsaid",
+                    InventoryStore.MissingStorages(partial).SequenceEqual(
+                        new[] { "bank", "tradeskill depot", "Dragon's Hoard", "key rings" }));
+                var hoardish = InventoryStore.Parse(string.Join("\r\n", new[]
+                {
+                    "Location\tName\tID\tCount\tSlots",
+                    "Head\tValorium Helmet +1\t4851\t1\t10",
+                    "",
+                    "Hoard\tName\tID\tCount\tSlots",
+                    "Hoard1\tShiny Thing\t99\t1\t10",
+                }));
+                Check("inventory: an extra item table reads as the hoard, own lane chip",
+                    !InventoryStore.MissingStorages(hoardish).Contains("Dragon's Hoard")
+                    && InventoryStore.CarryAll(hoardish).Rows
+                        .Any(r => r.Lane == "section:Hoard" && r.Name == "Shiny Thing"));
 
                 // A malformed row is counted, never thrown on; an unknown-shaped
                 // section is carried as uninterpreted rows.
@@ -1286,6 +1366,141 @@ public partial class App : Application
 
                 Check("inventory: log name yields char + server for the preferred dump name",
                     InventoryStore.ParseLogName(@"C:\x\Logs\eqlog_Thorrak_paineel.txt") == ("Thorrak", "paineel"));
+
+                // ---- focus-effect audit --------------------------------------
+                var focus = new FocusEffects();
+                Check("focus: 24 families / 68 tiers load from the embedded table",
+                    focus.Families.Count == 24
+                    && focus.Families.Sum(f => f.Tiers.Count) == 68);
+                // Minor Improved Damage (10% ≤20, one robe) is dropped by
+                // Johan's call — a twink curiosity that broke the columns.
+                Check("focus: Minor Improved Damage stays off the board",
+                    focus.Families.First(f => f.Name == "Improved Damage").Tiers
+                        .Select(t => t.Effect).SequenceEqual(new[]
+                        {
+                            "Improved Damage I", "Improved Damage II", "Improved Damage III",
+                        })
+                    && focus.Families.All(f => f.Name != "Minor Improved Damage"));
+                var jolum = focus.Families.First(f => f.Name == "Jolum's Abatement");
+                Check("focus: named tiers order by the observed level caps",
+                    jolum.Tiers.Select(t => t.Effect).SequenceEqual(new[]
+                    {
+                        "Jolum's Minor Abatement", "Jolum's Abatement",
+                        "Jolum's Major Abatement", "Jolum's Superior Abatement",
+                    }));
+                // The JSON's field names must actually reach the model — an
+                // unmapped "tier" once deserialized as 0 everywhere and the
+                // audit read "none owned" forever (0/25 in the field).
+                Check("focus: tier numbers, groups and kinds survive the JSON round trip",
+                    focus.Families.All(f => f.Tiers.Select(t => t.TierNum)
+                        .SequenceEqual(Enumerable.Range(1, f.Tiers.Count)))
+                    && focus.Families.Count(f => f.Group == "song") == 4
+                    && focus.Families.Count(f => f.Group == "summoned") == 5
+                    && focus.Families.All(f => f.Kind.Length > 0));
+                // Burning Affliction has summoned CARRIERS but real items too —
+                // only all-summoned families leave the main sections.
+                Check("focus: mixed families stay spells; all-summoned families fold away",
+                    focus.Families.First(f => f.Name == "Burning Affliction").Group == "spell"
+                    && focus.Families.First(f => f.Name == "Jolum's Abatement").Group == "summoned");
+                var realAudit = focus.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("White Dragonscale Cloak", "white dragonscale cloak", "Back", 1, "worn", 1),
+                });
+                Check("focus: a real carrier joins the loaded table end to end",
+                    realAudit.First(a => a.Family.Name == "Improved Damage")
+                        is { BestTier: 3, Status: 2, BestPlace: "worn" });
+                Check("focus: the category page's missing tier and empty page carried honestly",
+                    focus.Families.First(f => f.Name == "Reanimation Efficiency").Tiers.Count == 3
+                    && focus.Families.First(f => f.Name == "Improved Healing")
+                        .Tiers.First(t => t.Effect == "Improved Healing II").Items.Count == 0);
+                Check("focus: item join folds +N, the star, and drops the apostrophes",
+                    FocusEffects.ItemKey("Kelin`s Seven Stringed Lute +3") == "kelins seven stringed lute"
+                    && FocusEffects.ItemKey("Bandages*") == "bandages"
+                    // The game says "Djarn's", the wiki page says "Djarns" —
+                    // the audit once missed a WORN Spell Haste II over it.
+                    && FocusEffects.ItemKey("Djarn's Amethyst Ring +2") == FocusEffects.ItemKey("Djarns Amethyst Ring"));
+                Check("focus: EffectsOf answers per item for the socket fold-outs",
+                    focus.EffectsOf("Wicked Sallet +5").Any(e => e.Tier.Effect == "Mana Preservation I")
+                    && focus.EffectsOf("Wicked Sallet (Exaltation)").Any(e => e.Tier.Effect == "Mana Preservation I")
+                    && focus.EffectsOf("A Perfectly Ordinary Rock").Count == 0);
+                var djarns = focus.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("Djarn's Amethyst Ring +2", "djarn's amethyst ring +2", "Fingers", 1, "worn", 1),
+                });
+                Check("focus: the apostrophe never hides a worn focus again",
+                    djarns.First(a => a.Family.Name == "Spell Haste") is { BestTier: 2, Status: 2, BestPlace: "worn" });
+
+                var fams = new List<FocusEffects.Family>
+                {
+                    new()
+                    {
+                        Name = "Testing", Tiers = new List<FocusEffects.Tier>
+                        {
+                            new() { Effect = "Testing I", TierNum = 1, Items = new() { new() { Name = "Item A" } } },
+                            new() { Effect = "Testing II", TierNum = 2, Items = new() { new() { Name = "Item B" } } },
+                            new() { Effect = "Testing III", TierNum = 3, Items = new() { new() { Name = "Item C" } } },
+                        },
+                    },
+                    new()
+                    {
+                        Name = "Empty", Tiers = new List<FocusEffects.Tier>
+                        {
+                            new() { Effect = "Empty I", TierNum = 1, Items = new() { new() { Name = "Item D" } } },
+                        },
+                    },
+                };
+                var mini = new FocusEffects(fams);
+                // EQL delivers foci AS exaltations — the socketed copy in
+                // worn gear counts, wearing its host's lane.
+                var audit = mini.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("Item A +2", "item a +2", "Head", 1, "worn", 1),
+                    new InventoryStore.CarryRow("Item B", "item b", "Bank3", 1, "bank", 2),
+                    new InventoryStore.CarryRow("Item C (Exaltation)", "item c (exaltation)", "Head-Slot7", 1, "worn", 3),
+                });
+                Check("focus: audit reads best owned tier; a worn exaltation socket counts",
+                    audit[0] is { BestTier: 3, BestItem: "Item C (Exaltation)", BestPlace: "worn", Status: 2 }
+                    && audit[0].OwnedTiers.SequenceEqual(new[] { true, true, true })
+                    && audit[1] is { BestTier: 0, Status: 0 });
+                var worn = mini.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("Item C", "item c", "Bank1", 1, "bank", 1),
+                    new InventoryStore.CarryRow("Item C", "item c", "Head", 1, "worn", 2),
+                });
+                Check("focus: top tier reads green and worn beats banked at the same tier",
+                    worn[0] is { BestTier: 3, Status: 2, BestPlace: "worn" });
+                // Green means WEARING the best — the top tier sitting in the
+                // bank is an orange, not a trophy.
+                var banked = mini.Audit(new[]
+                {
+                    new InventoryStore.CarryRow("Item C", "item c", "Bank1", 1, "bank", 1),
+                });
+                Check("focus: best tier in the bank reads orange, never green",
+                    banked[0] is { BestTier: 3, WornTier: 0, Status: 1, BestPlace: "in bank" });
+
+                // A summoned-only top tier can't be hunted — wearing the best
+                // PERMANENT tier is green (Burning Affliction IV is only a
+                // conjured Rallican bracelet).
+                var capped = new FocusEffects(new List<FocusEffects.Family>
+                {
+                    new()
+                    {
+                        Name = "Capped", Tiers = new List<FocusEffects.Tier>
+                        {
+                            new() { Effect = "Capped I", TierNum = 1, Items = new() { new() { Name = "Item D" } } },
+                            new() { Effect = "Capped II", TierNum = 2, Items = new() { new() { Name = "Item E" } } },
+                            new() { Effect = "Capped III", TierNum = 3, SummonedOnly = true,
+                                Items = new() { new() { Name = "Summoned: Item F" } } },
+                        },
+                    },
+                });
+                Check("focus: the green line stops at the best huntable tier",
+                    capped.Audit(new[]
+                    {
+                        new InventoryStore.CarryRow("Item E", "item e", "Head", 1, "worn", 1),
+                    })[0] is { WornTier: 2, HuntableMax: 2, Status: 2 }
+                    && new FocusEffects().Families.First(f => f.Name == "Burning Affliction")
+                        .Tiers.Single(t => t.Effect == "Burning Affliction IV").SummonedOnly);
             }
         }
         catch (Exception ex)
@@ -1567,6 +1782,40 @@ public partial class App : Application
                 CombatParser.IsMeleeAbility("backstab") && CombatParser.IsMeleeAbility("slash")
                 && !CombatParser.IsMeleeAbility("thorns") && !CombatParser.IsMeleeAbility("Tainted Breath"));
 
+            // ---- forms observed at the 2026-08-16 Gynok Moltor death ------------
+            // The killing blow was a second-person DoT tick that no regex
+            // caught; the raid also swung "strikes" and burned with a flame
+            // damage shield.
+            var pg = new CombatParser();
+            var deaths = new List<CombatParser.DeathEvent>();
+            pg.PlayerDied += d => deaths.Add(d);
+            pg.ProcessLine("[Sun Aug 16 23:09:58 2026] A hardened skeleton strikes YOU for 8 points of damage.");
+            pg.ProcessLine("[Sun Aug 16 23:09:58 2026] YOU are burned by a hardened skeleton's flames for 6 points of non-melee damage!");
+            pg.ProcessLine("[Sun Aug 16 23:10:02 2026] You have taken 1 damage from Rabies by a greater mummy.");
+            pg.ProcessLine("[Sun Aug 16 23:10:02 2026] You have taken 29 damage from Searing Arrow by Gynok Moltor pet.");
+            pg.ProcessLine("[Sun Aug 16 23:10:02 2026] You died.");
+            var ginc = pg.GetIncomingAbilityRows(pet: false);
+            Check("incoming: 'strikes' melee verb tracked",
+                ginc.First(r => r.Name == "strike") is { Total: 8 });
+            Check("incoming: flame damage shield tracked",
+                ginc.First(r => r.Name == "flames") is { Total: 6 });
+            Check("incoming: second-person DoT tick attributed to its caster",
+                ginc.First(r => r.Name == "Searing Arrow") is { Total: 29 }
+                && ginc.First(r => r.Name == "Rabies") is { Total: 1 });
+            Check("recap: the killing tick reaches the death event",
+                deaths is [{ } gd]
+                && gd.Events.Any(e => e.Ability == "Searing Arrow" && (int)e.Amount == 29));
+
+            // Rank pooling: the DD line says "by Envenomed Bolt VI", the tick
+            // says "from Envenomed Bolt" — one spell, one lane.
+            var pr = new CombatParser();
+            pr.ProcessLine("[Sun Aug 16 23:11:00 2026] Johan hit a shiverback grizzly for 100 points of poison damage by Envenomed Bolt VI.");
+            pr.ProcessLine("[Sun Aug 16 23:11:06 2026] A shiverback grizzly has taken 40 damage from Envenomed Bolt by Johan.");
+            var ranked = pr.GetAbilityRows("Johan");
+            Check("spell lanes pool ranks (Envenomed Bolt VI + tick = one lane)",
+                ranked.First(r => r.Name == "Envenomed Bolt") is { Total: 140 }
+                && ranked.All(r => r.Name != "Envenomed Bolt VI"));
+
             // Plane of Sky quest tracker: data loads, completion watcher works
             // (temp progress path so tests never touch real progress).
             string skyProgress = Path.Combine(Path.GetTempPath(), "eql_sky_test.json");
@@ -1614,6 +1863,9 @@ public partial class App : Application
             Check("raid targets: short Innoruuk migrates to the observed full name",
                 RaidKills.MigrateTargetName("Innoruuk") == "Innoruuk, the Prince of Hate"
                 && RaidKills.MigrateTargetName("Lady Vox") == "Lady Vox");
+            // "You have slain Cazic-Thule!" (17 Aug) — the game hyphenates.
+            Check("raid targets: Cazic Thule migrates to the hyphenated log spelling",
+                RaidKills.MigrateTargetName("Cazic Thule") == "Cazic-Thule");
 
             // The weekly loot lockout (the Companion's research): the window
             // starts on the most recent Tuesday 08:00 PACIFIC and runs 7 days.

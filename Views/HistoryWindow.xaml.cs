@@ -61,6 +61,7 @@ public partial class HistoryWindow : Window
         SkyQuests sky)
     {
         InitializeComponent();
+        DialogPlacement.Persist(this, "history");
         WindowTheme.ApplyDark(this);
         _loot = loot;
         _sky = sky;

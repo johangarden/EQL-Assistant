@@ -175,4 +175,9 @@ public sealed class OverlayConfig
     /// <summary>Size of each SCT lane.</summary>
     public double SctLaneWidth { get; set; } = 170;
     public double SctLaneHeight { get; set; } = 300;
+
+    /// <summary>How long an XP/faction float takes to rise and fade (seconds).
+    /// These are rare and worth reading, so they run far slower than the
+    /// 2.6s combat lanes.</summary>
+    public double SctXpLifetime { get; set; } = 10;
 }

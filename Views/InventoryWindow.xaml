@@ -25,8 +25,16 @@
                            FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"/>
                 <TextBlock Text="Inventory" Style="{StaticResource PageTitle}"/>
             </DockPanel>
-            <TextBlock x:Name="HintText" Style="{StaticResource Hint}" Margin="0,2,0,8"
+            <TextBlock x:Name="HintText" Style="{StaticResource Hint}" Margin="0,2,0,4"
                        Text="Everything the game's own inventory dump lists — worn, bags, bank, depot and key rings. Re-type /outputfile inventory in game whenever your gear or bags change."/>
+
+            <!-- Parse + coverage story: gold when the dump leaves storages unsaid. -->
+            <TextBlock x:Name="ParsedText" Foreground="{StaticResource Brush.Gold}" FontSize="11"
+                       Margin="0,0,0,2" Visibility="Collapsed"/>
+            <TextBlock x:Name="WarnText" Foreground="{StaticResource Brush.Gold}" FontSize="11"
+                       TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+
+            <WrapPanel x:Name="TabPanel" Margin="0,0,0,6"/>
 
             <DockPanel Margin="0,0,0,6">
                 <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.TextHint}"
@@ -37,6 +45,9 @@
             </DockPanel>
 
             <WrapPanel x:Name="LanePanel" Margin="0,0,0,8"/>
+
+            <TextBlock x:Name="EmptyTabText" Style="{StaticResource Hint}" Margin="2,2,0,8"
+                       Visibility="Collapsed"/>
         </StackPanel>
 
         <!-- Shown instead of the list until a dump exists. -->
@@ -47,25 +58,147 @@
                        Text="The game writes it for us — in game:&#10;&#10;  1.  Stand at a banker and open your Bank.&#10;  2.  Open the Dragon's Hoard too — it only dumps while its window is open.&#10;  3.  Open your Tradeskill Depot once if you keep anything in it.&#10;  4.  Type  /outputfile inventory&#10;&#10;The file lands next to the game's exe and this window picks it up on its own. A storage whose window was closed is simply missing from the dump — not empty. Motes and other currency-tab items are never in it; the game leaves them out."/>
         </StackPanel>
 
-        <ListBox x:Name="ResultsList"
-                 HorizontalContentAlignment="Stretch"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 VirtualizingPanel.VirtualizationMode="Recycling">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <DockPanel Margin="2,2">
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}"
-                                   Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" FontSize="11"
-                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding Location}"
-                                   Foreground="{StaticResource Brush.TextHint}" FontSize="11"
-                                   VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="190"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                    </DockPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        <Grid>
+            <ListBox x:Name="ResultsList"
+                     HorizontalContentAlignment="Stretch"
+                     PreviewMouseLeftButtonUp="ResultsList_Click"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.VirtualizationMode="Recycling">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="2,2">
+                            <Border Height="1" Background="{StaticResource Brush.Border}"
+                                    Margin="10,2,10,5" Visibility="{Binding RuleVis}"/>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Chevron}" Width="12"
+                                           Foreground="{StaticResource Brush.TextHint}" FontSize="10"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}"
+                                           Foreground="{StaticResource Brush.Gold}" FontWeight="SemiBold" FontSize="11"
+                                           VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding Location}"
+                                           ToolTip="{Binding LocationTip}"
+                                           Foreground="{StaticResource Brush.TextHint}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="190"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <!-- socket pills: green = occupied, gray = empty -->
+                                <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Pills}"
+                                              VerticalAlignment="Center" Margin="8,0,0,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="8" Padding="6,0,6,1" Margin="0,0,4,0"
+                                                    Background="{Binding Bg}" BorderBrush="{Binding Border}"
+                                                    BorderThickness="1" ToolTip="{Binding Tip}">
+                                                <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="{Binding Fg}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding Details}" Visibility="{Binding DetailsVis}"
+                                          Margin="26,4,0,2">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
+                                                   FontWeight="{Binding Weight}" FontSize="11"
+                                                   TextWrapping="Wrap" Margin="0,1"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- The focus-effect audit: one row per family, a pill per tier,
+                 color = how close you are to the best tier that exists. -->
+            <ListBox x:Name="FocusList" Visibility="Collapsed"
+                     HorizontalContentAlignment="Stretch"
+                     PreviewMouseLeftButtonUp="FocusList_Click"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <!-- Section header ("Spells" / "Songs & instruments") + rule line -->
+                            <DockPanel Visibility="{Binding HeaderVis}" Margin="2,7,4,3">
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Family}"
+                                           Foreground="{StaticResource Brush.TextDim}" FontWeight="SemiBold"
+                                           FontSize="11" Margin="0,0,8,0"/>
+                                <Border Height="1" Background="{StaticResource Brush.Border}"
+                                        VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <Border Visibility="{Binding RowVis}" Background="{Binding RowBg}"
+                                    CornerRadius="4" Margin="0,1" Padding="6,3">
+                            <StackPanel>
+                            <DockPanel>
+                                <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,7,0"
+                                         VerticalAlignment="Center" Fill="{Binding StatusBrush}"
+                                         ToolTip="{Binding StatusTip}"/>
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Chevron}"
+                                           Foreground="{StaticResource Brush.TextHint}" FontSize="10"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <StackPanel DockPanel.Dock="Left" Width="188" VerticalAlignment="Center"
+                                            ToolTip="{Binding FamilyTip}">
+                                    <TextBlock Text="{Binding Family}" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Kind}" Foreground="{StaticResource Brush.TextHint}"
+                                               FontSize="10" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <!-- Place badge: green WORN when the best owned tier is on
+                                     your body, amber IN BANK / STORAGE / … when it isn't. -->
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding PlaceText}"
+                                           Visibility="{Binding PlaceVis}"
+                                           Foreground="{Binding PlaceBrush}" FontSize="10" FontWeight="Bold"
+                                           VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding BestText}"
+                                           ToolTip="{Binding BestTip}"
+                                           Foreground="{StaticResource Brush.TextHint}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="10,0,0,0"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <ItemsControl ItemsSource="{Binding Pills}" VerticalAlignment="Center">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="8" Padding="7,1,7,2" Margin="0,0,4,0"
+                                                    Background="{Binding Bg}" BorderBrush="{Binding Border}"
+                                                    BorderThickness="1" ToolTip="{Binding Tip}">
+                                                <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="{Binding Fg}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DockPanel>
+                            <!-- The fold-out: tiers, effect text, every known
+                                 carrier with slot/classes and your copy's place. -->
+                            <ItemsControl ItemsSource="{Binding Details}" Visibility="{Binding DetailsVis}"
+                                          Margin="42,5,0,3">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
+                                                   FontWeight="{Binding Weight}" FontSize="11"
+                                                   TextWrapping="Wrap" Margin="0,1"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
     </DockPanel>
 </Window>

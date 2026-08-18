@@ -48,11 +48,22 @@ public static class InventoryStore
         public List<string> Sections = new();
         public int MalformedCount;
         public int UnknownSectionRows;
+
+        /// <summary>Storages this dump gives EVIDENCE for — the row is the
+        /// evidence, an "Empty" bank slot still proves the bank was dumped.
+        /// Keys: worn, bags, bank, sharedBank, depot, keyring.</summary>
+        public HashSet<string> Covered = new(StringComparer.Ordinal);
+
+        /// <summary>A non-primary ITEM-shaped table exists (the never-sampled
+        /// Dragon's Hoard would arrive as one).</summary>
+        public bool HasExtraItemSection;
     }
 
-    /// <summary>One row of the flattened, searchable ledger.</summary>
+    /// <summary>One row of the flattened, searchable ledger. Host is the item
+    /// this row sits INSIDE (the bearer of an exaltation socket), "" at top
+    /// level.</summary>
     public sealed record CarryRow(string Name, string SearchKey, string Location, int Count,
-        string Lane, int Line);
+        string Lane, int Line, string Host = "");
 
     public const string PrimarySection = "Location";
     public const string LanePrefix = "section:";
@@ -76,12 +87,15 @@ public static class InventoryStore
 
     // Note the client's own inconsistency: "General 1" has a space,
     // "Bank1" / "SharedBank1" do not, and the depot is a compound token.
+    // The Dragon's Hoard (first sampled 2026-08-18, Thorrak's dump) rides
+    // the PRIMARY table as "Hoard 1"… — spaced like General, nestable.
     private static readonly (Regex Rx, string Lane)[] ContainerLanes =
     {
         (new Regex(@"^General \d+$", RegexOptions.Compiled), "bags"),
         (new Regex(@"^Bank\d+$", RegexOptions.Compiled), "bank"),
         (new Regex(@"^SharedBank\d+$", RegexOptions.Compiled), "bank"), // one chip, deliberately
         (new Regex(@"^Personal-Depot\d+$", RegexOptions.Compiled), "depot"),
+        (new Regex(@"^Hoard \d+$", RegexOptions.Compiled), "hoard"),
     };
 
     // END-anchored so "Personal-Depot1" keeps its hyphen and yields no sub-slots.
@@ -95,14 +109,29 @@ public static class InventoryStore
         {
             ["worn"] = "Worn",
             ["bags"] = "Bags",
+            ["storage"] = "Storage",          // KeyRing / Equipment — in-game "Storage"
+            ["activated"] = "Activated items", // KeyRing / Activated
+            ["keyring"] = "Augments",          // KeyRing / Augmentation (and any future category)
             ["bank"] = "Bank",
             ["depot"] = "Depot",
-            ["keyring"] = "Key rings",
+            ["hoard"] = "Hoard",
             ["elsewhere"] = "Elsewhere",
         };
 
+    // Chip order tells a story: what's ON you (worn → bags → the keyring
+    // collections) first, what's STASHED (bank → depot → hoard) after.
     private static readonly string[] FixedLaneOrder =
-        { "worn", "bags", "bank", "depot", "keyring", "elsewhere" };
+        { "worn", "bags", "storage", "activated", "keyring", "bank", "depot", "hoard", "elsewhere" };
+
+    /// <summary>Which visual family a lane chip belongs to: "carry" = on your
+    /// character, "stash" = remote storage, "" = neither (Elsewhere, extra
+    /// sections).</summary>
+    public static string LaneGroup(string laneId) => laneId switch
+    {
+        "worn" or "bags" or "storage" or "activated" or "keyring" => "carry",
+        "bank" or "depot" or "hoard" => "stash",
+        _ => "",
+    };
 
     // ---- parsing --------------------------------------------------------------
 
@@ -126,6 +155,10 @@ public static class InventoryStore
                 section = cols[0].Trim();
                 shape = SectionShape(cols);
                 if (!dump.Sections.Contains(section)) dump.Sections.Add(section);
+                // The header itself is evidence: a keyring table with zero
+                // rows still says "the keyring was dumped".
+                if (shape == "keyRing") dump.Covered.Add("keyring");
+                else if (shape == "items" && section != PrimarySection) dump.HasExtraItemSection = true;
                 byPath.Clear(); // nothing nests across tables
                 continue;
             }
@@ -179,6 +212,31 @@ public static class InventoryStore
             dump.Items.Add(entry);
         }
         byPath[location] = entry; // last-writer-wins: duplicate Ears are real
+
+        if (section == PrimarySection)
+        {
+            string storage = StorageOfBase(entry.Base);
+            if (storage.Length > 0) dump.Covered.Add(storage);
+        }
+    }
+
+    private static readonly Regex SharedBankRx = new(@"^SharedBank\d+$", RegexOptions.Compiled);
+    private static readonly Regex BankRx = new(@"^Bank\d+$", RegexOptions.Compiled);
+    private static readonly Regex GeneralRx = new(@"^General \d+$", RegexOptions.Compiled);
+    private static readonly Regex DepotRx = new(@"^Personal-Depot\d+$", RegexOptions.Compiled);
+    private static readonly Regex HoardRx = new(@"^Hoard \d+$", RegexOptions.Compiled);
+
+    /// <summary>Like <see cref="LaneOfBase"/> but keeps sharedBank distinct —
+    /// coverage speaks about the game's storages, not the ledger's chips.</summary>
+    private static string StorageOfBase(string baseToken)
+    {
+        if (EquipLocations.Contains(baseToken)) return "worn";
+        if (GeneralRx.IsMatch(baseToken)) return "bags";
+        if (SharedBankRx.IsMatch(baseToken)) return "sharedBank";
+        if (BankRx.IsMatch(baseToken)) return "bank";
+        if (DepotRx.IsMatch(baseToken)) return "depot";
+        if (HoardRx.IsMatch(baseToken)) return "hoard";
+        return "";
     }
 
     private static void AddKeyRingRow(Dump dump, string section, string[] cols, int line)
@@ -210,13 +268,89 @@ public static class InventoryStore
 
     // ---- the flattened ledger -------------------------------------------------
 
+    /// <summary>An exaltation row: the socketed copy living inside an item's
+    /// exaltation socket ("Wicked Sallet (Exaltation)" under Head-Slot7).</summary>
+    public static bool IsExaltation(string name) =>
+        name.EndsWith(" (Exaltation)", StringComparison.Ordinal);
+
+    // Worn rows in a dump come in the client's enumeration order (Any Slot,
+    // Ear, Head, Face, Ear…) — a player thinks armor head-to-toe, then
+    // jewelry, then weapons. This is the display order.
+    private static readonly string[] WornOrder =
+    {
+        // armor
+        "Head", "Face", "Chest", "Shoulders", "Arms", "Wrist", "Hands", "Legs", "Feet",
+        // jewelry & drapes
+        "Ear", "Neck", "Fingers", "Waist", "Back",
+        // weapons & held
+        "Primary", "Secondary", "Range", "Ammo", "Held",
+        // the wildcards last
+        "Any Slot",
+    };
+
+    /// <summary>Display rank of a worn base token (unknown tokens last).</summary>
+    public static int WornRank(string baseToken)
+    {
+        int i = Array.IndexOf(WornOrder, baseToken);
+        return i >= 0 ? i : WornOrder.Length;
+    }
+
+    /// <summary>Which display band a worn token sits in — armor(0),
+    /// jewelry(1), weapons(2), wildcards(3) — for the thin rules between
+    /// them. Unknown tokens ride the last band.</summary>
+    public static int WornBand(string baseToken) => WornRank(baseToken) switch
+    {
+        <= 8 => 0,   // Head … Feet
+        <= 13 => 1,  // Ear … Back
+        <= 18 => 2,  // Primary … Held
+        _ => 3,      // Any Slot + unknown
+    };
+
+    /// <summary>The game's slot types, correlated from an in-game item window
+    /// (Aldryn, Blade of the Ocean: Ornamentation / Focus / Click / Worn /
+    /// Proc Exaltation) against observed dump ladders (1|2, 7, 8, 9, 10):
+    /// Slot7 occupants are always focus exaltations, Slot8 held the Golem
+    /// Metal Wand clicky, Slot10 holds weapon procs — 9 and 1/2 follow from
+    /// the window's order. An unmapped number stays a number.</summary>
+    public static (string Short, string Name) SlotType(int n) => n switch
+    {
+        1 or 2 => ("O", "Ornamentation"),
+        7 => ("F", "Focus Exaltation"),
+        8 => ("C", "Click Exaltation"),
+        9 => ("W", "Worn Exaltation"),
+        10 => ("P", "Proc Exaltation"),
+        _ => (n.ToString(), $"Slot {n}"),
+    };
+
+    /// <summary>A CONTAINER's children are its contents; an ITEM's children
+    /// are its sockets. The observable tells: socket occupants are always
+    /// "(Exaltation)" rows, and every ordinary item declares 10 child slots
+    /// while bags declare their bag size (8, 24…). An all-empty 10-slot bag
+    /// (Kavruul's) is indistinguishable and reads as sockets — the dump
+    /// does not say.</summary>
+    public static bool IsContainer(Entry e)
+    {
+        if (e.Children.Count == 0) return false;
+        if (e.Children.Any(c => !c.Empty && !IsExaltation(c.Name))) return true;
+        return e.Slots > 0 && e.Slots != 10;
+    }
+
+    /// <summary>Which window tab a ledger row belongs to: socketed
+    /// "(Exaltation)" copies get their own tab, everything else — key ring
+    /// rows included — is an item. (The Focus effects tab is not row-backed:
+    /// it audits the whole dump against the focus-effect families.)</summary>
+    public static string TabOf(CarryRow row)
+    {
+        return IsExaltation(row.Name) ? "exalt" : "items";
+    }
+
     /// <summary>Every non-empty row of every table, in FILE ORDER, plus the
     /// lane chips that actually have rows (a chip that filters to nothing is
     /// a control that can only disappoint).</summary>
     public static (List<CarryRow> Rows, List<(string Id, string Label)> Lanes) CarryAll(Dump dump)
     {
         var rows = new List<CarryRow>();
-        void Walk(Entry e)
+        void Walk(Entry e, Entry? parent)
         {
             if (!e.Empty && e.Name.Length > 0)
             {
@@ -226,22 +360,37 @@ public static class InventoryStore
                 string location = e.Section == PrimarySection
                     ? e.Location
                     : $"{e.Section} / {e.Location}";
+                string host = parent is { Empty: false } ? parent.Name : "";
                 rows.Add(new CarryRow(e.Name, e.Name.ToLowerInvariant(), location,
-                    e.Count > 0 ? e.Count : 1, lane, e.Line));
+                    e.Count > 0 ? e.Count : 1, lane, e.Line, host));
             }
-            foreach (var c in e.Children) Walk(c);
+            foreach (var c in e.Children) Walk(c, e);
         }
-        foreach (var e in dump.Items) Walk(e);
+        foreach (var e in dump.Items) Walk(e, null);
 
         foreach (var k in dump.KeyRing)
         {
             if (k.Name.Length == 0 || k.Name == "Empty") continue;
+            // The keyring is several in-game things: Equipment = "Storage",
+            // Activated = "Activated items"; anything else stays generic.
+            string lane = k.Category switch
+            {
+                "Equipment" => "storage",
+                "Activated" => "activated",
+                _ => "keyring",
+            };
             rows.Add(new CarryRow(k.Name, k.Name.ToLowerInvariant(),
-                $"{k.Section} / {k.Category}", 1, "keyring", k.Line));
+                $"{k.Section} / {k.Category}", 1, lane, k.Line));
         }
 
         rows.Sort((a, b) => a.Line.CompareTo(b.Line));
+        return (rows, LanesOf(rows, dump));
+    }
 
+    /// <summary>The lane chips a set of rows deserves: fixed lanes first, then
+    /// any extra section, only ever lanes that actually have rows.</summary>
+    public static List<(string Id, string Label)> LanesOf(IEnumerable<CarryRow> rows, Dump dump)
+    {
         var present = rows.Select(r => r.Lane).ToHashSet(StringComparer.Ordinal);
         var lanes = new List<(string, string)>();
         foreach (string id in FixedLaneOrder)
@@ -251,7 +400,24 @@ public static class InventoryStore
             string id = LanePrefix + section;
             if (present.Contains(id)) lanes.Add((id, section));
         }
-        return (rows, lanes);
+        return lanes;
+    }
+
+    /// <summary>The storages this dump does NOT speak for, in the order the
+    /// in-game ritual visits them. "Missing" means "the dump does not say" —
+    /// the game only writes a storage while its window is open. The Dragon's
+    /// Hoard has never been sampled, so ANY extra item table counts as it.</summary>
+    public static List<string> MissingStorages(Dump dump)
+    {
+        var missing = new List<string>();
+        if (!dump.Covered.Contains("bank")) missing.Add("bank");
+        else if (!dump.Covered.Contains("sharedBank")) missing.Add("shared bank");
+        if (!dump.Covered.Contains("depot")) missing.Add("tradeskill depot");
+        // The hoard is "Hoard N" rows in the primary table (sampled); an
+        // unknown extra item table is still accepted as it, for older clients.
+        if (!dump.Covered.Contains("hoard") && !dump.HasExtraItemSection) missing.Add("Dragon's Hoard");
+        if (!dump.Covered.Contains("keyring")) missing.Add("key rings");
+        return missing;
     }
 
     /// <summary>Flat name→count over everything held: every item row counts

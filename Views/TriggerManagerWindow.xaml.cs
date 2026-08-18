@@ -149,6 +149,7 @@ public partial class TriggerManagerWindow : Window
         _durations = durations;
         _logStatus = logStatus;
         InitializeComponent();
+        DialogPlacement.Persist(this, "manager");
         WindowTheme.ApplyDark(this);
 
         _configService = configService;
@@ -937,6 +938,7 @@ public partial class TriggerManagerWindow : Window
         SctBigHitBox.Text = _config.Overlay.SctBigHit.ToString(CultureInfo.InvariantCulture);
         SctLaneWidthBox.Text = _config.Overlay.SctLaneWidth.ToString(CultureInfo.InvariantCulture);
         SctLaneHeightBox.Text = _config.Overlay.SctLaneHeight.ToString(CultureInfo.InvariantCulture);
+        SctXpLifetimeBox.Text = _config.Overlay.SctXpLifetime.ToString(CultureInfo.InvariantCulture);
 
         EnemyDotsVisibleCheck.IsChecked = _config.Overlay.EnemyDotsVisible;
         EnemyDotsGroupBox.SelectedValue = _config.Overlay.EnemyDotsGroupByMob ? "mob" : "spell";
@@ -1054,6 +1056,7 @@ public partial class TriggerManagerWindow : Window
                 SctBigHit = Math.Max(0, ParseOr(SctBigHitBox.Text, _config.Overlay.SctBigHit)),
                 SctLaneWidth = Math.Clamp(ParseOr(SctLaneWidthBox.Text, _config.Overlay.SctLaneWidth), 80, 800),
                 SctLaneHeight = Math.Clamp(ParseOr(SctLaneHeightBox.Text, _config.Overlay.SctLaneHeight), 100, 1500),
+                SctXpLifetime = Math.Clamp(ParseOr(SctXpLifetimeBox.Text, _config.Overlay.SctXpLifetime), 1, 15),
             },
         };
 
