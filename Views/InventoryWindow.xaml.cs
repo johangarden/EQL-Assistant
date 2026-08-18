@@ -26,7 +26,7 @@ public partial class InventoryWindow : Window
         List<PillVm> Pills, string BestText, string? BestTip, string PlaceText, Brush PlaceBrush,
         Visibility PlaceVis = Visibility.Visible,
         Visibility HeaderVis = Visibility.Collapsed, Visibility RowVis = Visibility.Visible,
-        bool IsFoldToggle = false, string? StatusTip = null);
+        bool IsFoldToggle = false, string? StatusTip = null, Brush? RowBg = null);
 
     /// <summary>A section header row ("Spells", "Songs & instruments").</summary>
     private static FocusVm FocusHeader(string title, bool foldToggle = false) => new(title, "", null,
@@ -58,6 +58,9 @@ public partial class InventoryWindow : Window
     // A summoned-only tier can't be hunted — it ghosts instead of nagging.
     private static readonly Brush PillGhostBorder = Freeze("#232C3E");
     private static readonly Brush PillGhostFg = Freeze("#404E63");
+    // A whisper of the verdict across the whole row.
+    private static readonly Brush[] RowWash =
+        { Freeze("#10E57373"), Freeze("#10FFB74D"), Freeze("#1066BB6A") };
 
     // Lane chips wear their family: a cool wash for what's ON you (worn,
     // bags, the keyring collections), a warm wash for what's STASHED (bank,
@@ -464,16 +467,16 @@ public partial class InventoryWindow : Window
                 : a.BestItem;
         string statusTip = a.Status switch
         {
-            2 => "You are wearing the best huntable tier of this effect.",
-            1 => "Upgradable: you own this effect, but a better tier exists — or your best copy is in storage.",
-            _ => "You own no tier of this effect.",
+            2 => "Wearing the best.",
+            1 => "Upgrade available.",
+            _ => "None owned.",
         };
         string place = a.BestTier == 0 ? "" : wornIsBest ? "WORN" : a.BestPlace.ToUpperInvariant();
         return new FocusVm(a.Family.Name, a.Family.Kind, a.Family.Tiers[0].Description,
             StatusFg[a.Status], pills, best, a.BestTier == 0 ? null : a.BestEffect,
             place, wornIsBest ? StatusFg[2] : StatusFg[1],
             a.BestTier == 0 ? Visibility.Collapsed : Visibility.Visible,
-            StatusTip: statusTip);
+            StatusTip: statusTip, RowBg: RowWash[a.Status]);
     }
 
     /// <summary>Selftest hook: front the audit board so its template

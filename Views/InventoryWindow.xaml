@@ -98,7 +98,9 @@
                                 <Border Height="1" Background="{StaticResource Brush.Border}"
                                         VerticalAlignment="Center"/>
                             </DockPanel>
-                            <DockPanel Margin="2,3" Visibility="{Binding RowVis}">
+                            <Border Visibility="{Binding RowVis}" Background="{Binding RowBg}"
+                                    CornerRadius="4" Margin="0,1" Padding="6,3">
+                            <DockPanel>
                                 <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,9,0"
                                          VerticalAlignment="Center" Fill="{Binding StatusBrush}"
                                          ToolTip="{Binding StatusTip}"/>
@@ -138,6 +140,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </DockPanel>
+                            </Border>
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
