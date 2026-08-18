@@ -85,6 +85,7 @@
                  color = how close you are to the best tier that exists. -->
             <ListBox x:Name="FocusList" Visibility="Collapsed"
                      HorizontalContentAlignment="Stretch"
+                     PreviewMouseLeftButtonUp="FocusList_Click"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemTemplate>
                     <DataTemplate>

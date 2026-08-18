@@ -25,12 +25,16 @@ public partial class InventoryWindow : Window
     private sealed record FocusVm(string Family, string Kind, string? FamilyTip, Brush StatusBrush,
         List<PillVm> Pills, string BestText, string? BestTip, string PlaceText, Brush PlaceBrush,
         Visibility PlaceVis = Visibility.Visible,
-        Visibility HeaderVis = Visibility.Collapsed, Visibility RowVis = Visibility.Visible);
+        Visibility HeaderVis = Visibility.Collapsed, Visibility RowVis = Visibility.Visible,
+        bool IsFoldToggle = false);
 
     /// <summary>A section header row ("Spells", "Songs & instruments").</summary>
-    private static FocusVm FocusHeader(string title) => new(title, "", null, Brushes.Transparent,
-        new List<PillVm>(), "", null, "", Brushes.Transparent, Visibility.Collapsed,
-        HeaderVis: Visibility.Visible, RowVis: Visibility.Collapsed);
+    private static FocusVm FocusHeader(string title, bool foldToggle = false) => new(title, "", null,
+        Brushes.Transparent, new List<PillVm>(), "", null, "", Brushes.Transparent,
+        Visibility.Collapsed, HeaderVis: Visibility.Visible, RowVis: Visibility.Collapsed,
+        IsFoldToggle: foldToggle);
+
+    private bool _summonedOpen; // the summoned-charm section starts folded
 
     private static readonly (string Id, string Label)[] Tabs =
     {
@@ -180,9 +184,11 @@ public partial class InventoryWindow : Window
         foreach (var (id, label) in Tabs)
         {
             // The focus tab counts green families over the total — the gap
-            // report in two digits. Row tabs count their rows.
+            // report in two digits. Summoned charms are conjured temporaries
+            // and stay out of the score. Row tabs count their rows.
+            var scored = _audit.Where(a => a.Family.Group != "summoned").ToList();
             string text = id == "focus"
-                ? $"{label}  {_audit.Count(a => a.Status == 2)}/{_audit.Count}"
+                ? $"{label}  {scored.Count(a => a.Status == 2)}/{scored.Count}"
                 : $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}";
             AddPill(TabPanel, text, id, id == _tab, picked =>
             {
@@ -354,8 +360,9 @@ public partial class InventoryWindow : Window
             || a.Family.Tiers.Any(t => t.Effect.Contains(q, StringComparison.OrdinalIgnoreCase)
                 || t.Items.Any(i => i.Contains(q, StringComparison.OrdinalIgnoreCase)));
 
-        var spells = _audit.Where(a => a.Family.Group != "song" && Match(a)).ToList();
+        var spells = _audit.Where(a => a.Family.Group is not ("song" or "summoned") && Match(a)).ToList();
         var songs = _audit.Where(a => a.Family.Group == "song" && Match(a)).ToList();
+        var summoned = _audit.Where(a => a.Family.Group == "summoned" && Match(a)).ToList();
 
         var shown = new List<FocusVm>();
         if (spells.Count > 0)
@@ -368,9 +375,27 @@ public partial class InventoryWindow : Window
             shown.Add(FocusHeader("Songs & instruments"));
             shown.AddRange(songs.Select(MakeFocusVm));
         }
+        if (summoned.Count > 0)
+        {
+            // Folded by default — these are caster-conjured temporaries, not
+            // gear you hunt. A live search always sees through the fold.
+            bool open = _summonedOpen || q.Length > 0;
+            shown.Add(FocusHeader((open ? "▾  " : "▸  ") + $"Summoned charms ({summoned.Count}) — conjured temporaries",
+                foldToggle: true));
+            if (open) shown.AddRange(summoned.Select(MakeFocusVm));
+        }
         FocusList.ItemsSource = shown;
-        CountText.Text = $"{spells.Count + songs.Count} of {_audit.Count} effects";
+        CountText.Text = $"{spells.Count + songs.Count + summoned.Count} of {_audit.Count} effects";
         EmptyTabText.Visibility = Visibility.Collapsed;
+    }
+
+    private void FocusList_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is FocusVm { IsFoldToggle: true })
+        {
+            _summonedOpen = !_summonedOpen;
+            ApplyFocusFilter(SearchBox.Text.Trim().ToLowerInvariant());
+        }
     }
 
     private static readonly Brush WornPillFg = Freeze("#0F1620");

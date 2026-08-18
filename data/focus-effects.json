@@ -239,7 +239,7 @@
     },
     {
       "family": "Gallenite's Destruction",
-      "group": "spell",
+      "group": "summoned",
       "kind": "spell damage",
       "tiers": [
         {
@@ -354,7 +354,7 @@
     },
     {
       "family": "Jedah's Conservation",
-      "group": "spell",
+      "group": "summoned",
       "kind": "reagent saver",
       "tiers": [
         {
@@ -397,7 +397,7 @@
     },
     {
       "family": "Jolum's Abatement",
-      "group": "spell",
+      "group": "summoned",
       "kind": "nuke mana",
       "tiers": [
         {
@@ -487,7 +487,7 @@
     },
     {
       "family": "Naki's Pernicity",
-      "group": "spell",
+      "group": "summoned",
       "kind": "cast speed",
       "tiers": [
         {
@@ -801,7 +801,7 @@
     },
     {
       "family": "Tavee's Diuturnity",
-      "group": "spell",
+      "group": "summoned",
       "kind": "buff duration",
       "tiers": [
         {

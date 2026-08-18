@@ -1366,7 +1366,13 @@ public partial class App : Application
                     focus.Families.All(f => f.Tiers.Select(t => t.TierNum)
                         .SequenceEqual(Enumerable.Range(1, f.Tiers.Count)))
                     && focus.Families.Count(f => f.Group == "song") == 4
+                    && focus.Families.Count(f => f.Group == "summoned") == 5
                     && focus.Families.All(f => f.Kind.Length > 0));
+                // Burning Affliction has summoned CARRIERS but real items too —
+                // only all-summoned families leave the main sections.
+                Check("focus: mixed families stay spells; all-summoned families fold away",
+                    focus.Families.First(f => f.Name == "Burning Affliction").Group == "spell"
+                    && focus.Families.First(f => f.Name == "Jolum's Abatement").Group == "summoned");
                 var realAudit = focus.Audit(new[]
                 {
                     new InventoryStore.CarryRow("White Dragonscale Cloak", "white dragonscale cloak", "Back", 1, "worn", 1),
