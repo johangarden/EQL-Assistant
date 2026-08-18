@@ -1271,13 +1271,23 @@ public partial class App : Application
                 Check("inventory: empty rows leave the ledger, real ones keep file order",
                     rows.All(r => r.Name != "Empty")
                     && rows.Select(r => r.Line).SequenceEqual(rows.Select(r => r.Line).OrderBy(n => n)));
-                Check("inventory: lanes cover worn/bags/depot/hoard/keyring, none empty",
-                    lanes.Select(l => l.Id).SequenceEqual(new[] { "worn", "bags", "depot", "hoard", "keyring" }));
-                Check("inventory: stack counts survive, keyring rows count one",
+                // The keyring is several in-game things: Equipment = Storage,
+                // Activated = Activated items, the rest (Augmentation) stays
+                // generic. Chips order carry-group first, stash-group after.
+                Check("inventory: lanes split the keyring and order carry before stash",
+                    lanes.Select(l => l.Id).SequenceEqual(new[]
+                        { "worn", "bags", "storage", "activated", "keyring", "depot", "hoard" }));
+                Check("inventory: stack counts survive, keyring categories land in their lanes",
                     rows.First(r => r.Name == "Tiny Dagger").Count == 86
                     && rows.First(r => r.Name == "Griffenne Blood") is { Count: 2, Lane: "depot" }
                     && rows.First(r => r.Name == "Fine Steel Scimitar").Lane == "hoard"
-                    && rows.Count(r => r.Lane == "keyring") == 4);
+                    && rows.Count(r => r.Lane == "storage") == 2      // Equipment rows
+                    && rows.Count(r => r.Lane == "activated") == 1    // Guise of the Deceiver
+                    && rows.Count(r => r.Lane == "keyring") == 1);    // the Augmentation exaltation
+                Check("inventory: lane groups tell carry from stash",
+                    InventoryStore.LaneGroup("storage") == "carry"
+                    && InventoryStore.LaneGroup("hoard") == "stash"
+                    && InventoryStore.LaneGroup("elsewhere") == "");
 
                 var held = InventoryStore.HeldCounts(dump);
                 Check("inventory: held counts sum stacks; Activated is a look, not an item",

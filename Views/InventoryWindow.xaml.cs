@@ -45,6 +45,12 @@ public partial class InventoryWindow : Window
     private static readonly Brush PillOffBorder = Freeze("#3A4560");
     private static readonly Brush PillOffFg = Freeze("#5F7189");
 
+    // Lane chips wear their family: a cool wash for what's ON you (worn,
+    // bags, the keyring collections), a warm wash for what's STASHED (bank,
+    // depot, hoard). The active chip keeps the accent look either way.
+    private static readonly Brush CarryTint = Freeze("#144FC3F7");
+    private static readonly Brush StashTint = Freeze("#14FFB74D");
+
     private readonly string _eqRoot;
     private readonly string _charName;
     private readonly string _server;
@@ -230,24 +236,40 @@ public partial class InventoryWindow : Window
             ApplyFilters();
         }
         AddPill(LanePanel, "All", null, _lane is null, Pick);
-        foreach (var (id, label) in lanes) AddPill(LanePanel, label, id, _lane == id, Pick);
+        string prevGroup = "";
+        foreach (var (id, label) in lanes)
+        {
+            string group = InventoryStore.LaneGroup(id);
+            // A breath of air where one family ends and the next begins.
+            bool gap = prevGroup.Length > 0 && group != prevGroup;
+            AddPill(LanePanel, label, id, _lane == id, Pick, GroupTint(group), gap);
+            prevGroup = group;
+        }
     }
 
-    private void AddPill(WrapPanel panel, string label, string? id, bool on, Action<string?> onPick)
+    private static Brush? GroupTint(string group) => group switch
+    {
+        "carry" => CarryTint,
+        "stash" => StashTint,
+        _ => null,
+    };
+
+    private void AddPill(WrapPanel panel, string label, string? id, bool on, Action<string?> onPick,
+        Brush? offTint = null, bool gapBefore = false)
     {
         var text = new TextBlock { Text = label, FontSize = 11 };
         var chip = new Border
         {
             CornerRadius = new CornerRadius(9),
             Padding = new Thickness(9, 2, 9, 3),
-            Margin = new Thickness(0, 0, 5, 0),
+            Margin = new Thickness(gapBefore ? 14 : 0, 0, 5, 0),
             BorderBrush = Freeze("#3A4560"),
             BorderThickness = new Thickness(1),
             Cursor = Cursors.Hand,
             Child = text,
-            Tag = id,
+            Tag = (id, offTint),
         };
-        chip.Background = on ? SegOnBg : Brushes.Transparent;
+        chip.Background = on ? SegOnBg : offTint ?? Brushes.Transparent;
         text.Foreground = on ? SegOnFg : SegOffFg;
         chip.MouseLeftButtonUp += (_, _) => onPick(id);
         panel.Children.Add(chip);
@@ -257,8 +279,9 @@ public partial class InventoryWindow : Window
     {
         foreach (Border b in panel.Children)
         {
-            bool isOn = Equals(b.Tag, activeId);
-            b.Background = isOn ? SegOnBg : Brushes.Transparent;
+            var (id, offTint) = ((string?, Brush?))b.Tag;
+            bool isOn = Equals(id, activeId);
+            b.Background = isOn ? SegOnBg : offTint ?? Brushes.Transparent;
             ((TextBlock)b.Child).Foreground = isOn ? SegOnFg : SegOffFg;
         }
     }

@@ -109,15 +109,29 @@ public static class InventoryStore
         {
             ["worn"] = "Worn",
             ["bags"] = "Bags",
+            ["storage"] = "Storage",          // KeyRing / Equipment — in-game "Storage"
+            ["activated"] = "Activated items", // KeyRing / Activated
+            ["keyring"] = "Key rings",         // any other keyring category (Augmentation…)
             ["bank"] = "Bank",
             ["depot"] = "Depot",
             ["hoard"] = "Hoard",
-            ["keyring"] = "Key rings",
             ["elsewhere"] = "Elsewhere",
         };
 
+    // Chip order tells a story: what's ON you (worn → bags → the keyring
+    // collections) first, what's STASHED (bank → depot → hoard) after.
     private static readonly string[] FixedLaneOrder =
-        { "worn", "bags", "bank", "depot", "hoard", "keyring", "elsewhere" };
+        { "worn", "bags", "storage", "activated", "keyring", "bank", "depot", "hoard", "elsewhere" };
+
+    /// <summary>Which visual family a lane chip belongs to: "carry" = on your
+    /// character, "stash" = remote storage, "" = neither (Elsewhere, extra
+    /// sections).</summary>
+    public static string LaneGroup(string laneId) => laneId switch
+    {
+        "worn" or "bags" or "storage" or "activated" or "keyring" => "carry",
+        "bank" or "depot" or "hoard" => "stash",
+        _ => "",
+    };
 
     // ---- parsing --------------------------------------------------------------
 
@@ -295,8 +309,16 @@ public static class InventoryStore
         foreach (var k in dump.KeyRing)
         {
             if (k.Name.Length == 0 || k.Name == "Empty") continue;
+            // The keyring is several in-game things: Equipment = "Storage",
+            // Activated = "Activated items"; anything else stays generic.
+            string lane = k.Category switch
+            {
+                "Equipment" => "storage",
+                "Activated" => "activated",
+                _ => "keyring",
+            };
             rows.Add(new CarryRow(k.Name, k.Name.ToLowerInvariant(),
-                $"{k.Section} / {k.Category}", 1, "keyring", k.Line));
+                $"{k.Section} / {k.Category}", 1, lane, k.Line));
         }
 
         rows.Sort((a, b) => a.Line.CompareTo(b.Line));

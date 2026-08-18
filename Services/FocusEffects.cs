@@ -132,16 +132,20 @@ public sealed class FocusEffects
     /// it" half of the question.</summary>
     public List<AuditRow> Audit(IEnumerable<InventoryStore.CarryRow> rows)
     {
-        // place preference: lower sorts first
+        // place preference: lower sorts first (worn = active; the keyring
+        // collections are owned-but-not-worn, like any other storage)
         static int PlaceRank(string lane) => lane switch
         {
             "worn" => 0,
-            "keyring" => 1,
-            _ => 2,
+            "activated" => 1,
+            "storage" or "keyring" => 2,
+            _ => 3,
         };
         static string PlaceLabel(string lane) => lane switch
         {
             "worn" => "worn",
+            "activated" => "activated item",
+            "storage" => "in storage",
             "keyring" => "key ring",
             "bags" => "in bags",
             "bank" => "in bank",
