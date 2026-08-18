@@ -319,6 +319,36 @@ public sealed class ConfigService
 
     // ---- per-panel positions (matrix windows) -------------------------------
 
+    // ---- dialog window bounds (dialog-<name>.json) --------------------------
+    // The info windows (Inventory, Loot, Raid kills…) remember the size and
+    // position the player dragged them to — resizing every open is meh.
+
+    public sealed record DialogBounds(double Left, double Top, double Width, double Height, bool Maximized);
+
+    public DialogBounds? LoadDialogBounds(string name)
+    {
+        string path = System.IO.Path.Combine(ConfigDirectory, $"dialog-{name}.json");
+        if (!File.Exists(path)) return null;
+        try
+        {
+            return JsonSerializer.Deserialize<DialogBounds>(File.ReadAllText(path), ReadOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public void SaveDialogBounds(string name, DialogBounds bounds)
+    {
+        try
+        {
+            File.WriteAllText(System.IO.Path.Combine(ConfigDirectory, $"dialog-{name}.json"),
+                JsonSerializer.Serialize(bounds, WriteOptions));
+        }
+        catch { /* remembering the size is a convenience, never an error */ }
+    }
+
     public (double Left, double Top)? LoadPanelPos(string name)
     {
         string path = System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json");

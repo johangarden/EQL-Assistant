@@ -22,6 +22,7 @@ public partial class LootWindow : Window
     public LootWindow(LootTracker loot)
     {
         InitializeComponent();
+        DialogPlacement.Persist(this, "loot");
         WindowTheme.ApplyDark(this);
         _loot = loot;
         _loot.Changed += OnLootChanged;

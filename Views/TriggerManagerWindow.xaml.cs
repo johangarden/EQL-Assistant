@@ -149,6 +149,7 @@ public partial class TriggerManagerWindow : Window
         _durations = durations;
         _logStatus = logStatus;
         InitializeComponent();
+        DialogPlacement.Persist(this, "manager");
         WindowTheme.ApplyDark(this);
 
         _configService = configService;

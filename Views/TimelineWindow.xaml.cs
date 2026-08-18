@@ -35,6 +35,7 @@ public partial class TimelineWindow : Window
     public TimelineWindow(FightRecord rec)
     {
         InitializeComponent();
+        DialogPlacement.Persist(this, "timeline");
         WindowTheme.ApplyDark(this);
         _rec = rec;
         _groups = BuildGroups(rec);

@@ -94,6 +94,7 @@ public partial class InventoryWindow : Window
     {
         InitializeComponent();
         Interop.WindowTheme.ApplyDark(this);
+        DialogPlacement.Persist(this, "inventory");
         _eqRoot = eqRoot;
         _charName = charName;
         _server = server;

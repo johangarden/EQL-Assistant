@@ -66,6 +66,7 @@ public partial class SkyWindow : Window
     public SkyWindow(SkyQuests sky)
     {
         InitializeComponent();
+        DialogPlacement.Persist(this, "sky");
         WindowTheme.ApplyDark(this);
         _sky = sky;
 
