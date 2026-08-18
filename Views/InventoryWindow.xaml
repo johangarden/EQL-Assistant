@@ -145,9 +145,11 @@
                                 </ItemsControl>
                             </DockPanel>
                             <!-- The fold-out: tiers, effect text, every known
-                                 carrier with slot/classes and your copy's place. -->
+                                 carrier with slot/classes and your copy's place.
+                                 Left margin = dot + chevron + name column, so the
+                                 tier titles line up under their pills. -->
                             <ItemsControl ItemsSource="{Binding Details}" Visibility="{Binding DetailsVis}"
-                                          Margin="21,5,0,3">
+                                          Margin="217,5,0,3">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
