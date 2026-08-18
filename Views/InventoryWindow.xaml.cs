@@ -451,7 +451,7 @@ public partial class InventoryWindow : Window
         "worn" => "worn",
         "activated" => "activated item",
         "storage" => "in storage",
-        "keyring" => "key ring",
+        "keyring" => "augments",
         "bags" => "in bags",
         "bank" => "in bank",
         "depot" => "in depot",

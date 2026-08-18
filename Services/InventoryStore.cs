@@ -111,7 +111,7 @@ public static class InventoryStore
             ["bags"] = "Bags",
             ["storage"] = "Storage",          // KeyRing / Equipment — in-game "Storage"
             ["activated"] = "Activated items", // KeyRing / Activated
-            ["keyring"] = "Key rings",         // any other keyring category (Augmentation…)
+            ["keyring"] = "Augments",          // KeyRing / Augmentation (and any future category)
             ["bank"] = "Bank",
             ["depot"] = "Depot",
             ["hoard"] = "Hoard",
