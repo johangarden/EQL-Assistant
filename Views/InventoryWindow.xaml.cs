@@ -476,7 +476,10 @@ public partial class InventoryWindow : Window
             StatusFg[a.Status], pills, best, a.BestTier == 0 ? null : a.BestEffect,
             place, wornIsBest ? StatusFg[2] : StatusFg[1],
             a.BestTier == 0 ? Visibility.Collapsed : Visibility.Visible,
-            StatusTip: statusTip, RowBg: RowWash[a.Status]);
+            StatusTip: statusTip,
+            // The wash follows the sort bands — wearing / stored / missing —
+            // so the background and the row order always agree.
+            RowBg: RowWash[a.WornTier > 0 ? 2 : a.BestTier > 0 ? 1 : 0]);
     }
 
     /// <summary>Selftest hook: front the audit board so its template
