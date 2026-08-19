@@ -1135,6 +1135,13 @@ public partial class App : Application
                 Check("stats: own /who row updates the level, a stranger's never",
                     ss.Snapshot(N(2820), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed)
                         .LevelText == "lvl 36 /who");
+                // A /who that CONTRADICTS the last ding = a loadout swap the
+                // log never announces — the ETA refuses instead of asserting
+                // another loadout's bar.
+                Check("stats: a contradicting /who blocks the ETA (loadout swap)",
+                    ss.Snapshot(N(2820), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed)
+                        .Rows.First(r => r.Label == "NEXT LEVEL") is { Value: "–" } swapEta
+                    && swapEta.Tip.Contains("loadout swap"));
 
                 // Percent-less exp (the cap) is UNKNOWN, never zero.
                 var capSs = new SessionStats();
