@@ -192,7 +192,7 @@ public partial class App : Application
                 "Location\tName\tID\tCount\tSlots\r\nHead\tValorium Helmet +1\t4851\t1\t10\r\n");
             var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
             invWin.Show();
-            invWin.ShowFocusTabForTest(); // instantiate the audit-board template
+            invWin.ShowFocusTab(); // instantiate the audit-board template
             invWin.Close();
 
             // Character sheet renders the doll + all three pane tabs from a

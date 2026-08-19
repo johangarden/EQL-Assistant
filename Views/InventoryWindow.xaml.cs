@@ -651,7 +651,7 @@ public partial class InventoryWindow : Window
     /// <summary>Selftest hook: front the audit board so its template
     /// actually instantiates (a collapsed list renders nothing and would
     /// hide a binding typo).</summary>
-    public void ShowFocusTabForTest()
+    public void ShowFocusTab()
     {
         _tab = "focus";
         RepaintPills(TabPanel, _tab);

@@ -1596,6 +1596,12 @@ public partial class MainWindow : Window
             _itemStats ??= new ItemStats();
             _sheetWindow = new Views.CharacterSheetWindow(
                 InventoryStore.EqRootOf(logPath), name, server, _focusFx, _itemStats, _session);
+            // The sheet's compact focus list links to the full audit board.
+            _sheetWindow.FocusBoardRequested = () =>
+            {
+                OpenInventory();
+                _inventoryWindow?.ShowFocusTab();
+            };
             _sheetWindow.Closed += (_, _) => _sheetWindow = null;
             _sheetWindow.Show();
         }

@@ -62,7 +62,13 @@ public partial class CharacterSheetWindow : Window
     private List<FocusEffects.AuditRow> _audit = new();
     private readonly Dictionary<(string Token, int Nth), InventoryStore.Entry> _worn = new();
     private (string Token, int Nth)? _selected;
-    private string _paneTab = "totals";
+    private string _charTab = "totals";  // totals | focusall | clickies
+    private string _itemTab = "sockets"; // sockets | focus | stats
+    private List<InventoryStore.CarryRow> _rows = new();
+
+    /// <summary>Wired by MainWindow: the compact focus list links to the
+    /// full board (the Inventory window's Focus effects tab).</summary>
+    public Action? FocusBoardRequested { get; set; }
     private readonly List<Border> _cells = new();
 
     private string? _dumpPath;
@@ -128,6 +134,7 @@ public partial class CharacterSheetWindow : Window
         }
 
         var (rows, _) = InventoryStore.CarryAll(_dump);
+        _rows = rows;
         _audit = _focus.Audit(rows);
         int green = _audit.Count(a => a.Family.Group != "summoned" && a.Status == 2);
         int upgradable = _audit.Count(a => a.Family.Group != "summoned" && a.Status == 1);
@@ -304,22 +311,11 @@ public partial class CharacterSheetWindow : Window
             Child = inner,
             Tag = slot,
         };
+        // Click a slot → its item tabs; click it again → back to the
+        // character-wide tabs. Each mode remembers its own last tab.
         cell.MouseLeftButtonUp += (_, _) =>
         {
-            if (_selected == slot)
-            {
-                // Clicking the selected slot again deselects — back to the
-                // whole character.
-                _selected = null;
-                _paneTab = "totals";
-            }
-            else
-            {
-                _selected = slot;
-                // Clicking an item means "show me THIS" — leave the
-                // character-wide Totals tab for the item's own sockets.
-                if (_paneTab == "totals") _paneTab = "sockets";
-            }
+            _selected = _selected == slot ? null : slot;
             RefreshPane();
         };
         _cells.Add(cell);
@@ -463,9 +459,16 @@ public partial class CharacterSheetWindow : Window
 
     // ---- the detail pane --------------------------------------------------------
 
-    private static readonly (string Id, string Label)[] PaneTabDefs =
+    // Two tab sets: the pane speaks for the whole CHARACTER until a slot is
+    // selected, then for that ITEM. Each mode remembers its own last tab.
+    private static readonly (string Id, string Label)[] CharTabDefs =
     {
-        ("totals", "Totals"),
+        ("totals", "Total stats"),
+        ("focusall", "Focus effects"),
+        ("clickies", "Clickies"),
+    };
+    private static readonly (string Id, string Label)[] ItemTabDefs =
+    {
         ("sockets", "Sockets"),
         ("focus", "Focus"),
         ("stats", "Stats"),
@@ -480,8 +483,10 @@ public partial class CharacterSheetWindow : Window
             c.Background = sel ? CellSelBg : CellBg;
         }
 
+        bool itemMode = _selected is not null;
+        string active = itemMode ? _itemTab : _charTab;
         PaneTabs.Children.Clear();
-        foreach (var (id, label) in PaneTabDefs)
+        foreach (var (id, label) in itemMode ? ItemTabDefs : CharTabDefs)
         {
             var text = new TextBlock { Text = label, FontSize = 10.5 };
             var tab = new Border
@@ -494,16 +499,15 @@ public partial class CharacterSheetWindow : Window
                 Cursor = Cursors.Hand,
                 Child = text,
             };
-            bool on = _paneTab == id;
+            bool on = active == id;
             tab.Background = on ? TabOnBg : Brushes.Transparent;
             text.Foreground = on ? TabOnFg : SlotFg;
             string captured = id;
+            bool capturedItemMode = itemMode;
             tab.MouseLeftButtonUp += (_, _) =>
             {
-                _paneTab = captured;
-                // Totals is the whole character — drop the cell highlight so
-                // the doll agrees with the pane.
-                if (captured == "totals") _selected = null;
+                if (capturedItemMode) _itemTab = captured;
+                else _charTab = captured;
                 RefreshPane();
             };
             PaneTabs.Children.Add(tab);
@@ -517,31 +521,38 @@ public partial class CharacterSheetWindow : Window
         PaneLinesBelow.Visibility = Visibility.Collapsed;
         PaneLinesBelow.ItemsSource = null;
 
-        if (_paneTab == "totals")
+        if (!itemMode)
         {
-            PaneTitle.Text = "Stats from gear";
-            BuildTotalsLines(lines);
+            switch (_charTab)
+            {
+                case "focusall": BuildFocusAllPane(); break;
+                case "clickies": BuildClickiesPane(); break;
+                default:
+                    PaneTitle.Text = "Stats from gear";
+                    BuildTotalsPane(lines);
+                    break;
+            }
             PaneLines.ItemsSource = lines;
             return;
         }
 
-        if (_selected is not { } sel2 || !_worn.TryGetValue(sel2, out var entry) || entry.Empty)
+        if (!_worn.TryGetValue(_selected!.Value, out var entry) || entry.Empty)
         {
-            PaneTitle.Text = _selected is { } s2 ? s2.Token : "";
-            PaneSub.Text = _selected is null ? "click a slot on the doll" : "empty slot";
+            PaneTitle.Text = _selected.Value.Token;
+            PaneSub.Text = "empty slot";
             PaneLines.ItemsSource = lines;
             return;
         }
 
         PaneTitle.Text = entry.Name;
-        PaneSub.Text = sel2.Token;
+        PaneSub.Text = _selected.Value.Token;
         if (ItemIcons.Get(_stats.Lookup(entry.Name)?.Icon) is { } icon)
         {
             PaneIcon.Source = icon;
             PaneIcon.Visibility = Visibility.Visible;
         }
 
-        switch (_paneTab)
+        switch (_itemTab)
         {
             case "sockets": BuildSocketLines(entry, lines); break;
             case "focus": BuildFocusLines(entry, lines); break;
@@ -643,7 +654,8 @@ public partial class CharacterSheetWindow : Window
 
     /// <summary>One "Label:   value" grid row — the scaled value in gold with
     /// the wiki base in dim brackets when the tier changes it.</summary>
-    private static UIElement StatRowEl(string label, string baseText, string scaledText, string? tip = null)
+    private static UIElement StatRowEl(string label, string baseText, string scaledText,
+        string? tip = null, Brush? plainFg = null)
     {
         var g = new Grid { Margin = new Thickness(0, 0, 0, 3), ToolTip = tip };
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -665,7 +677,7 @@ public partial class CharacterSheetWindow : Window
         }
         else
         {
-            val.Inlines.Add(new System.Windows.Documents.Run(baseText) { Foreground = TextFg });
+            val.Inlines.Add(new System.Windows.Documents.Run(baseText) { Foreground = plainFg ?? TextFg });
         }
         Grid.SetColumn(val, 1);
         g.Children.Add(val);
@@ -780,14 +792,16 @@ public partial class CharacterSheetWindow : Window
         { "REQ_LEVEL", "REC_LEVEL", "REQUIRED_LEVEL", "RECOMMENDED_LEVEL",
           "CHARGES", "CAST_TIME", "COOLDOWN", "RECAST" };
 
-    private void BuildTotalsLines(List<PaneLineVm> lines)
+    /// <summary>Total stats — the same item-window grid the per-item Stats
+    /// tab wears, over the whole doll.</summary>
+    private void BuildTotalsPane(List<PaneLineVm> lines)
     {
         var worn = _worn.Values.Where(e => !e.Empty).ToList();
         int counted = 0, unknown = 0, acTier = 0, voidGrant = 0;
         // normalized key -> at-tier sum; percents listed, never added.
         var sums = new Dictionary<string, (string Label, int Tier)>(StringComparer.Ordinal);
         var order = new List<string>();
-        var percents = new List<string>();
+        var percents = new List<(string Label, string Value)>();
 
         foreach (var e in worn)
         {
@@ -819,44 +833,306 @@ public partial class CharacterSheetWindow : Window
                 {
                     // "36%" — whether worn percents stack is stated nowhere,
                     // so they're listed, never summed (Companion's rule).
-                    percents.Add($"{ItemStats.StatLabel(p[0])} {ItemUpgrade.ScaleValueText(p[0], p[1], tier)}");
+                    percents.Add((ItemStats.StatLabel(p[0]),
+                        ItemUpgrade.ScaleValueText(p[0], p[1], tier)));
                 }
             }
             if (SynthVoid(rec, tier)) voidGrant += tier;
         }
 
         PaneSub.Text = $"what the {worn.Count} worn items grant at their current tiers";
-
-        string SumText(Func<string, bool> pick) => string.Join(" · ", order
-            .Where(pick)
-            .Select(k => sums[k])
-            .Select(s => $"{s.Label} {Fmt(s.Tier)}"));
-        static string Fmt(int n) => n > 0 ? "+" + n : n.ToString();
-
-        if (acTier > 0)
-            lines.Add(new PaneLineVm("AC", acTier.ToString(), TextFg, Visibility.Visible));
-        string attrs = SumText(k => AttrKeys.Contains(k));
-        if (attrs.Length > 0) lines.Add(new PaneLineVm("ATTRIBUTES", attrs, TextFg, Visibility.Visible));
-        string pools = SumText(k => PoolKeys.Contains(k));
-        if (pools.Length > 0) lines.Add(new PaneLineVm("POOLS", pools, TextFg, Visibility.Visible));
-        var savesParts = order.Where(k => k.StartsWith("SV_", StringComparison.Ordinal))
-            .Select(k => sums[k]).Select(s => $"{s.Label} {Fmt(s.Tier)}").ToList();
-        if (voidGrant > 0) savesParts.Add($"SV Void +{voidGrant} (upgrade grants)");
-        if (savesParts.Count > 0)
-            lines.Add(new PaneLineVm("SAVES", string.Join(" · ", savesParts), TextFg, Visibility.Visible));
-        string other = SumText(k => !AttrKeys.Contains(k) && !PoolKeys.Contains(k)
-            && !k.StartsWith("SV_", StringComparison.Ordinal));
-        if (other.Length > 0) lines.Add(new PaneLineVm("OTHER", other, TextFg, Visibility.Visible));
-        if (percents.Count > 0)
-            lines.Add(new PaneLineVm("NOT SUMMED", string.Join(" · ", percents), AmberFg, Visibility.Visible));
-
         if (counted == 0)
         {
             lines.Add(new PaneLineVm("", "no worn item is in the wiki table yet", DimFg, Visibility.Collapsed));
             return;
         }
+
+        static string Fmt(int n) => n > 0 ? "+" + n : n.ToString();
+        List<UIElement> Rows(string[] orderKeys, bool stripSv = false)
+        {
+            var ordered = order.Where(orderKeys.Contains)
+                .OrderBy(k => Array.IndexOf(orderKeys, k)).ToList();
+            return ordered.Select(k =>
+            {
+                string label = sums[k].Label;
+                if (stripSv && label.StartsWith("SV ", StringComparison.Ordinal)) label = label[3..];
+                return StatRowEl(label, Fmt(sums[k].Tier), Fmt(sums[k].Tier));
+            }).ToList();
+        }
+
+        // Top: AC + the unsummed percents left, pools right — then the same
+        // attribute / save / other columns as an item.
+        var topA = new List<UIElement>();
+        if (acTier > 0) topA.Add(StatRowEl("AC", acTier.ToString(), acTier.ToString()));
+        foreach (var (label, value) in percents)
+            topA.Add(StatRowEl(label, value, value,
+                "listed, never summed — whether worn percents stack is stated nowhere", AmberFg));
+        var topB = Rows(PoolKeys);
+
+        string[] attrOrder = { "STR", "STA", "INT", "WIS", "AGI", "DEX", "CHA" };
+        var attrCol = Rows(attrOrder);
+        string[] saveOrder = { "SV_MAGIC", "SV_FIRE", "SV_COLD", "SV_DISEASE", "SV_POISON" };
+        var saveKeys = saveOrder.Concat(order.Where(k =>
+            k.StartsWith("SV_", StringComparison.Ordinal) && !saveOrder.Contains(k))).ToArray();
+        var saveCol = Rows(saveKeys, stripSv: true);
+        if (voidGrant > 0)
+            saveCol.Add(StatRowEl("Void", "", "+" + voidGrant,
+                "granted by the upgrades themselves — every upgraded item with two attributes gains SV Void"));
+        var otherKeys = order.Where(k => !attrOrder.Contains(k) && !PoolKeys.Contains(k)
+            && !k.StartsWith("SV_", StringComparison.Ordinal)).ToArray();
+        var otherCol = Rows(otherKeys);
+
+        var root = new StackPanel();
+        if (topA.Count > 0 || topB.Count > 0) root.Children.Add(Columns(topA, topB));
+        if (attrCol.Count > 0 || saveCol.Count > 0 || otherCol.Count > 0)
+        {
+            var section = Columns(attrCol, saveCol, otherCol);
+            section.Margin = new Thickness(0, 9, 0, 0);
+            root.Children.Add(section);
+        }
+        PaneGrid.Content = root;
+        PaneGrid.Visibility = Visibility.Visible;
+
         PaneHint.Text = (unknown > 0 ? $"{unknown} worn item(s) missing from the wiki table count toward nothing. " : "")
-            + "Sums of the worn items' wiki blocks, each scaled to its +N tier by the wiki's own item-level rules. Percents are listed, never summed — stacking is stated nowhere. Per-item base numbers live on the Stats tab.";
+            + "Sums of the worn items' wiki blocks, each scaled to its +N tier by the wiki's own item-level rules. Amber = listed, never summed. Per-item numbers live on each slot's Stats tab.";
+        PaneHint.Visibility = Visibility.Visible;
+    }
+
+    // ---- Focus effects: the Inventory audit, compacted ---------------------------
+
+    private static readonly Brush[] StatusFgs = { Freeze("#E57373"), Freeze("#FFB74D"), Freeze("#66BB6A") };
+    private static readonly Brush[] StatusWash = { Freeze("#10E57373"), Freeze("#10FFB74D"), Freeze("#1066BB6A") };
+
+    private static TextBlock SectHeader(string text) => new()
+    {
+        Text = text.ToUpperInvariant(),
+        Foreground = SlotFg,
+        FontSize = 9.5,
+        FontWeight = FontWeights.Bold,
+        Margin = new Thickness(0, 9, 0, 4),
+    };
+
+    /// <summary>"Improved Damage" at tier 3 → "III" (the ladder's own effect
+    /// spelling, family prefix stripped); an unnamed tier reads "T3".</summary>
+    private static string RomanOf(FocusEffects.Family fam, int tierNum)
+    {
+        var tier = fam.Tiers.FirstOrDefault(t => t.TierNum == tierNum);
+        if (tier is null) return "T" + tierNum;
+        return tier.Effect.StartsWith(fam.Name + " ", StringComparison.Ordinal)
+            ? tier.Effect[(fam.Name.Length + 1)..]
+            : tier.Effect;
+    }
+
+    private void BuildFocusAllPane()
+    {
+        PaneTitle.Text = "Focus effects";
+        var rows = _audit.Where(a => a.Family.Group != "summoned")
+            .OrderBy(a => a.Family.Name, StringComparer.Ordinal).ToList();
+        int green = rows.Count(a => a.Status == 2);
+        int upg = rows.Count(a => a.Status == 1);
+        int missing = rows.Count(a => a.Status == 0);
+        PaneSub.Text = $"{green} worn best · {upg} upgradable · {missing} missing — the audit's verdicts";
+
+        var root = new StackPanel();
+        void Section(string title, int status)
+        {
+            var inGroup = rows.Where(a => a.Status == status).ToList();
+            if (inGroup.Count == 0) return;
+            root.Children.Add(SectHeader(title));
+            foreach (var a in inGroup)
+            {
+                string verdict = status switch
+                {
+                    2 => $"{RomanOf(a.Family, a.WornTier)} — worn best",
+                    1 => a.WornTier > 0
+                        ? $"{RomanOf(a.Family, a.WornTier)} worn → {RomanOf(a.Family, a.HuntableMax)} huntable"
+                        : "stored, not worn",
+                    _ => "none owned",
+                };
+                var row = new DockPanel { Margin = new Thickness(0, 0, 0, 1) };
+                var dot = new System.Windows.Shapes.Ellipse
+                {
+                    Width = 7,
+                    Height = 7,
+                    Fill = StatusFgs[status],
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 7, 0),
+                };
+                DockPanel.SetDock(dot, Dock.Left);
+                row.Children.Add(dot);
+                var st = new TextBlock
+                {
+                    Text = verdict,
+                    Foreground = StatusFgs[status],
+                    FontSize = 10.5,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(8, 0, 0, 0),
+                };
+                DockPanel.SetDock(st, Dock.Right);
+                row.Children.Add(st);
+                var name = new TextBlock
+                {
+                    FontSize = 11.5,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                };
+                name.Inlines.Add(new System.Windows.Documents.Run(a.Family.Name)
+                    { Foreground = TextFg, FontWeight = FontWeights.SemiBold });
+                name.Inlines.Add(new System.Windows.Documents.Run("  " + a.Family.Kind)
+                    { Foreground = DimFg, FontSize = 10 });
+                row.Children.Add(name);
+                root.Children.Add(new Border
+                {
+                    Background = StatusWash[status],
+                    CornerRadius = new CornerRadius(5),
+                    Padding = new Thickness(6, 2, 6, 3),
+                    Margin = new Thickness(-6, 0, -6, 1),
+                    Child = row,
+                    ToolTip = status == 1 && a.BestItem.Length > 0
+                        ? $"best owned: {a.BestEffect} ({a.BestItem}, {a.BestPlace})"
+                        : null,
+                });
+            }
+        }
+        Section("Wearing the best", 2);
+        Section("Upgrade available", 1);
+        Section("Missing", 0);
+
+        // The shortcut to the full board.
+        var link = new TextBlock
+        {
+            Text = "Open the full board — Inventory → Focus effects ↗",
+            Foreground = TabOnFg,
+            FontSize = 11.5,
+            Cursor = Cursors.Hand,
+            Margin = new Thickness(0, 10, 0, 0),
+        };
+        link.MouseLeftButtonUp += (_, _) => FocusBoardRequested?.Invoke();
+        root.Children.Add(link);
+
+        PaneGrid.Content = root;
+        PaneGrid.Visibility = Visibility.Visible;
+    }
+
+    // ---- Clickies: every click effect you're carrying ----------------------------
+
+    /// <summary>The "click:" effect names a wiki record states (detail
+    /// parentheses dropped for the compact list).</summary>
+    private static List<string> ClickLines(ItemStats.Record? rec)
+    {
+        var found = new List<string>();
+        if (rec is null || rec.Effects.Length == 0) return found;
+        foreach (var line in rec.Effects.Split('\n'))
+        {
+            if (!line.StartsWith("click:", StringComparison.OrdinalIgnoreCase)) continue;
+            string name = line["click:".Length..].Trim();
+            int paren = name.IndexOf(" (", StringComparison.Ordinal);
+            if (paren > 0) name = name[..paren];
+            if (name.Length > 0) found.Add(name);
+        }
+        return found;
+    }
+
+    private UIElement ClickyRow(int? iconId, string effect, string via, bool known = true)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 7) };
+        if (ItemIcons.Get(iconId) is { } icon)
+        {
+            var img = new System.Windows.Controls.Image
+            {
+                Source = icon,
+                Width = 20,
+                Height = 20,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 1, 7, 0),
+            };
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Fant);
+            DockPanel.SetDock(img, Dock.Left);
+            row.Children.Add(img);
+        }
+        var body = new StackPanel();
+        body.Children.Add(new TextBlock
+        {
+            Text = effect,
+            Foreground = known ? GreenFg : TextFg,
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 11.5,
+            TextWrapping = TextWrapping.Wrap,
+        });
+        body.Children.Add(new TextBlock
+        {
+            Text = via,
+            Foreground = DimFg,
+            FontSize = 10.5,
+            TextWrapping = TextWrapping.Wrap,
+        });
+        row.Children.Add(body);
+        return row;
+    }
+
+    private void BuildClickiesPane()
+    {
+        PaneTitle.Text = "Clickies";
+        PaneSub.Text = "every click effect you're carrying";
+        var root = new StackPanel();
+
+        // Worn: the item's own click lines, then any Click-Exaltation socket.
+        var wornRows = new List<UIElement>();
+        foreach (var ((token, _), e) in _worn.OrderBy(kv => kv.Key.Token, StringComparer.Ordinal))
+        {
+            if (e.Empty) continue;
+            var rec = _stats.Lookup(e.Name);
+            foreach (var fx in ClickLines(rec))
+                wornRows.Add(ClickyRow(rec?.Icon, fx, $"{e.Name} · {token}"));
+            foreach (var child in e.Children.Where(c => !c.Empty && SlotTypeOf(c.Location).Label == "C"))
+            {
+                var crec = _stats.Lookup(child.Name);
+                var fxs = ClickLines(crec);
+                var (childBase, _) = SplitTier(child.Name.Replace(" (Exaltation)", ""));
+                if (fxs.Count == 0)
+                    wornRows.Add(ClickyRow(crec?.Icon, childBase,
+                        $"socketed in {e.Name} · {token} — click effect not in the wiki table", known: false));
+                foreach (var fx in fxs)
+                    wornRows.Add(ClickyRow(crec?.Icon, fx, $"{childBase}, socketed in {e.Name} · {token}"));
+            }
+        }
+        if (wornRows.Count > 0)
+        {
+            root.Children.Add(SectHeader("Worn"));
+            foreach (var r in wornRows) root.Children.Add(r);
+        }
+
+        // The game's own clicky collection: the Activated-Items keyring.
+        var keyringRows = new List<UIElement>();
+        foreach (var r in _rows.Where(r => r.Lane == "activated"))
+        {
+            var rec = _stats.Lookup(r.Name);
+            var fxs = ClickLines(rec);
+            var (baseName, _) = SplitTier(r.Name);
+            if (fxs.Count == 0)
+                keyringRows.Add(ClickyRow(rec?.Icon, baseName,
+                    "Activated keyring — click effect not in the wiki table", known: false));
+            foreach (var fx in fxs)
+                keyringRows.Add(ClickyRow(rec?.Icon, fx, $"{r.Name} · Activated keyring"));
+        }
+        if (keyringRows.Count > 0)
+        {
+            root.Children.Add(SectHeader("Activated keyring"));
+            foreach (var r in keyringRows) root.Children.Add(r);
+        }
+
+        if (wornRows.Count == 0 && keyringRows.Count == 0)
+            root.Children.Add(new TextBlock
+            {
+                Text = "no clickies found in the dump",
+                Foreground = DimFg,
+                FontSize = 11.5,
+                FontStyle = FontStyles.Italic,
+            });
+
+        PaneGrid.Content = root;
+        PaneGrid.Visibility = Visibility.Visible;
+        PaneHint.Text = "Effect names come from the wiki's click lines — an item whose click the wiki doesn't state shows the item alone. Worn gear first, then the game's Activated-Items keyring.";
         PaneHint.Visibility = Visibility.Visible;
     }
 
