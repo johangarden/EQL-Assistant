@@ -96,12 +96,16 @@ public sealed class ConditionWatcher
         if (_onLines.TryGetValue(body, out string? onKind))
         {
             // A re-land while active restarts the clock (fresh application).
+            // Logged verbatim: "randomly firing" badges are debugged by
+            // matching this against the game log's same instant.
+            Log.Info($"[conditions] {onKind} ON at {time:HH:mm:ss} — matched line: \"{body}\" (cap {CapFor(onKind):0}s{(_active.ContainsKey(onKind) ? ", re-land" : "")})");
             _active[onKind] = (time, time.AddSeconds(CapFor(onKind)));
             return;
         }
         if (OffLines.TryGetValue(body, out string? offKind))
         {
-            _active.Remove(offKind);
+            if (_active.Remove(offKind))
+                Log.Info($"[conditions] {offKind} OFF at {time:HH:mm:ss} — wear-off line: \"{body}\"");
             return;
         }
 
@@ -109,7 +113,11 @@ public sealed class ConditionWatcher
         if (body.StartsWith("You died.", StringComparison.Ordinal)
             || body.StartsWith("You have been slain", StringComparison.Ordinal)
             || body.StartsWith("You have entered ", StringComparison.Ordinal))
+        {
+            if (_active.Count > 0)
+                Log.Info($"[conditions] cleared ({string.Join(", ", _active.Keys)}) at {time:HH:mm:ss} — censor line: \"{body}\"");
             _active.Clear();
+        }
     }
 
     /// <summary>Active conditions, oldest first; entries past their hygiene
@@ -118,7 +126,10 @@ public sealed class ConditionWatcher
     {
         foreach (var kind in _active.Where(kv => now > kv.Value.Deadline)
                      .Select(kv => kv.Key).ToList())
+        {
+            Log.Info($"[conditions] {kind} expired by hygiene cap (no wear-off line seen)");
             _active.Remove(kind);
+        }
 
         return _active
             .OrderBy(kv => kv.Value.Since)
