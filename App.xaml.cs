@@ -701,20 +701,22 @@ public partial class App : Application
                 lib2.OtherLanding("Siphon Life") is null
                 && lib2.OtherLanding("Togor's Insects") is { Detrimental: true });
 
-            // Condition badges: landings derive from the library's uniform
-            // wear-off families — no keyword guessing, buffs never match.
+            // Condition badges: fear/charm/mez landings derive from the
+            // library's wear-off families; STUN rides the game's own state
+            // pair alone — "You are stunned!" / "You are no longer stunned."
+            // (measured 488/488 across the real logs; spell-flavor landings
+            // like "sudden force" also fire for stunless knockbacks).
             var cw = new ConditionWatcher(lib2);
-            Check("conditions: landing sets derive from the library",
-                cw.LandingCount(ConditionWatcher.Stunned) > 3
+            Check("conditions: stun is the state pair alone, the rest derive from the library",
+                cw.LandingCount(ConditionWatcher.Stunned) == 1
                 && cw.LandingCount(ConditionWatcher.Feared) > 3
                 && cw.LandingCount(ConditionWatcher.Charmed) > 0
                 && cw.LandingCount(ConditionWatcher.Mezzed) > 3);
             cw.ProcessLine($"[{AT(0)}] You are struck by a sudden force.");
-            Check("conditions: a stun landing raises the badge",
-                cw.Active(new DateTime(2026, 8, 10, 23, 0, 5)) is [{ Kind: ConditionWatcher.Stunned }]);
-            cw.ProcessLine($"[{AT(2)}] You are no longer stunned.");
-            cw.ProcessLine($"[{AT(3)}] You are stunned."); // plain form: melee bash/slam too
-            Check("conditions: the plain melee-stun line raises the badge",
+            Check("conditions: a stunless knockback raises NOTHING",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 5)).Count == 0);
+            cw.ProcessLine($"[{AT(3)}] You are stunned!"); // the state line, spell and melee alike
+            Check("conditions: the stun state line raises the badge",
                 cw.Active(new DateTime(2026, 8, 10, 23, 0, 4)) is [{ Kind: ConditionWatcher.Stunned }]);
             cw.ProcessLine($"[{AT(6)}] You are no longer stunned.");
             Check("conditions: the wear-off line clears it",
@@ -731,7 +733,7 @@ public partial class App : Application
             cw.ProcessLine($"[{AT(30)}] Your body screams with the power of an Avatar.");
             Check("conditions: scream-flavored BUFFS never raise a badge",
                 cw.Active(new DateTime(2026, 8, 10, 23, 0, 31)).Count == 0);
-            cw.ProcessLine($"[{AT(40)}] You are stunned by a gust of air.");
+            cw.ProcessLine($"[{AT(40)}] You are stunned!");
             Check("conditions: hygiene cap culls an eaten stun wear-off (30s)",
                 cw.Active(new DateTime(2026, 8, 10, 23, 0, 45)).Count == 1
                 && cw.Active(new DateTime(2026, 8, 10, 23, 1, 20)).Count == 0);

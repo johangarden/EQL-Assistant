@@ -59,27 +59,29 @@ public sealed class ConditionWatcher
 
     public ConditionWatcher(SpellLibrary library)
     {
-        // The plain forms print for melee stuns too (bash/slam), not only for
-        // spells — seeded outright so they never depend on the library
-        // happening to carry a spell that uses the bare sentence.
-        _onLines["You are stunned."] = Stunned;
+        // STUN is special: the game prints the STATE itself — "You are
+        // stunned!" paired 1:1 with "You are no longer stunned." (measured
+        // 488/488 across Thorrak's logs, spell and melee stuns alike, chain
+        // stuns included). Spell-flavor landings ("You are struck by a
+        // sudden force.") also fire for stunless knockbacks and once made
+        // the badge "fire randomly" — the state pair is the only truth.
+        _onLines["You are stunned!"] = Stunned;
         _onLines["You are mesmerized."] = Mezzed;
         _onLines["You have been charmed."] = Charmed;
 
         foreach (var s in library.Spells)
         {
             if (!OffLines.TryGetValue(s.WearsOff, out string? kind)) continue;
+            if (kind == Stunned) continue; // the state pair covers stuns
             if (SpellLibrary.JunkMessage(s.CastOnYou)) continue;
             _onLines[s.CastOnYou] = kind;
         }
-        // Landings whose spells carry no wear-off text but say it plainly
-        // ("You are stunned by a gust of air.") — the word IS the condition.
+        // Landings whose spells carry no wear-off text but say it plainly —
+        // the word IS the condition (stun excluded: state pair only).
         foreach (var s in library.Spells)
         {
             if (s.WearsOff.Length > 0 || SpellLibrary.JunkMessage(s.CastOnYou)) continue;
-            if (s.CastOnYou.StartsWith("You are stunned", StringComparison.Ordinal))
-                _onLines.TryAdd(s.CastOnYou, Stunned);
-            else if (s.CastOnYou.StartsWith("You are mesmerized", StringComparison.Ordinal))
+            if (s.CastOnYou.StartsWith("You are mesmerized", StringComparison.Ordinal))
                 _onLines.TryAdd(s.CastOnYou, Mezzed);
             else if (s.CastOnYou.StartsWith("You have been charmed", StringComparison.Ordinal))
                 _onLines.TryAdd(s.CastOnYou, Charmed);
