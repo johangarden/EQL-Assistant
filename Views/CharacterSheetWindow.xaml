@@ -19,25 +19,45 @@
     </Window.Resources>
 
     <DockPanel>
-        <!-- footer: Level · classes · /who age (the session panel's machinery) -->
-        <Border DockPanel.Dock="Bottom" Background="#10151D" BorderBrush="#3A4560" BorderThickness="0,1,0,0">
-            <DockPanel Margin="16,8,16,9">
-                <TextBlock x:Name="FootWho" DockPanel.Dock="Right" Foreground="#5C6B82" FontSize="11"
-                           VerticalAlignment="Center"/>
-                <TextBlock x:Name="FootClasses" Foreground="#7F93AD" FontSize="12" FontWeight="SemiBold"
-                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <TextBlock x:Name="FootLevel" DockPanel.Dock="Left" Foreground="#C9D4E3" FontSize="12"
-                           FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,24,0"/>
-            </DockPanel>
-        </Border>
-
         <DockPanel Margin="14,12,14,10">
-            <DockPanel DockPanel.Dock="Top" Margin="2,0,2,10">
+            <!-- header: name · server · level + age · class chips ·
+                 stated-by chip (the session panel's ding//who machinery) -->
+            <DockPanel DockPanel.Dock="Top" Margin="2,0,2,8">
                 <TextBlock x:Name="FocusSummary" DockPanel.Dock="Right" Foreground="#5C6B82" FontSize="11"
                            VerticalAlignment="Center"
                            ToolTip="The focus audit's score — the Inventory's Focus effects tab holds the full board"/>
-                <TextBlock x:Name="CharName" Style="{StaticResource PageTitle}"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="CharName" Style="{StaticResource PageTitle}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ServerText" Foreground="#5C6B82" FontSize="11"
+                               VerticalAlignment="Center" Margin="9,5,0,0"/>
+                    <TextBlock x:Name="LevelText" Foreground="#C9D4E3" FontSize="13" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="16,2,0,0"/>
+                    <TextBlock x:Name="LevelAge" Foreground="#5C6B82" FontSize="10.5"
+                               VerticalAlignment="Center" Margin="6,4,0,0"/>
+                    <StackPanel x:Name="ClassChips" Orientation="Horizontal"
+                                VerticalAlignment="Center" Margin="12,2,0,0"/>
+                    <TextBlock x:Name="WhoHint" Foreground="#5C6B82" FontSize="10.5"
+                               VerticalAlignment="Center" Margin="12,4,0,0"/>
+                </StackPanel>
             </DockPanel>
+
+            <!-- the dump strip: what feeds this sheet, and how stale it is -->
+            <Border x:Name="DumpStrip" DockPanel.Dock="Top" Background="#10151D" BorderBrush="#232C3E"
+                    BorderThickness="1" CornerRadius="7" Padding="12,6,12,7" Margin="2,0,2,10"
+                    Visibility="Collapsed">
+                <DockPanel>
+                    <TextBlock x:Name="DumpAge" DockPanel.Dock="Right" Foreground="#5C6B82" FontSize="11"
+                               VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    <TextBlock x:Name="DumpHow" DockPanel.Dock="Right" Text="HOW" Foreground="#E8C15A"
+                               FontWeight="Bold" FontSize="11" VerticalAlignment="Center" Margin="12,0,0,0"
+                               ToolTipService.ShowDuration="30000"/>
+                    <TextBlock VerticalAlignment="Center" FontSize="11.5" TextTrimming="CharacterEllipsis">
+                        <Run Text="/outputfile inventory" FontFamily="Consolas" FontWeight="Bold" Foreground="#C9D4E3"/>
+                        <Run Text="  Re-type it in game whenever your gear changes — the sheet follows the dump."
+                             Foreground="#7F93AD"/>
+                    </TextBlock>
+                </DockPanel>
+            </Border>
 
             <!-- Shown instead of the sheet until a dump exists. -->
             <TextBlock x:Name="NoDumpText" Style="{StaticResource Hint}" Visibility="Collapsed"

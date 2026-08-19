@@ -65,6 +65,11 @@ public partial class CharacterSheetWindow : Window
     private string _paneTab = "totals";
     private readonly List<Border> _cells = new();
 
+    private string? _dumpPath;
+    private System.IO.FileSystemWatcher? _fsWatcher;
+    private readonly System.Windows.Threading.DispatcherTimer _ageTick;
+    private readonly System.Windows.Threading.DispatcherTimer _reloadDebounce;
+
     public CharacterSheetWindow(string eqRoot, string charName, string server,
         FocusEffects focus, ItemStats stats, SessionStats? session)
     {
@@ -77,7 +82,22 @@ public partial class CharacterSheetWindow : Window
         _focus = focus;
         _stats = stats;
         _session = session;
-        Loaded += (_, _) => Reload();
+        // "updated 28h ago" must not fossilize while the window sits open.
+        _ageTick = new System.Windows.Threading.DispatcherTimer
+            { Interval = TimeSpan.FromMinutes(1) };
+        _ageTick.Tick += (_, _) => RefreshHeader();
+        // The game rewrites the dump in place — settle before re-reading.
+        _reloadDebounce = new System.Windows.Threading.DispatcherTimer
+            { Interval = TimeSpan.FromMilliseconds(600) };
+        _reloadDebounce.Tick += (_, _) => { _reloadDebounce.Stop(); Reload(); };
+        Loaded += (_, _) => { Reload(); _ageTick.Start(); };
+        Closed += (_, _) =>
+        {
+            _ageTick.Stop();
+            _reloadDebounce.Stop();
+            _fsWatcher?.Dispose();
+            _fsWatcher = null;
+        };
     }
 
     public void Reload()
@@ -85,6 +105,9 @@ public partial class CharacterSheetWindow : Window
         CharName.Text = _charName.Length > 0 ? _charName : "Character";
 
         string? path = InventoryStore.FindDumpFile(_eqRoot, _charName, _server);
+        _dumpPath = path;
+        RefreshHeader();
+        WatchDump(path);
         if (path is null)
         {
             NoDumpText.Visibility = Visibility.Visible;
@@ -127,18 +150,98 @@ public partial class CharacterSheetWindow : Window
         // and a highlighted cell would claim otherwise.
         if (_selected is { } sel && !_worn.ContainsKey(sel)) _selected = null;
         RefreshPane();
-        RefreshFooter();
     }
 
-    private void RefreshFooter()
+    // ---- the header (Companion-style: level · age · classes · source) -----------
+
+    private static string AgeText(TimeSpan t)
     {
-        if (_session is null) { FootLevel.Text = ""; FootClasses.Text = ""; FootWho.Text = ""; return; }
-        var (text, tip) = _session.LevelInfo(DateTime.Now);
-        // "lvl 50 /who 2m" → footer splits it: LEVEL 50 | SHM/SHD/ROG | cue
-        FootLevel.Text = text.Length > 0 ? text.ToUpperInvariant().Replace("LVL", "LEVEL ") : "LEVEL —";
-        FootLevel.ToolTip = tip.Length > 0 ? tip : null;
-        FootClasses.Text = _session.WhoClasses.Replace("/", " / ");
-        FootWho.Text = _session.WhoClasses.Length == 0 ? "type /who in game for classes + level" : "";
+        if (t < TimeSpan.Zero) t = TimeSpan.Zero;
+        if (t.TotalMinutes < 1) return "just now";
+        if (t.TotalMinutes < 60) return $"{(int)t.TotalMinutes}m ago";
+        if (t.TotalHours < 24) return $"{(int)t.TotalHours}h {t.Minutes}m ago";
+        return $"{(int)t.TotalDays}d {t.Hours}h ago";
+    }
+
+    private void RefreshHeader()
+    {
+        ServerText.Text = _server;
+        ClassChips.Children.Clear();
+        LevelText.Text = "";
+        LevelAge.Text = "";
+        WhoHint.Text = "";
+
+        var stmt = _session?.LevelStatement;
+        if (stmt is { } s)
+        {
+            LevelText.Text = "Level " + s.Level;
+            LevelAge.Text = AgeText(DateTime.Now - s.Ts);
+            LevelAge.ToolTip = _session!.LevelInfo(DateTime.Now).Tip;
+        }
+        string classes = _session?.WhoClasses ?? "";
+        foreach (var cls in classes.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            ClassChips.Children.Add(Chip(cls, TextFg, CellBorder));
+        if (stmt is { FromWho: true })
+            ClassChips.Children.Add(Chip("stated by /who", GreenFg, GreenFg));
+        else if (stmt is not null)
+            ClassChips.Children.Add(Chip("from your last ding", DimFg, CellBorder));
+        if (stmt is null && classes.Length == 0)
+            WhoHint.Text = "type /who in game for classes + level";
+
+        if (_dumpPath is { } path && File.Exists(path))
+        {
+            DumpStrip.Visibility = Visibility.Visible;
+            DumpAge.Text = "updated " + AgeText(DateTime.Now - File.GetLastWriteTime(path));
+            DumpAge.ToolTip = path;
+            DumpHow.ToolTip = $"In game, type /outputfile inventory — the game writes "
+                + $"{_charName}_{_server}-Inventory.txt into its own folder and this sheet "
+                + "re-reads it the moment it changes. The Inventory window (the chest on "
+                + "the toolbar) has the full how-to.";
+        }
+        else
+        {
+            DumpStrip.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private static UIElement Chip(string text, Brush fg, Brush border) => new Border
+    {
+        CornerRadius = new CornerRadius(9),
+        BorderBrush = border,
+        BorderThickness = new Thickness(1),
+        Padding = new Thickness(8, 1, 8, 2),
+        Margin = new Thickness(0, 0, 5, 0),
+        Child = new TextBlock
+        {
+            Text = text,
+            Foreground = fg,
+            FontSize = 10.5,
+            FontWeight = FontWeights.SemiBold,
+        },
+    };
+
+    /// <summary>Re-read the sheet whenever the game rewrites the dump — the
+    /// strip promises "the sheet follows the dump" and this keeps it true.</summary>
+    private void WatchDump(string? path)
+    {
+        string? dir = path is null ? null : Path.GetDirectoryName(path);
+        if (dir is null || !Directory.Exists(dir)) return;
+        if (_fsWatcher is not null &&
+            string.Equals(_fsWatcher.Path, dir, StringComparison.OrdinalIgnoreCase)) return;
+        _fsWatcher?.Dispose();
+        _fsWatcher = new System.IO.FileSystemWatcher(dir, Path.GetFileName(path!))
+        {
+            NotifyFilter = System.IO.NotifyFilters.LastWrite | System.IO.NotifyFilters.FileName,
+            EnableRaisingEvents = true,
+        };
+        void Poke(object? _, System.IO.FileSystemEventArgs __) => Dispatcher.BeginInvoke(() =>
+        {
+            _reloadDebounce.Stop();
+            _reloadDebounce.Start();
+        });
+        _fsWatcher.Changed += Poke;
+        _fsWatcher.Created += Poke;
+        _fsWatcher.Renamed += (s, e) => Poke(s, e);
     }
 
     // ---- the doll ---------------------------------------------------------------

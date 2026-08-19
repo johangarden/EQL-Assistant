@@ -446,6 +446,12 @@ public sealed class SessionStats
     /// footer): same ding//who machinery as the panel header.</summary>
     public (string Text, string Tip) LevelInfo(DateTime now) => LevelHeader(now);
 
+    /// <summary>The raw level statement for header chips: the level, whether
+    /// the player's own /who row stated it (vs the last ding), and when on
+    /// the log's clock. Null before either has been seen.</summary>
+    public (int Level, bool FromWho, DateTime Ts)? LevelStatement =>
+        _levelStatement is { } s ? (s.Level, s.FromWho, s.Ts) : null;
+
     private (string Text, string Tip) LevelHeader(DateTime t1)
     {
         if (_levelStatement is not { } s) return ("", "");
