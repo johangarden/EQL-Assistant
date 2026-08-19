@@ -1866,6 +1866,13 @@ public partial class App : Application
             // "You have slain Cazic-Thule!" (17 Aug) — the game hyphenates.
             Check("raid targets: Cazic Thule migrates to the hyphenated log spelling",
                 RaidKills.MigrateTargetName("Cazic Thule") == "Cazic-Thule");
+            // The Hate minis' Teir`Dal names use backticks (observed 18 Aug),
+            // and R`tal runs a lowercase t.
+            Check("raid targets: the Hate minis migrate to their backtick spellings",
+                RaidKills.MigrateTargetName("Coercer T'vala") == "Coercer T`vala"
+                && RaidKills.MigrateTargetName("Grandmaster R'Tal") == "Grandmaster R`tal"
+                && RaidKills.MigrateTargetName("Magi P'tasa") == "Magi P`tasa"
+                && RaidKills.MigrateTargetName("High Priest M'kari") == "High Priest M`kari");
 
             // The weekly loot lockout (the Companion's research): the window
             // starts on the most recent Tuesday 08:00 PACIFIC and runs 7 days.

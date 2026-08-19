@@ -133,10 +133,10 @@ public static class RaidGlyphs
         ["Lord of Ire"] = ("demon", "#8E24AA"),
         ["Master of Spite"] = ("demon", "#BA68C8"),
         ["Mistress of Scorn"] = ("demon", "#F48FB1"),
-        ["High Priest M'kari"] = ("spirit", "#B39DDB"),
-        ["Magi P'tasa"] = ("spirit", "#9FA8DA"),
-        ["Coercer T'vala"] = ("eye", "#CE93D8"),
-        ["Grandmaster R'Tal"] = ("claw", "#A1887F"),
+        ["High Priest M`kari"] = ("spirit", "#B39DDB"),
+        ["Magi P`tasa"] = ("spirit", "#9FA8DA"),
+        ["Coercer T`vala"] = ("eye", "#CE93D8"),
+        ["Grandmaster R`tal"] = ("claw", "#A1887F"),
         ["Ashenbone Broodmaster"] = ("skull", "#B0A695"),  // skeletal dragon
         ["Avatar of Abhorrence"] = ("demon", "#7E57C2"),
 
