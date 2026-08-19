@@ -104,6 +104,20 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <!-- the Stats tab's item-window grid (label: value columns) -->
+                        <ContentControl x:Name="PaneGrid" Visibility="Collapsed" Margin="0,0,0,4"/>
+                        <ItemsControl x:Name="PaneLinesBelow" Visibility="Collapsed">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,7">
+                                        <TextBlock Text="{Binding Key}" Foreground="#5C6B82" FontSize="9.5"
+                                                   FontWeight="Bold" Visibility="{Binding KeyVis}"/>
+                                        <TextBlock Text="{Binding Value}" Foreground="{Binding Fg}" FontSize="12"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                         <TextBlock x:Name="PaneHint" Foreground="#7F93AD" FontSize="11" TextWrapping="Wrap"
                                    Margin="0,4,0,0" Visibility="Collapsed"/>
                     </StackPanel>

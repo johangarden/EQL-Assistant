@@ -512,6 +512,10 @@ public partial class CharacterSheetWindow : Window
         var lines = new List<PaneLineVm>();
         PaneHint.Visibility = Visibility.Collapsed;
         PaneIcon.Visibility = Visibility.Collapsed;
+        PaneGrid.Visibility = Visibility.Collapsed;
+        PaneGrid.Content = null;
+        PaneLinesBelow.Visibility = Visibility.Collapsed;
+        PaneLinesBelow.ItemsSource = null;
 
         if (_paneTab == "totals")
         {
@@ -601,16 +605,6 @@ public partial class CharacterSheetWindow : Window
         }
     }
 
-    /// <summary>"+3" at tier 5 → "+3 → +8"; unchanged values stay bare.</summary>
-    private static string Arrow(string baseText, string scaledText) =>
-        scaledText == baseText ? baseText : $"{baseText} → {scaledText}";
-
-    private static string PairText(string[] pair, int tier)
-    {
-        string label = ItemStats.StatLabel(pair[0]);
-        return $"{label} {Arrow(pair[1], ItemUpgrade.ScaleValueText(pair[0], pair[1], tier))}";
-    }
-
     private void BuildStatLines(InventoryStore.Entry entry, List<PaneLineVm> lines)
     {
         var rec = _stats.Lookup(entry.Name);
@@ -620,52 +614,157 @@ public partial class CharacterSheetWindow : Window
             return;
         }
         int tier = TierOf(entry.Name);
-        if (rec.Flags.Length > 0) lines.Add(new PaneLineVm("FLAGS", rec.Flags, TextFg, Visibility.Visible));
-        if (rec.Ac is { } ac)
-            lines.Add(new PaneLineVm("AC",
-                Arrow(ac.ToString(), ItemUpgrade.ScalePrimary(ac, tier).ToString()),
-                TextFg, Visibility.Visible));
-        if (rec.Dmg is { } dmg)
+
+        // The game's own window order: flags line, class/race, then the grid.
+        if (rec.Flags.Length > 0)
+            lines.Add(new PaneLineVm("", rec.Flags, TextFg, Visibility.Collapsed));
+        string classRace = ((rec.Classes.Length > 0 ? "Class: " + rec.Classes : "")
+            + (rec.Races.Length > 0 ? "   Race: " + rec.Races : "")).Trim();
+        if (classRace.Length > 0)
+            lines.Add(new PaneLineVm("", classRace, SlotFg, Visibility.Collapsed));
+
+        PaneGrid.Content = BuildStatGrid(rec, tier);
+        PaneGrid.Visibility = Visibility.Visible;
+
+        var below = new List<PaneLineVm>();
+        if (rec.Effects.Length > 0) below.Add(new PaneLineVm("EFFECTS", rec.Effects, GreenFg, Visibility.Visible));
+        if (rec.Extras.Length > 0) below.Add(new PaneLineVm("MORE", rec.Extras, DimFg, Visibility.Visible));
+        if (below.Count > 0)
         {
-            // DMG scales, Delay never does — that's WHY the ratio improves.
-            int scaledDmg = ItemUpgrade.ScaleDamage(dmg, tier);
-            string weapon = (rec.Skill.Length > 0 ? rec.Skill + " · " : "")
-                + $"DMG {Arrow(dmg.ToString(), scaledDmg.ToString())}"
-                + (rec.Delay is { } delay
-                    ? $" · Delay {delay} · ratio {(double)scaledDmg / delay:0.00}"
-                    : "")
-                + (rec.DmgBonus is { } bon ? $" · Dmg Bon {bon}" : "")
-                + (rec.Backstab is { } bs ? $" · Backstab {bs}" : "");
-            lines.Add(new PaneLineVm("WEAPON", weapon, TextFg, Visibility.Visible));
+            PaneLinesBelow.ItemsSource = below;
+            PaneLinesBelow.Visibility = Visibility.Visible;
         }
-        if (rec.Stats.Count > 0)
-            lines.Add(new PaneLineVm("STATS",
-                string.Join(" · ", rec.Stats.Select(p => PairText(p, tier))),
-                TextFg, Visibility.Visible));
-        if (rec.Saves.Count > 0 || SynthVoid(rec, tier))
-        {
-            var parts = rec.Saves.Select(p => PairText(p, tier)).ToList();
-            if (SynthVoid(rec, tier)) parts.Add($"SV Void +{tier} (upgrade grant)");
-            lines.Add(new PaneLineVm("SAVES", string.Join(" · ", parts), TextFg, Visibility.Visible));
-        }
-        if (rec.Effects.Length > 0) lines.Add(new PaneLineVm("EFFECTS", rec.Effects, GreenFg, Visibility.Visible));
-        if (rec.Weight.Length > 0 || rec.Size.Length > 0)
-        {
-            string wt = rec.Weight;
-            if (double.TryParse(wt, System.Globalization.CultureInfo.InvariantCulture, out double w))
-            {
-                double scaledW = ItemUpgrade.ScaleWeight(w, tier);
-                wt = Arrow(wt, scaledW == w ? wt : scaledW.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture));
-            }
-            lines.Add(new PaneLineVm("WEIGHT / SIZE", $"{wt} · {rec.Size}".Trim(' ', '·'), TextFg, Visibility.Visible));
-        }
-        if (rec.Classes.Length > 0 || rec.Races.Length > 0)
-            lines.Add(new PaneLineVm("CLASSES / RACES", $"{rec.Classes} · {rec.Races}".Trim(' ', '·'), TextFg, Visibility.Visible));
-        if (rec.Extras.Length > 0) lines.Add(new PaneLineVm("MORE", rec.Extras, DimFg, Visibility.Visible));
+
         PaneHint.Text = tier > 0
-            ? $"Base → at +{tier}, by the wiki's own item-level rules. Merge exp banked inside a tier isn't in the dump, so live numbers can read a touch higher."
+            ? $"Gold = at +{tier} by the wiki's own item-level rules · (brackets) = wiki base. Merge exp banked inside a tier isn't in the dump, so live numbers can read a touch higher."
             : "Wiki base values — this item carries no +N tier.";
         PaneHint.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>One "Label:   value" grid row — the scaled value in gold with
+    /// the wiki base in dim brackets when the tier changes it.</summary>
+    private static UIElement StatRowEl(string label, string baseText, string scaledText, string? tip = null)
+    {
+        var g = new Grid { Margin = new Thickness(0, 0, 0, 3), ToolTip = tip };
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        g.Children.Add(new TextBlock { Text = label + ":", Foreground = SlotFg, FontSize = 11.5 });
+        var val = new TextBlock
+        {
+            FontSize = 11.5,
+            TextAlignment = TextAlignment.Right,
+            TextWrapping = TextWrapping.Wrap, // "+37% (+36%)" folds, never clips
+            Margin = new Thickness(8, 0, 0, 0),
+        };
+        if (scaledText != baseText)
+        {
+            val.Inlines.Add(new System.Windows.Documents.Run(scaledText)
+                { Foreground = GoldFg, FontWeight = FontWeights.SemiBold });
+            if (baseText.Length > 0)
+                val.Inlines.Add(new System.Windows.Documents.Run($" ({baseText})") { Foreground = DimFg });
+        }
+        else
+        {
+            val.Inlines.Add(new System.Windows.Documents.Run(baseText) { Foreground = TextFg });
+        }
+        Grid.SetColumn(val, 1);
+        g.Children.Add(val);
+        return g;
+    }
+
+    /// <summary>Side-by-side equal-width columns, empty ones dropped.</summary>
+    private static FrameworkElement Columns(params List<UIElement>[] cols)
+    {
+        var filled = cols.Where(c => c.Count > 0).ToList();
+        var grid = new UniformGrid { Rows = 1, Columns = filled.Count };
+        foreach (var col in filled)
+        {
+            var sp = new StackPanel { Margin = new Thickness(0, 0, 16, 0), VerticalAlignment = VerticalAlignment.Top };
+            foreach (var row in col) sp.Children.Add(row);
+            grid.Children.Add(sp);
+        }
+        return grid;
+    }
+
+    private static UIElement BuildStatGrid(ItemStats.Record rec, int tier)
+    {
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var topA = new List<UIElement>();
+        var topB = new List<UIElement>();
+        var attrs = new List<(int Order, UIElement El)>();
+        var saves = new List<UIElement>();
+        var other = new List<UIElement>();
+
+        // Top-left: size/weight/levels (+ weapon skill/delay), like the game.
+        if (rec.Size.Length > 0) topA.Add(StatRowEl("Size", rec.Size, rec.Size));
+        if (rec.Weight.Length > 0)
+        {
+            string scaledW = rec.Weight;
+            if (double.TryParse(rec.Weight, inv, out double w))
+            {
+                double sw = ItemUpgrade.ScaleWeight(w, tier);
+                if (sw != w) scaledW = sw.ToString("0.0", inv);
+            }
+            topA.Add(StatRowEl("Weight", rec.Weight, scaledW));
+        }
+        if (rec.Skill.Length > 0) topA.Add(StatRowEl("Skill", rec.Skill, rec.Skill));
+        if (rec.Delay is { } delay)
+            topA.Add(StatRowEl("Atk Delay", delay.ToString(), delay.ToString(),
+                "Delay never scales with the tier — that's why the ratio improves"));
+
+        // Top-right: AC, pools and the weapon numbers.
+        if (rec.Ac is { } ac)
+            topB.Add(StatRowEl("AC", ac.ToString(), ItemUpgrade.ScalePrimary(ac, tier).ToString()));
+        if (rec.Dmg is { } dmg)
+        {
+            int sd = ItemUpgrade.ScaleDamage(dmg, tier);
+            topB.Add(StatRowEl("DMG", dmg.ToString(), sd.ToString()));
+            if (rec.Delay is { } d2)
+                topB.Add(StatRowEl("Ratio", ((double)dmg / d2).ToString("0.00", inv),
+                    ((double)sd / d2).ToString("0.00", inv)));
+            if (rec.DmgBonus is { } bon) topB.Add(StatRowEl("Dmg Bon", bon.ToString(), bon.ToString()));
+            if (rec.Backstab is { } bs) topB.Add(StatRowEl("Backstab", bs.ToString(), bs.ToString()));
+        }
+
+        string[] attrOrder = { "STR", "STA", "INT", "WIS", "AGI", "DEX", "CHA" };
+        foreach (var p in rec.Stats)
+        {
+            string key = ItemUpgrade.NormalizeKey(p[0]);
+            string scaled = ItemUpgrade.ScaleValueText(p[0], p[1], tier);
+            int ai = Array.IndexOf(attrOrder, key);
+            if (ai >= 0) attrs.Add((ai, StatRowEl(ItemStats.StatLabel(p[0]), p[1], scaled)));
+            else if (PoolKeys.Contains(key)) topB.Add(StatRowEl(ItemStats.StatLabel(p[0]), p[1], scaled));
+            else if (key is "REC_LEVEL" or "RECOMMENDED_LEVEL") topA.Add(StatRowEl("Rec Level", p[1], p[1]));
+            else if (key is "REQ_LEVEL" or "REQUIRED_LEVEL") topA.Add(StatRowEl("Req Level", p[1], p[1]));
+            else other.Add(StatRowEl(ItemStats.StatLabel(p[0]), p[1], scaled));
+        }
+
+        string[] saveOrder = { "SV_MAGIC", "SV_FIRE", "SV_COLD", "SV_DISEASE", "SV_POISON" };
+        foreach (var p in rec.Saves.OrderBy(p =>
+        {
+            int i = Array.IndexOf(saveOrder, ItemUpgrade.NormalizeKey(p[0]));
+            return i < 0 ? 99 : i;
+        }))
+        {
+            string label = ItemStats.StatLabel(p[0]);
+            if (label.StartsWith("SV ", StringComparison.Ordinal)) label = label[3..];
+            saves.Add(StatRowEl(label, p[1], ItemUpgrade.ScaleValueText(p[0], p[1], tier)));
+        }
+        if (SynthVoid(rec, tier))
+            saves.Add(StatRowEl("Void", "", "+" + tier,
+                "granted by the upgrade itself — any upgraded item with two attributes gains SV Void"));
+
+        var root = new StackPanel();
+        if (topA.Count > 0 || topB.Count > 0)
+            root.Children.Add(Columns(topA, topB));
+        var attrCol = attrs.OrderBy(a => a.Order).Select(a => a.El).ToList();
+        if (attrCol.Count > 0 || saves.Count > 0 || other.Count > 0)
+        {
+            var section = Columns(attrCol, saves, other);
+            section.Margin = new Thickness(0, 9, 0, 0);
+            root.Children.Add(section);
+        }
+        return root;
     }
 
     private static bool SynthVoid(ItemStats.Record rec, int tier) =>
