@@ -46,7 +46,6 @@ public partial class CharacterSheetWindow : Window
     private static readonly Brush GoldFg = Freeze("#E8C15A");
     private static readonly Brush GreenFg = Freeze("#66BB6A");
     private static readonly Brush AmberFg = Freeze("#FFB74D");
-    private static readonly Brush PillOffBorder = Freeze("#232C3E");
     private static readonly Brush WornPillFg = Freeze("#0F1620");
     private static readonly Brush TabOnBg = Freeze("#16283E");
     private static readonly Brush TabOnFg = Freeze("#4FC3F7");
@@ -279,26 +278,14 @@ public partial class CharacterSheetWindow : Window
         var wrap = new StackPanel { Margin = new Thickness(3, 0, 4, 0) };
         _worn.TryGetValue(slot, out var entry);
 
-        // Slot title line, with the item's +N riding it in gold — outside the
-        // cell, where it can't crowd the name.
-        var title = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 0, 0, 2) };
-        title.Children.Add(new TextBlock
+        wrap.Children.Add(new TextBlock
         {
             Text = slot.Token.ToUpperInvariant(),
             Foreground = SlotFg,
             FontSize = 9,
             FontWeight = FontWeights.Bold,
+            Margin = new Thickness(4, 0, 0, 2),
         });
-        if (entry is not null && !entry.Empty && SplitTier(entry.Name).Tier is { Length: > 0 } tierText)
-            title.Children.Add(new TextBlock
-            {
-                Text = tierText,
-                Foreground = GoldFg,
-                FontSize = 9,
-                FontWeight = FontWeights.Bold,
-                Margin = new Thickness(5, 0, 0, 0),
-            });
-        wrap.Children.Add(title);
         var inner = new Grid();
         var cell = new Border
         {
@@ -333,12 +320,34 @@ public partial class CharacterSheetWindow : Window
         }
         else
         {
-            var (baseName, _) = SplitTier(entry.Name);
-            // Pills anchor to the cell floor in a STATIC five-position track
-            // (O F C W P) so the same socket type aligns across every cell;
-            // a position the item does not have ghosts out.
-            body.Children.Add(BuildPillTrack(entry));
-            DockPanel.SetDock(body.Children[0] as UIElement, Dock.Bottom);
+            var (baseName, tier) = SplitTier(entry.Name);
+            // The cell floor: occupied-socket pills left, the +N tier gold on
+            // the right — down here it can never be eaten by a long name.
+            var floor = new DockPanel { LastChildFill = false, Margin = new Thickness(0, 3, 0, 0) };
+            if (tier.Length > 0)
+            {
+                var t = new TextBlock
+                {
+                    Text = tier,
+                    Foreground = GoldFg,
+                    FontSize = 9.5,
+                    FontWeight = FontWeights.Bold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(6, 0, 0, 0),
+                };
+                DockPanel.SetDock(t, Dock.Right);
+                floor.Children.Add(t);
+            }
+            if (BuildPillTrack(entry) is { } track)
+            {
+                DockPanel.SetDock(track, Dock.Left);
+                floor.Children.Add(track);
+            }
+            if (floor.Children.Count > 0)
+            {
+                DockPanel.SetDock(floor, Dock.Bottom);
+                body.Children.Add(floor);
+            }
             // The wiki's own item art, when the table carries it.
             if (ItemIcons.Get(_stats.Lookup(entry.Name)?.Icon) is { } icon)
             {
@@ -364,6 +373,7 @@ public partial class CharacterSheetWindow : Window
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxHeight = 28,
                 VerticalAlignment = VerticalAlignment.Top,
+                ToolTip = entry.Name,
             });
         }
         inner.Children.Add(body);
@@ -372,10 +382,9 @@ public partial class CharacterSheetWindow : Window
         return wrap;
     }
 
-    // Canonical socket order — the same position means the same type on
-    // every cell. Ghosted borders/text for a socket the item doesn't have
-    // (the dump enumerates each item's sockets: armor carries Ornamentation,
-    // weapons carry Proc, everything carries Focus/Click/Worn).
+    // Canonical socket order — pills render in this order, but ONLY for
+    // occupied sockets: a pill on the doll always means "something is
+    // slotted here". Empty and absent sockets live on the Sockets tab.
     private static readonly (string Label, string Name)[] PillTrack =
     {
         ("O", "Ornamentation"),
@@ -384,51 +393,37 @@ public partial class CharacterSheetWindow : Window
         ("W", "Worn Exaltation"),
         ("P", "Proc Exaltation"),
     };
-    private static readonly Brush PillGhostBorder = Freeze("#1D2534");
-    private static readonly Brush PillGhostFg = Freeze("#38455C");
 
-    private UIElement BuildPillTrack(InventoryStore.Entry entry)
+    private UIElement? BuildPillTrack(InventoryStore.Entry entry)
     {
         // label -> the item's socket child of that type, if the dump lists one
         var byType = new Dictionary<string, InventoryStore.Entry>(StringComparer.Ordinal);
         foreach (var child in entry.Children)
             byType.TryAdd(SlotTypeOf(child.Location).Label, child);
 
-        int tier = TierOf(entry.Name);
-        var pills = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
-        for (int i = 0; i < PillTrack.Length; i++)
+        var pills = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (var (label, name) in PillTrack)
         {
-            var (label, name) = PillTrack[i];
-            byType.TryGetValue(label, out var child);
-            bool has = child is not null;
-            bool on = has && !child!.Empty;
-            // Socket types unlock by item level (wiki "Exaltations"):
-            // Ornamentation at +0, Focus +1, Click +2, Worn +3, Proc +4 —
-            // the track's own order. A ghost can say WHY it's missing.
-            string ghost = tier < i
-                ? $"{name} — unlocks at +{i}"
-                : $"{name} — this item has no such slot";
+            if (!byType.TryGetValue(label, out var child) || child.Empty) continue;
             pills.Children.Add(new Border
             {
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(3, 0, 3, 1),
                 Margin = new Thickness(0, 0, 2, 0),
-                Background = on ? GreenFg : Brushes.Transparent,
-                BorderBrush = on ? GreenFg : has ? PillOffBorder : PillGhostBorder,
+                Background = GreenFg,
+                BorderBrush = GreenFg,
                 BorderThickness = new Thickness(1),
-                ToolTip = on ? $"{name} — {child!.Name}"
-                    : has ? $"{name} — empty"
-                    : ghost,
+                ToolTip = $"{name} — {child.Name}",
                 Child = new TextBlock
                 {
                     Text = label,
                     FontSize = 8.5,
                     FontWeight = FontWeights.Bold,
-                    Foreground = on ? WornPillFg : has ? DimFg : PillGhostFg,
+                    Foreground = WornPillFg,
                 },
             });
         }
-        return pills;
+        return pills.Children.Count > 0 ? pills : null;
     }
 
     /// <summary>"Wicked Sallet +5" → ("Wicked Sallet", "+5").</summary>
