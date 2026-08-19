@@ -488,6 +488,9 @@ public partial class CharacterSheetWindow : Window
         }
 
         bool itemMode = _selected is not null;
+        // A selected item owns the pane — the character-wide tabs disappear
+        // (click the slot again to get back to them).
+        PaneTabs.Visibility = itemMode ? Visibility.Collapsed : Visibility.Visible;
         PaneTabs.Children.Clear();
         foreach (var (id, label) in CharTabDefs)
         {
@@ -570,24 +573,39 @@ public partial class CharacterSheetWindow : Window
 
     private void BuildSocketLines(InventoryStore.Entry entry, List<PaneLineVm> lines)
     {
-        if (entry.Children.Count == 0)
-        {
-            lines.Add(new PaneLineVm("", "no sockets on this item", DimFg, Visibility.Collapsed));
-            return;
-        }
+        // label -> the item's socket child of that type, if the dump lists one
+        var byType = new Dictionary<string, InventoryStore.Entry>(StringComparer.Ordinal);
         foreach (var child in entry.Children)
+            byType.TryAdd(SlotTypeOf(child.Location).Label, child);
+
+        // Every item shows the full five-socket ladder, three honest states:
+        // occupant / empty / why-there-is-no-socket (locked by tier, or the
+        // type doesn't exist on this kind of item).
+        int tier = TierOf(entry.Name);
+        for (int i = 0; i < PillTrack.Length; i++)
         {
-            var (_, slotName) = SlotTypeOf(child.Location);
-            if (child.Empty)
+            var (label, name) = PillTrack[i];
+            string key = name.ToUpperInvariant();
+            if (byType.TryGetValue(label, out var child) && !child.Empty)
             {
-                lines.Add(new PaneLineVm(slotName.ToUpperInvariant(), "empty", DimFg, Visibility.Visible));
-                continue;
+                var fx = _focus.EffectsOf(child.Name);
+                string val = child.Name + (fx.Count > 0
+                    ? " — " + string.Join(", ", fx.Select(e => e.Tier.Effect))
+                    : "");
+                lines.Add(new PaneLineVm(key, val, GreenFg, Visibility.Visible));
             }
-            var fx = _focus.EffectsOf(child.Name);
-            string val = child.Name + (fx.Count > 0
-                ? " — " + string.Join(", ", fx.Select(e => e.Tier.Effect))
-                : "");
-            lines.Add(new PaneLineVm(slotName.ToUpperInvariant(), val, GreenFg, Visibility.Visible));
+            else if (child is not null)
+            {
+                lines.Add(new PaneLineVm(key, "empty", DimFg, Visibility.Visible));
+            }
+            else
+            {
+                // Socket types unlock by item level (wiki "Exaltations"):
+                // O +0, F +1, C +2, W +3, P +4 — the ladder's own order.
+                lines.Add(new PaneLineVm(key, tier < i
+                    ? $"locked — unlocks at +{i}"
+                    : "not available on this item", DimFg, Visibility.Visible));
+            }
         }
     }
 
@@ -602,11 +620,9 @@ public partial class CharacterSheetWindow : Window
             foreach (var (fam, tier) in _focus.EffectsOf(child.Name))
                 all.Add((fam, tier, child.Name));
 
-        if (all.Count == 0)
-        {
-            lines.Add(new PaneLineVm("", "no known focus effect on this slot", DimFg, Visibility.Collapsed));
-            return;
-        }
+        // Nothing to say = say nothing (the combined view already lists the
+        // sockets; an extra "no focus here" line is noise).
+        if (all.Count == 0) return;
         foreach (var (fam, tier, via) in all)
         {
             var auditRow = _audit.FirstOrDefault(a => a.Family == fam);
@@ -646,11 +662,8 @@ public partial class CharacterSheetWindow : Window
 
         if (rec.Effects.Length > 0) below.Add(new PaneLineVm("EFFECTS", rec.Effects, GreenFg, Visibility.Visible));
         if (rec.Extras.Length > 0) below.Add(new PaneLineVm("MORE", rec.Extras, DimFg, Visibility.Visible));
-
-        PaneHint.Text = tier > 0
-            ? $"Gold = at +{tier} by the wiki's own item-level rules · (brackets) = wiki base. Merge exp banked inside a tier isn't in the dump, so live numbers can read a touch higher."
-            : "Wiki base values — this item carries no +N tier.";
-        PaneHint.Visibility = Visibility.Visible;
+        // No footer lecture — gold-vs-brackets reads on its own; the rules
+        // live in the Totals hint for whoever wants them.
     }
 
     /// <summary>One "Label: value" cell — the scaled value in gold with the
