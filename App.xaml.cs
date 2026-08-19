@@ -1124,8 +1124,8 @@ public partial class App : Application
                 var v2 = ss.Snapshot(N(2700), SessionStats.Slice.ZoneSession, true, SessionStats.Basis.Elapsed);
                 var eta = v2.Rows.First(r => r.Label == "NEXT LEVEL");
                 // 9% into the bar; 36% over 45m elapsed = 0.48 lvl/hr -> 91%/0.48 ≈ 1h53m.
-                Check("stats: ETA = bar remainder over the elapsed pace",
-                    eta.Value == "~1h 53m" && eta.Detail == "to 36");
+                Check("stats: ETA = bar remainder over the elapsed pace, no target claim",
+                    eta.Value == "~1h 53m" && eta.Detail == "");
                 Check("stats: the header level follows the ding",
                     v2.LevelText == "lvl 35");
 

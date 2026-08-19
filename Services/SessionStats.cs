@@ -425,16 +425,16 @@ public sealed class SessionStats
 
         double hours = (1 - equiv) / paceHr;
         string value = hours > EtaAbsurdHours ? ">1 day" : "~" + FmtDuration(hours * 3600);
-        // An old ding may belong to another loadout — say so instead of
-        // asserting, and teach the fix (the game logs nothing on a swap).
+        // No target number: with loadouts, "which level" is a claim the log
+        // can't back — the countdown itself is the information. A stale ding
+        // still gets the /who caveat on the tip.
         bool staleDing = (t1 - dingTs).TotalHours >= LevelStaleHours;
-        string detail = staleDing ? $"to {dingLevel + 1}?" : $"to {dingLevel + 1}";
         string tip = $"The remaining {100 - equiv * 100:0.#}% of the bar at this stretch's elapsed pace."
             + (staleDing
                 ? $" The level-up behind this is {FmtDuration((t1 - dingTs).TotalSeconds)} old and a loadout "
                   + "swap is never logged — type /who in game to confirm which loadout's bar this is."
                 : "");
-        return new StatRow(label, value, "", detail, tip);
+        return new StatRow(label, value, "", "", tip);
     }
 
     private (string Text, string Tip) LevelHeader(DateTime t1)
