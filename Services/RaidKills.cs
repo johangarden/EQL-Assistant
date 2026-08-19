@@ -298,6 +298,12 @@ public sealed class RaidKills
         ["Innoruuk"] = "Innoruuk, the Prince of Hate",
         // Observed 17 Aug 2026: "You have slain Cazic-Thule!" — the game hyphenates.
         ["Cazic Thule"] = "Cazic-Thule",
+        // Observed 18 Aug 2026 (Hate mini kill lines): the Teir`Dal names use
+        // BACKTICKS, and R`tal runs a lowercase t.
+        ["Coercer T'vala"] = "Coercer T`vala",
+        ["Grandmaster R'Tal"] = "Grandmaster R`tal",
+        ["Magi P'tasa"] = "Magi P`tasa",
+        ["High Priest M'kari"] = "High Priest M`kari",
     };
 
     /// <summary>The current canonical name for a (possibly outdated) target name.</summary>
@@ -379,8 +385,8 @@ public sealed class RaidKills
         "name": "Plane of Hate",
         "targets": [
           "Innoruuk, the Prince of Hate", "Maestro of Rancor", "Lord of Loathing", "Lord of Ire",
-          "Master of Spite", "Mistress of Scorn", "High Priest M'kari", "Magi P'tasa",
-          "Coercer T'vala", "Grandmaster R'Tal", "Ashenbone Broodmaster", "Avatar of Abhorrence"
+          "Master of Spite", "Mistress of Scorn", "High Priest M`kari", "Magi P`tasa",
+          "Coercer T`vala", "Grandmaster R`tal", "Ashenbone Broodmaster", "Avatar of Abhorrence"
         ]
       },
       {

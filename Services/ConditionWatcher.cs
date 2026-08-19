@@ -59,27 +59,29 @@ public sealed class ConditionWatcher
 
     public ConditionWatcher(SpellLibrary library)
     {
-        // The plain forms print for melee stuns too (bash/slam), not only for
-        // spells — seeded outright so they never depend on the library
-        // happening to carry a spell that uses the bare sentence.
-        _onLines["You are stunned."] = Stunned;
+        // STUN is special: the game prints the STATE itself — "You are
+        // stunned!" paired 1:1 with "You are no longer stunned." (measured
+        // 488/488 across Thorrak's logs, spell and melee stuns alike, chain
+        // stuns included). Spell-flavor landings ("You are struck by a
+        // sudden force.") also fire for stunless knockbacks and once made
+        // the badge "fire randomly" — the state pair is the only truth.
+        _onLines["You are stunned!"] = Stunned;
         _onLines["You are mesmerized."] = Mezzed;
         _onLines["You have been charmed."] = Charmed;
 
         foreach (var s in library.Spells)
         {
             if (!OffLines.TryGetValue(s.WearsOff, out string? kind)) continue;
+            if (kind == Stunned) continue; // the state pair covers stuns
             if (SpellLibrary.JunkMessage(s.CastOnYou)) continue;
             _onLines[s.CastOnYou] = kind;
         }
-        // Landings whose spells carry no wear-off text but say it plainly
-        // ("You are stunned by a gust of air.") — the word IS the condition.
+        // Landings whose spells carry no wear-off text but say it plainly —
+        // the word IS the condition (stun excluded: state pair only).
         foreach (var s in library.Spells)
         {
             if (s.WearsOff.Length > 0 || SpellLibrary.JunkMessage(s.CastOnYou)) continue;
-            if (s.CastOnYou.StartsWith("You are stunned", StringComparison.Ordinal))
-                _onLines.TryAdd(s.CastOnYou, Stunned);
-            else if (s.CastOnYou.StartsWith("You are mesmerized", StringComparison.Ordinal))
+            if (s.CastOnYou.StartsWith("You are mesmerized", StringComparison.Ordinal))
                 _onLines.TryAdd(s.CastOnYou, Mezzed);
             else if (s.CastOnYou.StartsWith("You have been charmed", StringComparison.Ordinal))
                 _onLines.TryAdd(s.CastOnYou, Charmed);
@@ -96,12 +98,16 @@ public sealed class ConditionWatcher
         if (_onLines.TryGetValue(body, out string? onKind))
         {
             // A re-land while active restarts the clock (fresh application).
+            // Logged verbatim: "randomly firing" badges are debugged by
+            // matching this against the game log's same instant.
+            Log.Info($"[conditions] {onKind} ON at {time:HH:mm:ss} — matched line: \"{body}\" (cap {CapFor(onKind):0}s{(_active.ContainsKey(onKind) ? ", re-land" : "")})");
             _active[onKind] = (time, time.AddSeconds(CapFor(onKind)));
             return;
         }
         if (OffLines.TryGetValue(body, out string? offKind))
         {
-            _active.Remove(offKind);
+            if (_active.Remove(offKind))
+                Log.Info($"[conditions] {offKind} OFF at {time:HH:mm:ss} — wear-off line: \"{body}\"");
             return;
         }
 
@@ -109,7 +115,11 @@ public sealed class ConditionWatcher
         if (body.StartsWith("You died.", StringComparison.Ordinal)
             || body.StartsWith("You have been slain", StringComparison.Ordinal)
             || body.StartsWith("You have entered ", StringComparison.Ordinal))
+        {
+            if (_active.Count > 0)
+                Log.Info($"[conditions] cleared ({string.Join(", ", _active.Keys)}) at {time:HH:mm:ss} — censor line: \"{body}\"");
             _active.Clear();
+        }
     }
 
     /// <summary>Active conditions, oldest first; entries past their hygiene
@@ -118,7 +128,10 @@ public sealed class ConditionWatcher
     {
         foreach (var kind in _active.Where(kv => now > kv.Value.Deadline)
                      .Select(kv => kv.Key).ToList())
+        {
+            Log.Info($"[conditions] {kind} expired by hygiene cap (no wear-off line seen)");
             _active.Remove(kind);
+        }
 
         return _active
             .OrderBy(kv => kv.Value.Since)

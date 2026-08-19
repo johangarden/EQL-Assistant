@@ -38,6 +38,14 @@ public partial class MeterWindow : Window
     private bool _showHealing;
     private bool _soloMode;
     private bool _petExpanded;
+    private bool _selfExpanded = true; // your split starts open; the pet's starts folded
+    private readonly MeterRowViewModel _selfHeaderVm = new();
+    private readonly MeterRowViewModel _petHeaderVm = new();
+
+    // The two total bars wear FIXED, distinct colors — the name-hash palette
+    // once dressed player and pet in near-twin golds.
+    private static readonly Brush SelfBarFill = Freeze(Color.FromRgb(0x4F, 0xC3, 0xF7));
+    private static readonly Brush PetBarFill = Freeze(Color.FromRgb(0x9C, 0xCC, 0x65));
     private int _nextColor;
 
     private const int MaxSoloRows = 10; // a dot build runs more lanes than a group does players
@@ -86,6 +94,8 @@ public partial class MeterWindow : Window
         PetRowsControl.ItemsSource = _petRows;
         SkillRowsControl.ItemsSource = _skillRows;
         ProcRowsControl.ItemsSource = _procRows;
+        SelfHeaderBar.Content = _selfHeaderVm;
+        PetHeaderBar.Content = _petHeaderVm;
         ScopeBtn.Content = _soloMode ? "SOLO" : "GROUP";
         SkillsSection.Visibility = _skillsVisible ? Visibility.Visible : Visibility.Collapsed;
         ProcsSection.Visibility = _procsVisible ? Visibility.Visible : Visibility.Collapsed;
@@ -183,6 +193,13 @@ public partial class MeterWindow : Window
         Refresh();
     }
 
+    private void SelfHeader_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true; // don't start a window drag
+        _selfExpanded = !_selfExpanded;
+        Refresh();
+    }
+
     private void OnClear(object sender, RoutedEventArgs e)
     {
         _parser.Reset();
@@ -237,6 +254,7 @@ public partial class MeterWindow : Window
             _rows.Clear();
             _petRows.Clear();
             PetSection.Visibility = Visibility.Collapsed;
+            SelfHeaderRow.Visibility = Visibility.Collapsed;
             EnemiesRow.Visibility = Visibility.Collapsed;
             UpdateIncoming();
             RefreshSkills();
@@ -279,6 +297,8 @@ public partial class MeterWindow : Window
     private void RefreshGroupRows()
     {
         PetSection.Visibility = Visibility.Collapsed;
+        SelfHeaderRow.Visibility = Visibility.Collapsed;
+        RowsControl.Margin = new Thickness(0);
 
         var friendly = _parser.GetRows(_showHealing).Where(r => !r.Enemy).ToList();
         int count = Math.Min(MaxRows, friendly.Count);
@@ -299,14 +319,17 @@ public partial class MeterWindow : Window
         }
     }
 
-    /// <summary>SOLO scope: YOUR abilities ranked (spells, melee, dots, procs),
-    /// with the pet folded into a collapsible drill-down of its own.</summary>
+    /// <summary>SOLO scope: your total as a bar (foldable, like the pet's),
+    /// your abilities tabbed in beneath it, the pet drill-down below.</summary>
     private void RefreshSoloRows()
     {
         var mine = _showHealing
             ? _parser.GetHealAbilityRows(_parser.SelfName)
             : _parser.GetAbilityRows(_parser.SelfName);
-        FillAbilityRows(_rows, mine, MaxSoloRows);
+        // A utility spell (a slow, a snare) earns a lane only through its
+        // resists and would sit at "0,0 dps" forever — the DPS ranking is
+        // for things that deal damage. The drill-down keeps the resist rows.
+        mine = mine.Where(r => r.Total > 0 || r.Hits > 0).ToList();
 
         bool hasPet = !string.IsNullOrWhiteSpace(_parser.PetName);
         var pet = hasPet
@@ -314,13 +337,29 @@ public partial class MeterWindow : Window
                 ? _parser.GetHealAbilityRows(_parser.PetName)
                 : _parser.GetAbilityRows(_parser.PetName)
             : new List<CombatParser.Row>();
+
+        double dur = _parser.DurationSeconds;
+        double selfTotal = mine.Sum(r => r.Total);
+        double petTotal = pet.Sum(r => r.Total);
+        // The two total bars share a scale, so you-vs-pet reads at a glance.
+        double denom = Math.Max(Math.Max(selfTotal, petTotal), 1);
+
+        SelfHeaderRow.Visibility = Visibility.Visible;
+        RowsControl.Margin = new Thickness(24, 3, 0, 0);
+        _selfHeaderVm.Name = _parser.SelfName.Trim();
+        _selfHeaderVm.Fraction = selfTotal / denom;
+        _selfHeaderVm.ValueText = $"{FormatDps(dur > 0 ? selfTotal / dur : 0)}  ({FormatNum(selfTotal)})";
+        _selfHeaderVm.Fill = SelfBarFill;
+        SelfHeaderChevron.Text = _selfExpanded ? "▼" : "▶";
+        FillAbilityRows(_rows, _selfExpanded ? mine : new List<CombatParser.Row>(), MaxSoloRows);
+
         PetSection.Visibility = hasPet && pet.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (pet.Count > 0)
         {
-            double dur = _parser.DurationSeconds;
-            double petTotal = pet.Sum(r => r.Total);
-            PetHeaderLabel.Text = $"{_parser.PetName.Trim()} (pet)";
-            PetHeaderValue.Text = $"{FormatDps(dur > 0 ? petTotal / dur : 0)}  ({FormatNum(petTotal)})";
+            _petHeaderVm.Name = $"{_parser.PetName.Trim()} (pet)";
+            _petHeaderVm.Fraction = petTotal / denom;
+            _petHeaderVm.ValueText = $"{FormatDps(dur > 0 ? petTotal / dur : 0)}  ({FormatNum(petTotal)})";
+            _petHeaderVm.Fill = PetBarFill;
             FillAbilityRows(_petRows, _petExpanded ? pet : new List<CombatParser.Row>(), MaxSoloRows);
         }
         else

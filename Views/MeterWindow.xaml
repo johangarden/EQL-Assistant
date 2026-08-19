@@ -76,25 +76,32 @@
             <TextBlock x:Name="SummaryText" Text="waiting for combat…" Foreground="#7F93AD"
                        FontSize="11" Margin="0,0,0,6"/>
 
+            <!-- SOLO: your total as a full bar; the chevron folds the
+                 per-ability split in and out. Hidden in GROUP scope. -->
+            <DockPanel x:Name="SelfHeaderRow" Visibility="Collapsed"
+                       MouseLeftButtonDown="SelfHeader_Click" Background="Transparent" Cursor="Hand"
+                       ToolTip="Click to fold your per-ability split in and out">
+                <TextBlock x:Name="SelfHeaderChevron" Text="&#x25BC;" Foreground="#5C6B82"
+                           FontSize="8" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <ContentControl x:Name="SelfHeaderBar" ContentTemplate="{StaticResource BarRow}"/>
+            </DockPanel>
+
             <!-- Ranked sources: name + proportional bar + dps (total, %).
-                 SOLO scope: your abilities. GROUP scope: everyone in the log. -->
+                 SOLO scope: your abilities (tabbed in). GROUP scope: everyone. -->
             <ItemsControl x:Name="RowsControl" ItemTemplate="{StaticResource BarRow}"/>
 
-            <!-- Pet drill-down (solo scope, pet name set): header row sums the
-                 pet, the chevron folds its per-ability split in and out. -->
+            <!-- Pet drill-down (solo scope, pet name set): the header bar sums
+                 the pet, the chevron folds its per-ability split in and out. -->
             <StackPanel x:Name="PetSection" Visibility="Collapsed">
-                <DockPanel Margin="2,1,2,0" MouseLeftButtonDown="PetHeader_Click"
+                <DockPanel Margin="0,1,0,0" MouseLeftButtonDown="PetHeader_Click"
                            Background="Transparent" Cursor="Hand"
                            ToolTip="Click to fold the pet's per-ability split in and out">
-                    <TextBlock x:Name="PetHeaderValue" DockPanel.Dock="Right" Text=""
-                               Foreground="#8FA6C4" FontSize="11"/>
                     <TextBlock x:Name="PetHeaderChevron" Text="&#x25B6;" Foreground="#5C6B82"
                                FontSize="8" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                    <TextBlock x:Name="PetHeaderLabel" Text="Pet" Foreground="#C9D4E3" FontSize="11"
-                               TextTrimming="CharacterEllipsis"/>
+                    <ContentControl x:Name="PetHeaderBar" ContentTemplate="{StaticResource BarRow}"/>
                 </DockPanel>
                 <ItemsControl x:Name="PetRowsControl" ItemTemplate="{StaticResource BarRow}"
-                              Margin="12,3,0,0" Visibility="Collapsed"/>
+                              Margin="24,3,0,0" Visibility="Collapsed"/>
             </StackPanel>
 
             <!-- All enemy-shaped sources combined (same-named mobs can't be told

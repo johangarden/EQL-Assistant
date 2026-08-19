@@ -351,7 +351,7 @@ public sealed class SessionStats
         }
 
         // NEXT LEVEL — the bar's remainder over the ELAPSED pace, always.
-        rows.Add(EtaRow(elapsedSec, levelEquiv, measurable, levelsUnknown));
+        rows.Add(EtaRow(elapsedSec, levelEquiv, measurable, levelsUnknown, t1));
 
         // Motes — one row per tier seen in the slice, most drops first.
         if (moteDrops.Count == 0)
@@ -387,7 +387,7 @@ public sealed class SessionStats
         "This stretch is under 5 minutes long — too little to state as a rate per hour; " +
         "the number would be the clock since you arrived, extrapolated.";
 
-    private StatRow EtaRow(double elapsedSec, double slicePaceEquiv, bool measurable, bool levelsUnknown)
+    private StatRow EtaRow(double elapsedSec, double slicePaceEquiv, bool measurable, bool levelsUnknown, DateTime t1)
     {
         const string label = "NEXT LEVEL";
         StatRow Blocked(string why) => new(label, "–", "", "", why);
@@ -396,6 +396,14 @@ public sealed class SessionStats
             return Blocked("No level-up has been recorded yet, so your place in the bar is unknown.");
 
         var (dingTs, dingLevel) = _dings[^1];
+
+        // A loadout swap is never logged — but your own /who is. When a /who
+        // NEWER than the ding names a different level, the bar restarted
+        // where the log cannot see: no honest ETA exists until the next ding.
+        if (_levelStatement is { FromWho: true } w && w.Ts > dingTs && w.Level != dingLevel)
+            return Blocked($"Your /who says level {w.Level} but the last level-up said {dingLevel} — "
+                + "a loadout swap restarted the bar where the log cannot see. "
+                + "The ETA returns at your next level-up.");
 
         // Bar position: stated percentages STRICTLY after the ding — its own
         // exp line shares the ding's second and belongs to the OLD bar.
@@ -417,8 +425,16 @@ public sealed class SessionStats
 
         double hours = (1 - equiv) / paceHr;
         string value = hours > EtaAbsurdHours ? ">1 day" : "~" + FmtDuration(hours * 3600);
-        return new StatRow(label, value, "", $"to {dingLevel + 1}",
-            $"The remaining {100 - equiv * 100:0.#}% of the bar at this stretch's elapsed pace.");
+        // No target number: with loadouts, "which level" is a claim the log
+        // can't back — the countdown itself is the information. A stale ding
+        // still gets the /who caveat on the tip.
+        bool staleDing = (t1 - dingTs).TotalHours >= LevelStaleHours;
+        string tip = $"The remaining {100 - equiv * 100:0.#}% of the bar at this stretch's elapsed pace."
+            + (staleDing
+                ? $" The level-up behind this is {FmtDuration((t1 - dingTs).TotalSeconds)} old and a loadout "
+                  + "swap is never logged — type /who in game to confirm which loadout's bar this is."
+                : "");
+        return new StatRow(label, value, "", "", tip);
     }
 
     private (string Text, string Tip) LevelHeader(DateTime t1)
@@ -428,8 +444,11 @@ public sealed class SessionStats
         string cue = s.FromWho ? " /who" : "";
         if (ageHours >= LevelStaleHours) cue += " " + FmtDuration(ageHours * 3600);
         string source = s.FromWho ? "your own /who row" : "your last level-up line";
+        string hint = ageHours >= LevelStaleHours
+            ? " A loadout swap is never logged — type /who in game to refresh."
+            : "";
         return ($"lvl {s.Level}{cue}",
-            $"From {source}, {FmtDuration(ageHours * 3600)} ago on the log's clock.");
+            $"From {source}, {FmtDuration(ageHours * 3600)} ago on the log's clock.{hint}");
     }
 
     private string Caption(Slice slice, bool zoneFiltered, string? zoneName, bool exactTier)

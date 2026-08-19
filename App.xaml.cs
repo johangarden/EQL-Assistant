@@ -701,20 +701,22 @@ public partial class App : Application
                 lib2.OtherLanding("Siphon Life") is null
                 && lib2.OtherLanding("Togor's Insects") is { Detrimental: true });
 
-            // Condition badges: landings derive from the library's uniform
-            // wear-off families — no keyword guessing, buffs never match.
+            // Condition badges: fear/charm/mez landings derive from the
+            // library's wear-off families; STUN rides the game's own state
+            // pair alone — "You are stunned!" / "You are no longer stunned."
+            // (measured 488/488 across the real logs; spell-flavor landings
+            // like "sudden force" also fire for stunless knockbacks).
             var cw = new ConditionWatcher(lib2);
-            Check("conditions: landing sets derive from the library",
-                cw.LandingCount(ConditionWatcher.Stunned) > 3
+            Check("conditions: stun is the state pair alone, the rest derive from the library",
+                cw.LandingCount(ConditionWatcher.Stunned) == 1
                 && cw.LandingCount(ConditionWatcher.Feared) > 3
                 && cw.LandingCount(ConditionWatcher.Charmed) > 0
                 && cw.LandingCount(ConditionWatcher.Mezzed) > 3);
             cw.ProcessLine($"[{AT(0)}] You are struck by a sudden force.");
-            Check("conditions: a stun landing raises the badge",
-                cw.Active(new DateTime(2026, 8, 10, 23, 0, 5)) is [{ Kind: ConditionWatcher.Stunned }]);
-            cw.ProcessLine($"[{AT(2)}] You are no longer stunned.");
-            cw.ProcessLine($"[{AT(3)}] You are stunned."); // plain form: melee bash/slam too
-            Check("conditions: the plain melee-stun line raises the badge",
+            Check("conditions: a stunless knockback raises NOTHING",
+                cw.Active(new DateTime(2026, 8, 10, 23, 0, 5)).Count == 0);
+            cw.ProcessLine($"[{AT(3)}] You are stunned!"); // the state line, spell and melee alike
+            Check("conditions: the stun state line raises the badge",
                 cw.Active(new DateTime(2026, 8, 10, 23, 0, 4)) is [{ Kind: ConditionWatcher.Stunned }]);
             cw.ProcessLine($"[{AT(6)}] You are no longer stunned.");
             Check("conditions: the wear-off line clears it",
@@ -731,7 +733,7 @@ public partial class App : Application
             cw.ProcessLine($"[{AT(30)}] Your body screams with the power of an Avatar.");
             Check("conditions: scream-flavored BUFFS never raise a badge",
                 cw.Active(new DateTime(2026, 8, 10, 23, 0, 31)).Count == 0);
-            cw.ProcessLine($"[{AT(40)}] You are stunned by a gust of air.");
+            cw.ProcessLine($"[{AT(40)}] You are stunned!");
             Check("conditions: hygiene cap culls an eaten stun wear-off (30s)",
                 cw.Active(new DateTime(2026, 8, 10, 23, 0, 45)).Count == 1
                 && cw.Active(new DateTime(2026, 8, 10, 23, 1, 20)).Count == 0);
@@ -1122,8 +1124,8 @@ public partial class App : Application
                 var v2 = ss.Snapshot(N(2700), SessionStats.Slice.ZoneSession, true, SessionStats.Basis.Elapsed);
                 var eta = v2.Rows.First(r => r.Label == "NEXT LEVEL");
                 // 9% into the bar; 36% over 45m elapsed = 0.48 lvl/hr -> 91%/0.48 ≈ 1h53m.
-                Check("stats: ETA = bar remainder over the elapsed pace",
-                    eta.Value == "~1h 53m" && eta.Detail == "to 36");
+                Check("stats: ETA = bar remainder over the elapsed pace, no target claim",
+                    eta.Value == "~1h 53m" && eta.Detail == "");
                 Check("stats: the header level follows the ding",
                     v2.LevelText == "lvl 35");
 
@@ -1133,6 +1135,13 @@ public partial class App : Application
                 Check("stats: own /who row updates the level, a stranger's never",
                     ss.Snapshot(N(2820), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed)
                         .LevelText == "lvl 36 /who");
+                // A /who that CONTRADICTS the last ding = a loadout swap the
+                // log never announces — the ETA refuses instead of asserting
+                // another loadout's bar.
+                Check("stats: a contradicting /who blocks the ETA (loadout swap)",
+                    ss.Snapshot(N(2820), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed)
+                        .Rows.First(r => r.Label == "NEXT LEVEL") is { Value: "–" } swapEta
+                    && swapEta.Tip.Contains("loadout swap"));
 
                 // Percent-less exp (the cap) is UNKNOWN, never zero.
                 var capSs = new SessionStats();
@@ -1807,14 +1816,15 @@ public partial class App : Application
                 && gd.Events.Any(e => e.Ability == "Searing Arrow" && (int)e.Amount == 29));
 
             // Rank pooling: the DD line says "by Envenomed Bolt VI", the tick
-            // says "from Envenomed Bolt" — one spell, one lane.
+            // says "from Envenomed Bolt" — one lane, pooled math, labeled
+            // with the highest rank observed.
             var pr = new CombatParser();
             pr.ProcessLine("[Sun Aug 16 23:11:00 2026] Johan hit a shiverback grizzly for 100 points of poison damage by Envenomed Bolt VI.");
             pr.ProcessLine("[Sun Aug 16 23:11:06 2026] A shiverback grizzly has taken 40 damage from Envenomed Bolt by Johan.");
             var ranked = pr.GetAbilityRows("Johan");
-            Check("spell lanes pool ranks (Envenomed Bolt VI + tick = one lane)",
-                ranked.First(r => r.Name == "Envenomed Bolt") is { Total: 140 }
-                && ranked.All(r => r.Name != "Envenomed Bolt VI"));
+            Check("spell lanes pool ranks and wear the highest rank as the label",
+                ranked.Count(r => r.Name.StartsWith("Envenomed Bolt", StringComparison.Ordinal)) == 1
+                && ranked.First(r => r.Name == "Envenomed Bolt VI") is { Total: 140 });
 
             // Plane of Sky quest tracker: data loads, completion watcher works
             // (temp progress path so tests never touch real progress).
@@ -1866,6 +1876,13 @@ public partial class App : Application
             // "You have slain Cazic-Thule!" (17 Aug) — the game hyphenates.
             Check("raid targets: Cazic Thule migrates to the hyphenated log spelling",
                 RaidKills.MigrateTargetName("Cazic Thule") == "Cazic-Thule");
+            // The Hate minis' Teir`Dal names use backticks (observed 18 Aug),
+            // and R`tal runs a lowercase t.
+            Check("raid targets: the Hate minis migrate to their backtick spellings",
+                RaidKills.MigrateTargetName("Coercer T'vala") == "Coercer T`vala"
+                && RaidKills.MigrateTargetName("Grandmaster R'Tal") == "Grandmaster R`tal"
+                && RaidKills.MigrateTargetName("Magi P'tasa") == "Magi P`tasa"
+                && RaidKills.MigrateTargetName("High Priest M'kari") == "High Priest M`kari");
 
             // The weekly loot lockout (the Companion's research): the window
             // starts on the most recent Tuesday 08:00 PACIFIC and runs 7 days.
