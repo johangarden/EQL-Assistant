@@ -79,7 +79,9 @@ public partial class CharacterSheetWindow : Window
     {
         InitializeComponent();
         Interop.WindowTheme.ApplyDark(this);
-        DialogPlacement.Persist(this, "charsheet");
+        // Fixed 1200×864 (too many aligned elements to survive resizing) —
+        // only the position persists.
+        DialogPlacement.Persist(this, "charsheet", positionOnly: true);
         _eqRoot = eqRoot;
         _charName = charName;
         _server = server;
@@ -733,84 +735,125 @@ public partial class CharacterSheetWindow : Window
         return grid;
     }
 
+    /// <summary>The dim placeholder for a stat this item doesn't state — the
+    /// grid keeps the SAME rows for every item, so nothing dances on click.</summary>
+    private static StatCell DashCell(string label) => StatCellOf(label, "—", "—", null, DimFg);
+
     private static UIElement BuildStatGrid(ItemStats.Record rec, int tier)
     {
         var inv = System.Globalization.CultureInfo.InvariantCulture;
-        var topA = new List<StatCell>();
-        var topB = new List<StatCell>();
-        var attrs = new List<(int Order, StatCell El)>();
-        var saves = new List<StatCell>();
-        var other = new List<StatCell>();
-
-        // Top-left: size/weight/levels (+ weapon skill/delay), like the game.
-        if (rec.Size.Length > 0) topA.Add(StatCellOf("Size", rec.Size, rec.Size));
-        if (rec.Weight.Length > 0)
-        {
-            string scaledW = rec.Weight;
-            if (double.TryParse(rec.Weight, inv, out double w))
-            {
-                double sw = ItemUpgrade.ScaleWeight(w, tier);
-                if (sw != w) scaledW = sw.ToString("0.0", inv);
-            }
-            topA.Add(StatCellOf("Weight", rec.Weight, scaledW));
-        }
-        if (rec.Skill.Length > 0) topA.Add(StatCellOf("Skill", rec.Skill, rec.Skill));
-        if (rec.Delay is { } delay)
-            topA.Add(StatCellOf("Atk Delay", delay.ToString(), delay.ToString(),
-                "Delay never scales with the tier — that's why the ratio improves"));
-
-        // Top-right: AC, pools and the weapon numbers.
-        if (rec.Ac is { } ac)
-            topB.Add(StatCellOf("AC", ac.ToString(), ItemUpgrade.ScalePrimary(ac, tier).ToString()));
-        if (rec.Dmg is { } dmg)
-        {
-            int sd = ItemUpgrade.ScaleDamage(dmg, tier);
-            topB.Add(StatCellOf("DMG", dmg.ToString(), sd.ToString()));
-            if (rec.Delay is { } d2)
-                topB.Add(StatCellOf("Ratio", ((double)dmg / d2).ToString("0.00", inv),
-                    ((double)sd / d2).ToString("0.00", inv)));
-            if (rec.DmgBonus is { } bon) topB.Add(StatCellOf("Dmg Bon", bon.ToString(), bon.ToString()));
-            if (rec.Backstab is { } bs) topB.Add(StatCellOf("Backstab", bs.ToString(), bs.ToString()));
-        }
-
-        string[] attrOrder = { "STR", "STA", "INT", "WIS", "AGI", "DEX", "CHA" };
-        foreach (var p in rec.Stats)
+        // normalized key -> raw value, for the fixed rows below.
+        var vals = new Dictionary<string, string>(StringComparer.Ordinal);
+        var rawLabel = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var p in rec.Stats.Concat(rec.Saves))
         {
             string key = ItemUpgrade.NormalizeKey(p[0]);
-            string scaled = ItemUpgrade.ScaleValueText(p[0], p[1], tier);
-            int ai = Array.IndexOf(attrOrder, key);
-            if (ai >= 0) attrs.Add((ai, StatCellOf(ItemStats.StatLabel(p[0]), p[1], scaled)));
-            else if (PoolKeys.Contains(key)) topB.Add(StatCellOf(ItemStats.StatLabel(p[0]), p[1], scaled));
-            else if (key is "REC_LEVEL" or "RECOMMENDED_LEVEL") topA.Add(StatCellOf("Rec Level", p[1], p[1]));
-            else if (key is "REQ_LEVEL" or "REQUIRED_LEVEL") topA.Add(StatCellOf("Req Level", p[1], p[1]));
-            else other.Add(StatCellOf(ItemStats.StatLabel(p[0]), p[1], scaled));
+            vals.TryAdd(key, p[1]);
+            rawLabel.TryAdd(key, p[0]);
         }
+        var used = new HashSet<string>(StringComparer.Ordinal);
 
-        string[] saveOrder = { "SV_MAGIC", "SV_FIRE", "SV_COLD", "SV_DISEASE", "SV_POISON" };
-        foreach (var p in rec.Saves.OrderBy(p =>
+        StatCell Cell(string label, params string[] keys)
         {
-            int i = Array.IndexOf(saveOrder, ItemUpgrade.NormalizeKey(p[0]));
-            return i < 0 ? 99 : i;
-        }))
-        {
-            string label = ItemStats.StatLabel(p[0]);
-            if (label.StartsWith("SV ", StringComparison.Ordinal)) label = label[3..];
-            saves.Add(StatCellOf(label, p[1], ItemUpgrade.ScaleValueText(p[0], p[1], tier)));
+            foreach (var key in keys)
+            {
+                used.Add(key);
+                if (vals.TryGetValue(key, out var v))
+                    return StatCellOf(label, v, ItemUpgrade.ScaleValueText(key, v, tier));
+            }
+            return DashCell(label);
         }
-        if (SynthVoid(rec, tier))
-            saves.Add(StatCellOf("Void", "", "+" + tier,
-                "granted by the upgrade itself — any upgraded item with two attributes gains SV Void"));
+        StatCell Fixed(string label, string? text, string? tip = null) =>
+            string.IsNullOrEmpty(text) ? DashCell(label) : StatCellOf(label, text, text, tip);
+
+        // ---- the FIXED template: identical rows for every item ----
+        string scaledW = rec.Weight;
+        if (double.TryParse(rec.Weight, inv, out double w))
+        {
+            double sw = ItemUpgrade.ScaleWeight(w, tier);
+            if (sw != w) scaledW = sw.ToString("0.0", inv);
+        }
+        var topA = new List<StatCell>
+        {
+            Fixed("Size", rec.Size),
+            rec.Weight.Length > 0 ? StatCellOf("Weight", rec.Weight, scaledW) : DashCell("Weight"),
+            Cell("Rec Level", "REC_LEVEL", "RECOMMENDED_LEVEL"),
+            Cell("Req Level", "REQ_LEVEL", "REQUIRED_LEVEL"),
+            Fixed("Skill", rec.Skill),
+            Fixed("Atk Delay", rec.Delay?.ToString(),
+                "Delay never scales with the tier — that's why the ratio improves"),
+        };
+
+        var topB = new List<StatCell>
+        {
+            rec.Ac is { } ac
+                ? StatCellOf("AC", ac.ToString(), ItemUpgrade.ScalePrimary(ac, tier).ToString())
+                : DashCell("AC"),
+            Cell("HP", "HP"),
+            Cell("Mana", "MP"),
+            Cell("Endurance", "END"),
+            rec.Dmg is { } dmg
+                ? StatCellOf("DMG", dmg.ToString(), ItemUpgrade.ScaleDamage(dmg, tier).ToString())
+                : DashCell("DMG"),
+            rec is { Dmg: { } d1, Delay: { } d2 }
+                ? StatCellOf("Ratio", ((double)d1 / d2).ToString("0.00", inv),
+                    ((double)ItemUpgrade.ScaleDamage(d1, tier) / d2).ToString("0.00", inv))
+                : DashCell("Ratio"),
+        };
+        if (rec.DmgBonus is { } bon) topB.Add(StatCellOf("Dmg Bon", bon.ToString(), bon.ToString()));
+        if (rec.Backstab is { } bs) topB.Add(StatCellOf("Backstab", bs.ToString(), bs.ToString()));
+
+        var attrCol = new List<StatCell>
+        {
+            Cell("Strength", "STR"),
+            Cell("Stamina", "STA"),
+            Cell("Intelligence", "INT"),
+            Cell("Wisdom", "WIS"),
+            Cell("Agility", "AGI"),
+            Cell("Dexterity", "DEX"),
+            Cell("Charisma", "CHA"),
+        };
+
+        var saveCol = new List<StatCell>
+        {
+            Cell("Magic", "SV_MAGIC"),
+            Cell("Fire", "SV_FIRE"),
+            Cell("Cold", "SV_COLD"),
+            Cell("Disease", "SV_DISEASE"),
+            Cell("Poison", "SV_POISON"),
+        };
+        used.Add("SV_VOID");
+        saveCol.Add(vals.TryGetValue("SV_VOID", out var voidVal)
+            ? StatCellOf("Void", voidVal, ItemUpgrade.ScaleValueText("SV_VOID", voidVal, tier))
+            : SynthVoid(rec, tier)
+                ? StatCellOf("Void", "", "+" + tier,
+                    "granted by the upgrade itself — any upgraded item with two attributes gains SV Void")
+                : DashCell("Void"));
+
+        var otherCol = new List<StatCell>
+        {
+            Cell("Haste", "HASTE"),
+            Cell("Attack", "ATTACK"),
+            Cell("Regen", "HP_REGEN"),
+            Cell("Mana Regen", "MANA_REGEN"),
+        };
+        // Anything the template doesn't name still shows — appended, verbatim.
+        foreach (var key in vals.Keys.Where(k => !used.Contains(k)))
+            otherCol.Add(StatCellOf(ItemStats.StatLabel(rawLabel[key]), vals[key],
+                ItemUpgrade.ScaleValueText(key, vals[key], tier)));
 
         var root = new StackPanel();
-        if (topA.Count > 0 || topB.Count > 0)
-            root.Children.Add(Columns(topA, topB));
-        var attrCol = attrs.OrderBy(a => a.Order).Select(a => a.El).ToList();
-        if (attrCol.Count > 0 || saves.Count > 0 || other.Count > 0)
+        root.Children.Add(Columns(topA, topB));
+        var section = Columns(attrCol, saveCol, otherCol);
+        section.Margin = new Thickness(0, 9, 0, 0);
+        root.Children.Add(section);
+        // divider before the socket ladder
+        root.Children.Add(new Border
         {
-            var section = Columns(attrCol, saves, other);
-            section.Margin = new Thickness(0, 9, 0, 0);
-            root.Children.Add(section);
-        }
+            Height = 1,
+            Background = Freeze("#232C3E"),
+            Margin = new Thickness(0, 10, 0, 3),
+        });
         return root;
     }
 

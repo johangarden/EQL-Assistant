@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="EQL Assistant — Character sheet"
-        Width="980" Height="720"
-        MinWidth="760" MinHeight="520"
+        Width="1200" Height="864"
+        ResizeMode="CanMinimize"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Brush.Window}"
         Icon="/assets/eqloverlay.ico"
@@ -87,7 +87,8 @@
                                    Margin="0,1,9,0" VerticalAlignment="Top" Visibility="Collapsed"
                                    RenderOptions.BitmapScalingMode="Fant"/>
                             <StackPanel>
-                                <TextBlock x:Name="PaneTitle" FontWeight="SemiBold" FontSize="14" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="PaneTitle" FontWeight="SemiBold" FontSize="14"
+                                           TextTrimming="CharacterEllipsis"/>
                                 <TextBlock x:Name="PaneSub" Foreground="#5C6B82" FontSize="11"/>
                             </StackPanel>
                         </DockPanel>
