@@ -492,9 +492,13 @@ never updates without asking.
 ## Credits
 
 The spell library (`data\spell-library.json` — names, cast/wear-off messages,
-class levels and durations) and the Plane of Sky quest data
-(`data\sky-quests.json` — quests, turn-in items, droppers and reward stats)
-are converted from
+class levels and durations), the Plane of Sky quest data
+(`data\sky-quests.json` — quests, turn-in items, droppers and reward stats),
+the item stat table (`data\item-stats.json` — ~11,400 wiki item pages) and
+the item icons (`data\item-icons\` — the wikis' 40×40 game art) are converted
+from
 [jmoyers/everquest-companion](https://github.com/jmoyers/everquest-companion)
 (MIT License, Copyright 2026 Josh Moyers), whose data was in turn sourced from
-eqlwiki.com and wiki.project1999.com. Thanks!
+eqlwiki.com and wiki.project1999.com. The character sheet's +N tier math is
+the wiki's own item-level slider algorithm, via Companion's verified port.
+Thanks!

@@ -64,6 +64,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="data\item-stats.json" />
+    <!-- The wiki's 40×40 item icons (eqlwiki/p99 art shipped by Companion),
+         keyed item-<iconId>.png — WPF resources, looked up via pack URI. -->
+    <Resource Include="data\item-icons\*.png" />
   </ItemGroup>
 
 </Project>

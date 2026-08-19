@@ -61,8 +61,17 @@
                         CornerRadius="8" Padding="14,12" VerticalAlignment="Top">
                     <StackPanel>
                         <WrapPanel x:Name="PaneTabs" Margin="0,0,0,10"/>
-                        <TextBlock x:Name="PaneTitle" FontWeight="SemiBold" FontSize="14" TextWrapping="Wrap"/>
-                        <TextBlock x:Name="PaneSub" Foreground="#5C6B82" FontSize="11" Margin="0,0,0,10"/>
+                        <DockPanel>
+                            <!-- the wiki's own 40×40 item art, when the table has it -->
+                            <Image x:Name="PaneIcon" DockPanel.Dock="Left" Width="34" Height="34"
+                                   Margin="0,1,9,0" VerticalAlignment="Top" Visibility="Collapsed"
+                                   RenderOptions.BitmapScalingMode="Fant"/>
+                            <StackPanel>
+                                <TextBlock x:Name="PaneTitle" FontWeight="SemiBold" FontSize="14" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="PaneSub" Foreground="#5C6B82" FontSize="11"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <Border Height="10"/>
                         <ItemsControl x:Name="PaneLines">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>

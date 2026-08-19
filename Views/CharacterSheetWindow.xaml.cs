@@ -11,12 +11,14 @@ namespace EQLOverlay.Views;
 /// <summary>
 /// The paper-doll: worn gear in anatomical rows (ears–face–head–neck ·
 /// shoulders–chest–back–arms · wrists–fingers–hands · waist–legs–feet ·
-/// wildcards · weapons), each cell wearing its slot title above, the item's
-/// +N tier as a gold corner pill and typed socket pills (O·F·C·W·P). A
-/// detail pane follows the selected slot with three tabs: Sockets (the
+/// wildcards · weapons), each cell wearing the wiki's own item art, its slot
+/// title above, the item's +N tier as a gold corner pill and typed socket
+/// pills (O·F·C·W·P). A detail pane follows the selected slot with four
+/// tabs: Totals (stats-from-gear sums, base → at worn tier), Sockets (the
 /// game's own item-window layout), Focus (the audit's view of the slot) and
-/// Stats (wiki base values — the +N uplift is stated nowhere observable).
-/// The footer rides the session panel's ding//who level machinery.
+/// Stats (wiki values scaled to the worn tier by eqlwiki's own slider
+/// rules — see Services/ItemUpgrade). The footer rides the session panel's
+/// ding//who level machinery.
 /// </summary>
 public partial class CharacterSheetWindow : Window
 {
@@ -61,7 +63,7 @@ public partial class CharacterSheetWindow : Window
     private List<FocusEffects.AuditRow> _audit = new();
     private readonly Dictionary<(string Token, int Nth), InventoryStore.Entry> _worn = new();
     private (string Token, int Nth)? _selected;
-    private string _paneTab = "sockets";
+    private string _paneTab = "totals";
     private readonly List<Border> _cells = new();
 
     public CharacterSheetWindow(string eqRoot, string charName, string server,
@@ -187,7 +189,14 @@ public partial class CharacterSheetWindow : Window
             Child = inner,
             Tag = slot,
         };
-        cell.MouseLeftButtonUp += (_, _) => { _selected = slot; RefreshPane(); };
+        cell.MouseLeftButtonUp += (_, _) =>
+        {
+            _selected = slot;
+            // Clicking an item means "show me THIS" — leave the character-wide
+            // Totals tab for the item's own sockets.
+            if (_paneTab == "totals") _paneTab = "sockets";
+            RefreshPane();
+        };
         _cells.Add(cell);
 
         var body = new DockPanel { Margin = new Thickness(8, 6, 8, 6) };
@@ -209,16 +218,32 @@ public partial class CharacterSheetWindow : Window
             // a position the item does not have ghosts out.
             body.Children.Add(BuildPillTrack(entry));
             DockPanel.SetDock(body.Children[0] as UIElement, Dock.Bottom);
+            // The wiki's own item art, when the table carries it.
+            if (ItemIcons.Get(_stats.Lookup(entry.Name)?.Icon) is { } icon)
+            {
+                var img = new System.Windows.Controls.Image
+                {
+                    Source = icon,
+                    Width = 21,
+                    Height = 21,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(0, 1, 5, 0),
+                };
+                RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Fant);
+                DockPanel.SetDock(img, Dock.Left);
+                body.Children.Add(img);
+            }
             body.Children.Add(new TextBlock
             {
                 Text = baseName,
                 Foreground = TextFg,
                 FontWeight = FontWeights.SemiBold,
-                FontSize = 11.5,
+                FontSize = 10.5,
                 TextWrapping = TextWrapping.Wrap,
-                MaxHeight = 30,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxHeight = 28,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 0, tier.Length > 0 ? 26 : 0, 0),
+                Margin = new Thickness(0, 0, tier.Length > 0 ? 16 : 0, 0),
             });
         }
         inner.Children.Add(body);
@@ -273,12 +298,20 @@ public partial class CharacterSheetWindow : Window
         foreach (var child in entry.Children)
             byType.TryAdd(SlotTypeOf(child.Location).Label, child);
 
+        int tier = TierOf(entry.Name);
         var pills = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
-        foreach (var (label, name) in PillTrack)
+        for (int i = 0; i < PillTrack.Length; i++)
         {
+            var (label, name) = PillTrack[i];
             byType.TryGetValue(label, out var child);
             bool has = child is not null;
             bool on = has && !child!.Empty;
+            // Socket types unlock by item level (wiki "Exaltations"):
+            // Ornamentation at +0, Focus +1, Click +2, Worn +3, Proc +4 —
+            // the track's own order. A ghost can say WHY it's missing.
+            string ghost = tier < i
+                ? $"{name} — unlocks at +{i}"
+                : $"{name} — this item has no such slot";
             pills.Children.Add(new Border
             {
                 CornerRadius = new CornerRadius(6),
@@ -289,7 +322,7 @@ public partial class CharacterSheetWindow : Window
                 BorderThickness = new Thickness(1),
                 ToolTip = on ? $"{name} — {child!.Name}"
                     : has ? $"{name} — empty"
-                    : $"{name} — this item has no such slot",
+                    : ghost,
                 Child = new TextBlock
                 {
                     Text = label,
@@ -309,6 +342,14 @@ public partial class CharacterSheetWindow : Window
         return m.Success ? (m.Groups["n"].Value, m.Groups["t"].Value) : (name, "");
     }
 
+    /// <summary>The +N tier stated by the item's name; a bare name is 0 for
+    /// scaling (fraction inside the tier is never stated anywhere).</summary>
+    private static int TierOf(string name)
+    {
+        var (_, tier) = SplitTier(name);
+        return tier.Length > 0 && int.TryParse(tier.AsSpan(1), out int n) ? n : 0;
+    }
+
     private static readonly System.Text.RegularExpressions.Regex SlotNumRx =
         new(@"-Slot(\d+)$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
@@ -324,6 +365,7 @@ public partial class CharacterSheetWindow : Window
 
     private static readonly (string Id, string Label)[] PaneTabDefs =
     {
+        ("totals", "Totals"),
         ("sockets", "Sockets"),
         ("focus", "Focus"),
         ("stats", "Stats"),
@@ -362,6 +404,15 @@ public partial class CharacterSheetWindow : Window
 
         var lines = new List<PaneLineVm>();
         PaneHint.Visibility = Visibility.Collapsed;
+        PaneIcon.Visibility = Visibility.Collapsed;
+
+        if (_paneTab == "totals")
+        {
+            PaneTitle.Text = "Stats from gear";
+            BuildTotalsLines(lines);
+            PaneLines.ItemsSource = lines;
+            return;
+        }
 
         if (_selected is not { } sel2 || !_worn.TryGetValue(sel2, out var entry) || entry.Empty)
         {
@@ -373,6 +424,11 @@ public partial class CharacterSheetWindow : Window
 
         PaneTitle.Text = entry.Name;
         PaneSub.Text = sel2.Token;
+        if (ItemIcons.Get(_stats.Lookup(entry.Name)?.Icon) is { } icon)
+        {
+            PaneIcon.Source = icon;
+            PaneIcon.Visibility = Visibility.Visible;
+        }
 
         switch (_paneTab)
         {
@@ -438,6 +494,16 @@ public partial class CharacterSheetWindow : Window
         }
     }
 
+    /// <summary>"+3" at tier 5 → "+3 → +8"; unchanged values stay bare.</summary>
+    private static string Arrow(string baseText, string scaledText) =>
+        scaledText == baseText ? baseText : $"{baseText} → {scaledText}";
+
+    private static string PairText(string[] pair, int tier)
+    {
+        string label = ItemStats.StatLabel(pair[0]);
+        return $"{label} {Arrow(pair[1], ItemUpgrade.ScaleValueText(pair[0], pair[1], tier))}";
+    }
+
     private void BuildStatLines(InventoryStore.Entry entry, List<PaneLineVm> lines)
     {
         var rec = _stats.Lookup(entry.Name);
@@ -446,17 +512,139 @@ public partial class CharacterSheetWindow : Window
             lines.Add(new PaneLineVm("", "the wiki has no page for this item", DimFg, Visibility.Collapsed));
             return;
         }
+        int tier = TierOf(entry.Name);
         if (rec.Flags.Length > 0) lines.Add(new PaneLineVm("FLAGS", rec.Flags, TextFg, Visibility.Visible));
-        if (rec.Ac is { } ac) lines.Add(new PaneLineVm("AC", ac.ToString(), TextFg, Visibility.Visible));
-        if (rec.Stats.Length > 0) lines.Add(new PaneLineVm("STATS", rec.Stats, TextFg, Visibility.Visible));
-        if (rec.Saves.Length > 0) lines.Add(new PaneLineVm("SAVES", rec.Saves, TextFg, Visibility.Visible));
+        if (rec.Ac is { } ac)
+            lines.Add(new PaneLineVm("AC",
+                Arrow(ac.ToString(), ItemUpgrade.ScalePrimary(ac, tier).ToString()),
+                TextFg, Visibility.Visible));
+        if (rec.Dmg is { } dmg)
+        {
+            // DMG scales, Delay never does — that's WHY the ratio improves.
+            int scaledDmg = ItemUpgrade.ScaleDamage(dmg, tier);
+            string weapon = (rec.Skill.Length > 0 ? rec.Skill + " · " : "")
+                + $"DMG {Arrow(dmg.ToString(), scaledDmg.ToString())}"
+                + (rec.Delay is { } delay
+                    ? $" · Delay {delay} · ratio {(double)scaledDmg / delay:0.00}"
+                    : "")
+                + (rec.DmgBonus is { } bon ? $" · Dmg Bon {bon}" : "")
+                + (rec.Backstab is { } bs ? $" · Backstab {bs}" : "");
+            lines.Add(new PaneLineVm("WEAPON", weapon, TextFg, Visibility.Visible));
+        }
+        if (rec.Stats.Count > 0)
+            lines.Add(new PaneLineVm("STATS",
+                string.Join(" · ", rec.Stats.Select(p => PairText(p, tier))),
+                TextFg, Visibility.Visible));
+        if (rec.Saves.Count > 0 || SynthVoid(rec, tier))
+        {
+            var parts = rec.Saves.Select(p => PairText(p, tier)).ToList();
+            if (SynthVoid(rec, tier)) parts.Add($"SV Void +{tier} (upgrade grant)");
+            lines.Add(new PaneLineVm("SAVES", string.Join(" · ", parts), TextFg, Visibility.Visible));
+        }
         if (rec.Effects.Length > 0) lines.Add(new PaneLineVm("EFFECTS", rec.Effects, GreenFg, Visibility.Visible));
         if (rec.Weight.Length > 0 || rec.Size.Length > 0)
-            lines.Add(new PaneLineVm("WEIGHT / SIZE", $"{rec.Weight} · {rec.Size}".Trim(' ', '·'), TextFg, Visibility.Visible));
+        {
+            string wt = rec.Weight;
+            if (double.TryParse(wt, System.Globalization.CultureInfo.InvariantCulture, out double w))
+            {
+                double scaledW = ItemUpgrade.ScaleWeight(w, tier);
+                wt = Arrow(wt, scaledW == w ? wt : scaledW.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture));
+            }
+            lines.Add(new PaneLineVm("WEIGHT / SIZE", $"{wt} · {rec.Size}".Trim(' ', '·'), TextFg, Visibility.Visible));
+        }
         if (rec.Classes.Length > 0 || rec.Races.Length > 0)
             lines.Add(new PaneLineVm("CLASSES / RACES", $"{rec.Classes} · {rec.Races}".Trim(' ', '·'), TextFg, Visibility.Visible));
         if (rec.Extras.Length > 0) lines.Add(new PaneLineVm("MORE", rec.Extras, DimFg, Visibility.Visible));
-        PaneHint.Text = "Wiki base values — the game states nowhere what a +N uplift changes.";
+        PaneHint.Text = tier > 0
+            ? $"Base → at +{tier}, by the wiki's own item-level rules. Merge exp banked inside a tier isn't in the dump, so live numbers can read a touch higher."
+            : "Wiki base values — this item carries no +N tier.";
+        PaneHint.Visibility = Visibility.Visible;
+    }
+
+    private static bool SynthVoid(ItemStats.Record rec, int tier) =>
+        ItemUpgrade.SynthesizesVoid(rec.Stats.Concat(rec.Saves).Select(p => p[0]), tier);
+
+    // ---- the gear sum (Companion's characterSheet.ts semantics) -------------------
+
+    private static readonly string[] AttrKeys = { "STR", "STA", "AGI", "DEX", "WIS", "INT", "CHA" };
+    private static readonly string[] PoolKeys = { "HP", "MP", "END" };
+
+    private void BuildTotalsLines(List<PaneLineVm> lines)
+    {
+        var worn = _worn.Values.Where(e => !e.Empty).ToList();
+        int counted = 0, unknown = 0, acBase = 0, acTier = 0, voidGrant = 0;
+        // normalized key -> (base sum, at-tier sum); percents listed, never added.
+        var sums = new Dictionary<string, (string Label, int Base, int Tier)>(StringComparer.Ordinal);
+        var order = new List<string>();
+        var percents = new List<string>();
+
+        foreach (var e in worn)
+        {
+            var rec = _stats.Lookup(e.Name);
+            if (rec is null) { unknown++; continue; }
+            counted++;
+            int tier = TierOf(e.Name);
+            if (rec.Ac is { } ac) { acBase += ac; acTier += ItemUpgrade.ScalePrimary(ac, tier); }
+            foreach (var p in rec.Stats.Concat(rec.Saves))
+            {
+                if (ItemUpgrade.StatInteger(p[1]) is { } n)
+                {
+                    int scaled = ItemUpgrade.ClassOf(p[0]) switch
+                    {
+                        ItemUpgrade.StatClass.Primary => ItemUpgrade.ScalePrimary(n, tier),
+                        ItemUpgrade.StatClass.Flat => ItemUpgrade.ScaleFlat(n, tier),
+                        _ => n,
+                    };
+                    string key = ItemUpgrade.NormalizeKey(p[0]);
+                    if (!sums.TryGetValue(key, out var held))
+                    {
+                        held = (ItemStats.StatLabel(p[0]), 0, 0);
+                        order.Add(key);
+                    }
+                    sums[key] = (held.Label, held.Base + n, held.Tier + scaled);
+                }
+                else
+                {
+                    // "36%" — whether worn percents stack is stated nowhere,
+                    // so they're listed, never summed (Companion's rule).
+                    percents.Add($"{ItemStats.StatLabel(p[0])} {Arrow(p[1], ItemUpgrade.ScaleValueText(p[0], p[1], tier))}");
+                }
+            }
+            if (SynthVoid(rec, tier)) voidGrant += tier;
+        }
+
+        PaneSub.Text = $"{counted} of {worn.Count} worn items · wiki base → at worn tier";
+
+        string SumText(Func<string, bool> pick) => string.Join(" · ", order
+            .Where(pick)
+            .Select(k => sums[k])
+            .Select(s => $"{s.Label} {Arrow(Fmt(s.Base), Fmt(s.Tier))}"));
+        static string Fmt(int n) => n > 0 ? "+" + n : n.ToString();
+
+        if (acBase > 0 || acTier > 0)
+            lines.Add(new PaneLineVm("AC", Arrow(acBase.ToString(), acTier.ToString()), TextFg, Visibility.Visible));
+        string attrs = SumText(k => AttrKeys.Contains(k));
+        if (attrs.Length > 0) lines.Add(new PaneLineVm("ATTRIBUTES", attrs, TextFg, Visibility.Visible));
+        string pools = SumText(k => PoolKeys.Contains(k));
+        if (pools.Length > 0) lines.Add(new PaneLineVm("POOLS", pools, TextFg, Visibility.Visible));
+        var savesParts = order.Where(k => k.StartsWith("SV_", StringComparison.Ordinal))
+            .Select(k => sums[k]).Select(s => $"{s.Label} {Arrow(Fmt(s.Base), Fmt(s.Tier))}").ToList();
+        if (voidGrant > 0) savesParts.Add($"SV Void {Arrow("0", "+" + voidGrant)} (upgrade grants)");
+        if (savesParts.Count > 0)
+            lines.Add(new PaneLineVm("SAVES", string.Join(" · ", savesParts), TextFg, Visibility.Visible));
+        string other = SumText(k => !AttrKeys.Contains(k) && !PoolKeys.Contains(k)
+            && !k.StartsWith("SV_", StringComparison.Ordinal));
+        if (other.Length > 0) lines.Add(new PaneLineVm("OTHER", other, TextFg, Visibility.Visible));
+        if (percents.Count > 0)
+            lines.Add(new PaneLineVm("NOT SUMMED", string.Join(" · ", percents), AmberFg, Visibility.Visible));
+
+        if (counted == 0)
+        {
+            lines.Add(new PaneLineVm("", "no worn item is in the wiki table yet", DimFg, Visibility.Collapsed));
+            return;
+        }
+        PaneHint.Text = (unknown > 0 ? $"{unknown} worn item(s) missing from the wiki table count toward nothing. " : "")
+            + "Sums of the worn items' wiki blocks, scaled per item by the wiki's own item-level rules. Percents are listed, never summed — stacking is stated nowhere.";
         PaneHint.Visibility = Visibility.Visible;
     }
 

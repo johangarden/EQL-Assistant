@@ -1451,12 +1451,38 @@ public partial class App : Application
                     && focus.EffectsOf("A Perfectly Ordinary Rock").Count == 0);
                 // ---- item stats (the character sheet's wiki table) ----------
                 var istats = new ItemStats();
-                Check("item stats: ~11k wiki items load from the embedded table",
+                Check("item stats: ~11k wiki items load with pairs + icon ids",
                     istats.Count > 11000
-                    && istats.Lookup("Wicked Sallet +5") is { Ac: 10, Classes: "SHD" } ws
-                    && ws.Stats.Contains("STR +3")
-                    && istats.Lookup("Djarn's Amethyst Ring +2") is { Name: "Djarns Amethyst Ring" }
+                    && istats.Lookup("Wicked Sallet +5") is { Ac: 10, Classes: "SHD", Icon: 628 } ws
+                    && ws.Stats.Any(p => p is ["STR", "+3"])
+                    && istats.Lookup("Djarn's Amethyst Ring +2") is { Name: "Djarns Amethyst Ring", Icon: 612 }
+                    && istats.Lookup("The Baron's Blade +5") is { Dmg: 10, Delay: 30, Skill: "1H Slashing" }
                     && istats.Lookup("A Perfectly Ordinary Rock") is null);
+                // ---- the tier math (eqlwiki's own slider rules, via Companion) ----
+                // Fixtures pinned by Companion's port: rounding spelling and the
+                // IEEE754 weight artifact are load-bearing.
+                Check("item upgrade: primary >10 rounds the increment BEFORE the add",
+                    ItemUpgrade.ScalePrimary(15, 2, 3) == 19       // NOT 20 (one-step spelling)
+                    && ItemUpgrade.ScalePrimary(10, 5) == 15       // ≤10: +1 per tier
+                    && ItemUpgrade.ScalePrimary(0, 7) == 0         // absent stays absent
+                    && ItemUpgrade.ScalePrimary(-5, 3) == -2       // penalties shrink toward 0
+                    && ItemUpgrade.ScalePrimary(-5, 7) == 0);      // and never cross it
+                Check("item upgrade: weapon DMG reads the fraction, flat + weight curves hold",
+                    ItemUpgrade.ScaleDamage(30, 2, 3) == 38        // eff 2.75 → +floor(8.25)
+                    && ItemUpgrade.ScaleFlat(36, 5) == 41          // Haste 36% +1/tier
+                    && Math.Abs(ItemUpgrade.ScaleWeight(3.0, 2, 3) - 2.3) < 1e-9   // ceil, not round
+                    && Math.Abs(ItemUpgrade.ScaleWeight(3.0, 10) - 0.4) < 1e-9     // the float artifact
+                    && Math.Abs(ItemUpgrade.ScaleWeight(0.1, 10) - 0.1) < 1e-9);   // feather guard
+                Check("item upgrade: SV VOID grant + key aliases",
+                    ItemUpgrade.SynthesizesVoid(new[] { "STR", "STA" }, 3)
+                    && !ItemUpgrade.SynthesizesVoid(new[] { "AC", "HP" }, 3)
+                    && !ItemUpgrade.SynthesizesVoid(new[] { "STR", "STA", "SV VOID" }, 3)
+                    && ItemUpgrade.NormalizeKey("Mana Regen") == "MANA_REGEN"
+                    && ItemUpgrade.NormalizeKey("MANA") == "MP"
+                    && ItemUpgrade.ClassOf("SV FIRE") == ItemUpgrade.StatClass.Primary
+                    && ItemUpgrade.ClassOf("Haste") == ItemUpgrade.StatClass.Flat
+                    && ItemUpgrade.ScaleValueText("STR", "+3", 5) == "+8"
+                    && ItemUpgrade.ScaleValueText("Haste", "36%", 5) == "41%");
 
                 var djarns = focus.Audit(new[]
                 {

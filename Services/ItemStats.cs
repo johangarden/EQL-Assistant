@@ -1,37 +1,48 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace EQLOverlay.Services;
 
 /// <summary>
-/// Item stats for the character sheet: AC, stats, saves, flags, classes and
-/// effect lines per item, keyed by normalized base name. Data:
-/// data\item-stats.json — eqlwiki item pages via Companion's scrape (MIT),
-/// slimmed to display-ready strings (~11,400 items, ~2 MB). Values are the
-/// wiki's BASE item — the game states nowhere what a +N uplift changes, so
-/// the sheet shows base numbers and says so.
+/// Item stats for the character sheet: AC, structured stat/save pairs, weapon
+/// numbers, flags, classes, effect lines and the wiki icon id per item, keyed
+/// by normalized base name. Data: data\item-stats.json — eqlwiki item pages
+/// via Companion's scrape (MIT), ~11,400 items. Values are the wiki's BASE
+/// item; ItemUpgrade scales them to a worn +N tier with the wiki's own
+/// slider rules.
 /// </summary>
 public sealed class ItemStats
 {
     public sealed class Record
     {
-        public string Name { get; set; } = "";
-        public string Slot { get; set; } = "";
-        public int? Ac { get; set; }
-        public string Stats { get; set; } = "";
-        public string Saves { get; set; } = "";
-        public string Flags { get; set; } = "";
-        public string Weight { get; set; } = "";
-        public string Size { get; set; } = "";
-        public string Classes { get; set; } = "";
-        public string Races { get; set; } = "";
-        public string Effects { get; set; } = "";
-        public string Extras { get; set; } = "";
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("slot")] public string Slot { get; set; } = "";
+        [JsonPropertyName("ac")] public int? Ac { get; set; }
+        [JsonPropertyName("dmg")] public int? Dmg { get; set; }
+        [JsonPropertyName("delay")] public int? Delay { get; set; }
+        [JsonPropertyName("dmgBon")] public int? DmgBonus { get; set; }
+        [JsonPropertyName("backstab")] public int? Backstab { get; set; }
+        [JsonPropertyName("skill")] public string Skill { get; set; } = "";
+        [JsonPropertyName("range")] public string Range { get; set; } = "";
+        /// <summary>[["STR","+3"], ["Haste","36%"], …] — source order.</summary>
+        [JsonPropertyName("stats")] public List<string[]> Stats { get; set; } = new();
+        /// <summary>The SV * subset, same pair shape.</summary>
+        [JsonPropertyName("saves")] public List<string[]> Saves { get; set; } = new();
+        [JsonPropertyName("flags")] public string Flags { get; set; } = "";
+        [JsonPropertyName("weight")] public string Weight { get; set; } = "";
+        [JsonPropertyName("size")] public string Size { get; set; } = "";
+        [JsonPropertyName("classes")] public string Classes { get; set; } = "";
+        [JsonPropertyName("races")] public string Races { get; set; } = "";
+        [JsonPropertyName("effects")] public string Effects { get; set; } = "";
+        [JsonPropertyName("extras")] public string Extras { get; set; } = "";
+        /// <summary>The wiki icon id — data\item-icons\item-{Icon}.png.</summary>
+        [JsonPropertyName("icon")] public int? Icon { get; set; }
     }
 
     private sealed class FileShape
     {
-        public Dictionary<string, Record>? Items { get; set; }
+        [JsonPropertyName("items")] public Dictionary<string, Record>? Items { get; set; }
     }
 
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -53,6 +64,29 @@ public sealed class ItemStats
     /// null when the wiki has no page for it.</summary>
     public Record? Lookup(string itemName) =>
         _items.TryGetValue(FocusEffects.ItemKey(itemName), out var rec) ? rec : null;
+
+    /// <summary>In-window label for a stat key ("STR" → "Strength",
+    /// "SV FIRE" → "SV Fire").</summary>
+    public static string StatLabel(string key)
+    {
+        string k = key.ToUpperInvariant();
+        string? known = k switch
+        {
+            "STR" => "Strength", "STA" => "Stamina", "AGI" => "Agility",
+            "DEX" => "Dexterity", "WIS" => "Wisdom", "INT" => "Intelligence",
+            "CHA" => "Charisma", "HP" => "HP", "MANA" => "Mana",
+            "END" or "ENDURANCE" => "Endurance", "AC" => "AC",
+            "HASTE" => "Haste", "ATTACK" => "Attack", "REGEN" => "Regen",
+            _ => null,
+        };
+        if (known is not null) return known;
+        if (k.StartsWith("SV ", StringComparison.Ordinal))
+            return "SV " + TitleCase(k[3..]);
+        return TitleCase(k);
+    }
+
+    private static string TitleCase(string s) =>
+        System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(s.ToLowerInvariant());
 
     private static Dictionary<string, Record> Load()
     {
