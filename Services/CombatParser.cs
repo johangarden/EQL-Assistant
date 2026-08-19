@@ -1440,7 +1440,10 @@ public sealed class CombatParser
         if (CurrentZone.Length == 0) CurrentZone = "Permafrost Keep";
         _fightZone = CurrentZone;
 
-        string pet = string.IsNullOrWhiteSpace(PetName) ? "Gobaner" : PetName.Trim();
+        // The pet drill-down only renders for a named pet — the demo names
+        // one (in memory only; real pet speech overwrites it).
+        if (string.IsNullOrWhiteSpace(PetName)) PetName = "Gobaner";
+        string pet = PetName.Trim();
         Bump(_damage, Self(), 5210);
         Bump(_damage, "Sneakstab", 4480);
         Bump(_damage, pet, 2950);

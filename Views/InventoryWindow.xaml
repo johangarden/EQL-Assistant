@@ -109,7 +109,7 @@
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
                                                    FontWeight="{Binding Weight}" FontSize="11"
-                                                   TextWrapping="Wrap" Margin="0,1"/>
+                                                   TextWrapping="Wrap" Margin="{Binding Margin}"/>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -189,7 +189,7 @@
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
                                                    FontWeight="{Binding Weight}" FontSize="11"
-                                                   TextWrapping="Wrap" Margin="0,1"/>
+                                                   TextWrapping="Wrap" Margin="{Binding Margin}"/>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

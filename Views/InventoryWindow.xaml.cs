@@ -25,7 +25,10 @@ public partial class InventoryWindow : Window
         Visibility DetailsVis = Visibility.Collapsed, string RowKey = "",
         Visibility RuleVis = Visibility.Collapsed);
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
-    private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight);
+    private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight, Thickness Margin = default);
+
+    private static readonly Thickness DetailTab = new(16, 1, 0, 0);      // sub-lines tab in
+    private static readonly Thickness DetailHeadPad = new(0, 4, 0, 0);   // headers breathe
     private sealed record FocusVm(string Family, string Kind, string? FamilyTip, Brush StatusBrush,
         List<PillVm> Pills, string BestText, string? BestTip, string PlaceText, Brush PlaceBrush,
         Visibility PlaceVis = Visibility.Visible,
@@ -624,11 +627,11 @@ public partial class InventoryWindow : Window
             string summoned = tier.SummonedOnly ? " · summoned only" : "";
             // The tier title wears its pill's color: green when you own it.
             Brush headerFg = a.TierLanes[i] is not null ? StatusFg[2] : DetailHeaderFg;
-            details.Add(new DetailVm($"{tier.Effect}{cap}{summoned}", headerFg, FontWeights.SemiBold));
+            details.Add(new DetailVm($"{tier.Effect}{cap}{summoned}", headerFg, FontWeights.SemiBold, DetailHeadPad));
             if (tier.Description.Length > 0)
-                details.Add(new DetailVm(tier.Description, DetailDimFg, FontWeights.Normal));
+                details.Add(new DetailVm(tier.Description, DetailDimFg, FontWeights.Normal, DetailTab));
             if (tier.Items.Count == 0)
-                details.Add(new DetailVm("   no item is known to carry this tier", DetailDimFg, FontWeights.Normal));
+                details.Add(new DetailVm("no item is known to carry this tier", DetailDimFg, FontWeights.Normal, DetailTab));
             foreach (var item in tier.Items)
             {
                 var parts = new List<string> { item.Name };
@@ -637,7 +640,7 @@ public partial class InventoryWindow : Window
                 bool owned = _ownedByKey.TryGetValue(FocusEffects.ItemKey(item.Name), out string? lane);
                 if (owned) parts.Add("you: " + OwnLabel(lane!));
                 Brush fg = !owned ? DetailDimFg : lane == "worn" ? StatusFg[2] : StatusFg[1];
-                details.Add(new DetailVm("   " + string.Join("  ·  ", parts), fg, FontWeights.Normal));
+                details.Add(new DetailVm(string.Join("  ·  ", parts), fg, FontWeights.Normal, DetailTab));
             }
         }
         return details;
@@ -725,7 +728,7 @@ public partial class InventoryWindow : Window
                 var (_, slotName) = SlotTypeOf(child.Location);
                 if (child.Empty)
                 {
-                    details.Add(new DetailVm($"{slotName}: empty", DetailDimFg, FontWeights.Normal));
+                    details.Add(new DetailVm($"{slotName}: empty", DetailDimFg, FontWeights.Normal, DetailTab));
                     continue;
                 }
                 var socketFx = _focus.EffectsOf(child.Name);
@@ -733,7 +736,7 @@ public partial class InventoryWindow : Window
                     ? " — " + string.Join(", ", socketFx.Select(e => $"{e.Tier.Effect} ({e.Fam.Kind})"))
                     : "";
                 details.Add(new DetailVm($"{slotName}: {child.Name}{fx}",
-                    socketFx.Count > 0 ? StatusFg[2] : DetailHeaderFg, FontWeights.Normal));
+                    socketFx.Count > 0 ? StatusFg[2] : DetailHeaderFg, FontWeights.Normal, DetailTab));
             }
         return details;
     }
