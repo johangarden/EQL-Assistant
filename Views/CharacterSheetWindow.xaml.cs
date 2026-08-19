@@ -527,6 +527,7 @@ public partial class CharacterSheetWindow : Window
         PaneGrid.Content = null;
         PaneLinesBelow.Visibility = Visibility.Collapsed;
         PaneLinesBelow.ItemsSource = null;
+        PaneTitle.ToolTip = null;
 
         if (!itemMode)
         {
@@ -551,7 +552,14 @@ public partial class CharacterSheetWindow : Window
             return;
         }
 
-        PaneTitle.Text = entry.Name;
+        // Title with the +N in gold, same voice as the doll's badges.
+        var (titleBase, titleTier) = SplitTier(entry.Name);
+        PaneTitle.Text = "";
+        PaneTitle.Inlines.Clear();
+        PaneTitle.Inlines.Add(new System.Windows.Documents.Run(titleBase));
+        if (titleTier.Length > 0)
+            PaneTitle.Inlines.Add(new System.Windows.Documents.Run(" " + titleTier) { Foreground = GoldFg });
+        PaneTitle.ToolTip = entry.Name;
         PaneSub.Text = _selected.Value.Token;
         if (ItemIcons.Get(_stats.Lookup(entry.Name)?.Icon) is { } icon)
         {
@@ -560,11 +568,11 @@ public partial class CharacterSheetWindow : Window
         }
 
         // Everything about the item in one scroll: wiki stats at tier, then
-        // the sockets as the dump lists them, then the focus audit's view.
+        // the sockets — each socketed focus carries the audit's verdict
+        // right on its line, so no separate focus section repeats it.
         var below = new List<PaneLineVm>();
         BuildStatLines(entry, lines, below);
         BuildSocketLines(entry, below);
-        BuildFocusLines(entry, below);
         if (below.Count > 0)
         {
             PaneLinesBelow.ItemsSource = below;
@@ -590,11 +598,29 @@ public partial class CharacterSheetWindow : Window
             string key = name.ToUpperInvariant();
             if (byType.TryGetValue(label, out var child) && !child.Empty)
             {
+                // Effect first, carrier second, the audit's verdict riding
+                // the same line — this IS the focus section for sockets.
                 var fx = _focus.EffectsOf(child.Name);
-                string val = child.Name + (fx.Count > 0
-                    ? " — " + string.Join(", ", fx.Select(e => e.Tier.Effect))
-                    : "");
-                lines.Add(new PaneLineVm(key, val, GreenFg, Visibility.Visible));
+                string val;
+                Brush fg = GreenFg;
+                if (fx.Count > 0)
+                {
+                    string effects = string.Join(", ", fx.Select(e => e.Tier.Effect));
+                    var arow = _audit.FirstOrDefault(a => fx.Any(e => e.Fam == a.Family));
+                    string verdict = arow switch
+                    {
+                        { Status: 2 } => " · wearing the best",
+                        { Status: 1 } => " · upgrade available",
+                        _ => "",
+                    };
+                    if (arow is { Status: 1 }) fg = AmberFg;
+                    val = $"{effects} — {child.Name}{verdict}";
+                }
+                else
+                {
+                    val = child.Name;
+                }
+                lines.Add(new PaneLineVm(key, val, fg, Visibility.Visible));
             }
             else if (child is not null)
             {
@@ -608,36 +634,6 @@ public partial class CharacterSheetWindow : Window
                     ? $"locked — unlocks at +{i}"
                     : "not available on this item", DimFg, Visibility.Visible));
             }
-        }
-    }
-
-    private void BuildFocusLines(InventoryStore.Entry entry, List<PaneLineVm> lines)
-    {
-        // The item's own focus, then every socketed focus, then the audit's
-        // verdict for those families.
-        var all = new List<(FocusEffects.Family Fam, FocusEffects.Tier Tier, string Via)>();
-        foreach (var (fam, tier) in _focus.EffectsOf(entry.Name))
-            all.Add((fam, tier, "the item itself"));
-        foreach (var child in entry.Children.Where(c => !c.Empty))
-            foreach (var (fam, tier) in _focus.EffectsOf(child.Name))
-                all.Add((fam, tier, child.Name));
-
-        // Nothing to say = say nothing (the combined view already lists the
-        // sockets; an extra "no focus here" line is noise).
-        if (all.Count == 0) return;
-        foreach (var (fam, tier, via) in all)
-        {
-            var auditRow = _audit.FirstOrDefault(a => a.Family == fam);
-            string verdict = auditRow switch
-            {
-                { Status: 2 } => "wearing the best",
-                { Status: 1 } => "upgrade available",
-                _ => "",
-            };
-            Brush fg = auditRow?.Status == 2 ? GreenFg : AmberFg;
-            lines.Add(new PaneLineVm(fam.Name.ToUpperInvariant() + " · " + fam.Kind,
-                $"{tier.Effect} — via {via}" + (verdict.Length > 0 ? $" · {verdict}" : ""),
-                fg, Visibility.Visible));
         }
     }
 
@@ -662,7 +658,28 @@ public partial class CharacterSheetWindow : Window
         PaneGrid.Content = BuildStatGrid(rec, tier);
         PaneGrid.Visibility = Visibility.Visible;
 
-        if (rec.Effects.Length > 0) below.Add(new PaneLineVm("EFFECTS", rec.Effects, GreenFg, Visibility.Visible));
+        if (rec.Effects.Length > 0)
+        {
+            // The item's OWN focus lines carry the audit's verdict inline —
+            // the socket lines already carry theirs.
+            var ownFx = _focus.EffectsOf(entry.Name);
+            var fxLines = rec.Effects.Split('\n').Select(line =>
+            {
+                if (!line.StartsWith("focus:", StringComparison.OrdinalIgnoreCase)) return line;
+                string name = line["focus:".Length..].Trim();
+                var match = ownFx.FirstOrDefault(e =>
+                    string.Equals(e.Tier.Effect, name, StringComparison.OrdinalIgnoreCase));
+                if (match.Fam is null) return line;
+                var arow = _audit.FirstOrDefault(a => a.Family == match.Fam);
+                return line + (arow switch
+                {
+                    { Status: 2 } => " · wearing the best",
+                    { Status: 1 } => " · upgrade available",
+                    _ => "",
+                });
+            });
+            below.Add(new PaneLineVm("EFFECTS", string.Join("\n", fxLines), GreenFg, Visibility.Visible));
+        }
         if (rec.Extras.Length > 0) below.Add(new PaneLineVm("MORE", rec.Extras, DimFg, Visibility.Visible));
         // No footer lecture — gold-vs-brackets reads on its own; the rules
         // live in the Totals hint for whoever wants them.
@@ -735,9 +752,10 @@ public partial class CharacterSheetWindow : Window
         return grid;
     }
 
-    /// <summary>The dim placeholder for a stat this item doesn't state — the
-    /// grid keeps the SAME rows for every item, so nothing dances on click.</summary>
-    private static StatCell DashCell(string label) => StatCellOf(label, "—", "—", null, DimFg);
+    /// <summary>A stat this item doesn't state: the label stays (the grid
+    /// keeps the SAME rows for every item, so nothing dances on click), the
+    /// value cell simply stays blank.</summary>
+    private static StatCell DashCell(string label) => StatCellOf(label, " ", " ", null, DimFg);
 
     private static UIElement BuildStatGrid(ItemStats.Record rec, int tier)
     {
