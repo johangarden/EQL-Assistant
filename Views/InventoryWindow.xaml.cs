@@ -699,11 +699,13 @@ public partial class InventoryWindow : Window
             foreach (var child in entry.Children)
             {
                 var (label, slotName) = SlotTypeOf(child.Location);
+                // Occupied pills wear their socket TYPE's color (SocketColors,
+                // shared with the character sheet); empty stays a gray outline.
                 pills.Add(child.Empty
                     ? new PillVm(label, Brushes.Transparent, PillOffBorder, PillOffFg,
                         $"{slotName} — empty")
-                    : new PillVm(label, StatusBg[2], StatusFg[2], StatusFg[2],
-                        $"{slotName} — {child.Name}"));
+                    : new PillVm(label, SocketColors.Fill(label), SocketColors.Fill(label),
+                        SocketColors.Ink, $"{slotName} — {child.Name}"));
             }
         }
 

@@ -46,7 +46,6 @@ public partial class CharacterSheetWindow : Window
     private static readonly Brush GoldFg = Freeze("#E8C15A");
     private static readonly Brush GreenFg = Freeze("#66BB6A");
     private static readonly Brush AmberFg = Freeze("#FFB74D");
-    private static readonly Brush WornPillFg = Freeze("#0F1620");
     private static readonly Brush TabOnBg = Freeze("#16283E");
     private static readonly Brush TabOnFg = Freeze("#4FC3F7");
 
@@ -252,30 +251,30 @@ public partial class CharacterSheetWindow : Window
 
     // ---- the doll ---------------------------------------------------------------
 
+    // Fixed square cells: every slot identical, filled or empty — short rows
+    // center for free because nothing stretches.
+    private const double CellSize = 98;
+
     private void BuildDoll()
     {
         DollRows.Children.Clear();
         _cells.Clear();
         foreach (var row in DollLayout)
         {
-            // Short rows keep the 5-wide cell size and center via side margins
-            // (a 4-in-5 pad can't center on a uniform grid).
-            double inset = row.Length switch { 4 => 0.1, 3 => 0.2, 2 => 0.3, _ => 0 };
-            var grid = new UniformGrid { Rows = 1, Columns = row.Length, Margin = new Thickness(0, 0, 0, 9) };
-            foreach (var slot in row) grid.Children.Add(BuildCellWrap(slot));
-            var host = new Grid();
-            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(inset, GridUnitType.Star) });
-            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1 - 2 * inset, GridUnitType.Star) });
-            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(inset, GridUnitType.Star) });
-            Grid.SetColumn(grid, 1);
-            host.Children.Add(grid);
-            DollRows.Children.Add(host);
+            var sp = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 9),
+            };
+            foreach (var slot in row) sp.Children.Add(BuildCellWrap(slot));
+            DollRows.Children.Add(sp);
         }
     }
 
     private UIElement BuildCellWrap((string Token, int Nth) slot)
     {
-        var wrap = new StackPanel { Margin = new Thickness(3, 0, 4, 0) };
+        var wrap = new StackPanel { Width = CellSize, Margin = new Thickness(3, 0, 4, 0) };
         _worn.TryGetValue(slot, out var entry);
 
         wrap.Children.Add(new TextBlock
@@ -293,7 +292,8 @@ public partial class CharacterSheetWindow : Window
             BorderBrush = CellBorder,
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(7),
-            Height = 66, // static: every cell identical, filled or empty
+            Width = CellSize,
+            Height = CellSize, // square, fixed: every cell identical
             Cursor = Cursors.Hand,
             Child = inner,
             Tag = slot,
@@ -323,20 +323,31 @@ public partial class CharacterSheetWindow : Window
             var (baseName, tier) = SplitTier(entry.Name);
             // The cell floor: occupied-socket pills left, the +N tier gold on
             // the right — down here it can never be eaten by a long name.
+            // Thin gold outline on the climb (+1..+9); solid gold at the +10 cap.
             var floor = new DockPanel { LastChildFill = false, Margin = new Thickness(0, 3, 0, 0) };
             if (tier.Length > 0)
             {
-                var t = new TextBlock
+                bool maxed = TierOf(entry.Name) >= ItemUpgrade.MaxTier;
+                var badge = new Border
                 {
-                    Text = tier,
-                    Foreground = GoldFg,
-                    FontSize = 9.5,
-                    FontWeight = FontWeights.Bold,
-                    VerticalAlignment = VerticalAlignment.Center,
+                    CornerRadius = new CornerRadius(7),
+                    BorderBrush = GoldFg,
+                    BorderThickness = new Thickness(1),
+                    Background = maxed ? GoldFg : Brushes.Transparent,
+                    Padding = new Thickness(4, 0, 4, 1),
                     Margin = new Thickness(6, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = maxed ? "item level 10 — maxed" : $"item level {TierOf(entry.Name)} of 10",
+                    Child = new TextBlock
+                    {
+                        Text = tier,
+                        Foreground = maxed ? SocketColors.Ink : GoldFg,
+                        FontSize = 9,
+                        FontWeight = FontWeights.Bold,
+                    },
                 };
-                DockPanel.SetDock(t, Dock.Right);
-                floor.Children.Add(t);
+                DockPanel.SetDock(badge, Dock.Right);
+                floor.Children.Add(badge);
             }
             if (BuildPillTrack(entry) is { } track)
             {
@@ -371,7 +382,7 @@ public partial class CharacterSheetWindow : Window
                 FontSize = 10.5,
                 TextWrapping = TextWrapping.Wrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                MaxHeight = 28,
+                MaxHeight = 56, // the square gives four narrow lines of room
                 VerticalAlignment = VerticalAlignment.Top,
                 ToolTip = entry.Name,
             });
@@ -405,13 +416,16 @@ public partial class CharacterSheetWindow : Window
         foreach (var (label, name) in PillTrack)
         {
             if (!byType.TryGetValue(label, out var child) || child.Empty) continue;
+            // Each socket TYPE owns a color (SocketColors — shared with the
+            // Inventory window's pills).
+            var fill = SocketColors.Fill(label);
             pills.Children.Add(new Border
             {
                 CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(3, 0, 3, 1),
                 Margin = new Thickness(0, 0, 2, 0),
-                Background = GreenFg,
-                BorderBrush = GreenFg,
+                Background = fill,
+                BorderBrush = fill,
                 BorderThickness = new Thickness(1),
                 ToolTip = $"{name} — {child.Name}",
                 Child = new TextBlock
@@ -419,7 +433,7 @@ public partial class CharacterSheetWindow : Window
                     Text = label,
                     FontSize = 8.5,
                     FontWeight = FontWeights.Bold,
-                    Foreground = WornPillFg,
+                    Foreground = SocketColors.Ink,
                 },
             });
         }
