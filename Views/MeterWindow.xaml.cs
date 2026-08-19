@@ -306,6 +306,10 @@ public partial class MeterWindow : Window
         var mine = _showHealing
             ? _parser.GetHealAbilityRows(_parser.SelfName)
             : _parser.GetAbilityRows(_parser.SelfName);
+        // A utility spell (a slow, a snare) earns a lane only through its
+        // resists and would sit at "0,0 dps" forever — the DPS ranking is
+        // for things that deal damage. The drill-down keeps the resist rows.
+        mine = mine.Where(r => r.Total > 0 || r.Hits > 0).ToList();
         FillAbilityRows(_rows, mine, MaxSoloRows);
 
         bool hasPet = !string.IsNullOrWhiteSpace(_parser.PetName);
