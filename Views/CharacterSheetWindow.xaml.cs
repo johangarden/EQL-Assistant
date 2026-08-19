@@ -12,13 +12,14 @@ namespace EQLOverlay.Views;
 /// The paper-doll: worn gear in anatomical rows (ears–face–head–neck ·
 /// shoulders–chest–back–arms · wrists–fingers–hands · waist–legs–feet ·
 /// wildcards · weapons), each cell wearing the wiki's own item art, its slot
-/// title above, the item's +N tier as a gold corner pill and typed socket
-/// pills (O·F·C·W·P). A detail pane follows the selected slot with four
-/// tabs: Totals (stats-from-gear sums, base → at worn tier), Sockets (the
-/// game's own item-window layout), Focus (the audit's view of the slot) and
-/// Stats (wiki values scaled to the worn tier by eqlwiki's own slider
-/// rules — see Services/ItemUpgrade). The footer rides the session panel's
-/// ding//who level machinery.
+/// title above, its +N tier as a gold badge (solid at the +10 cap) and a
+/// colored pill per OCCUPIED socket (SocketColors). The detail pane holds
+/// three character-wide tabs — Total stats, Focus effects, Clickies — and a
+/// selected slot swaps in ONE combined item view: wiki stats scaled to the
+/// worn tier (eqlwiki's own slider rules, see Services/ItemUpgrade), the
+/// sockets as the dump lists them, and the focus audit's verdicts. The
+/// header rides the session panel's ding//who level machinery and states
+/// the dump's age.
 /// </summary>
 public partial class CharacterSheetWindow : Window
 {
@@ -61,7 +62,6 @@ public partial class CharacterSheetWindow : Window
     private readonly Dictionary<(string Token, int Nth), InventoryStore.Entry> _worn = new();
     private (string Token, int Nth)? _selected;
     private string _charTab = "totals";  // totals | focusall | clickies
-    private string _itemTab = "sockets"; // sockets | focus | stats
     private List<InventoryStore.CarryRow> _rows = new();
 
     /// <summary>Wired by MainWindow: the compact focus list links to the
@@ -468,19 +468,14 @@ public partial class CharacterSheetWindow : Window
 
     // ---- the detail pane --------------------------------------------------------
 
-    // Two tab sets: the pane speaks for the whole CHARACTER until a slot is
-    // selected, then for that ITEM. Each mode remembers its own last tab.
+    // The tab strip is always the three CHARACTER-wide views; a selected slot
+    // shows ONE combined item view (stats grid + sockets + focus) with no tab
+    // lit, and clicking any tab is also the way back.
     private static readonly (string Id, string Label)[] CharTabDefs =
     {
         ("totals", "Total stats"),
         ("focusall", "Focus effects"),
         ("clickies", "Clickies"),
-    };
-    private static readonly (string Id, string Label)[] ItemTabDefs =
-    {
-        ("sockets", "Sockets"),
-        ("focus", "Focus"),
-        ("stats", "Stats"),
     };
 
     private void RefreshPane()
@@ -493,9 +488,8 @@ public partial class CharacterSheetWindow : Window
         }
 
         bool itemMode = _selected is not null;
-        string active = itemMode ? _itemTab : _charTab;
         PaneTabs.Children.Clear();
-        foreach (var (id, label) in itemMode ? ItemTabDefs : CharTabDefs)
+        foreach (var (id, label) in CharTabDefs)
         {
             var text = new TextBlock { Text = label, FontSize = 10.5 };
             var tab = new Border
@@ -508,15 +502,14 @@ public partial class CharacterSheetWindow : Window
                 Cursor = Cursors.Hand,
                 Child = text,
             };
-            bool on = active == id;
+            bool on = !itemMode && _charTab == id;
             tab.Background = on ? TabOnBg : Brushes.Transparent;
             text.Foreground = on ? TabOnFg : SlotFg;
             string captured = id;
-            bool capturedItemMode = itemMode;
             tab.MouseLeftButtonUp += (_, _) =>
             {
-                if (capturedItemMode) _itemTab = captured;
-                else _charTab = captured;
+                _charTab = captured;
+                _selected = null;
                 RefreshPane();
             };
             PaneTabs.Children.Add(tab);
@@ -561,11 +554,16 @@ public partial class CharacterSheetWindow : Window
             PaneIcon.Visibility = Visibility.Visible;
         }
 
-        switch (_itemTab)
+        // Everything about the item in one scroll: wiki stats at tier, then
+        // the sockets as the dump lists them, then the focus audit's view.
+        var below = new List<PaneLineVm>();
+        BuildStatLines(entry, lines, below);
+        BuildSocketLines(entry, below);
+        BuildFocusLines(entry, below);
+        if (below.Count > 0)
         {
-            case "sockets": BuildSocketLines(entry, lines); break;
-            case "focus": BuildFocusLines(entry, lines); break;
-            default: BuildStatLines(entry, lines); break;
+            PaneLinesBelow.ItemsSource = below;
+            PaneLinesBelow.Visibility = Visibility.Visible;
         }
         PaneLines.ItemsSource = lines;
     }
@@ -625,7 +623,7 @@ public partial class CharacterSheetWindow : Window
         }
     }
 
-    private void BuildStatLines(InventoryStore.Entry entry, List<PaneLineVm> lines)
+    private void BuildStatLines(InventoryStore.Entry entry, List<PaneLineVm> lines, List<PaneLineVm> below)
     {
         var rec = _stats.Lookup(entry.Name);
         if (rec is null)
@@ -646,14 +644,8 @@ public partial class CharacterSheetWindow : Window
         PaneGrid.Content = BuildStatGrid(rec, tier);
         PaneGrid.Visibility = Visibility.Visible;
 
-        var below = new List<PaneLineVm>();
         if (rec.Effects.Length > 0) below.Add(new PaneLineVm("EFFECTS", rec.Effects, GreenFg, Visibility.Visible));
         if (rec.Extras.Length > 0) below.Add(new PaneLineVm("MORE", rec.Extras, DimFg, Visibility.Visible));
-        if (below.Count > 0)
-        {
-            PaneLinesBelow.ItemsSource = below;
-            PaneLinesBelow.Visibility = Visibility.Visible;
-        }
 
         PaneHint.Text = tier > 0
             ? $"Gold = at +{tier} by the wiki's own item-level rules · (brackets) = wiki base. Merge exp banked inside a tier isn't in the dump, so live numbers can read a touch higher."
@@ -661,21 +653,27 @@ public partial class CharacterSheetWindow : Window
         PaneHint.Visibility = Visibility.Visible;
     }
 
-    /// <summary>One "Label:   value" grid row — the scaled value in gold with
-    /// the wiki base in dim brackets when the tier changes it.</summary>
-    private static UIElement StatRowEl(string label, string baseText, string scaledText,
+    /// <summary>One "Label: value" cell — the scaled value in gold with the
+    /// wiki base in dim brackets when the tier changes it.</summary>
+    private sealed record StatCell(TextBlock Label, TextBlock Value);
+
+    private static StatCell StatCellOf(string label, string baseText, string scaledText,
         string? tip = null, Brush? plainFg = null)
     {
-        var g = new Grid { Margin = new Thickness(0, 0, 0, 3), ToolTip = tip };
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        g.Children.Add(new TextBlock { Text = label + ":", Foreground = SlotFg, FontSize = 11.5 });
+        var lab = new TextBlock
+        {
+            Text = label + ":",
+            Foreground = SlotFg,
+            FontSize = 11.5,
+            ToolTip = tip,
+            Margin = new Thickness(0, 0, 0, 3),
+        };
         var val = new TextBlock
         {
             FontSize = 11.5,
             TextAlignment = TextAlignment.Right,
-            TextWrapping = TextWrapping.Wrap, // "+37% (+36%)" folds, never clips
-            Margin = new Thickness(8, 0, 0, 0),
+            ToolTip = tip,
+            Margin = new Thickness(8, 0, 0, 3),
         };
         if (scaledText != baseText)
         {
@@ -688,36 +686,51 @@ public partial class CharacterSheetWindow : Window
         {
             val.Inlines.Add(new System.Windows.Documents.Run(baseText) { Foreground = plainFg ?? TextFg });
         }
-        Grid.SetColumn(val, 1);
-        g.Children.Add(val);
-        return g;
+        return new StatCell(lab, val);
     }
 
-    /// <summary>Side-by-side equal-width columns, empty ones dropped.</summary>
-    private static FrameworkElement Columns(params List<UIElement>[] cols)
+    /// <summary>True tabular columns: every label column and every value
+    /// column auto-sizes to its widest member, so nothing ever wraps or
+    /// staggers — the item window's own alignment. Empty columns drop.</summary>
+    private static FrameworkElement Columns(params List<StatCell>[] cols)
     {
         var filled = cols.Where(c => c.Count > 0).ToList();
-        var grid = new UniformGrid { Rows = 1, Columns = filled.Count };
-        foreach (var col in filled)
+        var grid = new Grid();
+        int rows = filled.Max(c => c.Count);
+        for (int r = 0; r < rows; r++) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        for (int ci = 0; ci < filled.Count; ci++)
         {
-            var sp = new StackPanel { Margin = new Thickness(0, 0, 16, 0), VerticalAlignment = VerticalAlignment.Top };
-            foreach (var row in col) sp.Children.Add(row);
-            grid.Children.Add(sp);
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            // gutter between column pairs (none after the last)
+            grid.ColumnDefinitions.Add(new ColumnDefinition
+                { Width = new GridLength(ci < filled.Count - 1 ? 18 : 0) });
+            for (int ri = 0; ri < filled[ci].Count; ri++)
+            {
+                var cell = filled[ci][ri];
+                Grid.SetRow(cell.Label, ri);
+                Grid.SetColumn(cell.Label, ci * 3);
+                Grid.SetRow(cell.Value, ri);
+                Grid.SetColumn(cell.Value, ci * 3 + 1);
+                grid.Children.Add(cell.Label);
+                grid.Children.Add(cell.Value);
+            }
         }
+        grid.HorizontalAlignment = HorizontalAlignment.Left;
         return grid;
     }
 
     private static UIElement BuildStatGrid(ItemStats.Record rec, int tier)
     {
         var inv = System.Globalization.CultureInfo.InvariantCulture;
-        var topA = new List<UIElement>();
-        var topB = new List<UIElement>();
-        var attrs = new List<(int Order, UIElement El)>();
-        var saves = new List<UIElement>();
-        var other = new List<UIElement>();
+        var topA = new List<StatCell>();
+        var topB = new List<StatCell>();
+        var attrs = new List<(int Order, StatCell El)>();
+        var saves = new List<StatCell>();
+        var other = new List<StatCell>();
 
         // Top-left: size/weight/levels (+ weapon skill/delay), like the game.
-        if (rec.Size.Length > 0) topA.Add(StatRowEl("Size", rec.Size, rec.Size));
+        if (rec.Size.Length > 0) topA.Add(StatCellOf("Size", rec.Size, rec.Size));
         if (rec.Weight.Length > 0)
         {
             string scaledW = rec.Weight;
@@ -726,25 +739,25 @@ public partial class CharacterSheetWindow : Window
                 double sw = ItemUpgrade.ScaleWeight(w, tier);
                 if (sw != w) scaledW = sw.ToString("0.0", inv);
             }
-            topA.Add(StatRowEl("Weight", rec.Weight, scaledW));
+            topA.Add(StatCellOf("Weight", rec.Weight, scaledW));
         }
-        if (rec.Skill.Length > 0) topA.Add(StatRowEl("Skill", rec.Skill, rec.Skill));
+        if (rec.Skill.Length > 0) topA.Add(StatCellOf("Skill", rec.Skill, rec.Skill));
         if (rec.Delay is { } delay)
-            topA.Add(StatRowEl("Atk Delay", delay.ToString(), delay.ToString(),
+            topA.Add(StatCellOf("Atk Delay", delay.ToString(), delay.ToString(),
                 "Delay never scales with the tier — that's why the ratio improves"));
 
         // Top-right: AC, pools and the weapon numbers.
         if (rec.Ac is { } ac)
-            topB.Add(StatRowEl("AC", ac.ToString(), ItemUpgrade.ScalePrimary(ac, tier).ToString()));
+            topB.Add(StatCellOf("AC", ac.ToString(), ItemUpgrade.ScalePrimary(ac, tier).ToString()));
         if (rec.Dmg is { } dmg)
         {
             int sd = ItemUpgrade.ScaleDamage(dmg, tier);
-            topB.Add(StatRowEl("DMG", dmg.ToString(), sd.ToString()));
+            topB.Add(StatCellOf("DMG", dmg.ToString(), sd.ToString()));
             if (rec.Delay is { } d2)
-                topB.Add(StatRowEl("Ratio", ((double)dmg / d2).ToString("0.00", inv),
+                topB.Add(StatCellOf("Ratio", ((double)dmg / d2).ToString("0.00", inv),
                     ((double)sd / d2).ToString("0.00", inv)));
-            if (rec.DmgBonus is { } bon) topB.Add(StatRowEl("Dmg Bon", bon.ToString(), bon.ToString()));
-            if (rec.Backstab is { } bs) topB.Add(StatRowEl("Backstab", bs.ToString(), bs.ToString()));
+            if (rec.DmgBonus is { } bon) topB.Add(StatCellOf("Dmg Bon", bon.ToString(), bon.ToString()));
+            if (rec.Backstab is { } bs) topB.Add(StatCellOf("Backstab", bs.ToString(), bs.ToString()));
         }
 
         string[] attrOrder = { "STR", "STA", "INT", "WIS", "AGI", "DEX", "CHA" };
@@ -753,11 +766,11 @@ public partial class CharacterSheetWindow : Window
             string key = ItemUpgrade.NormalizeKey(p[0]);
             string scaled = ItemUpgrade.ScaleValueText(p[0], p[1], tier);
             int ai = Array.IndexOf(attrOrder, key);
-            if (ai >= 0) attrs.Add((ai, StatRowEl(ItemStats.StatLabel(p[0]), p[1], scaled)));
-            else if (PoolKeys.Contains(key)) topB.Add(StatRowEl(ItemStats.StatLabel(p[0]), p[1], scaled));
-            else if (key is "REC_LEVEL" or "RECOMMENDED_LEVEL") topA.Add(StatRowEl("Rec Level", p[1], p[1]));
-            else if (key is "REQ_LEVEL" or "REQUIRED_LEVEL") topA.Add(StatRowEl("Req Level", p[1], p[1]));
-            else other.Add(StatRowEl(ItemStats.StatLabel(p[0]), p[1], scaled));
+            if (ai >= 0) attrs.Add((ai, StatCellOf(ItemStats.StatLabel(p[0]), p[1], scaled)));
+            else if (PoolKeys.Contains(key)) topB.Add(StatCellOf(ItemStats.StatLabel(p[0]), p[1], scaled));
+            else if (key is "REC_LEVEL" or "RECOMMENDED_LEVEL") topA.Add(StatCellOf("Rec Level", p[1], p[1]));
+            else if (key is "REQ_LEVEL" or "REQUIRED_LEVEL") topA.Add(StatCellOf("Req Level", p[1], p[1]));
+            else other.Add(StatCellOf(ItemStats.StatLabel(p[0]), p[1], scaled));
         }
 
         string[] saveOrder = { "SV_MAGIC", "SV_FIRE", "SV_COLD", "SV_DISEASE", "SV_POISON" };
@@ -769,10 +782,10 @@ public partial class CharacterSheetWindow : Window
         {
             string label = ItemStats.StatLabel(p[0]);
             if (label.StartsWith("SV ", StringComparison.Ordinal)) label = label[3..];
-            saves.Add(StatRowEl(label, p[1], ItemUpgrade.ScaleValueText(p[0], p[1], tier)));
+            saves.Add(StatCellOf(label, p[1], ItemUpgrade.ScaleValueText(p[0], p[1], tier)));
         }
         if (SynthVoid(rec, tier))
-            saves.Add(StatRowEl("Void", "", "+" + tier,
+            saves.Add(StatCellOf("Void", "", "+" + tier,
                 "granted by the upgrade itself — any upgraded item with two attributes gains SV Void"));
 
         var root = new StackPanel();
@@ -857,7 +870,7 @@ public partial class CharacterSheetWindow : Window
         }
 
         static string Fmt(int n) => n > 0 ? "+" + n : n.ToString();
-        List<UIElement> Rows(string[] orderKeys, bool stripSv = false)
+        List<StatCell> Rows(string[] orderKeys, bool stripSv = false)
         {
             var ordered = order.Where(orderKeys.Contains)
                 .OrderBy(k => Array.IndexOf(orderKeys, k)).ToList();
@@ -865,16 +878,16 @@ public partial class CharacterSheetWindow : Window
             {
                 string label = sums[k].Label;
                 if (stripSv && label.StartsWith("SV ", StringComparison.Ordinal)) label = label[3..];
-                return StatRowEl(label, Fmt(sums[k].Tier), Fmt(sums[k].Tier));
+                return StatCellOf(label, Fmt(sums[k].Tier), Fmt(sums[k].Tier));
             }).ToList();
         }
 
         // Top: AC + the unsummed percents left, pools right — then the same
         // attribute / save / other columns as an item.
-        var topA = new List<UIElement>();
-        if (acTier > 0) topA.Add(StatRowEl("AC", acTier.ToString(), acTier.ToString()));
+        var topA = new List<StatCell>();
+        if (acTier > 0) topA.Add(StatCellOf("AC", acTier.ToString(), acTier.ToString()));
         foreach (var (label, value) in percents)
-            topA.Add(StatRowEl(label, value, value,
+            topA.Add(StatCellOf(label, value, value,
                 "listed, never summed — whether worn percents stack is stated nowhere", AmberFg));
         var topB = Rows(PoolKeys);
 
@@ -885,7 +898,7 @@ public partial class CharacterSheetWindow : Window
             k.StartsWith("SV_", StringComparison.Ordinal) && !saveOrder.Contains(k))).ToArray();
         var saveCol = Rows(saveKeys, stripSv: true);
         if (voidGrant > 0)
-            saveCol.Add(StatRowEl("Void", "", "+" + voidGrant,
+            saveCol.Add(StatCellOf("Void", "", "+" + voidGrant,
                 "granted by the upgrades themselves — every upgraded item with two attributes gains SV Void"));
         var otherKeys = order.Where(k => !attrOrder.Contains(k) && !PoolKeys.Contains(k)
             && !k.StartsWith("SV_", StringComparison.Ordinal)).ToArray();
