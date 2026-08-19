@@ -182,7 +182,7 @@ public partial class CharacterSheetWindow : Window
             BorderBrush = CellBorder,
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(7),
-            MinHeight = 54,
+            Height = 66, // static: every cell identical, filled or empty
             Cursor = Cursors.Hand,
             Child = inner,
             Tag = slot,
@@ -190,7 +190,7 @@ public partial class CharacterSheetWindow : Window
         cell.MouseLeftButtonUp += (_, _) => { _selected = slot; RefreshPane(); };
         _cells.Add(cell);
 
-        var body = new StackPanel { Margin = new Thickness(8, 6, 8, 6) };
+        var body = new DockPanel { Margin = new Thickness(8, 6, 8, 6) };
         if (entry is null || entry.Empty)
         {
             body.Children.Add(new TextBlock
@@ -204,6 +204,11 @@ public partial class CharacterSheetWindow : Window
         else
         {
             var (baseName, tier) = SplitTier(entry.Name);
+            // Pills anchor to the cell floor in a STATIC five-position track
+            // (O F C W P) so the same socket type aligns across every cell;
+            // a position the item does not have ghosts out.
+            body.Children.Add(BuildPillTrack(entry));
+            DockPanel.SetDock(body.Children[0] as UIElement, Dock.Bottom);
             body.Children.Add(new TextBlock
             {
                 Text = baseName,
@@ -212,35 +217,9 @@ public partial class CharacterSheetWindow : Window
                 FontSize = 11.5,
                 TextWrapping = TextWrapping.Wrap,
                 MaxHeight = 30,
+                VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, 0, tier.Length > 0 ? 26 : 0, 0),
             });
-            if (entry.Children.Count > 0)
-            {
-                var pills = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
-                foreach (var child in entry.Children)
-                {
-                    var (label, slotName) = SlotTypeOf(child.Location);
-                    bool on = !child.Empty;
-                    pills.Children.Add(new Border
-                    {
-                        CornerRadius = new CornerRadius(6),
-                        Padding = new Thickness(3, 0, 3, 1),
-                        Margin = new Thickness(0, 0, 2, 0),
-                        Background = on ? GreenFg : Brushes.Transparent,
-                        BorderBrush = on ? GreenFg : PillOffBorder,
-                        BorderThickness = new Thickness(1),
-                        ToolTip = on ? $"{slotName} — {child.Name}" : $"{slotName} — empty",
-                        Child = new TextBlock
-                        {
-                            Text = label,
-                            FontSize = 8.5,
-                            FontWeight = FontWeights.Bold,
-                            Foreground = on ? WornPillFg : DimFg,
-                        },
-                    });
-                }
-                body.Children.Add(pills);
-            }
         }
         inner.Children.Add(body);
 
@@ -270,6 +249,57 @@ public partial class CharacterSheetWindow : Window
 
         wrap.Children.Add(cell);
         return wrap;
+    }
+
+    // Canonical socket order — the same position means the same type on
+    // every cell. Ghosted borders/text for a socket the item doesn't have
+    // (the dump enumerates each item's sockets: armor carries Ornamentation,
+    // weapons carry Proc, everything carries Focus/Click/Worn).
+    private static readonly (string Label, string Name)[] PillTrack =
+    {
+        ("O", "Ornamentation"),
+        ("F", "Focus Exaltation"),
+        ("C", "Click Exaltation"),
+        ("W", "Worn Exaltation"),
+        ("P", "Proc Exaltation"),
+    };
+    private static readonly Brush PillGhostBorder = Freeze("#1D2534");
+    private static readonly Brush PillGhostFg = Freeze("#38455C");
+
+    private UIElement BuildPillTrack(InventoryStore.Entry entry)
+    {
+        // label -> the item's socket child of that type, if the dump lists one
+        var byType = new Dictionary<string, InventoryStore.Entry>(StringComparer.Ordinal);
+        foreach (var child in entry.Children)
+            byType.TryAdd(SlotTypeOf(child.Location).Label, child);
+
+        var pills = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
+        foreach (var (label, name) in PillTrack)
+        {
+            byType.TryGetValue(label, out var child);
+            bool has = child is not null;
+            bool on = has && !child!.Empty;
+            pills.Children.Add(new Border
+            {
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(3, 0, 3, 1),
+                Margin = new Thickness(0, 0, 2, 0),
+                Background = on ? GreenFg : Brushes.Transparent,
+                BorderBrush = on ? GreenFg : has ? PillOffBorder : PillGhostBorder,
+                BorderThickness = new Thickness(1),
+                ToolTip = on ? $"{name} — {child!.Name}"
+                    : has ? $"{name} — empty"
+                    : $"{name} — this item has no such slot",
+                Child = new TextBlock
+                {
+                    Text = label,
+                    FontSize = 8.5,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = on ? WornPillFg : has ? DimFg : PillGhostFg,
+                },
+            });
+        }
+        return pills;
     }
 
     /// <summary>"Wicked Sallet +5" → ("Wicked Sallet", "+5").</summary>
