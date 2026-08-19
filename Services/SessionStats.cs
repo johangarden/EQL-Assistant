@@ -78,8 +78,12 @@ public sealed class SessionStats
     // — the only level statement between rare dings. Only numeric-level rows
     // parse; the name must be the followed character's.
     private static readonly Regex WhoRx = new(
-        @"^\[(?<lvl>\d+) [A-Z]{3}(?:/[A-Z]{3}){0,2}\] (?<name>\S+) \(",
+        @"^\[(?<lvl>\d+) (?<cls>[A-Z]{3}(?:/[A-Z]{3}){0,2})\] (?<name>\S+) \(",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>Class combo from your own /who row ("SHM/SHD/ROG"), "" until
+    /// one has been seen. The character sheet's footer wears it.</summary>
+    public string WhoClasses { get; private set; } = "";
 
     private const string ZonePrefix = "You have entered ";
     private const string WelcomeLine = "Welcome to EverQuest Legends!";
@@ -211,6 +215,7 @@ public sealed class SessionStats
         if (m.Success && SelfName.Length > 0
             && m.Groups["name"].Value.Equals(SelfName, StringComparison.OrdinalIgnoreCase))
         {
+            WhoClasses = m.Groups["cls"].Value;
             StateLevel(ts, int.Parse(m.Groups["lvl"].Value, CultureInfo.InvariantCulture), fromWho: true);
             NoteInWorld(ts);
         }
@@ -436,6 +441,10 @@ public sealed class SessionStats
                 : "");
         return new StatRow(label, value, "", "", tip);
     }
+
+    /// <summary>The level line for other windows (the character sheet's
+    /// footer): same ding//who machinery as the panel header.</summary>
+    public (string Text, string Tip) LevelInfo(DateTime now) => LevelHeader(now);
 
     private (string Text, string Tip) LevelHeader(DateTime t1)
     {

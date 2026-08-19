@@ -194,6 +194,23 @@ public partial class App : Application
             invWin.Show();
             invWin.ShowFocusTabForTest(); // instantiate the audit-board template
             invWin.Close();
+
+            // Character sheet renders the doll + all three pane tabs from a
+            // real-format dump (worn item with a socket), and the empty state.
+            File.WriteAllText(Path.Combine(invDir, "Sheetchar_paineel-Inventory.txt"),
+                "Location\tName\tID\tCount\tSlots\r\n"
+                + "Head\tWicked Sallet +5\t4301\t1\t10\r\n"
+                + "Head-Slot7\tWicked Sallet (Exaltation)\t4301\t1\t10\r\n"
+                + "Primary\tThe Baron's Blade +5\t5407\t1\t10\r\n"
+                + "Ear\tEmpty\t0\t0\t0\r\n");
+            var sheetWin = new Views.CharacterSheetWindow(invDir, "Sheetchar", "paineel",
+                new FocusEffects(), new ItemStats(), null);
+            sheetWin.Show();
+            sheetWin.Close();
+            var sheetEmpty = new Views.CharacterSheetWindow(
+                Path.Combine(invDir, "no_such_dir"), "X", "y", new FocusEffects(), new ItemStats(), null);
+            sheetEmpty.Show();
+            sheetEmpty.Close();
             var invEmpty = new Views.InventoryWindow(Path.Combine(invDir, "no_such_dir"), "X", "y");
             invEmpty.Show();
             invEmpty.Close();
@@ -1432,6 +1449,15 @@ public partial class App : Application
                     focus.EffectsOf("Wicked Sallet +5").Any(e => e.Tier.Effect == "Mana Preservation I")
                     && focus.EffectsOf("Wicked Sallet (Exaltation)").Any(e => e.Tier.Effect == "Mana Preservation I")
                     && focus.EffectsOf("A Perfectly Ordinary Rock").Count == 0);
+                // ---- item stats (the character sheet's wiki table) ----------
+                var istats = new ItemStats();
+                Check("item stats: ~11k wiki items load from the embedded table",
+                    istats.Count > 11000
+                    && istats.Lookup("Wicked Sallet +5") is { Ac: 10, Classes: "SHD" } ws
+                    && ws.Stats.Contains("STR +3")
+                    && istats.Lookup("Djarn's Amethyst Ring +2") is { Name: "Djarns Amethyst Ring" }
+                    && istats.Lookup("A Perfectly Ordinary Rock") is null);
+
                 var djarns = focus.Audit(new[]
                 {
                     new InventoryStore.CarryRow("Djarn's Amethyst Ring +2", "djarn's amethyst ring +2", "Fingers", 1, "worn", 1),

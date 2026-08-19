@@ -109,10 +109,14 @@
                           Data="M5.5 4 L18.5 4 C20 4 21 5 21 6.5 L21 10 L3 10 L3 6.5 C3 5 4 4 5.5 4 Z M3 11.2 L10.2 11.2 L10.2 13 C10.2 13.8 10.9 14.5 11.7 14.5 L12.3 14.5 C13.1 14.5 13.8 13.8 13.8 13 L13.8 11.2 L21 11.2 L21 18 C21 19.5 20 20.5 18.5 20.5 L5.5 20.5 C4 20.5 3 19.5 3 18 Z"/>
                 </Button>
 
-                <!-- room for the NEXT feature: placeholder slot -->
-                <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Margin="6,0,0,0"
-                        IsEnabled="False" Opacity="0.35" Content="?" FontSize="11"
-                        ToolTip="Reserved for the next feature"/>
+                <!-- character sheet: the paper-doll over the dump -->
+                <Button DockPanel.Dock="Right" Click="OnSheet" Style="{StaticResource IconBtn}"
+                        Margin="6,0,0,0" AutomationProperties.AutomationId="SheetBtn"
+                        ToolTip="Character sheet — worn gear, sockets, focus and stats">
+                    <!-- a helm: dome + face opening (EvenOdd) + crest -->
+                    <Path Fill="#B39DDB" Width="14" Height="14" Stretch="Uniform"
+                          Data="M12 3 C6.5 3 4 7.5 4 12 L4 19 C4 20.1 4.9 21 6 21 L9 21 L9 14 C9 12.3 10.3 11 12 11 C13.7 11 15 12.3 15 14 L15 21 L18 21 C19.1 21 20 20.1 20 19 L20 12 C20 7.5 17.5 3 12 3 Z M11.2 4.4 L12.8 4.4 L12.8 9.5 L11.2 9.5 Z"/>
+                </Button>
 
                 <!-- fill: the active loadout's NAME only, kept short — switching
                      lives in the ☰ menu's Loadout submenu (one picker is enough). -->

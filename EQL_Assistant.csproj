@@ -59,6 +59,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="data\focus-effects.json" />
+    <!-- Item stats for the character sheet (same source/license). -->
+    <None Update="data\item-stats.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <EmbeddedResource Include="data\item-stats.json" />
   </ItemGroup>
 
 </Project>

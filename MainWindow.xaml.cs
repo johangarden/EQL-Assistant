@@ -1319,6 +1319,7 @@ public partial class MainWindow : Window
             QuestsRequested = OpenSkyQuests,
             LootRequested = OpenLootHistory,
             InventoryRequested = OpenInventory,
+            SheetRequested = OpenCharacterSheet,
         };
         _toolbarWin.Show();
         UpdateToolbarVisibility();
@@ -1577,6 +1578,28 @@ public partial class MainWindow : Window
             _inventoryWindow.Show();
         }
         BringToFront(_inventoryWindow);
+    }
+
+    private Views.CharacterSheetWindow? _sheetWindow;
+    private FocusEffects? _focusFx;
+    private ItemStats? _itemStats;
+
+    /// <summary>The paper-doll: worn gear in anatomical rows with a tabbed
+    /// detail pane (Sockets / Focus / Stats).</summary>
+    private void OpenCharacterSheet()
+    {
+        if (_sheetWindow is null)
+        {
+            string logPath = _watcher?.CurrentPath ?? "";
+            var (name, server) = InventoryStore.ParseLogName(logPath);
+            _focusFx ??= new FocusEffects();
+            _itemStats ??= new ItemStats();
+            _sheetWindow = new Views.CharacterSheetWindow(
+                InventoryStore.EqRootOf(logPath), name, server, _focusFx, _itemStats, _session);
+            _sheetWindow.Closed += (_, _) => _sheetWindow = null;
+            _sheetWindow.Show();
+        }
+        BringToFront(_sheetWindow);
     }
 
     private Views.DeathRecapWindow? _recapWindow;
