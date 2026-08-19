@@ -1807,14 +1807,15 @@ public partial class App : Application
                 && gd.Events.Any(e => e.Ability == "Searing Arrow" && (int)e.Amount == 29));
 
             // Rank pooling: the DD line says "by Envenomed Bolt VI", the tick
-            // says "from Envenomed Bolt" — one spell, one lane.
+            // says "from Envenomed Bolt" — one lane, pooled math, labeled
+            // with the highest rank observed.
             var pr = new CombatParser();
             pr.ProcessLine("[Sun Aug 16 23:11:00 2026] Johan hit a shiverback grizzly for 100 points of poison damage by Envenomed Bolt VI.");
             pr.ProcessLine("[Sun Aug 16 23:11:06 2026] A shiverback grizzly has taken 40 damage from Envenomed Bolt by Johan.");
             var ranked = pr.GetAbilityRows("Johan");
-            Check("spell lanes pool ranks (Envenomed Bolt VI + tick = one lane)",
-                ranked.First(r => r.Name == "Envenomed Bolt") is { Total: 140 }
-                && ranked.All(r => r.Name != "Envenomed Bolt VI"));
+            Check("spell lanes pool ranks and wear the highest rank as the label",
+                ranked.Count(r => r.Name.StartsWith("Envenomed Bolt", StringComparison.Ordinal)) == 1
+                && ranked.First(r => r.Name == "Envenomed Bolt VI") is { Total: 140 });
 
             // Plane of Sky quest tracker: data loads, completion watcher works
             // (temp progress path so tests never touch real progress).

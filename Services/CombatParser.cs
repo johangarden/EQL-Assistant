@@ -894,15 +894,17 @@ public sealed class CombatParser
         // Spell lanes pool on the rank-stripped base name: the game prints
         // "by Envenomed Bolt VI" on the DD line but "from your Envenomed
         // Bolt." on the ticks — one spell must not split into two lanes.
+        // PoolSpell also remembers the highest rank seen, which becomes the
+        // lane's display label.
         Match m = NonMeleeRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, SpellDurations.BaseName(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true); return; }
+        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true); return; }
 
         m = DotRx.Match(body);
         if (m.Success)
         {
             if (IsSelf(Normalize(m.Groups["att"].Value)))
                 NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
-            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, SpellDurations.BaseName(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
             return;
         }
 
@@ -910,21 +912,21 @@ public sealed class CombatParser
         if (m.Success)
         {
             NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
-            AddDamage(Self(), m.Groups["tgt"].Value, SpellDurations.BaseName(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            AddDamage(Self(), m.Groups["tgt"].Value, PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
             return;
         }
 
         m = DotYouRx.Match(body);
         if (m.Success)
         {
-            AddDamage(m.Groups["att"].Value, Self(), SpellDurations.BaseName(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            AddDamage(m.Groups["att"].Value, Self(), PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
             return;
         }
 
         m = HealRx.Match(body);
         if (m.Success)
         {
-            string spell = m.Groups["spell"].Success ? SpellDurations.BaseName(m.Groups["spell"].Value) : "heal";
+            string spell = m.Groups["spell"].Success ? PoolSpell(m.Groups["spell"].Value) : "heal";
             // Named heals only — a bare "You healed X" line can't identify a proc.
             AddHealing(m.Groups["att"].Value, m.Groups["tgt"].Value, spell, Amount(m, "amt"), time, crit,
                 procCandidate: m.Groups["spell"].Success);
@@ -1153,7 +1155,7 @@ public sealed class CombatParser
         double grand = byAbility.Values.Sum(s => s.Total);
         var rows = new List<Row>(byAbility.Count);
         foreach (var (ability, s) in byAbility)
-            rows.Add(new Row(ability, s.Total,
+            rows.Add(new Row(DisplayAbility(ability), s.Total,
                 duration > 0 ? s.Total / duration : 0,
                 grand > 0 ? s.Total / grand * 100 : 0,
                 false,
@@ -1261,7 +1263,7 @@ public sealed class CombatParser
     private void AddOutgoingResist(string spell, DateTime time)
     {
         Touch(time);
-        Stat(Self(), SpellDurations.BaseName(spell)).Resists++;
+        Stat(Self(), PoolSpell(spell)).Resists++;
         SessionSkill(spell.Trim()).Resists++;
         Note(time, spell.Trim(), 0, FightStream.SelfOut, resist: true);
     }
@@ -1270,7 +1272,7 @@ public sealed class CombatParser
     private void AddIncomingResist(string spell, DateTime time)
     {
         Touch(time);
-        StatIn(_incomingSelfAbility, SpellDurations.BaseName(spell)).Resists++;
+        StatIn(_incomingSelfAbility, PoolSpell(spell)).Resists++;
         Note(time, spell.Trim(), 0, FightStream.SelfIn, resist: true);
     }
 
@@ -1335,6 +1337,48 @@ public sealed class CombatParser
         dict[key] = dict.GetValueOrDefault(key) + amount;
 
     // ---- name handling --------------------------------------------------------
+
+    // ---- spell rank pooling ---------------------------------------------------
+    // Lanes pool on the rank-stripped base name (the log is inconsistent:
+    // "by Envenomed Bolt VI" on the DD line, "from your Envenomed Bolt." on
+    // ticks) — but the LABEL shows the highest rank ever observed, so the
+    // meter still says which rank you cast.
+
+    private readonly Dictionary<string, string> _bestRankName = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Fold a spell name to its pooled lane key, remembering the
+    /// highest-ranked spelling seen for display.</summary>
+    private string PoolSpell(string raw)
+    {
+        string trimmed = raw.Trim();
+        string baseName = SpellDurations.BaseName(trimmed);
+        if (!_bestRankName.TryGetValue(baseName, out string? cur) || RankValue(trimmed) > RankValue(cur))
+            _bestRankName[baseName] = trimmed;
+        return baseName;
+    }
+
+    /// <summary>The display name for a pooled lane: the highest-ranked
+    /// spelling observed, or the key itself.</summary>
+    public string DisplayAbility(string ability) =>
+        _bestRankName.TryGetValue(ability, out string? best) ? best : ability;
+
+    /// <summary>Trailing roman rank as a number ("Envenomed Bolt VI" → 6),
+    /// 0 for a bare name.</summary>
+    private static int RankValue(string name)
+    {
+        int space = name.LastIndexOf(' ');
+        if (space < 0) return 0;
+        string tail = name[(space + 1)..];
+        if (tail.Length is 0 or > 7 || tail.Any(c => c is not ('I' or 'V' or 'X'))) return 0;
+        int value = 0, prev = 0;
+        for (int i = tail.Length - 1; i >= 0; i--)
+        {
+            int v = tail[i] switch { 'I' => 1, 'V' => 5, _ => 10 };
+            value += v < prev ? -v : v;
+            prev = v;
+        }
+        return value;
+    }
 
     private string Normalize(string name)
     {
