@@ -101,7 +101,7 @@
                     <ContentControl x:Name="PetHeaderBar" ContentTemplate="{StaticResource BarRow}"/>
                 </DockPanel>
                 <ItemsControl x:Name="PetRowsControl" ItemTemplate="{StaticResource BarRow}"
-                              Margin="12,3,0,0" Visibility="Collapsed"/>
+                              Margin="24,3,0,0" Visibility="Collapsed"/>
             </StackPanel>
 
             <!-- All enemy-shaped sources combined (same-named mobs can't be told

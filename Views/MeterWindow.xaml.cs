@@ -41,6 +41,11 @@ public partial class MeterWindow : Window
     private bool _selfExpanded = true; // your split starts open; the pet's starts folded
     private readonly MeterRowViewModel _selfHeaderVm = new();
     private readonly MeterRowViewModel _petHeaderVm = new();
+
+    // The two total bars wear FIXED, distinct colors — the name-hash palette
+    // once dressed player and pet in near-twin golds.
+    private static readonly Brush SelfBarFill = Freeze(Color.FromRgb(0x4F, 0xC3, 0xF7));
+    private static readonly Brush PetBarFill = Freeze(Color.FromRgb(0x9C, 0xCC, 0x65));
     private int _nextColor;
 
     private const int MaxSoloRows = 10; // a dot build runs more lanes than a group does players
@@ -340,11 +345,11 @@ public partial class MeterWindow : Window
         double denom = Math.Max(Math.Max(selfTotal, petTotal), 1);
 
         SelfHeaderRow.Visibility = Visibility.Visible;
-        RowsControl.Margin = new Thickness(12, 3, 0, 0);
+        RowsControl.Margin = new Thickness(24, 3, 0, 0);
         _selfHeaderVm.Name = _parser.SelfName.Trim();
         _selfHeaderVm.Fraction = selfTotal / denom;
         _selfHeaderVm.ValueText = $"{FormatDps(dur > 0 ? selfTotal / dur : 0)}  ({FormatNum(selfTotal)})";
-        _selfHeaderVm.Fill = FillFor(_parser.SelfName);
+        _selfHeaderVm.Fill = SelfBarFill;
         SelfHeaderChevron.Text = _selfExpanded ? "▼" : "▶";
         FillAbilityRows(_rows, _selfExpanded ? mine : new List<CombatParser.Row>(), MaxSoloRows);
 
@@ -354,7 +359,7 @@ public partial class MeterWindow : Window
             _petHeaderVm.Name = $"{_parser.PetName.Trim()} (pet)";
             _petHeaderVm.Fraction = petTotal / denom;
             _petHeaderVm.ValueText = $"{FormatDps(dur > 0 ? petTotal / dur : 0)}  ({FormatNum(petTotal)})";
-            _petHeaderVm.Fill = FillFor(_parser.PetName);
+            _petHeaderVm.Fill = PetBarFill;
             FillAbilityRows(_petRows, _petExpanded ? pet : new List<CombatParser.Row>(), MaxSoloRows);
         }
         else
