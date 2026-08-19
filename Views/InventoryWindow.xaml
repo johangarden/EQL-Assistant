@@ -100,6 +100,11 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <!-- the wiki's own item art, when the table has it -->
+                                <Image DockPanel.Dock="Left" Source="{Binding Icon}"
+                                       Visibility="{Binding IconVis}" Width="18" Height="18"
+                                       Margin="0,0,6,0" VerticalAlignment="Center"
+                                       RenderOptions.BitmapScalingMode="Fant"/>
                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                             </DockPanel>

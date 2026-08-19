@@ -23,7 +23,8 @@ public partial class InventoryWindow : Window
     private sealed record RowVm(string Name, string Location, string? LocationTip, string CountText,
         List<PillVm>? Pills = null, string Chevron = "", List<DetailVm>? Details = null,
         Visibility DetailsVis = Visibility.Collapsed, string RowKey = "",
-        Visibility RuleVis = Visibility.Collapsed);
+        Visibility RuleVis = Visibility.Collapsed,
+        ImageSource? Icon = null, Visibility IconVis = Visibility.Collapsed);
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
     private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight, Thickness Margin = default);
 
@@ -89,6 +90,7 @@ public partial class InventoryWindow : Window
     private readonly DispatcherTimer _freshnessTick;
 
     private readonly FocusEffects _focus = new();
+    private readonly ItemStats _itemStats = new(); // wiki icons + stat table
     private List<InventoryStore.CarryRow> _rows = new();
     private List<FocusEffects.AuditRow> _audit = new();
     private InventoryStore.Dump? _dump;
@@ -680,8 +682,11 @@ public partial class InventoryWindow : Window
     private RowVm MakeRowVm(InventoryStore.CarryRow r)
     {
         string count = r.Count > 1 ? $"{r.Count}×" : "";
+        var icon = ItemIcons.Get(_itemStats.Lookup(r.Name)?.Icon);
+        var iconVis = icon is null ? Visibility.Collapsed : Visibility.Visible;
         if (_tab == "exalt" && r.Host.Length > 0)
-            return new RowVm(r.Name, "in " + r.Host, r.Location, count);
+            return new RowVm(r.Name, "in " + r.Host, r.Location, count,
+                Icon: icon, IconVis: iconVis);
 
         List<PillVm>? pills = null;
         var ownEffects = _focus.EffectsOf(r.Name);
@@ -710,7 +715,8 @@ public partial class InventoryWindow : Window
             Chevron: foldable ? (open ? "▾" : "▸") : "",
             Details: open ? MakeItemDetails(r, entry, ownEffects) : null,
             DetailsVis: open ? Visibility.Visible : Visibility.Collapsed,
-            RowKey: r.Location);
+            RowKey: r.Location,
+            Icon: icon, IconVis: iconVis);
     }
 
     /// <summary>The item fold-out: what the item itself grants, then each
