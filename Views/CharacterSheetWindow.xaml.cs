@@ -44,7 +44,6 @@ public partial class CharacterSheetWindow : Window
     private static readonly Brush DimFg = Freeze("#5C6B82");
     private static readonly Brush TextFg = Freeze("#C9D4E3");
     private static readonly Brush GoldFg = Freeze("#E8C15A");
-    private static readonly Brush CardBg = Freeze("#141A24");
     private static readonly Brush GreenFg = Freeze("#66BB6A");
     private static readonly Brush AmberFg = Freeze("#FFB74D");
     private static readonly Brush PillOffBorder = Freeze("#232C3E");
@@ -124,8 +123,9 @@ public partial class CharacterSheetWindow : Window
         }
 
         BuildDoll();
-        if (_selected is null || !_worn.ContainsKey(_selected.Value))
-            _selected = DollLayout.SelectMany(r => r).FirstOrDefault(s => _worn.ContainsKey(s));
+        // Nothing preselected: the pane opens on the whole character (Totals)
+        // and a highlighted cell would claim otherwise.
+        if (_selected is { } sel && !_worn.ContainsKey(sel)) _selected = null;
         RefreshPane();
         RefreshFooter();
     }
@@ -167,16 +167,28 @@ public partial class CharacterSheetWindow : Window
     private UIElement BuildCellWrap((string Token, int Nth) slot)
     {
         var wrap = new StackPanel { Margin = new Thickness(3, 0, 4, 0) };
-        wrap.Children.Add(new TextBlock
+        _worn.TryGetValue(slot, out var entry);
+
+        // Slot title line, with the item's +N riding it in gold — outside the
+        // cell, where it can't crowd the name.
+        var title = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 0, 0, 2) };
+        title.Children.Add(new TextBlock
         {
             Text = slot.Token.ToUpperInvariant(),
             Foreground = SlotFg,
             FontSize = 9,
             FontWeight = FontWeights.Bold,
-            Margin = new Thickness(4, 0, 0, 2),
         });
-
-        _worn.TryGetValue(slot, out var entry);
+        if (entry is not null && !entry.Empty && SplitTier(entry.Name).Tier is { Length: > 0 } tierText)
+            title.Children.Add(new TextBlock
+            {
+                Text = tierText,
+                Foreground = GoldFg,
+                FontSize = 9,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(5, 0, 0, 0),
+            });
+        wrap.Children.Add(title);
         var inner = new Grid();
         var cell = new Border
         {
@@ -191,10 +203,20 @@ public partial class CharacterSheetWindow : Window
         };
         cell.MouseLeftButtonUp += (_, _) =>
         {
-            _selected = slot;
-            // Clicking an item means "show me THIS" — leave the character-wide
-            // Totals tab for the item's own sockets.
-            if (_paneTab == "totals") _paneTab = "sockets";
+            if (_selected == slot)
+            {
+                // Clicking the selected slot again deselects — back to the
+                // whole character.
+                _selected = null;
+                _paneTab = "totals";
+            }
+            else
+            {
+                _selected = slot;
+                // Clicking an item means "show me THIS" — leave the
+                // character-wide Totals tab for the item's own sockets.
+                if (_paneTab == "totals") _paneTab = "sockets";
+            }
             RefreshPane();
         };
         _cells.Add(cell);
@@ -212,7 +234,7 @@ public partial class CharacterSheetWindow : Window
         }
         else
         {
-            var (baseName, tier) = SplitTier(entry.Name);
+            var (baseName, _) = SplitTier(entry.Name);
             // Pills anchor to the cell floor in a STATIC five-position track
             // (O F C W P) so the same socket type aligns across every cell;
             // a position the item does not have ghosts out.
@@ -243,34 +265,9 @@ public partial class CharacterSheetWindow : Window
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxHeight = 28,
                 VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 0, tier.Length > 0 ? 16 : 0, 0),
             });
         }
         inner.Children.Add(body);
-
-        if (entry is not null && !entry.Empty)
-        {
-            var (_, tier) = SplitTier(entry.Name);
-            if (tier.Length > 0)
-                inner.Children.Add(new Border
-                {
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Margin = new Thickness(0, 4, 4, 0),
-                    Background = CardBg,
-                    BorderBrush = GoldFg,
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(8),
-                    Padding = new Thickness(5, 0, 5, 1),
-                    Child = new TextBlock
-                    {
-                        Text = tier,
-                        Foreground = GoldFg,
-                        FontSize = 9,
-                        FontWeight = FontWeights.Bold,
-                    },
-                });
-        }
 
         wrap.Children.Add(cell);
         return wrap;
@@ -398,7 +395,14 @@ public partial class CharacterSheetWindow : Window
             tab.Background = on ? TabOnBg : Brushes.Transparent;
             text.Foreground = on ? TabOnFg : SlotFg;
             string captured = id;
-            tab.MouseLeftButtonUp += (_, _) => { _paneTab = captured; RefreshPane(); };
+            tab.MouseLeftButtonUp += (_, _) =>
+            {
+                _paneTab = captured;
+                // Totals is the whole character — drop the cell highlight so
+                // the doll agrees with the pane.
+                if (captured == "totals") _selected = null;
+                RefreshPane();
+            };
             PaneTabs.Children.Add(tab);
         }
 
@@ -417,7 +421,7 @@ public partial class CharacterSheetWindow : Window
         if (_selected is not { } sel2 || !_worn.TryGetValue(sel2, out var entry) || entry.Empty)
         {
             PaneTitle.Text = _selected is { } s2 ? s2.Token : "";
-            PaneSub.Text = "empty slot";
+            PaneSub.Text = _selected is null ? "click a slot on the doll" : "empty slot";
             PaneLines.ItemsSource = lines;
             return;
         }
@@ -569,12 +573,17 @@ public partial class CharacterSheetWindow : Window
     private static readonly string[] AttrKeys = { "STR", "STA", "AGI", "DEX", "WIS", "INT", "CHA" };
     private static readonly string[] PoolKeys = { "HP", "MP", "END" };
 
+    // Requirements and metadata a sum would only lie about — never totalled.
+    private static readonly string[] NoSumKeys =
+        { "REQ_LEVEL", "REC_LEVEL", "REQUIRED_LEVEL", "RECOMMENDED_LEVEL",
+          "CHARGES", "CAST_TIME", "COOLDOWN", "RECAST" };
+
     private void BuildTotalsLines(List<PaneLineVm> lines)
     {
         var worn = _worn.Values.Where(e => !e.Empty).ToList();
-        int counted = 0, unknown = 0, acBase = 0, acTier = 0, voidGrant = 0;
-        // normalized key -> (base sum, at-tier sum); percents listed, never added.
-        var sums = new Dictionary<string, (string Label, int Base, int Tier)>(StringComparer.Ordinal);
+        int counted = 0, unknown = 0, acTier = 0, voidGrant = 0;
+        // normalized key -> at-tier sum; percents listed, never added.
+        var sums = new Dictionary<string, (string Label, int Tier)>(StringComparer.Ordinal);
         var order = new List<string>();
         var percents = new List<string>();
 
@@ -584,9 +593,11 @@ public partial class CharacterSheetWindow : Window
             if (rec is null) { unknown++; continue; }
             counted++;
             int tier = TierOf(e.Name);
-            if (rec.Ac is { } ac) { acBase += ac; acTier += ItemUpgrade.ScalePrimary(ac, tier); }
+            if (rec.Ac is { } ac) acTier += ItemUpgrade.ScalePrimary(ac, tier);
             foreach (var p in rec.Stats.Concat(rec.Saves))
             {
+                string key = ItemUpgrade.NormalizeKey(p[0]);
+                if (NoSumKeys.Contains(key)) continue;
                 if (ItemUpgrade.StatInteger(p[1]) is { } n)
                 {
                     int scaled = ItemUpgrade.ClassOf(p[0]) switch
@@ -595,41 +606,40 @@ public partial class CharacterSheetWindow : Window
                         ItemUpgrade.StatClass.Flat => ItemUpgrade.ScaleFlat(n, tier),
                         _ => n,
                     };
-                    string key = ItemUpgrade.NormalizeKey(p[0]);
                     if (!sums.TryGetValue(key, out var held))
                     {
-                        held = (ItemStats.StatLabel(p[0]), 0, 0);
+                        held = (ItemStats.StatLabel(p[0]), 0);
                         order.Add(key);
                     }
-                    sums[key] = (held.Label, held.Base + n, held.Tier + scaled);
+                    sums[key] = (held.Label, held.Tier + scaled);
                 }
                 else
                 {
                     // "36%" — whether worn percents stack is stated nowhere,
                     // so they're listed, never summed (Companion's rule).
-                    percents.Add($"{ItemStats.StatLabel(p[0])} {Arrow(p[1], ItemUpgrade.ScaleValueText(p[0], p[1], tier))}");
+                    percents.Add($"{ItemStats.StatLabel(p[0])} {ItemUpgrade.ScaleValueText(p[0], p[1], tier)}");
                 }
             }
             if (SynthVoid(rec, tier)) voidGrant += tier;
         }
 
-        PaneSub.Text = $"{counted} of {worn.Count} worn items · wiki base → at worn tier";
+        PaneSub.Text = $"what the {worn.Count} worn items grant at their current tiers";
 
         string SumText(Func<string, bool> pick) => string.Join(" · ", order
             .Where(pick)
             .Select(k => sums[k])
-            .Select(s => $"{s.Label} {Arrow(Fmt(s.Base), Fmt(s.Tier))}"));
+            .Select(s => $"{s.Label} {Fmt(s.Tier)}"));
         static string Fmt(int n) => n > 0 ? "+" + n : n.ToString();
 
-        if (acBase > 0 || acTier > 0)
-            lines.Add(new PaneLineVm("AC", Arrow(acBase.ToString(), acTier.ToString()), TextFg, Visibility.Visible));
+        if (acTier > 0)
+            lines.Add(new PaneLineVm("AC", acTier.ToString(), TextFg, Visibility.Visible));
         string attrs = SumText(k => AttrKeys.Contains(k));
         if (attrs.Length > 0) lines.Add(new PaneLineVm("ATTRIBUTES", attrs, TextFg, Visibility.Visible));
         string pools = SumText(k => PoolKeys.Contains(k));
         if (pools.Length > 0) lines.Add(new PaneLineVm("POOLS", pools, TextFg, Visibility.Visible));
         var savesParts = order.Where(k => k.StartsWith("SV_", StringComparison.Ordinal))
-            .Select(k => sums[k]).Select(s => $"{s.Label} {Arrow(Fmt(s.Base), Fmt(s.Tier))}").ToList();
-        if (voidGrant > 0) savesParts.Add($"SV Void {Arrow("0", "+" + voidGrant)} (upgrade grants)");
+            .Select(k => sums[k]).Select(s => $"{s.Label} {Fmt(s.Tier)}").ToList();
+        if (voidGrant > 0) savesParts.Add($"SV Void +{voidGrant} (upgrade grants)");
         if (savesParts.Count > 0)
             lines.Add(new PaneLineVm("SAVES", string.Join(" · ", savesParts), TextFg, Visibility.Visible));
         string other = SumText(k => !AttrKeys.Contains(k) && !PoolKeys.Contains(k)
@@ -644,7 +654,7 @@ public partial class CharacterSheetWindow : Window
             return;
         }
         PaneHint.Text = (unknown > 0 ? $"{unknown} worn item(s) missing from the wiki table count toward nothing. " : "")
-            + "Sums of the worn items' wiki blocks, scaled per item by the wiki's own item-level rules. Percents are listed, never summed — stacking is stated nowhere.";
+            + "Sums of the worn items' wiki blocks, each scaled to its +N tier by the wiki's own item-level rules. Percents are listed, never summed — stacking is stated nowhere. Per-item base numbers live on the Stats tab.";
         PaneHint.Visibility = Visibility.Visible;
     }
 
