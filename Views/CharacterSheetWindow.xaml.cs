@@ -567,12 +567,16 @@ public partial class CharacterSheetWindow : Window
             PaneIcon.Visibility = Visibility.Visible;
         }
 
-        // Everything about the item in one scroll: wiki stats at tier, then
-        // the sockets — each socketed focus carries the audit's verdict
-        // right on its line, so no separate focus section repeats it.
+        // Everything about the item in one scroll — STABLE zones first: the
+        // fixed stats grid, the always-five-row socket ladder (each socketed
+        // focus carrying the audit's verdict on its own line), and only then
+        // the variable tail (effects, wiki leftovers) where movement can't
+        // shove anything around.
         var below = new List<PaneLineVm>();
-        BuildStatLines(entry, lines, below);
+        var tail = new List<PaneLineVm>();
+        BuildStatLines(entry, lines, tail);
         BuildSocketLines(entry, below);
+        below.AddRange(tail);
         if (below.Count > 0)
         {
             PaneLinesBelow.ItemsSource = below;
@@ -648,12 +652,12 @@ public partial class CharacterSheetWindow : Window
         int tier = TierOf(entry.Name);
 
         // The game's own window order: flags line, class/race, then the grid.
-        if (rec.Flags.Length > 0)
-            lines.Add(new PaneLineVm("", rec.Flags, TextFg, Visibility.Collapsed));
+        // Both lines ALWAYS render (blank when the item states nothing) so
+        // the grid below starts at the same height for every item.
+        lines.Add(new PaneLineVm("", rec.Flags.Length > 0 ? rec.Flags : " ", TextFg, Visibility.Collapsed));
         string classRace = ((rec.Classes.Length > 0 ? "Class: " + rec.Classes : "")
             + (rec.Races.Length > 0 ? "   Race: " + rec.Races : "")).Trim();
-        if (classRace.Length > 0)
-            lines.Add(new PaneLineVm("", classRace, SlotFg, Visibility.Collapsed));
+        lines.Add(new PaneLineVm("", classRace.Length > 0 ? classRace : " ", SlotFg, Visibility.Collapsed));
 
         PaneGrid.Content = BuildStatGrid(rec, tier);
         PaneGrid.Visibility = Visibility.Visible;
