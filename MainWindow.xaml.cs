@@ -1318,7 +1318,6 @@ public partial class MainWindow : Window
             RaidRequested = OpenRaidKills,
             QuestsRequested = OpenSkyQuests,
             LootRequested = OpenLootHistory,
-            InventoryRequested = OpenInventory,
             SheetRequested = OpenCharacterSheet,
         };
         _toolbarWin.Show();
@@ -1582,7 +1581,6 @@ public partial class MainWindow : Window
         BringToFront(_inventoryWindow);
     }
 
-    private void OpenInventory() => OpenCharacterWindow("items");
     private void OpenCharacterSheet() => OpenCharacterWindow("sheet");
 
     private Views.DeathRecapWindow? _recapWindow;
@@ -1685,7 +1683,7 @@ public partial class MainWindow : Window
 
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
-        menu.Items.Add("Inventory…", null, (_, _) => OpenInventory());
+        menu.Items.Add("Character…", null, (_, _) => OpenCharacterSheet());
         menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
         menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());

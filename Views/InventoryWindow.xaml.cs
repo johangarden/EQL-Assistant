@@ -248,38 +248,61 @@ public partial class InventoryWindow : Window
         ApplyFilters();
     }
 
-    /// <summary>One pill per storage the dump can carry: green = in the
-    /// CURRENT dump, amber = only in an older one (its age shown), dim =
-    /// never captured for this character.</summary>
+    /// <summary>Per-storage freshness, EXCEPTIONS ONLY — status must never
+    /// out-shout the tab selector. All storages in the current dump = one dim
+    /// line; only a stale or never-captured storage earns a pill (amber with
+    /// its last-captured age, dim "never").</summary>
     private void BuildSectionPills()
     {
         SectionPanel.Children.Clear();
         if (_dump is null) return;
+
+        var problems = new List<(string Label, DateTime Seen)>();
+        int total = InventoryStore.StorageDefs.Length;
         foreach (var (key, label) in InventoryStore.StorageDefs)
         {
             bool current = _dump.Covered.Contains(key)
                 || (key == "hoard" && _dump.HasExtraItemSection);
+            if (current) continue;
             _sectionTimes.TryGetValue(key, out DateTime seen);
+            problems.Add((label, seen));
+        }
+
+        string summary = problems.Count == 0
+            ? $"all {total} storages in this dump"
+            : $"{total - problems.Count} of {total} storages in this dump —";
+        SectionPanel.Children.Add(new TextBlock
+        {
+            Text = summary,
+            Foreground = (Brush)FindResource("Brush.TextHint"),
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 6, 0),
+            ToolTip = "Worn, bags, bank, shared bank, depot, Dragon's Hoard and key rings — "
+                + "the game only writes a storage while its window is open. Re-type "
+                + "/outputfile inventory in game whenever your gear or bags change.",
+        });
+
+        foreach (var (label, seen) in problems)
+        {
             string age = seen == default ? "never" : ShortAge(DateTime.Now - seen);
-            Brush fg = current ? StatusFg[2] : seen == default ? PillOffFg : StatusFg[1];
-            Brush bg = current ? StatusBg[2] : seen == default ? Brushes.Transparent : StatusBg[1];
-            string tip = current
-                ? $"{label} — in the current dump ({age})"
-                : seen == default
-                    ? $"{label} — never captured. Open it in game, then re-type /outputfile inventory."
-                    : $"{label} — last captured {seen:d MMM HH:mm}; the current dump doesn't carry it. Open it in game, then re-dump.";
+            Brush fg = seen == default ? PillOffFg : StatusFg[1];
+            Brush bg = seen == default ? Brushes.Transparent : StatusBg[1];
+            string tip = seen == default
+                ? $"{label} — never captured. Open it in game, then re-type /outputfile inventory."
+                : $"{label} — last captured {seen:d MMM HH:mm}; the current dump doesn't carry it. Open it in game, then re-dump.";
             SectionPanel.Children.Add(new Border
             {
                 CornerRadius = new CornerRadius(9),
                 BorderBrush = fg,
                 BorderThickness = new Thickness(1),
                 Background = bg,
-                Padding = new Thickness(8, 1, 8, 2),
+                Padding = new Thickness(7, 0, 7, 1),
                 Margin = new Thickness(0, 0, 5, 0),
                 ToolTip = tip,
                 Child = new TextBlock
                 {
-                    FontSize = 10.5,
+                    FontSize = 10,
                     Foreground = fg,
                     Text = $"{label} · {age}",
                 },

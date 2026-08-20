@@ -101,18 +101,11 @@
                           Data="M12 2 C6.5 2 3 5.8 3 10.5 C3 13.3 4.3 15.4 6.2 16.8 L6.2 19.5 C6.2 20.9 7.3 22 8.7 22 L15.3 22 C16.7 22 17.8 20.9 17.8 19.5 L17.8 16.8 C19.7 15.4 21 13.3 21 10.5 C21 5.8 17.5 2 12 2 Z M8.6 9.2 C9.9 9.2 10.9 10.3 10.9 11.6 C10.9 12.9 9.9 14 8.6 14 C7.3 14 6.3 12.9 6.3 11.6 C6.3 10.3 7.3 9.2 8.6 9.2 Z M15.4 9.2 C16.7 9.2 17.7 10.3 17.7 11.6 C17.7 12.9 16.7 14 15.4 14 C14.1 14 13.1 12.9 13.1 11.6 C13.1 10.3 14.1 9.2 15.4 9.2 Z M12 14.6 L13.3 17.4 L10.7 17.4 Z"/>
                 </Button>
 
-                <!-- inventory: the searchable carry ledger from the game's dump -->
-                <Button DockPanel.Dock="Right" Click="OnInventory" Style="{StaticResource IconBtn}"
-                        Margin="6,0,0,0" AutomationProperties.AutomationId="InventoryBtn"
-                        ToolTip="Inventory — worn, bags, bank and depot, searchable">
-                    <Path Fill="#A5C48A" Width="14" Height="14" Stretch="Uniform"
-                          Data="M5.5 4 L18.5 4 C20 4 21 5 21 6.5 L21 10 L3 10 L3 6.5 C3 5 4 4 5.5 4 Z M3 11.2 L10.2 11.2 L10.2 13 C10.2 13.8 10.9 14.5 11.7 14.5 L12.3 14.5 C13.1 14.5 13.8 13.8 13.8 13 L13.8 11.2 L21 11.2 L21 18 C21 19.5 20 20.5 18.5 20.5 L5.5 20.5 C4 20.5 3 19.5 3 18 Z"/>
-                </Button>
-
-                <!-- character sheet: the paper-doll over the dump -->
+                <!-- the Character window: paper-doll, all items, exaltations,
+                     focus board — one window, the helm is its door -->
                 <Button DockPanel.Dock="Right" Click="OnSheet" Style="{StaticResource IconBtn}"
                         Margin="6,0,0,0" AutomationProperties.AutomationId="SheetBtn"
-                        ToolTip="Character sheet — worn gear, sockets, focus and stats">
+                        ToolTip="Character — sheet, all items, exaltations and the focus board">
                     <!-- a helm: dome + face opening (EvenOdd) + crest -->
                     <Path Fill="#B39DDB" Width="14" Height="14" Stretch="Uniform"
                           Data="M12 3 C6.5 3 4 7.5 4 12 L4 19 C4 20.1 4.9 21 6 21 L9 21 L9 14 C9 12.3 10.3 11 12 11 C13.7 11 15 12.3 15 14 L15 21 L18 21 C19.1 21 20 20.1 20 19 L20 12 C20 7.5 17.5 3 12 3 Z M11.2 4.4 L12.8 4.4 L12.8 9.5 L11.2 9.5 Z"/>

@@ -41,20 +41,20 @@
                                VerticalAlignment="Center" Margin="12,4,0,0"/>
                 </StackPanel>
             </DockPanel>
-            <TextBlock x:Name="HintText" Style="{StaticResource Hint}" Margin="0,2,0,4"
-                       Text="Everything the game's own inventory dump lists — worn, bags, bank, depot and key rings. Re-type /outputfile inventory in game whenever your gear or bags change."/>
+            <!-- The SELECTOR owns the header's second row — everything
+                 status-shaped is demoted beneath it. -->
+            <WrapPanel x:Name="TabPanel" Margin="0,6,0,7"/>
 
             <!-- Parse + coverage story: gold when the dump leaves storages unsaid. -->
             <TextBlock x:Name="ParsedText" Foreground="{StaticResource Brush.Gold}" FontSize="11"
                        Margin="0,0,0,2" Visibility="Collapsed"/>
             <TextBlock x:Name="WarnText" Foreground="{StaticResource Brush.Gold}" FontSize="11"
-                       TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+                       TextWrapping="Wrap" Margin="0,0,0,6" Visibility="Collapsed"/>
 
-            <!-- per-storage freshness: green = in the current dump, amber =
-                 only in an older one (age shown), dim = never captured -->
-            <WrapPanel x:Name="SectionPanel" Margin="0,0,0,8"/>
-
-            <WrapPanel x:Name="TabPanel" Margin="0,0,0,6"/>
+            <!-- per-storage freshness, EXCEPTIONS ONLY: one dim line when all
+                 is well; a pill per storage that is stale or never captured.
+                 (The dump how-to lives on this line's tooltip + the no-dump page.) -->
+            <WrapPanel x:Name="SectionPanel" Margin="0,0,0,7"/>
 
             <DockPanel x:Name="SearchRow" Margin="0,0,0,6">
                 <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.TextHint}"
