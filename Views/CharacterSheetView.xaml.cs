@@ -73,6 +73,10 @@ public partial class CharacterSheetView : UserControl
     private readonly Dictionary<(string Token, int Nth), InventoryStore.Entry> _worn = new();
     private (string Token, int Nth)? _selected;
     private List<InventoryStore.CarryRow> _rows = new();
+    // A clicked totals stat drills into "which items grant it" (normalized
+    // key + display label); null = the ordinary landing pane.
+    private string? _drillKey;
+    private string _drillLabel = "";
 
     /// <summary>Wired by the host: the compact focus list links to the full
     /// board (the Character window's Focus board tab).</summary>
@@ -175,11 +179,12 @@ public partial class CharacterSheetView : UserControl
             Child = inner,
             Tag = slot,
         };
-        // Click a slot → its item tabs; click it again → back to the
-        // character-wide tabs. Each mode remembers its own last tab.
+        // Click a slot → its item view; click it again → back to the landing
+        // pane (any open stat drill closes with it).
         cell.MouseLeftButtonUp += (_, _) =>
         {
             _selected = _selected == slot ? null : slot;
+            _drillKey = null;
             RefreshPane();
         };
         _cells.Add(cell);
@@ -369,6 +374,13 @@ public partial class CharacterSheetView : UserControl
 
         if (!itemMode)
         {
+            if (_drillKey is { } drill)
+            {
+                // A clicked stat: which worn items grant it, best first.
+                BuildStatDrill(drill);
+                PaneLines.ItemsSource = lines;
+                return;
+            }
             // ONE combined landing view: totals grid, focus verdicts,
             // clickies — no tabs, click a slot for the item view.
             PaneTitle.Text = "Stats from gear";
@@ -765,7 +777,7 @@ public partial class CharacterSheetView : UserControl
         // normalized key -> at-tier sum; percents listed, never added.
         var sums = new Dictionary<string, (string Label, int Tier)>(StringComparer.Ordinal);
         var order = new List<string>();
-        var percents = new List<(string Label, string Value)>();
+        var percents = new List<(string Key, string Label, string Value)>();
 
         foreach (var e in worn)
         {
@@ -797,7 +809,7 @@ public partial class CharacterSheetView : UserControl
                 {
                     // "36%" — whether worn percents stack is stated nowhere,
                     // so they're listed, never summed (Companion's rule).
-                    percents.Add((ItemStats.StatLabel(p[0]),
+                    percents.Add((key, ItemStats.StatLabel(p[0]),
                         ItemUpgrade.ScaleValueText(p[0], p[1], tier)));
                 }
             }
@@ -820,17 +832,28 @@ public partial class CharacterSheetView : UserControl
             {
                 string label = sums[k].Label;
                 if (stripSv && label.StartsWith("SV ", StringComparison.Ordinal)) label = label[3..];
-                return StatCellOf(label, Fmt(sums[k].Tier), Fmt(sums[k].Tier));
+                var cell = StatCellOf(label, Fmt(sums[k].Tier), Fmt(sums[k].Tier));
+                MakeDrillable(cell, k, label);
+                return cell;
             }).ToList();
         }
 
         // Top: AC + the unsummed percents left, pools right — then the same
         // attribute / save / other columns as an item.
         var topA = new List<StatCell>();
-        if (acTier > 0) topA.Add(StatCellOf("AC", acTier.ToString(), acTier.ToString()));
-        foreach (var (label, value) in percents)
-            topA.Add(StatCellOf(label, value, value,
-                "listed, never summed — whether worn percents stack is stated nowhere", AmberFg));
+        if (acTier > 0)
+        {
+            var acCell = StatCellOf("AC", acTier.ToString(), acTier.ToString());
+            MakeDrillable(acCell, "AC", "AC");
+            topA.Add(acCell);
+        }
+        foreach (var (pkey, label, value) in percents)
+        {
+            var pCell = StatCellOf(label, value, value,
+                "listed, never summed — whether worn percents stack is stated nowhere", AmberFg);
+            MakeDrillable(pCell, pkey, label);
+            topA.Add(pCell);
+        }
         var topB = Rows(PoolKeys);
 
         string[] attrOrder = { "STR", "STA", "INT", "WIS", "AGI", "DEX", "CHA" };
@@ -840,8 +863,13 @@ public partial class CharacterSheetView : UserControl
             k.StartsWith("SV_", StringComparison.Ordinal) && !saveOrder.Contains(k))).ToArray();
         var saveCol = Rows(saveKeys, stripSv: true);
         if (voidGrant > 0)
-            saveCol.Add(StatCellOf("Void", "", "+" + voidGrant,
-                "granted by the upgrades themselves — every upgraded item with two attributes gains SV Void"));
+        {
+            var voidCell = StatCellOf(order.Contains("SV_VOID") ? "Void grants" : "Void",
+                "", "+" + voidGrant,
+                "granted by the upgrades themselves — every upgraded item with two attributes gains SV Void");
+            MakeDrillable(voidCell, "SV_VOID", "SV Void");
+            saveCol.Add(voidCell);
+        }
         var otherKeys = order.Where(k => !attrOrder.Contains(k) && !PoolKeys.Contains(k)
             && !k.StartsWith("SV_", StringComparison.Ordinal)).ToArray();
         var otherCol = Rows(otherKeys);
@@ -860,6 +888,153 @@ public partial class CharacterSheetView : UserControl
         root.ToolTip = (unknown > 0 ? $"{unknown} worn item(s) missing from the wiki table count toward nothing. " : "")
             + "Sums of the worn items' wiki blocks, each scaled to its +N tier by the wiki's own item-level rules. Amber percents are listed, never summed.";
         return root;
+    }
+
+    /// <summary>Every totals row is a question — clicking it answers "which
+    /// items grant this?" with the ranked drill view.</summary>
+    private void MakeDrillable(StatCell cell, string key, string label)
+    {
+        foreach (var tb in new[] { cell.Label, cell.Value })
+        {
+            tb.Cursor = Cursors.Hand;
+            tb.ToolTip = $"click — which items grant {label}";
+            tb.MouseLeftButtonUp += (_, _) =>
+            {
+                _drillKey = key;
+                _drillLabel = label;
+                _selected = null;
+                RefreshPane();
+            };
+        }
+    }
+
+    /// <summary>The drill: every worn item granting the clicked stat, ranked
+    /// by its at-tier contribution, each row clicking through to the item.</summary>
+    private void BuildStatDrill(string key)
+    {
+        PaneTitle.Text = _drillLabel;
+        PaneSub.Text = "worn items granting it — at worn tier, best first";
+
+        var root = new StackPanel();
+        var back = new TextBlock
+        {
+            Text = "← all stats",
+            Foreground = SlotFg,
+            FontSize = 11,
+            Cursor = Cursors.Hand,
+            Margin = new Thickness(0, 0, 0, 8),
+        };
+        back.MouseLeftButtonUp += (_, _) => { _drillKey = null; RefreshPane(); };
+        root.Children.Add(back);
+
+        var found = new List<(double Rank, UIElement Row)>();
+        foreach (var (slotKey, e) in _worn)
+        {
+            if (e.Empty) continue;
+            var rec = _stats.Lookup(e.Name);
+            if (rec is null) continue;
+            int tier = TierOf(e.Name);
+
+            string? baseText = null, atText = null, note = null;
+            if (key == "AC" && rec.Ac is { } ac)
+            {
+                baseText = ac.ToString();
+                atText = ItemUpgrade.ScalePrimary(ac, tier).ToString();
+            }
+            else if (key != "AC")
+            {
+                var pair = rec.Stats.Concat(rec.Saves)
+                    .FirstOrDefault(p => ItemUpgrade.NormalizeKey(p[0]) == key);
+                if (pair is not null)
+                {
+                    baseText = pair[1];
+                    atText = ItemUpgrade.ScaleValueText(pair[0], pair[1], tier);
+                }
+                else if (key == "SV_VOID" && SynthVoid(rec, tier))
+                {
+                    baseText = atText = "+" + tier;
+                    note = "upgrade grant";
+                }
+            }
+            if (atText is null) continue;
+            double rank = ItemUpgrade.StatInteger(atText)
+                ?? ItemUpgrade.PercentInteger(atText) ?? 0;
+            found.Add((rank, DrillRow(slotKey, e, rec, baseText!, atText, note)));
+        }
+
+        if (found.Count == 0)
+        {
+            root.Children.Add(new TextBlock
+            {
+                Text = "no worn item grants this",
+                Foreground = DimFg,
+                FontSize = 11.5,
+                FontStyle = FontStyles.Italic,
+            });
+        }
+        foreach (var (_, row) in found.OrderByDescending(f => f.Rank))
+            root.Children.Add(row);
+
+        PaneGrid.Content = root;
+        PaneGrid.Visibility = Visibility.Visible;
+    }
+
+    private UIElement DrillRow((string Token, int Nth) slotKey, InventoryStore.Entry e,
+        ItemStats.Record rec, string baseText, string atText, string? note)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 4), Cursor = Cursors.Hand };
+        if (ItemIcons.Get(rec.Icon) is { } icon)
+        {
+            var img = new System.Windows.Controls.Image
+            {
+                Source = icon,
+                Width = 18,
+                Height = 18,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 6, 0),
+            };
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Fant);
+            DockPanel.SetDock(img, Dock.Left);
+            row.Children.Add(img);
+        }
+        var val = new TextBlock
+        {
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0),
+        };
+        val.Inlines.Add(new System.Windows.Documents.Run(atText)
+            { Foreground = atText != baseText ? GoldFg : TextFg, FontWeight = FontWeights.SemiBold });
+        if (atText != baseText)
+            val.Inlines.Add(new System.Windows.Documents.Run($" ({baseText})") { Foreground = DimFg });
+        if (note is not null)
+            val.Inlines.Add(new System.Windows.Documents.Run(" · " + note)
+                { Foreground = DimFg, FontSize = 10.5 });
+        DockPanel.SetDock(val, Dock.Right);
+        row.Children.Add(val);
+
+        var (baseName, tierText) = SplitTier(e.Name);
+        var name = new TextBlock
+        {
+            FontSize = 11.5,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            ToolTip = $"{e.Name} · {slotKey.Token} — click for the item",
+        };
+        name.Inlines.Add(new System.Windows.Documents.Run(baseName) { Foreground = TextFg });
+        if (tierText.Length > 0)
+            name.Inlines.Add(new System.Windows.Documents.Run(" " + tierText) { Foreground = GoldFg });
+        name.Inlines.Add(new System.Windows.Documents.Run("  " + slotKey.Token)
+            { Foreground = DimFg, FontSize = 10 });
+        row.Children.Add(name);
+
+        row.MouseLeftButtonUp += (_, _) =>
+        {
+            _selected = slotKey;
+            _drillKey = null;
+            RefreshPane();
+        };
+        return row;
     }
 
     /// <summary>A rule between the landing pane's sections.</summary>
