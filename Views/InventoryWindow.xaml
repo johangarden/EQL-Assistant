@@ -34,6 +34,10 @@
             <TextBlock x:Name="WarnText" Foreground="{StaticResource Brush.Gold}" FontSize="11"
                        TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
 
+            <!-- per-storage freshness: green = in the current dump, amber =
+                 only in an older one (age shown), dim = never captured -->
+            <WrapPanel x:Name="SectionPanel" Margin="0,0,0,8"/>
+
             <WrapPanel x:Name="TabPanel" Margin="0,0,0,6"/>
 
             <DockPanel Margin="0,0,0,6">

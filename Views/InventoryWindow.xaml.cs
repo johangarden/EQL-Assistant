@@ -100,6 +100,11 @@ public partial class InventoryWindow : Window
     private DateTime _dumpMtime;
     private DateTime? _parsedAt;      // set on watcher-triggered reloads only
 
+    // per-storage last-captured times (persisted per character)
+    private static readonly Lazy<ConfigService> SharedConfig = new(() => new ConfigService());
+    private Dictionary<string, DateTime> _sectionTimes = new(StringComparer.Ordinal);
+    private string CharKey => $"{_charName}_{_server}".ToLowerInvariant();
+
     public InventoryWindow(string eqRoot, string charName, string server)
     {
         InitializeComponent();
@@ -166,6 +171,7 @@ public partial class InventoryWindow : Window
             LanePanel.Children.Clear();
             ParsedText.Visibility = Visibility.Collapsed;
             WarnText.Visibility = Visibility.Collapsed;
+            SectionPanel.Children.Clear();
             EmptyTabText.Visibility = Visibility.Collapsed;
             FreshnessText.Text = "not yet run";
             CountText.Text = "";
@@ -208,14 +214,71 @@ public partial class InventoryWindow : Window
         }
         if (fromWatch) _parsedAt = DateTime.Now;
 
+        // Every storage THIS dump covers was captured at the dump's mtime —
+        // remember it, so an absent storage can say how old its last look is.
+        _sectionTimes = SharedConfig.Value.LoadSectionTimes(CharKey);
+        foreach (var (key, _) in InventoryStore.StorageDefs)
+        {
+            bool covered = _dump.Covered.Contains(key)
+                || (key == "hoard" && _dump.HasExtraItemSection);
+            if (covered) _sectionTimes[key] = _dumpMtime;
+        }
+        SharedConfig.Value.SaveSectionTimes(CharKey, _sectionTimes);
+
         NoDumpPanel.Visibility = Visibility.Collapsed;
         ResultsList.Visibility = Visibility.Visible;
 
         BuildTabs();
         BuildLaneChips();
-        UpdateCoverage();
-        UpdateFreshness();
+        UpdateFreshness(); // also paints the coverage banner + section pills
         ApplyFilters();
+    }
+
+    /// <summary>One pill per storage the dump can carry: green = in the
+    /// CURRENT dump, amber = only in an older one (its age shown), dim =
+    /// never captured for this character.</summary>
+    private void BuildSectionPills()
+    {
+        SectionPanel.Children.Clear();
+        if (_dump is null) return;
+        foreach (var (key, label) in InventoryStore.StorageDefs)
+        {
+            bool current = _dump.Covered.Contains(key)
+                || (key == "hoard" && _dump.HasExtraItemSection);
+            _sectionTimes.TryGetValue(key, out DateTime seen);
+            string age = seen == default ? "never" : ShortAge(DateTime.Now - seen);
+            Brush fg = current ? StatusFg[2] : seen == default ? PillOffFg : StatusFg[1];
+            Brush bg = current ? StatusBg[2] : seen == default ? Brushes.Transparent : StatusBg[1];
+            string tip = current
+                ? $"{label} — in the current dump ({age})"
+                : seen == default
+                    ? $"{label} — never captured. Open it in game, then re-type /outputfile inventory."
+                    : $"{label} — last captured {seen:d MMM HH:mm}; the current dump doesn't carry it. Open it in game, then re-dump.";
+            SectionPanel.Children.Add(new Border
+            {
+                CornerRadius = new CornerRadius(9),
+                BorderBrush = fg,
+                BorderThickness = new Thickness(1),
+                Background = bg,
+                Padding = new Thickness(8, 1, 8, 2),
+                Margin = new Thickness(0, 0, 5, 0),
+                ToolTip = tip,
+                Child = new TextBlock
+                {
+                    FontSize = 10.5,
+                    Foreground = fg,
+                    Text = $"{label} · {age}",
+                },
+            });
+        }
+    }
+
+    private static string ShortAge(TimeSpan t)
+    {
+        if (t < TimeSpan.Zero) t = TimeSpan.Zero;
+        if (t.TotalMinutes < 60) return $"{Math.Max(0, (int)t.TotalMinutes)}m";
+        if (t.TotalHours < 48) return $"{(int)t.TotalHours}h";
+        return $"{(int)t.TotalDays}d";
     }
 
     private void BuildTabs()
@@ -246,17 +309,16 @@ public partial class InventoryWindow : Window
     private void UpdateCoverage()
     {
         if (_dump is null) return;
+        var parts = new List<string>();
+        int days = (int)(DateTime.Now - _dumpMtime).TotalDays;
+        if (days >= InventoryStore.DumpStaleDays)
+            parts.Add($"⚠  This dump is {days} days old — gear may have moved since. Re-type /outputfile inventory in game.");
         var missing = InventoryStore.MissingStorages(_dump);
-        if (missing.Count == 0)
-        {
-            WarnText.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            WarnText.Text = "⚠  Not in this dump: " + string.Join(" · ", missing)
-                + ".  The game only writes a storage while its window is open — open them in game, then re-type /outputfile inventory.";
-            WarnText.Visibility = Visibility.Visible;
-        }
+        if (missing.Count > 0)
+            parts.Add("⚠  Not in this dump: " + string.Join(" · ", missing)
+                + ".  The game only writes a storage while its window is open — open them in game, then re-type /outputfile inventory.");
+        WarnText.Text = string.Join("\n", parts);
+        WarnText.Visibility = parts.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void BuildLaneChips()
@@ -388,6 +450,9 @@ public partial class InventoryWindow : Window
         FreshnessText.Foreground = age > TimeSpan.FromHours(24)
             ? (Brush)FindResource("Brush.Gold")
             : (Brush)FindResource("Brush.TextHint");
+        // The pill ages and the stale banner drift with the clock too.
+        BuildSectionPills();
+        UpdateCoverage();
 
         // The watcher just caught a rewrite: celebrate briefly, then let the
         // ordinary freshness line carry it.

@@ -198,7 +198,10 @@ public partial class CharacterSheetWindow : Window
         if (_dumpPath is { } path && File.Exists(path))
         {
             DumpStrip.Visibility = Visibility.Visible;
-            DumpAge.Text = "updated " + AgeText(DateTime.Now - File.GetLastWriteTime(path));
+            var dumpAge = DateTime.Now - File.GetLastWriteTime(path);
+            DumpAge.Text = "updated " + AgeText(dumpAge);
+            // Same staleness clock as the Inventory window's banner.
+            DumpAge.Foreground = dumpAge.TotalDays >= InventoryStore.DumpStaleDays ? AmberFg : DimFg;
             DumpAge.ToolTip = path;
             DumpHow.ToolTip = $"In game, type /outputfile inventory — the game writes "
                 + $"{_charName}_{_server}-Inventory.txt into its own folder and this sheet "
