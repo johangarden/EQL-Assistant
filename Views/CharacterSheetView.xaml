@@ -63,8 +63,11 @@
                                                 Visibility="{Binding RuleVis}"/>
                                         <TextBlock Text="{Binding Key}" Foreground="#5C6B82" FontSize="9.5"
                                                    FontWeight="Bold" Visibility="{Binding KeyVis}"/>
-                                        <TextBlock Text="{Binding Value}" Foreground="{Binding Fg}" FontSize="12"
-                                                   TextWrapping="Wrap"/>
+                                        <TextBlock Foreground="{Binding Fg}" FontSize="12"
+                                                   TextWrapping="Wrap"><Run
+                                                   Text="{Binding Value, Mode=OneWay}"/><Run
+                                                   Text="{Binding LinkText, Mode=OneWay}"
+                                                   TextDecorations="Underline"/></TextBlock>
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

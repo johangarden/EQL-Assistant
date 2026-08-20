@@ -26,7 +26,8 @@ namespace EQLOverlay.Views;
 public partial class CharacterSheetView : UserControl
 {
     private sealed record PaneLineVm(string Key, string Value, Brush Fg, Visibility KeyVis,
-        Visibility RuleVis = Visibility.Collapsed, bool BoardLink = false)
+        Visibility RuleVis = Visibility.Collapsed, bool BoardLink = false,
+        string LinkText = "")
     {
         public System.Windows.Input.Cursor RowCursor =>
             BoardLink ? Cursors.Hand : Cursors.Arrow;
@@ -495,7 +496,7 @@ public partial class CharacterSheetView : UserControl
                     string verdict = arow switch
                     {
                         { Status: 2 } => " · wearing the best",
-                        { Status: 1 } => $" · upgrade {UpgradeWhere(arow)} → focus board",
+                        { Status: 1 } => $" · upgrade {UpgradeWhere(arow)}",
                         _ => "",
                     };
                     if (arow is { Status: 1 }) { fg = AmberFg; link = true; }
@@ -505,7 +506,8 @@ public partial class CharacterSheetView : UserControl
                 {
                     val = child.Name;
                 }
-                lines.Add(new PaneLineVm(key, val, fg, Visibility.Visible, BoardLink: link));
+                lines.Add(new PaneLineVm(key, val, fg, Visibility.Visible, BoardLink: link,
+                    LinkText: link ? " → focus board" : ""));
             }
             else if (child is not null)
             {
@@ -578,14 +580,15 @@ public partial class CharacterSheetView : UserControl
                 fxLines.Add(line + (arow switch
                 {
                     { Status: 2 } => " · wearing the best",
-                    { Status: 1 } => $" · upgrade {UpgradeWhere(arow)} → focus board",
+                    { Status: 1 } => $" · upgrade {UpgradeWhere(arow)}",
                     _ => "",
                 }));
                 if (arow is { Status: 1 }) anyUpgrade = true;
             }
             if (fxLines.Count > 0)
                 below.Add(new PaneLineVm("EFFECTS", string.Join("\n", fxLines),
-                    anyUpgrade ? AmberFg : GreenFg, Visibility.Visible, BoardLink: anyUpgrade));
+                    anyUpgrade ? AmberFg : GreenFg, Visibility.Visible, BoardLink: anyUpgrade,
+                    LinkText: anyUpgrade ? " → focus board" : ""));
         }
         if (rec.Extras.Length > 0) below.Add(new PaneLineVm("MORE", rec.Extras, DimFg, Visibility.Visible));
         // No footer lecture — gold-vs-brackets reads on its own; the rules
