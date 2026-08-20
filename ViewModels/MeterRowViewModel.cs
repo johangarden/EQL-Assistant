@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Media;
 
 namespace EQLOverlay.ViewModels;
@@ -22,4 +23,13 @@ public sealed class MeterRowViewModel : ViewModelBase
     /// <summary>Optional tooltip line (used by the skill tracker rows).</summary>
     private string _detail = "";
     public string Detail { get => _detail; set => SetField(ref _detail, value); }
+
+    /// <summary>Row margin — the pet's fold-out rows indent through it.</summary>
+    private Thickness _margin = new(0, 0, 0, 3);
+    public Thickness Margin { get => _margin; set => SetField(ref _margin, value); }
+
+    /// <summary>True on the pet's ranked row: clicking it folds the pet's
+    /// per-ability split in and out.</summary>
+    private bool _isFold;
+    public bool IsFold { get => _isFold; set => SetField(ref _isFold, value); }
 }

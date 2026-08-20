@@ -34,13 +34,11 @@ public partial class MeterWindow : Window
     private bool _skillsVisible;
     private bool _procsVisible;
     private readonly ObservableCollection<MeterRowViewModel> _procRows = new();
-    private readonly ObservableCollection<MeterRowViewModel> _petRows = new();
     private bool _showHealing;
     private bool _soloMode;
     private bool _petExpanded;
     private bool _selfExpanded = true; // your split starts open; the pet's starts folded
     private readonly MeterRowViewModel _selfHeaderVm = new();
-    private readonly MeterRowViewModel _petHeaderVm = new();
 
     // The two total bars wear FIXED, distinct colors — the name-hash palette
     // once dressed player and pet in near-twin golds.
@@ -91,11 +89,9 @@ public partial class MeterWindow : Window
 
         _procsVisible = procsVisible;
         RowsControl.ItemsSource = _rows;
-        PetRowsControl.ItemsSource = _petRows;
         SkillRowsControl.ItemsSource = _skillRows;
         ProcRowsControl.ItemsSource = _procRows;
         SelfHeaderBar.Content = _selfHeaderVm;
-        PetHeaderBar.Content = _petHeaderVm;
         ScopeBtn.Content = _soloMode ? "SOLO" : "GROUP";
         SkillsSection.Visibility = _skillsVisible ? Visibility.Visible : Visibility.Collapsed;
         ProcsSection.Visibility = _procsVisible ? Visibility.Visible : Visibility.Collapsed;
@@ -184,13 +180,16 @@ public partial class MeterWindow : Window
         Refresh();
     }
 
-    private void PetHeader_Click(object sender, MouseButtonEventArgs e)
+    /// <summary>The pet's ranked row folds like a header — the click finds
+    /// its view-model through whatever visual it landed on.</summary>
+    private void Rows_Click(object sender, MouseButtonEventArgs e)
     {
-        e.Handled = true; // don't start a window drag
-        _petExpanded = !_petExpanded;
-        PetHeaderChevron.Text = _petExpanded ? "▼" : "▶";
-        PetRowsControl.Visibility = _petExpanded ? Visibility.Visible : Visibility.Collapsed;
-        Refresh();
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is MeterRowViewModel { IsFold: true })
+        {
+            e.Handled = true; // don't start a window drag
+            _petExpanded = !_petExpanded;
+            Refresh();
+        }
     }
 
     private void SelfHeader_Click(object sender, MouseButtonEventArgs e)
@@ -252,8 +251,6 @@ public partial class MeterWindow : Window
             TitleText.Text = $"{metric} meter";
             SummaryText.Text = "waiting for combat…";
             _rows.Clear();
-            _petRows.Clear();
-            PetSection.Visibility = Visibility.Collapsed;
             SelfHeaderRow.Visibility = Visibility.Collapsed;
             EnemiesRow.Visibility = Visibility.Collapsed;
             UpdateIncoming();
@@ -296,7 +293,6 @@ public partial class MeterWindow : Window
     /// into one dim row below (same-named mobs are indistinguishable anyway).</summary>
     private void RefreshGroupRows()
     {
-        PetSection.Visibility = Visibility.Collapsed;
         SelfHeaderRow.Visibility = Visibility.Collapsed;
         RowsControl.Margin = new Thickness(0);
 
@@ -316,11 +312,15 @@ public partial class MeterWindow : Window
             row.ValueText = $"{FormatDps(r.Dps)}  ({FormatNum(r.Total)}, {r.Percent:0}%)";
             row.Detail = "";
             row.Fill = FillFor(r.Name);
+            row.Margin = new Thickness(0, 0, 0, 3); // rows are recycled across scopes
+            row.IsFold = false;
         }
     }
 
-    /// <summary>SOLO scope: your total as a bar (foldable, like the pet's),
-    /// your abilities tabbed in beneath it, the pet drill-down below.</summary>
+    /// <summary>SOLO scope: ONE header bar for your whole output (you + pet —
+    /// the same number the summary calls total), and the pet ranked INSIDE
+    /// the ability list as a green foldable row, so "how much is the pet"
+    /// reads directly against melee, spells and procs.</summary>
     private void RefreshSoloRows()
     {
         var mine = _showHealing
@@ -341,61 +341,85 @@ public partial class MeterWindow : Window
         double dur = _parser.DurationSeconds;
         double selfTotal = mine.Sum(r => r.Total);
         double petTotal = pet.Sum(r => r.Total);
-        // The two total bars share a scale, so you-vs-pet reads at a glance.
-        double denom = Math.Max(Math.Max(selfTotal, petTotal), 1);
+        double combined = selfTotal + petTotal;
 
         SelfHeaderRow.Visibility = Visibility.Visible;
         RowsControl.Margin = new Thickness(24, 3, 0, 0);
-        _selfHeaderVm.Name = _parser.SelfName.Trim();
-        _selfHeaderVm.Fraction = selfTotal / denom;
-        _selfHeaderVm.ValueText = $"{FormatDps(dur > 0 ? selfTotal / dur : 0)}  ({FormatNum(selfTotal)})";
+        _selfHeaderVm.Name = petTotal > 0
+            ? $"{_parser.SelfName.Trim()} + pet"
+            : _parser.SelfName.Trim();
+        _selfHeaderVm.Fraction = combined > 0 ? 1 : 0;
+        _selfHeaderVm.ValueText = $"{FormatDps(dur > 0 ? combined / dur : 0)}  ({FormatNum(combined)})";
         _selfHeaderVm.Fill = SelfBarFill;
         SelfHeaderChevron.Text = _selfExpanded ? "▼" : "▶";
-        FillAbilityRows(_rows, _selfExpanded ? mine : new List<CombatParser.Row>(), MaxSoloRows);
 
-        PetSection.Visibility = hasPet && pet.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        if (pet.Count > 0)
+        var fills = new List<Action<MeterRowViewModel>>();
+        if (_selfExpanded)
         {
-            _petHeaderVm.Name = $"{_parser.PetName.Trim()} (pet)";
-            _petHeaderVm.Fraction = petTotal / denom;
-            _petHeaderVm.ValueText = $"{FormatDps(dur > 0 ? petTotal / dur : 0)}  ({FormatNum(petTotal)})";
-            _petHeaderVm.Fill = PetBarFill;
-            FillAbilityRows(_petRows, _petExpanded ? pet : new List<CombatParser.Row>(), MaxSoloRows);
+            // Your top abilities and the pet, ranked together on one scale;
+            // percentages read against the header's combined total.
+            var ranked = mine.Take(MaxSoloRows)
+                .Select(r => (r.Total, Row: (CombatParser.Row?)r))
+                .ToList();
+            if (petTotal > 0) ranked.Add((petTotal, null));
+            ranked.Sort((a, b) => b.Total.CompareTo(a.Total));
+            double top = ranked.Count > 0 ? Math.Max(ranked[0].Total, 1) : 1;
+
+            foreach (var (total, maybeRow) in ranked)
+            {
+                if (maybeRow is { } r)
+                {
+                    fills.Add(vm => FillAbilityVm(vm, r, top, combined, new Thickness(0, 0, 0, 3)));
+                    continue;
+                }
+                double t = total;
+                fills.Add(vm =>
+                {
+                    vm.Name = (_petExpanded ? "▼ " : "▶ ") + $"{_parser.PetName.Trim()} (pet)";
+                    vm.Fraction = t / top;
+                    double pct = combined > 0 ? t / combined * 100 : 0;
+                    vm.ValueText = $"{FormatDps(dur > 0 ? t / dur : 0)}  ({FormatNum(t)}, {pct:0}%)";
+                    vm.Fill = PetBarFill;
+                    vm.Detail = "click to fold the pet's per-ability split in and out";
+                    vm.IsFold = true;
+                    vm.Margin = new Thickness(0, 0, 0, 3);
+                });
+                if (_petExpanded)
+                {
+                    // The pet's own split, tabbed in beneath its row; its
+                    // percentages are shares of the PET's total.
+                    double petTop = pet.Count > 0 ? Math.Max(pet[0].Total, 1) : 1;
+                    foreach (var pr in pet.Take(MaxSoloRows))
+                        fills.Add(vm => FillAbilityVm(vm, pr, petTop, petTotal, new Thickness(16, 0, 0, 3)));
+                }
+            }
         }
-        else
-        {
-            _petRows.Clear();
-        }
+
+        while (_rows.Count > fills.Count) _rows.RemoveAt(_rows.Count - 1);
+        while (_rows.Count < fills.Count) _rows.Add(new MeterRowViewModel());
+        for (int i = 0; i < fills.Count; i++) fills[i](_rows[i]);
     }
 
-    /// <summary>Ability rows with the drill-down details on a second look
-    /// (tooltip): hits, crits, range, misses/resists.</summary>
-    private void FillAbilityRows(ObservableCollection<MeterRowViewModel> rows,
-        List<CombatParser.Row> src, int max)
+    /// <summary>One ability row: bar vs `top`, percent vs `pctOf`, drill-down
+    /// details (hits, crits, range, misses/resists) on the tooltip.</summary>
+    private void FillAbilityVm(MeterRowViewModel row, CombatParser.Row r,
+        double top, double pctOf, Thickness margin)
     {
-        int count = Math.Min(max, src.Count);
-        double top = count > 0 ? src[0].Total : 0;
+        row.Name = r.Name;
+        row.Fraction = top > 0 ? r.Total / top : 0;
+        double pct = pctOf > 0 ? r.Total / pctOf * 100 : 0;
+        row.ValueText = $"{FormatDps(r.Dps)}  ({FormatNum(r.Total)}, {pct:0}%)";
+        row.Fill = FillFor(r.Name);
+        row.Margin = margin;
+        row.IsFold = false;
 
-        while (rows.Count > count) rows.RemoveAt(rows.Count - 1);
-        while (rows.Count < count) rows.Add(new MeterRowViewModel());
-
-        for (int i = 0; i < count; i++)
-        {
-            var r = src[i];
-            var row = rows[i];
-            row.Name = r.Name;
-            row.Fraction = top > 0 ? r.Total / top : 0;
-            row.ValueText = $"{FormatDps(r.Dps)}  ({FormatNum(r.Total)}, {r.Percent:0}%)";
-            row.Fill = FillFor(r.Name);
-
-            var extra = new List<string>();
-            if (r.Hits > 0) extra.Add($"{r.Hits} hit{(r.Hits == 1 ? "" : "s")}");
-            if (r.Crits > 0) extra.Add($"{r.Crits} crit");
-            if (r.Misses > 0) extra.Add($"{r.Misses} missed");
-            if (r.Resists > 0) extra.Add($"{r.Resists} resisted");
-            if (r.Max > 0) extra.Add(r.Min < r.Max ? $"{r.Min:N0}–{r.Max:N0}" : $"max {r.Max:N0}");
-            row.Detail = string.Join(" · ", extra);
-        }
+        var extra = new List<string>();
+        if (r.Hits > 0) extra.Add($"{r.Hits} hit{(r.Hits == 1 ? "" : "s")}");
+        if (r.Crits > 0) extra.Add($"{r.Crits} crit");
+        if (r.Misses > 0) extra.Add($"{r.Misses} missed");
+        if (r.Resists > 0) extra.Add($"{r.Resists} resisted");
+        if (r.Max > 0) extra.Add(r.Min < r.Max ? $"{r.Min:N0}–{r.Max:N0}" : $"max {r.Max:N0}");
+        row.Detail = string.Join(" · ", extra);
     }
 
     // Rates hide below these floors rather than lying: 1 proc in a 5-second
