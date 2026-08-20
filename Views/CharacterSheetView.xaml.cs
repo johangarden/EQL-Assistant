@@ -928,38 +928,49 @@ public partial class CharacterSheetView : UserControl
         root.Children.Add(back);
 
         var found = new List<(double Rank, UIElement Row)>();
+        var without = new List<(string Sort, UIElement Row)>();
         foreach (var (slotKey, e) in _worn)
         {
             if (e.Empty) continue;
             var rec = _stats.Lookup(e.Name);
-            if (rec is null) continue;
             int tier = TierOf(e.Name);
 
             string? baseText = null, atText = null, note = null;
-            if (key == "AC" && rec.Ac is { } ac)
+            if (rec is not null)
             {
-                baseText = ac.ToString();
-                atText = ItemUpgrade.ScalePrimary(ac, tier).ToString();
+                if (key == "AC" && rec.Ac is { } ac)
+                {
+                    baseText = ac.ToString();
+                    atText = ItemUpgrade.ScalePrimary(ac, tier).ToString();
+                }
+                else if (key != "AC")
+                {
+                    var pair = rec.Stats.Concat(rec.Saves)
+                        .FirstOrDefault(p => ItemUpgrade.NormalizeKey(p[0]) == key);
+                    if (pair is not null)
+                    {
+                        baseText = pair[1];
+                        atText = ItemUpgrade.ScaleValueText(pair[0], pair[1], tier);
+                    }
+                    else if (key == "SV_VOID" && SynthVoid(rec, tier))
+                    {
+                        baseText = atText = "+" + tier;
+                        note = "upgrade grant";
+                    }
+                }
             }
-            else if (key != "AC")
+            if (atText is not null)
             {
-                var pair = rec.Stats.Concat(rec.Saves)
-                    .FirstOrDefault(p => ItemUpgrade.NormalizeKey(p[0]) == key);
-                if (pair is not null)
-                {
-                    baseText = pair[1];
-                    atText = ItemUpgrade.ScaleValueText(pair[0], pair[1], tier);
-                }
-                else if (key == "SV_VOID" && SynthVoid(rec, tier))
-                {
-                    baseText = atText = "+" + tier;
-                    note = "upgrade grant";
-                }
+                double rank = ItemUpgrade.StatInteger(atText)
+                    ?? ItemUpgrade.PercentInteger(atText) ?? 0;
+                found.Add((rank, DrillRow(slotKey, e, rec!, baseText!, atText, note)));
             }
-            if (atText is null) continue;
-            double rank = ItemUpgrade.StatInteger(atText)
-                ?? ItemUpgrade.PercentInteger(atText) ?? 0;
-            found.Add((rank, DrillRow(slotKey, e, rec, baseText!, atText, note)));
+            else
+            {
+                // The deficit list: worn gear granting NOTHING here — the
+                // "ok, I need to upgrade x, y, z" view.
+                without.Add((slotKey.Token, DimDrillRow(slotKey, e, rec)));
+            }
         }
 
         if (found.Count == 0)
@@ -975,8 +986,73 @@ public partial class CharacterSheetView : UserControl
         foreach (var (_, row) in found.OrderByDescending(f => f.Rank))
             root.Children.Add(row);
 
+        if (without.Count > 0)
+        {
+            root.Children.Add(SectionRule());
+            root.Children.Add(SectHeader($"granting no {_drillLabel}"));
+            foreach (var (_, row) in without.OrderBy(w => w.Sort, StringComparer.Ordinal))
+                root.Children.Add(row);
+        }
+
         PaneGrid.Content = root;
         PaneGrid.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>A deficit row: dim everything — this item gives none of the
+    /// drilled stat (a "?" when the wiki has no record to judge by).</summary>
+    private UIElement DimDrillRow((string Token, int Nth) slotKey, InventoryStore.Entry e,
+        ItemStats.Record? rec)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 4), Cursor = Cursors.Hand };
+        if (ItemIcons.Get(rec?.Icon) is { } icon)
+        {
+            var img = new System.Windows.Controls.Image
+            {
+                Source = icon,
+                Width = 18,
+                Height = 18,
+                Opacity = 0.55,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 6, 0),
+            };
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Fant);
+            DockPanel.SetDock(img, Dock.Left);
+            row.Children.Add(img);
+        }
+        var val = new TextBlock
+        {
+            Text = rec is null ? "?" : "—",
+            Foreground = DimFg,
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0),
+            ToolTip = rec is null ? "not in the wiki table — no stats to judge by" : null,
+        };
+        DockPanel.SetDock(val, Dock.Right);
+        row.Children.Add(val);
+
+        var (baseName, tierText) = SplitTier(e.Name);
+        var name = new TextBlock
+        {
+            FontSize = 11.5,
+            Foreground = DimFg,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            ToolTip = $"{e.Name} · {slotKey.Token} — click for the item",
+        };
+        name.Inlines.Add(new System.Windows.Documents.Run(baseName));
+        if (tierText.Length > 0)
+            name.Inlines.Add(new System.Windows.Documents.Run(" " + tierText));
+        name.Inlines.Add(new System.Windows.Documents.Run("  " + slotKey.Token) { FontSize = 10 });
+        row.Children.Add(name);
+
+        row.MouseLeftButtonUp += (_, _) =>
+        {
+            _selected = slotKey;
+            _drillKey = null;
+            RefreshPane();
+        };
+        return row;
     }
 
     private UIElement DrillRow((string Token, int Nth) slotKey, InventoryStore.Entry e,
