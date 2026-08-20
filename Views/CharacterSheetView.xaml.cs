@@ -922,21 +922,32 @@ public partial class CharacterSheetView : UserControl
         root.Children.Add(SectHeader(
             $"Focus effects — {green} worn best · {upg} upgradable · {missing} missing", strong: true));
 
-        void Section(string title, int status)
+        // A row's verdict: green "worn best", or amber with WHERE the
+        // upgrade lives — the stored tier, the huntable tier, or both.
+        string Verdict(FocusEffects.AuditRow a)
         {
-            var inGroup = rows.Where(a => a.Status == status).ToList();
+            if (a.Status == 2) return $"{RomanOf(a.Family, a.WornTier)} — worn best";
+            if (a.BestTier == 0) return "none owned";
+            bool stored = a.BestTier > a.WornTier;
+            bool huntable = a.HuntableMax > a.BestTier;
+            var parts = new List<string>();
+            if (stored) parts.Add($"{RomanOf(a.Family, a.BestTier)} stored");
+            if (huntable) parts.Add($"{RomanOf(a.Family, a.HuntableMax)} huntable");
+            string prefix = a.WornTier > 0 ? $"{RomanOf(a.Family, a.WornTier)} worn → " : "";
+            return prefix + string.Join(" · ", parts);
+        }
+
+        // Grouped by PLACE, not verdict: what's on your body (best or not,
+        // the color still judges), what's owned but stored, what's missing.
+        void Section(string title, Func<FocusEffects.AuditRow, bool> pick)
+        {
+            var inGroup = rows.Where(pick).ToList();
             if (inGroup.Count == 0) return;
             root.Children.Add(SectHeader(title));
             foreach (var a in inGroup)
             {
-                string verdict = status switch
-                {
-                    2 => $"{RomanOf(a.Family, a.WornTier)} — worn best",
-                    1 => a.WornTier > 0
-                        ? $"{RomanOf(a.Family, a.WornTier)} worn → {RomanOf(a.Family, a.HuntableMax)} huntable"
-                        : "stored, not worn",
-                    _ => "none owned",
-                };
+                int status = a.Status;
+                string verdict = Verdict(a);
                 var row = new DockPanel { Margin = new Thickness(0, 0, 0, 1) };
                 var dot = new System.Windows.Shapes.Ellipse
                 {
@@ -982,9 +993,9 @@ public partial class CharacterSheetView : UserControl
                 });
             }
         }
-        Section("Wearing the best", 2);
-        Section("Upgrade available", 1);
-        Section("Missing", 0);
+        Section("Worn", a => a.WornTier > 0);
+        Section("Stored", a => a.WornTier == 0 && a.BestTier > 0);
+        Section("Missing", a => a.BestTier == 0);
         // No shortcut line — the Focus board is one tab away in the window.
     }
 
