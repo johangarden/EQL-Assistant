@@ -1959,6 +1959,24 @@ public partial class App : Application
                 && rkw.KillsFor("Lady Vox", wkStart).Count == 1);
             File.Delete(rkwPath);
 
+            // A difficulty ladder (D0→D4, ~5 min a clear) re-kills the same
+            // boss inside the replay-dedupe window — every TIER must record,
+            // and only a same-difficulty replay dedupes. Master Yael, 19 Aug:
+            // the old any-difficulty window silently ate the D1 and D3 kills.
+            string rkdPath = Path.Combine(Path.GetTempPath(), "eql_rkd_test.json");
+            File.Delete(rkdPath);
+            var rkd = new RaidKills(new ConfigService(), rkdPath);
+            var lad = new DateTime(2026, 8, 19, 23, 9, 0);
+            rkd.ProcessLine("[x] You have entered The Ruins of Old Paineel - Solo.", lad);
+            rkd.ProcessLine("[x] Lady Vox has been slain by Johan!", lad.AddMinutes(5));
+            rkd.ProcessLine("[x] You have entered The Ruins of Old Paineel - Solo 1 (Awakened).", lad.AddMinutes(6));
+            rkd.ProcessLine("[x] Lady Vox has been slain by Johan!", lad.AddMinutes(10));
+            rkd.ProcessLine("[x] Lady Vox has been slain by Johan!", lad.AddMinutes(10)); // replayed line
+            Check("kills: a D0→D1 ladder keeps both, a same-D replay dedupes",
+                rkd.KillsFor("Lady Vox").Count == 2
+                && rkd.KillsFor("Lady Vox").Select(k => k.D).OrderBy(x => x).SequenceEqual(new[] { 0, 1 }));
+            File.Delete(rkdPath);
+
             // Global respawns: the auto-generated death pattern matches both forms.
             var resp = ConfigService.BuildRespawnTrigger(
                 new Models.RespawnEntry { Name = "Lady Vox", Seconds = 400 });

@@ -174,8 +174,13 @@ public sealed class RaidKills
 
         if (!_kills.TryGetValue(canonical, out var list))
             _kills[canonical] = list = new List<Kill>();
-        if (list.Any(k => Math.Abs((k.When - t).TotalMinutes) < 10)) return; // replayed line
-        list.Add(new Kill(t, ParseDifficulty(_zone)) { Zone = _zone });
+        // Replay dedupe — but only within the SAME difficulty: a replayed
+        // line carries the same zone context, while a difficulty ladder
+        // (D0→D4 back-to-back, ~5 min a clear) legitimately re-kills the
+        // same boss inside the window and once cost three real kills.
+        int d = ParseDifficulty(_zone);
+        if (list.Any(k => k.D == d && Math.Abs((k.When - t).TotalMinutes) < 10)) return;
+        list.Add(new Kill(t, d) { Zone = _zone });
         SaveKills();
         Log.Info($"Raid target down: {canonical} (D{ParseDifficulty(_zone)})");
         KillRecorded?.Invoke(canonical, t);
