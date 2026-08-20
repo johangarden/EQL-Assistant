@@ -5,26 +5,23 @@
         TextOptions.TextFormattingMode="Display">
 
     <!-- The doll + detail pane, hosted by the Character window's Sheet tab.
-         The canvas keeps its designed fixed width; the ScrollViewer absorbs
-         whatever size the host window is dragged to. -->
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-        <!-- 1128 leaves room for the vertical scrollbar inside a 1200 window,
-             so no phantom horizontal scrollbar appears. -->
-        <DockPanel Width="1128" HorizontalAlignment="Center" Margin="2,4,2,10">
-            <Grid>
+         The DOLL is static — the window's minimum size guarantees it fits —
+         and only the detail pane scrolls, inside its own column. -->
+    <DockPanel Width="1128" HorizontalAlignment="Center" Margin="2,4,2,10">
+        <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.55*"/>
                     <ColumnDefinition Width="14"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- the doll: anatomical rows, built in code (the view's own
-                     outer ScrollViewer does the scrolling) -->
-                <StackPanel x:Name="DollRows" Grid.Column="0"/>
+                <!-- the doll: anatomical rows, built in code — never scrolls -->
+                <StackPanel x:Name="DollRows" Grid.Column="0" VerticalAlignment="Top"/>
 
-                <!-- detail pane -->
-                <Border Grid.Column="2" Background="#1A2230" BorderBrush="#232C3E" BorderThickness="1"
-                        CornerRadius="8" Padding="14,12" VerticalAlignment="Top">
+                <!-- detail pane: the only thing that scrolls -->
+                <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <Border Background="#1A2230" BorderBrush="#232C3E" BorderThickness="1"
+                        CornerRadius="8" Padding="14,12" VerticalAlignment="Top" Margin="0,0,2,0">
                     <StackPanel>
                         <DockPanel>
                             <!-- the wiki's own 40×40 item art, when the table has it -->
@@ -73,7 +70,7 @@
                         </ItemsControl>
                     </StackPanel>
                 </Border>
+                </ScrollViewer>
             </Grid>
-        </DockPanel>
-    </ScrollViewer>
+    </DockPanel>
 </UserControl>
