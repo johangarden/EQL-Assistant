@@ -23,7 +23,8 @@ public partial class InventoryWindow : Window
     private sealed record RowVm(string Name, string Location, string? LocationTip, string CountText,
         List<PillVm>? Pills = null, string Chevron = "", List<DetailVm>? Details = null,
         Visibility DetailsVis = Visibility.Collapsed, string RowKey = "",
-        Visibility RuleVis = Visibility.Collapsed);
+        Visibility RuleVis = Visibility.Collapsed,
+        ImageSource? Icon = null, Visibility IconVis = Visibility.Collapsed);
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
     private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight, Thickness Margin = default);
 
@@ -51,9 +52,10 @@ public partial class InventoryWindow : Window
 
     private static readonly (string Id, string Label)[] Tabs =
     {
-        ("items", "Items"),
+        ("sheet", "Sheet"),
+        ("items", "All items"),
         ("exalt", "Exaltations"),
-        ("focus", "Focus effects"),
+        ("focus", "Focus board"),
     };
 
     private static readonly Brush SegOnBg = Freeze("#16283E");
@@ -89,6 +91,7 @@ public partial class InventoryWindow : Window
     private readonly DispatcherTimer _freshnessTick;
 
     private readonly FocusEffects _focus = new();
+    private readonly ItemStats _itemStats = new(); // wiki icons + stat table
     private List<InventoryStore.CarryRow> _rows = new();
     private List<FocusEffects.AuditRow> _audit = new();
     private InventoryStore.Dump? _dump;
@@ -98,14 +101,28 @@ public partial class InventoryWindow : Window
     private DateTime _dumpMtime;
     private DateTime? _parsedAt;      // set on watcher-triggered reloads only
 
-    public InventoryWindow(string eqRoot, string charName, string server)
+    // per-storage last-captured times (persisted per character)
+    private static readonly Lazy<ConfigService> SharedConfig = new(() => new ConfigService());
+    private Dictionary<string, DateTime> _sectionTimes = new(StringComparer.Ordinal);
+    private string CharKey => $"{_charName}_{_server}".ToLowerInvariant();
+
+    private readonly SessionStats? _session;
+
+    public InventoryWindow(string eqRoot, string charName, string server,
+        SessionStats? session = null)
     {
         InitializeComponent();
         Interop.WindowTheme.ApplyDark(this);
-        DialogPlacement.Persist(this, "inventory");
+        // "character": a fresh bounds key — the pre-merge Inventory sizes
+        // don't fit the four-tab window.
+        DialogPlacement.Persist(this, "character");
         _eqRoot = eqRoot;
         _charName = charName;
         _server = server;
+        _session = session;
+        SheetView.Init(_focus, _itemStats);
+        SheetView.FocusBoardRequested = () => ShowTab("focus");
+        RefreshCharHeader();
 
         // The game rewrites the file in place; wait for the write to settle.
         _reloadDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -160,10 +177,12 @@ public partial class InventoryWindow : Window
             NoDumpPanel.Visibility = Visibility.Visible;
             ResultsList.Visibility = Visibility.Collapsed;
             FocusList.Visibility = Visibility.Collapsed;
+            SheetView.Visibility = Visibility.Collapsed;
             TabPanel.Children.Clear();
             LanePanel.Children.Clear();
             ParsedText.Visibility = Visibility.Collapsed;
             WarnText.Visibility = Visibility.Collapsed;
+            SectionPanel.Children.Clear();
             EmptyTabText.Visibility = Visibility.Collapsed;
             FreshnessText.Text = "not yet run";
             CountText.Text = "";
@@ -206,14 +225,97 @@ public partial class InventoryWindow : Window
         }
         if (fromWatch) _parsedAt = DateTime.Now;
 
+        // Every storage THIS dump covers was captured at the dump's mtime —
+        // remember it, so an absent storage can say how old its last look is.
+        _sectionTimes = SharedConfig.Value.LoadSectionTimes(CharKey);
+        foreach (var (key, _) in InventoryStore.StorageDefs)
+        {
+            bool covered = _dump.Covered.Contains(key)
+                || (key == "hoard" && _dump.HasExtraItemSection);
+            if (covered) _sectionTimes[key] = _dumpMtime;
+        }
+        SharedConfig.Value.SaveSectionTimes(CharKey, _sectionTimes);
+
         NoDumpPanel.Visibility = Visibility.Collapsed;
         ResultsList.Visibility = Visibility.Visible;
 
+        // The Sheet tab renders from THIS parse — the dump is read once.
+        SheetView.Update(_dump, _rows, _audit);
+
         BuildTabs();
         BuildLaneChips();
-        UpdateCoverage();
-        UpdateFreshness();
+        UpdateFreshness(); // also paints the coverage banner + section pills
         ApplyFilters();
+    }
+
+    /// <summary>Per-storage freshness, EXCEPTIONS ONLY — status must never
+    /// out-shout the tab selector. All storages in the current dump = one dim
+    /// line; only a stale or never-captured storage earns a pill (amber with
+    /// its last-captured age, dim "never").</summary>
+    private void BuildSectionPills()
+    {
+        SectionPanel.Children.Clear();
+        if (_dump is null) return;
+
+        var problems = new List<(string Label, DateTime Seen)>();
+        int total = InventoryStore.StorageDefs.Length;
+        foreach (var (key, label) in InventoryStore.StorageDefs)
+        {
+            bool current = _dump.Covered.Contains(key)
+                || (key == "hoard" && _dump.HasExtraItemSection);
+            if (current) continue;
+            _sectionTimes.TryGetValue(key, out DateTime seen);
+            problems.Add((label, seen));
+        }
+
+        string summary = problems.Count == 0
+            ? $"all {total} storages in this dump"
+            : $"{total - problems.Count} of {total} storages in this dump —";
+        SectionPanel.Children.Add(new TextBlock
+        {
+            Text = summary,
+            Foreground = (Brush)FindResource("Brush.TextHint"),
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 6, 0),
+            ToolTip = "Worn, bags, bank, shared bank, depot, Dragon's Hoard and key rings — "
+                + "the game only writes a storage while its window is open. Re-type "
+                + "/outputfile inventory in game whenever your gear or bags change.",
+        });
+
+        foreach (var (label, seen) in problems)
+        {
+            string age = seen == default ? "never" : ShortAge(DateTime.Now - seen);
+            Brush fg = seen == default ? PillOffFg : StatusFg[1];
+            Brush bg = seen == default ? Brushes.Transparent : StatusBg[1];
+            string tip = seen == default
+                ? $"{label} — never captured. Open it in game, then re-type /outputfile inventory."
+                : $"{label} — last captured {seen:d MMM HH:mm}; the current dump doesn't carry it. Open it in game, then re-dump.";
+            SectionPanel.Children.Add(new Border
+            {
+                CornerRadius = new CornerRadius(9),
+                BorderBrush = fg,
+                BorderThickness = new Thickness(1),
+                Background = bg,
+                Padding = new Thickness(7, 0, 7, 1),
+                Margin = new Thickness(0, 0, 5, 0),
+                ToolTip = tip,
+                Child = new TextBlock
+                {
+                    FontSize = 10,
+                    Foreground = fg,
+                    Text = $"{label} · {age}",
+                },
+            });
+        }
+    }
+
+    private static string ShortAge(TimeSpan t)
+    {
+        if (t < TimeSpan.Zero) t = TimeSpan.Zero;
+        if (t.TotalMinutes < 60) return $"{Math.Max(0, (int)t.TotalMinutes)}m";
+        if (t.TotalHours < 48) return $"{(int)t.TotalHours}h";
+        return $"{(int)t.TotalDays}d";
     }
 
     private void BuildTabs()
@@ -225,18 +327,25 @@ public partial class InventoryWindow : Window
             // report in two digits. Summoned charms are conjured temporaries
             // and stay out of the score. Row tabs count their rows.
             var scored = _audit.Where(a => a.Family.Group != "summoned").ToList();
-            string text = id == "focus"
-                ? $"{label}  {scored.Count(a => a.Status == 2)}/{scored.Count}"
-                : $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}";
-            AddPill(TabPanel, text, id, id == _tab, picked =>
+            string text = id switch
             {
-                _tab = picked!;
-                RepaintPills(TabPanel, _tab);
-                _lane = null; // a lane picked on one tab means nothing on another
-                BuildLaneChips();
-                ApplyFilters();
-            });
+                "sheet" => label,
+                "focus" => $"{label}  {scored.Count(a => a.Status == 2)}/{scored.Count}",
+                _ => $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}",
+            };
+            AddPill(TabPanel, text, id, id == _tab, picked => ShowTab(picked!));
         }
+    }
+
+    /// <summary>Switch to a tab by id (sheet · items · exalt · focus) — the
+    /// toolbar's helm and chest are two doors into this one window.</summary>
+    public void ShowTab(string id)
+    {
+        _tab = id;
+        RepaintPills(TabPanel, _tab);
+        _lane = null; // a lane picked on one tab means nothing on another
+        BuildLaneChips();
+        ApplyFilters();
     }
 
     /// <summary>The gold coverage story: what this dump does NOT speak for.
@@ -244,23 +353,23 @@ public partial class InventoryWindow : Window
     private void UpdateCoverage()
     {
         if (_dump is null) return;
+        var parts = new List<string>();
+        int days = (int)(DateTime.Now - _dumpMtime).TotalDays;
+        if (days >= InventoryStore.DumpStaleDays)
+            parts.Add($"⚠  This dump is {days} days old — gear may have moved since. Re-type /outputfile inventory in game.");
         var missing = InventoryStore.MissingStorages(_dump);
-        if (missing.Count == 0)
-        {
-            WarnText.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            WarnText.Text = "⚠  Not in this dump: " + string.Join(" · ", missing)
-                + ".  The game only writes a storage while its window is open — open them in game, then re-type /outputfile inventory.";
-            WarnText.Visibility = Visibility.Visible;
-        }
+        if (missing.Count > 0)
+            parts.Add("⚠  Not in this dump: " + string.Join(" · ", missing)
+                + ".  The game only writes a storage while its window is open — open them in game, then re-type /outputfile inventory.");
+        WarnText.Text = string.Join("\n", parts);
+        WarnText.Visibility = parts.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void BuildLaneChips()
     {
-        // The audit is not row-backed; place is spelled per family instead.
-        if (_tab == "focus")
+        // The audit is not row-backed (and the sheet is not list-backed);
+        // place is spelled per family / per slot instead.
+        if (_tab is "focus" or "sheet")
         {
             LanePanel.Children.Clear();
             LanePanel.Visibility = Visibility.Collapsed;
@@ -386,6 +495,11 @@ public partial class InventoryWindow : Window
         FreshnessText.Foreground = age > TimeSpan.FromHours(24)
             ? (Brush)FindResource("Brush.Gold")
             : (Brush)FindResource("Brush.TextHint");
+        // The pill ages, the stale banner and the header's level age all
+        // drift with the clock too.
+        BuildSectionPills();
+        UpdateCoverage();
+        RefreshCharHeader();
 
         // The watcher just caught a rewrite: celebrate briefly, then let the
         // ordinary freshness line carry it.
@@ -407,6 +521,18 @@ public partial class InventoryWindow : Window
 
     private void ApplyFilters()
     {
+        // The Sheet tab is its own surface — no list, no search, no lanes.
+        bool sheet = _tab == "sheet" && _dump is not null;
+        SheetView.Visibility = sheet ? Visibility.Visible : Visibility.Collapsed;
+        SearchRow.Visibility = sheet ? Visibility.Collapsed : Visibility.Visible;
+        if (sheet)
+        {
+            ResultsList.Visibility = Visibility.Collapsed;
+            FocusList.Visibility = Visibility.Collapsed;
+            EmptyTabText.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         string q = SearchBox.Text.Trim().ToLowerInvariant();
         bool focus = _tab == "focus";
         FocusList.Visibility = focus ? Visibility.Visible : Visibility.Collapsed;
@@ -646,17 +772,64 @@ public partial class InventoryWindow : Window
         return details;
     }
 
-    /// <summary>Selftest hook: front the audit board so its template
-    /// actually instantiates (a collapsed list renders nothing and would
-    /// hide a binding typo).</summary>
-    public void ShowFocusTabForTest()
+    /// <summary>Front the audit board (also the selftest hook — a collapsed
+    /// list renders nothing and would hide a binding typo).</summary>
+    public void ShowFocusTab()
     {
-        _tab = "focus";
-        RepaintPills(TabPanel, _tab);
-        BuildLaneChips();
-        ApplyFilters();
+        ShowTab("focus");
         UpdateLayout();
     }
+
+    // ---- the character header (name · level · classes — the session
+    // panel's ding//who machinery, shared by every tab) ----------------------
+
+    private static readonly Brush HdrText = Freeze("#C9D4E3");
+    private static readonly Brush HdrDim = Freeze("#5C6B82");
+    private static readonly Brush HdrBorder = Freeze("#3A4560");
+
+    private void RefreshCharHeader()
+    {
+        CharName.Text = _charName.Length > 0 ? _charName : "Character";
+        ServerText.Text = _server;
+        ClassChips.Children.Clear();
+        LevelText.Text = "";
+        LevelAge.Text = "";
+        LevelAge.ToolTip = null;
+        WhoHint.Text = "";
+
+        var stmt = _session?.LevelStatement;
+        if (stmt is { } s)
+        {
+            LevelText.Text = "Level " + s.Level;
+            LevelAge.Text = AgoText(DateTime.Now - s.Ts) + " ago";
+            LevelAge.ToolTip = _session!.LevelInfo(DateTime.Now).Tip;
+        }
+        string classes = _session?.WhoClasses ?? "";
+        foreach (var cls in classes.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            ClassChips.Children.Add(HeaderChip(cls, HdrText, HdrBorder));
+        if (stmt is { FromWho: true })
+            ClassChips.Children.Add(HeaderChip("stated by /who", StatusFg[2], StatusFg[2]));
+        else if (stmt is not null)
+            ClassChips.Children.Add(HeaderChip("from your last ding", HdrDim, HdrBorder));
+        if (stmt is null && classes.Length == 0)
+            WhoHint.Text = "type /who in game for classes + level";
+    }
+
+    private static UIElement HeaderChip(string text, Brush fg, Brush border) => new Border
+    {
+        CornerRadius = new CornerRadius(9),
+        BorderBrush = border,
+        BorderThickness = new Thickness(1),
+        Padding = new Thickness(8, 1, 8, 2),
+        Margin = new Thickness(0, 0, 5, 0),
+        Child = new TextBlock
+        {
+            Text = text,
+            Foreground = fg,
+            FontSize = 10.5,
+            FontWeight = FontWeights.SemiBold,
+        },
+    };
 
     /// <summary>What a tier pill says: the effect's own trailing token when
     /// it's a numeral (III, 14 — the resonances' numbers are the mod
@@ -680,8 +853,11 @@ public partial class InventoryWindow : Window
     private RowVm MakeRowVm(InventoryStore.CarryRow r)
     {
         string count = r.Count > 1 ? $"{r.Count}×" : "";
+        var icon = ItemIcons.Get(_itemStats.Lookup(r.Name)?.Icon);
+        var iconVis = icon is null ? Visibility.Collapsed : Visibility.Visible;
         if (_tab == "exalt" && r.Host.Length > 0)
-            return new RowVm(r.Name, "in " + r.Host, r.Location, count);
+            return new RowVm(r.Name, "in " + r.Host, r.Location, count,
+                Icon: icon, IconVis: iconVis);
 
         List<PillVm>? pills = null;
         var ownEffects = _focus.EffectsOf(r.Name);
@@ -694,11 +870,13 @@ public partial class InventoryWindow : Window
             foreach (var child in entry.Children)
             {
                 var (label, slotName) = SlotTypeOf(child.Location);
+                // Occupied pills wear their socket TYPE's color (SocketColors,
+                // shared with the character sheet); empty stays a gray outline.
                 pills.Add(child.Empty
                     ? new PillVm(label, Brushes.Transparent, PillOffBorder, PillOffFg,
                         $"{slotName} — empty")
-                    : new PillVm(label, StatusBg[2], StatusFg[2], StatusFg[2],
-                        $"{slotName} — {child.Name}"));
+                    : new PillVm(label, SocketColors.Fill(label), SocketColors.Fill(label),
+                        SocketColors.Ink, $"{slotName} — {child.Name}"));
             }
         }
 
@@ -710,7 +888,8 @@ public partial class InventoryWindow : Window
             Chevron: foldable ? (open ? "▾" : "▸") : "",
             Details: open ? MakeItemDetails(r, entry, ownEffects) : null,
             DetailsVis: open ? Visibility.Visible : Visibility.Collapsed,
-            RowKey: r.Location);
+            RowKey: r.Location,
+            Icon: icon, IconVis: iconVis);
     }
 
     /// <summary>The item fold-out: what the item itself grants, then each

@@ -1,0 +1,76 @@
+<UserControl x:Class="EQLOverlay.Views.CharacterSheetView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <!-- The doll + detail pane, hosted by the Character window's Sheet tab.
+         The DOLL is static — the window's minimum size guarantees it fits —
+         and only the detail pane scrolls, inside its own column. -->
+    <DockPanel Width="1128" HorizontalAlignment="Center" Margin="2,4,2,10">
+        <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.55*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- the doll: anatomical rows, built in code — never scrolls -->
+                <StackPanel x:Name="DollRows" Grid.Column="0" VerticalAlignment="Top"/>
+
+                <!-- detail pane: the only thing that scrolls -->
+                <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <Border Background="#1A2230" BorderBrush="#232C3E" BorderThickness="1"
+                        CornerRadius="8" Padding="14,12" VerticalAlignment="Top" Margin="0,0,2,0">
+                    <StackPanel>
+                        <DockPanel>
+                            <!-- the wiki's own 40×40 item art, when the table has it -->
+                            <Image x:Name="PaneIcon" DockPanel.Dock="Left" Width="34" Height="34"
+                                   Margin="0,1,9,0" VerticalAlignment="Top" Visibility="Collapsed"
+                                   RenderOptions.BitmapScalingMode="Fant"/>
+                            <StackPanel>
+                                <TextBlock x:Name="PaneTitle" FontWeight="SemiBold" FontSize="14"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock x:Name="PaneSub" Foreground="#5C6B82" FontSize="11"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <Border Height="10"/>
+                        <ItemsControl x:Name="PaneLines">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,7">
+                                        <TextBlock Text="{Binding Key}" Foreground="#5C6B82" FontSize="9.5"
+                                                   FontWeight="Bold" Visibility="{Binding KeyVis}"/>
+                                        <TextBlock Text="{Binding Value}" Foreground="{Binding Fg}" FontSize="12"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <!-- the Stats tab's item-window grid (label: value columns) -->
+                        <ContentControl x:Name="PaneGrid" Visibility="Collapsed" Margin="0,0,0,4"/>
+                        <ItemsControl x:Name="PaneLinesBelow" Visibility="Collapsed"
+                                      MouseLeftButtonUp="PaneLinesBelow_Click">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,7" Cursor="{Binding RowCursor}">
+                                        <!-- section rule (the socket ladder → tail divider) -->
+                                        <Border Height="1" Background="#232C3E" Margin="0,2,0,9"
+                                                Visibility="{Binding RuleVis}"/>
+                                        <TextBlock Text="{Binding Key}" Foreground="#5C6B82" FontSize="9.5"
+                                                   FontWeight="Bold" Visibility="{Binding KeyVis}"/>
+                                        <TextBlock Foreground="{Binding Fg}" FontSize="12"
+                                                   TextWrapping="Wrap"><Run
+                                                   Text="{Binding Value, Mode=OneWay}"/><Run
+                                                   Text="{Binding LinkText, Mode=OneWay}"
+                                                   TextDecorations="Underline"/></TextBlock>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                </ScrollViewer>
+            </Grid>
+    </DockPanel>
+</UserControl>

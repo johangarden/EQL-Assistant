@@ -192,10 +192,25 @@ public partial class App : Application
                 "Location\tName\tID\tCount\tSlots\r\nHead\tValorium Helmet +1\t4851\t1\t10\r\n");
             var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
             invWin.Show();
-            invWin.ShowFocusTabForTest(); // instantiate the audit-board template
+            invWin.ShowFocusTab(); // instantiate the audit-board template
             invWin.Close();
+
+            // The Sheet tab renders the doll + detail pane from a real-format
+            // dump (worn item with a socket) inside the same window.
+            File.WriteAllText(Path.Combine(invDir, "Sheetchar_paineel-Inventory.txt"),
+                "Location\tName\tID\tCount\tSlots\r\n"
+                + "Head\tWicked Sallet +5\t4301\t1\t10\r\n"
+                + "Head-Slot7\tWicked Sallet (Exaltation)\t4301\t1\t10\r\n"
+                + "Primary\tThe Baron's Blade +5\t5407\t1\t10\r\n"
+                + "Ear\tEmpty\t0\t0\t0\r\n");
+            var sheetWin = new Views.InventoryWindow(invDir, "Sheetchar", "paineel");
+            sheetWin.Show();
+            sheetWin.ShowTab("sheet"); // instantiate the doll + pane
+            sheetWin.UpdateLayout();
+            sheetWin.Close();
             var invEmpty = new Views.InventoryWindow(Path.Combine(invDir, "no_such_dir"), "X", "y");
             invEmpty.Show();
+            invEmpty.ShowTab("sheet"); // the empty state must hold on every tab
             invEmpty.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
             Environment.ExitCode = 0;
@@ -1432,6 +1447,52 @@ public partial class App : Application
                     focus.EffectsOf("Wicked Sallet +5").Any(e => e.Tier.Effect == "Mana Preservation I")
                     && focus.EffectsOf("Wicked Sallet (Exaltation)").Any(e => e.Tier.Effect == "Mana Preservation I")
                     && focus.EffectsOf("A Perfectly Ordinary Rock").Count == 0);
+                // ---- item stats (the character sheet's wiki table) ----------
+                var istats = new ItemStats();
+                Check("item stats: ~11k wiki items load with pairs + icon ids",
+                    istats.Count > 11000
+                    && istats.Lookup("Wicked Sallet +5") is { Ac: 10, Classes: "SHD", Icon: 628 } ws
+                    && ws.Stats.Any(p => p is ["STR", "+3"])
+                    && istats.Lookup("Djarn's Amethyst Ring +2") is { Name: "Djarns Amethyst Ring", Icon: 612 }
+                    && istats.Lookup("The Baron's Blade +5") is { Dmg: 10, Delay: 30, Skill: "1H Slashing" }
+                    && istats.Lookup("A Perfectly Ordinary Rock") is null);
+                // The wiki's "HP Regen: 2 Mana Regen: 2 End Regen: 2" line once
+                // shattered in the scrape (stray "HP", a "2 End" value) — the
+                // build repairs it from the raw block: 2/2/2 base, 7/7/7 at +5.
+                Check("item stats: the three-regen line is whole (7/7/7 at +5)",
+                    istats.Lookup("Talisman of Kejaar Kerrath +5") is { } tkk
+                    && tkk.Stats.Any(p => p is ["HP Regen", "2"])
+                    && tkk.Stats.Any(p => p is ["Mana Regen", "2"])
+                    && tkk.Stats.Any(p => p is ["End Regen", "2"])
+                    && tkk.Extras.Length == 0
+                    && ItemUpgrade.ScaleValueText("End Regen", "2", 5) == "7"
+                    && ItemUpgrade.ScaleValueText("HP Regen", "2", 5) == "7");
+                // ---- the tier math (eqlwiki's own slider rules, via Companion) ----
+                // Fixtures pinned by Companion's port: rounding spelling and the
+                // IEEE754 weight artifact are load-bearing.
+                Check("item upgrade: primary >10 rounds the increment BEFORE the add",
+                    ItemUpgrade.ScalePrimary(15, 2, 3) == 19       // NOT 20 (one-step spelling)
+                    && ItemUpgrade.ScalePrimary(10, 5) == 15       // ≤10: +1 per tier
+                    && ItemUpgrade.ScalePrimary(0, 7) == 0         // absent stays absent
+                    && ItemUpgrade.ScalePrimary(-5, 3) == -2       // penalties shrink toward 0
+                    && ItemUpgrade.ScalePrimary(-5, 7) == 0);      // and never cross it
+                Check("item upgrade: weapon DMG reads the fraction, flat + weight curves hold",
+                    ItemUpgrade.ScaleDamage(30, 2, 3) == 38        // eff 2.75 → +floor(8.25)
+                    && ItemUpgrade.ScaleFlat(36, 5) == 41          // Haste 36% +1/tier
+                    && Math.Abs(ItemUpgrade.ScaleWeight(3.0, 2, 3) - 2.3) < 1e-9   // ceil, not round
+                    && Math.Abs(ItemUpgrade.ScaleWeight(3.0, 10) - 0.4) < 1e-9     // the float artifact
+                    && Math.Abs(ItemUpgrade.ScaleWeight(0.1, 10) - 0.1) < 1e-9);   // feather guard
+                Check("item upgrade: SV VOID grant + key aliases",
+                    ItemUpgrade.SynthesizesVoid(new[] { "STR", "STA" }, 3)
+                    && !ItemUpgrade.SynthesizesVoid(new[] { "AC", "HP" }, 3)
+                    && !ItemUpgrade.SynthesizesVoid(new[] { "STR", "STA", "SV VOID" }, 3)
+                    && ItemUpgrade.NormalizeKey("Mana Regen") == "MANA_REGEN"
+                    && ItemUpgrade.NormalizeKey("MANA") == "MP"
+                    && ItemUpgrade.ClassOf("SV FIRE") == ItemUpgrade.StatClass.Primary
+                    && ItemUpgrade.ClassOf("Haste") == ItemUpgrade.StatClass.Flat
+                    && ItemUpgrade.ScaleValueText("STR", "+3", 5) == "+8"
+                    && ItemUpgrade.ScaleValueText("Haste", "36%", 5) == "41%");
+
                 var djarns = focus.Audit(new[]
                 {
                     new InventoryStore.CarryRow("Djarn's Amethyst Ring +2", "djarn's amethyst ring +2", "Fingers", 1, "worn", 1),
@@ -1906,6 +1967,24 @@ public partial class App : Application
                     .Targets.Single(x => x.Name == "Lady Vox").Count == 2
                 && rkw.KillsFor("Lady Vox", wkStart).Count == 1);
             File.Delete(rkwPath);
+
+            // A difficulty ladder (D0→D4, ~5 min a clear) re-kills the same
+            // boss inside the replay-dedupe window — every TIER must record,
+            // and only a same-difficulty replay dedupes. Master Yael, 19 Aug:
+            // the old any-difficulty window silently ate the D1 and D3 kills.
+            string rkdPath = Path.Combine(Path.GetTempPath(), "eql_rkd_test.json");
+            File.Delete(rkdPath);
+            var rkd = new RaidKills(new ConfigService(), rkdPath);
+            var lad = new DateTime(2026, 8, 19, 23, 9, 0);
+            rkd.ProcessLine("[x] You have entered The Ruins of Old Paineel - Solo.", lad);
+            rkd.ProcessLine("[x] Lady Vox has been slain by Johan!", lad.AddMinutes(5));
+            rkd.ProcessLine("[x] You have entered The Ruins of Old Paineel - Solo 1 (Awakened).", lad.AddMinutes(6));
+            rkd.ProcessLine("[x] Lady Vox has been slain by Johan!", lad.AddMinutes(10));
+            rkd.ProcessLine("[x] Lady Vox has been slain by Johan!", lad.AddMinutes(10)); // replayed line
+            Check("kills: a D0→D1 ladder keeps both, a same-D replay dedupes",
+                rkd.KillsFor("Lady Vox").Count == 2
+                && rkd.KillsFor("Lady Vox").Select(k => k.D).OrderBy(x => x).SequenceEqual(new[] { 0, 1 }));
+            File.Delete(rkdPath);
 
             // Global respawns: the auto-generated death pattern matches both forms.
             var resp = ConfigService.BuildRespawnTrigger(

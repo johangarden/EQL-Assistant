@@ -1,9 +1,10 @@
 <Window x:Class="EQLOverlay.Views.InventoryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="EQL Assistant — Inventory"
-        Width="680" Height="560"
-        MinWidth="500" MinHeight="360"
+        xmlns:v="clr-namespace:EQLOverlay.Views"
+        Title="EQL Assistant — Character"
+        Width="1200" Height="940"
+        MinWidth="1170" MinHeight="940"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Brush.Window}"
         Icon="/assets/eqloverlay.ico"
@@ -20,23 +21,42 @@
 
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top">
+            <!-- ONE header for every tab: who you are (the session panel's
+                 ding//who machinery) and how fresh the dump feeding it is. -->
             <DockPanel>
                 <TextBlock x:Name="FreshnessText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.TextHint}"
                            FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                <TextBlock Text="Inventory" Style="{StaticResource PageTitle}"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="CharName" Text="Character" Style="{StaticResource PageTitle}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock x:Name="ServerText" Foreground="#5C6B82" FontSize="11"
+                               VerticalAlignment="Center" Margin="9,5,0,0"/>
+                    <TextBlock x:Name="LevelText" Foreground="#C9D4E3" FontSize="13" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="16,2,0,0"/>
+                    <TextBlock x:Name="LevelAge" Foreground="#5C6B82" FontSize="10.5"
+                               VerticalAlignment="Center" Margin="6,4,0,0"/>
+                    <StackPanel x:Name="ClassChips" Orientation="Horizontal"
+                                VerticalAlignment="Center" Margin="12,2,0,0"/>
+                    <TextBlock x:Name="WhoHint" Foreground="#5C6B82" FontSize="10.5"
+                               VerticalAlignment="Center" Margin="12,4,0,0"/>
+                </StackPanel>
             </DockPanel>
-            <TextBlock x:Name="HintText" Style="{StaticResource Hint}" Margin="0,2,0,4"
-                       Text="Everything the game's own inventory dump lists — worn, bags, bank, depot and key rings. Re-type /outputfile inventory in game whenever your gear or bags change."/>
+            <!-- The SELECTOR owns the header's second row — everything
+                 status-shaped is demoted beneath it. -->
+            <WrapPanel x:Name="TabPanel" Margin="0,6,0,7"/>
 
             <!-- Parse + coverage story: gold when the dump leaves storages unsaid. -->
             <TextBlock x:Name="ParsedText" Foreground="{StaticResource Brush.Gold}" FontSize="11"
                        Margin="0,0,0,2" Visibility="Collapsed"/>
             <TextBlock x:Name="WarnText" Foreground="{StaticResource Brush.Gold}" FontSize="11"
-                       TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+                       TextWrapping="Wrap" Margin="0,0,0,6" Visibility="Collapsed"/>
 
-            <WrapPanel x:Name="TabPanel" Margin="0,0,0,6"/>
+            <!-- per-storage freshness, EXCEPTIONS ONLY: one dim line when all
+                 is well; a pill per storage that is stale or never captured.
+                 (The dump how-to lives on this line's tooltip + the no-dump page.) -->
+            <WrapPanel x:Name="SectionPanel" Margin="0,0,0,7"/>
 
-            <DockPanel Margin="0,0,0,6">
+            <DockPanel x:Name="SearchRow" Margin="0,0,0,6">
                 <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.TextHint}"
                            FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
                 <TextBox x:Name="SearchBox" TextChanged="Filters_Changed"
@@ -59,6 +79,10 @@
         </StackPanel>
 
         <Grid>
+            <!-- Sheet tab: the paper-doll + detail pane, fed by this window's
+                 parse (it never reads the dump itself). -->
+            <v:CharacterSheetView x:Name="SheetView" Visibility="Collapsed"/>
+
             <ListBox x:Name="ResultsList"
                      HorizontalContentAlignment="Stretch"
                      PreviewMouseLeftButtonUp="ResultsList_Click"
@@ -100,6 +124,11 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <!-- the wiki's own item art, when the table has it -->
+                                <Image DockPanel.Dock="Left" Source="{Binding Icon}"
+                                       Visibility="{Binding IconVis}" Width="18" Height="18"
+                                       Margin="0,0,6,0" VerticalAlignment="Center"
+                                       RenderOptions.BitmapScalingMode="Fant"/>
                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                             </DockPanel>

@@ -14,7 +14,9 @@ public static class DialogPlacement
 {
     private static readonly Lazy<ConfigService> SharedConfig = new(() => new ConfigService());
 
-    public static void Persist(Window window, string key)
+    /// <param name="positionOnly">For fixed-size windows: restore and save
+    /// only WHERE it sits, never how big it is.</param>
+    public static void Persist(Window window, string key, bool positionOnly = false)
     {
         var config = SharedConfig.Value;
         if (config.LoadDialogBounds(key) is { } b && OnScreen(b))
@@ -22,9 +24,12 @@ public static class DialogPlacement
             window.WindowStartupLocation = WindowStartupLocation.Manual;
             window.Left = b.Left;
             window.Top = b.Top;
-            window.Width = b.Width;
-            window.Height = b.Height;
-            if (b.Maximized) window.WindowState = WindowState.Maximized;
+            if (!positionOnly)
+            {
+                window.Width = b.Width;
+                window.Height = b.Height;
+                if (b.Maximized) window.WindowState = WindowState.Maximized;
+            }
         }
 
         window.Closing += (_, _) =>

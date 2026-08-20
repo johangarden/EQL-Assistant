@@ -349,6 +349,48 @@ public sealed class ConfigService
         catch { /* remembering the size is a convenience, never an error */ }
     }
 
+    // The inventory dump only carries a storage while its window was open in
+    // game — remember, per character, WHEN each storage was last captured so
+    // the Inventory window can say how stale each one is.
+
+    private string SectionTimesPath => System.IO.Path.Combine(ConfigDirectory, "inventory-sections.json");
+
+    public Dictionary<string, DateTime> LoadSectionTimes(string charKey)
+    {
+        try
+        {
+            if (File.Exists(SectionTimesPath)
+                && JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, DateTime>>>(
+                    File.ReadAllText(SectionTimesPath), ReadOptions) is { } all
+                && all.TryGetValue(charKey, out var times))
+                return times;
+        }
+        catch { /* stale freshness metadata is never worth an error */ }
+        return new Dictionary<string, DateTime>(StringComparer.Ordinal);
+    }
+
+    public void SaveSectionTimes(string charKey, Dictionary<string, DateTime> times)
+    {
+        try
+        {
+            Dictionary<string, Dictionary<string, DateTime>> all;
+            try
+            {
+                all = File.Exists(SectionTimesPath)
+                    ? JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, DateTime>>>(
+                        File.ReadAllText(SectionTimesPath), ReadOptions) ?? new()
+                    : new();
+            }
+            catch
+            {
+                all = new();
+            }
+            all[charKey] = times;
+            File.WriteAllText(SectionTimesPath, JsonSerializer.Serialize(all, WriteOptions));
+        }
+        catch { /* ibid. */ }
+    }
+
     public (double Left, double Top)? LoadPanelPos(string name)
     {
         string path = System.IO.Path.Combine(ConfigDirectory, $"window-{name}.json");

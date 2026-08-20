@@ -1318,7 +1318,7 @@ public partial class MainWindow : Window
             RaidRequested = OpenRaidKills,
             QuestsRequested = OpenSkyQuests,
             LootRequested = OpenLootHistory,
-            InventoryRequested = OpenInventory,
+            SheetRequested = OpenCharacterSheet,
         };
         _toolbarWin.Show();
         UpdateToolbarVisibility();
@@ -1563,21 +1563,25 @@ public partial class MainWindow : Window
 
     private Views.InventoryWindow? _inventoryWindow;
 
-    /// <summary>The searchable carry ledger over the game's own inventory dump
-    /// (the install root is derived from the followed log's location).</summary>
-    private void OpenInventory()
+    /// <summary>The ONE Character window (sheet · all items · exaltations ·
+    /// focus board) over the game's own inventory dump. The toolbar's helm
+    /// and chest are two doors into it, each landing on its own tab.</summary>
+    private void OpenCharacterWindow(string tab)
     {
         if (_inventoryWindow is null)
         {
             string logPath = _watcher?.CurrentPath ?? "";
             var (name, server) = InventoryStore.ParseLogName(logPath);
             _inventoryWindow = new Views.InventoryWindow(
-                InventoryStore.EqRootOf(logPath), name, server);
+                InventoryStore.EqRootOf(logPath), name, server, _session);
             _inventoryWindow.Closed += (_, _) => _inventoryWindow = null;
             _inventoryWindow.Show();
         }
+        _inventoryWindow.ShowTab(tab);
         BringToFront(_inventoryWindow);
     }
+
+    private void OpenCharacterSheet() => OpenCharacterWindow("sheet");
 
     private Views.DeathRecapWindow? _recapWindow;
     private CombatParser.DeathEvent? _lastDeath;
@@ -1679,7 +1683,7 @@ public partial class MainWindow : Window
 
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
-        menu.Items.Add("Inventory…", null, (_, _) => OpenInventory());
+        menu.Items.Add("Character…", null, (_, _) => OpenCharacterSheet());
         menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
         menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());

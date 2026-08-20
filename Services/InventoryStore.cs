@@ -403,6 +403,24 @@ public static class InventoryStore
         return lanes;
     }
 
+    /// <summary>A dump older than this many days gets a stale warning — gear
+    /// changes faster than memory admits.</summary>
+    public const int DumpStaleDays = 3;
+
+    /// <summary>Every storage a dump CAN carry, in the in-game ritual's
+    /// order: Covered key + display label. Hoard coverage also accepts
+    /// <see cref="Dump.HasExtraItemSection"/> (never sampled on old clients).</summary>
+    public static readonly (string Key, string Label)[] StorageDefs =
+    {
+        ("worn", "Worn"),
+        ("bags", "Bags"),
+        ("bank", "Bank"),
+        ("sharedBank", "Shared bank"),
+        ("depot", "Depot"),
+        ("hoard", "Dragon's Hoard"),
+        ("keyring", "Key rings"),
+    };
+
     /// <summary>The storages this dump does NOT speak for, in the order the
     /// in-game ritual visits them. "Missing" means "the dump does not say" —
     /// the game only writes a storage while its window is open. The Dragon's
