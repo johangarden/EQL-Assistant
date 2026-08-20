@@ -1051,9 +1051,13 @@ public partial class CharacterSheetView : UserControl
         foreach (var ((token, _), e) in _worn.OrderBy(kv => kv.Key.Token, StringComparer.Ordinal))
         {
             if (e.Empty) continue;
+            // One row per EFFECT per item: an item's own exaltation copy
+            // socketed into itself would otherwise state its click twice.
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var rec = _stats.Lookup(e.Name);
             foreach (var fx in ClickLines(rec))
-                wornRows.Add(ClickyRow(rec?.Icon, fx, $"{e.Name} · {token}"));
+                if (seen.Add(fx))
+                    wornRows.Add(ClickyRow(rec?.Icon, fx, $"{e.Name} · {token}"));
             foreach (var child in e.Children.Where(c => !c.Empty && SlotTypeOf(c.Location).Label == "C"))
             {
                 var crec = _stats.Lookup(child.Name);
@@ -1063,7 +1067,8 @@ public partial class CharacterSheetView : UserControl
                     wornRows.Add(ClickyRow(crec?.Icon, childBase,
                         $"socketed in {e.Name} · {token} — click effect not in the wiki table", known: false));
                 foreach (var fx in fxs)
-                    wornRows.Add(ClickyRow(crec?.Icon, fx, $"{childBase}, socketed in {e.Name} · {token}"));
+                    if (seen.Add(fx))
+                        wornRows.Add(ClickyRow(crec?.Icon, fx, $"{childBase}, socketed in {e.Name} · {token}"));
             }
         }
         if (wornRows.Count > 0)
