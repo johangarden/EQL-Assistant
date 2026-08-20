@@ -764,6 +764,7 @@ public partial class CharacterSheetView : UserControl
             Cell("Attack", "ATTACK"),
             Cell("Regen", "HP_REGEN"),
             Cell("Mana Regen", "MANA_REGEN"),
+            Cell("End Regen", "END_REGEN"),
         };
         // Anything the template doesn't name still shows — appended, verbatim.
         foreach (var key in vals.Keys.Where(k => !used.Contains(k)))

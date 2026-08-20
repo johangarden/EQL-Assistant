@@ -1456,6 +1456,17 @@ public partial class App : Application
                     && istats.Lookup("Djarn's Amethyst Ring +2") is { Name: "Djarns Amethyst Ring", Icon: 612 }
                     && istats.Lookup("The Baron's Blade +5") is { Dmg: 10, Delay: 30, Skill: "1H Slashing" }
                     && istats.Lookup("A Perfectly Ordinary Rock") is null);
+                // The wiki's "HP Regen: 2 Mana Regen: 2 End Regen: 2" line once
+                // shattered in the scrape (stray "HP", a "2 End" value) — the
+                // build repairs it from the raw block: 2/2/2 base, 7/7/7 at +5.
+                Check("item stats: the three-regen line is whole (7/7/7 at +5)",
+                    istats.Lookup("Talisman of Kejaar Kerrath +5") is { } tkk
+                    && tkk.Stats.Any(p => p is ["HP Regen", "2"])
+                    && tkk.Stats.Any(p => p is ["Mana Regen", "2"])
+                    && tkk.Stats.Any(p => p is ["End Regen", "2"])
+                    && tkk.Extras.Length == 0
+                    && ItemUpgrade.ScaleValueText("End Regen", "2", 5) == "7"
+                    && ItemUpgrade.ScaleValueText("HP Regen", "2", 5) == "7");
                 // ---- the tier math (eqlwiki's own slider rules, via Companion) ----
                 // Fixtures pinned by Companion's port: rounding spelling and the
                 // IEEE754 weight artifact are load-bearing.
