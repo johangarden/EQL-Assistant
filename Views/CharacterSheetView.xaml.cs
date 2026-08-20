@@ -65,8 +65,6 @@ public partial class CharacterSheetView : UserControl
     private static readonly Brush GoldFg = Freeze("#E8C15A");
     private static readonly Brush GreenFg = Freeze("#66BB6A");
     private static readonly Brush AmberFg = Freeze("#FFB74D");
-    private static readonly Brush TabOnBg = Freeze("#16283E");
-    private static readonly Brush TabOnFg = Freeze("#4FC3F7");
 
     private FocusEffects _focus = null!;
     private ItemStats _stats = null!;
@@ -74,7 +72,6 @@ public partial class CharacterSheetView : UserControl
     private List<FocusEffects.AuditRow> _audit = new();
     private readonly Dictionary<(string Token, int Nth), InventoryStore.Entry> _worn = new();
     private (string Token, int Nth)? _selected;
-    private string _charTab = "totals";  // totals | focusall | clickies
     private List<InventoryStore.CarryRow> _rows = new();
 
     /// <summary>Wired by the host: the compact focus list links to the full
@@ -347,16 +344,9 @@ public partial class CharacterSheetView : UserControl
     }
 
     // ---- the detail pane --------------------------------------------------------
-
-    // The tab strip is always the three CHARACTER-wide views; a selected slot
-    // shows ONE combined item view (stats grid + sockets + focus) with no tab
-    // lit, and clicking any tab is also the way back.
-    private static readonly (string Id, string Label)[] CharTabDefs =
-    {
-        ("totals", "Total stats"),
-        ("focusall", "Focus effects"),
-        ("clickies", "Clickies"),
-    };
+    // No tabs: the landing view stacks totals, focus verdicts and clickies in
+    // one scroll; a selected slot swaps in the combined item view, and
+    // clicking the slot again comes back.
 
     private void RefreshPane()
     {
@@ -368,38 +358,8 @@ public partial class CharacterSheetView : UserControl
         }
 
         bool itemMode = _selected is not null;
-        // A selected item owns the pane — the character-wide tabs disappear
-        // (click the slot again to get back to them).
-        PaneTabs.Visibility = itemMode ? Visibility.Collapsed : Visibility.Visible;
-        PaneTabs.Children.Clear();
-        foreach (var (id, label) in CharTabDefs)
-        {
-            var text = new TextBlock { Text = label, FontSize = 10.5 };
-            var tab = new Border
-            {
-                CornerRadius = new CornerRadius(9),
-                Padding = new Thickness(10, 1, 10, 2),
-                Margin = new Thickness(0, 0, 5, 0),
-                BorderBrush = CellBorder,
-                BorderThickness = new Thickness(1),
-                Cursor = Cursors.Hand,
-                Child = text,
-            };
-            bool on = !itemMode && _charTab == id;
-            tab.Background = on ? TabOnBg : Brushes.Transparent;
-            text.Foreground = on ? TabOnFg : SlotFg;
-            string captured = id;
-            tab.MouseLeftButtonUp += (_, _) =>
-            {
-                _charTab = captured;
-                _selected = null;
-                RefreshPane();
-            };
-            PaneTabs.Children.Add(tab);
-        }
 
         var lines = new List<PaneLineVm>();
-        PaneHint.Visibility = Visibility.Collapsed;
         PaneIcon.Visibility = Visibility.Collapsed;
         PaneGrid.Visibility = Visibility.Collapsed;
         PaneGrid.Content = null;
@@ -409,15 +369,10 @@ public partial class CharacterSheetView : UserControl
 
         if (!itemMode)
         {
-            switch (_charTab)
-            {
-                case "focusall": BuildFocusAllPane(); break;
-                case "clickies": BuildClickiesPane(); break;
-                default:
-                    PaneTitle.Text = "Stats from gear";
-                    BuildTotalsPane(lines);
-                    break;
-            }
+            // ONE combined landing view: totals grid, focus verdicts,
+            // clickies — no tabs, click a slot for the item view.
+            PaneTitle.Text = "Stats from gear";
+            BuildLandingPane(lines);
             PaneLines.ItemsSource = lines;
             return;
         }
@@ -801,7 +756,9 @@ public partial class CharacterSheetView : UserControl
 
     /// <summary>Total stats — the same item-window grid the per-item Stats
     /// tab wears, over the whole doll.</summary>
-    private void BuildTotalsPane(List<PaneLineVm> lines)
+    /// <summary>The stats-from-gear grid, returned for the combined landing
+    /// pane (null when no worn item is in the wiki table).</summary>
+    private UIElement? BuildTotalsRoot(List<PaneLineVm> lines)
     {
         var worn = _worn.Values.Where(e => !e.Empty).ToList();
         int counted = 0, unknown = 0, acTier = 0, voidGrant = 0;
@@ -851,7 +808,7 @@ public partial class CharacterSheetView : UserControl
         if (counted == 0)
         {
             lines.Add(new PaneLineVm("", "no worn item is in the wiki table yet", DimFg, Visibility.Collapsed));
-            return;
+            return null;
         }
 
         static string Fmt(int n) => n > 0 ? "+" + n : n.ToString();
@@ -897,12 +854,34 @@ public partial class CharacterSheetView : UserControl
             section.Margin = new Thickness(0, 9, 0, 0);
             root.Children.Add(section);
         }
+        // The explanation retires to a tooltip — the combined pane has no
+        // room for lectures. (Unknown items count toward nothing; amber =
+        // listed, never summed; the math is eqlwiki's own slider rules.)
+        root.ToolTip = (unknown > 0 ? $"{unknown} worn item(s) missing from the wiki table count toward nothing. " : "")
+            + "Sums of the worn items' wiki blocks, each scaled to its +N tier by the wiki's own item-level rules. Amber percents are listed, never summed.";
+        return root;
+    }
+
+    /// <summary>A rule between the landing pane's sections.</summary>
+    private static Border SectionRule() => new()
+    {
+        Height = 1,
+        Background = Freeze("#232C3E"),
+        Margin = new Thickness(0, 12, 0, 2),
+    };
+
+    /// <summary>The combined landing pane: totals grid, focus verdicts,
+    /// clickies — one scroll, no tabs, no lectures.</summary>
+    private void BuildLandingPane(List<PaneLineVm> lines)
+    {
+        var root = new StackPanel();
+        if (BuildTotalsRoot(lines) is { } totals) root.Children.Add(totals);
+        root.Children.Add(SectionRule());
+        AddFocusSection(root);
+        root.Children.Add(SectionRule());
+        AddClickiesSection(root);
         PaneGrid.Content = root;
         PaneGrid.Visibility = Visibility.Visible;
-
-        PaneHint.Text = (unknown > 0 ? $"{unknown} worn item(s) missing from the wiki table count toward nothing. " : "")
-            + "Sums of the worn items' wiki blocks, each scaled to its +N tier by the wiki's own item-level rules. Amber = listed, never summed. Per-item numbers live on each slot's Stats tab.";
-        PaneHint.Visibility = Visibility.Visible;
     }
 
     // ---- Focus effects: the Inventory audit, compacted ---------------------------
@@ -910,11 +889,13 @@ public partial class CharacterSheetView : UserControl
     private static readonly Brush[] StatusFgs = { Freeze("#E57373"), Freeze("#FFB74D"), Freeze("#66BB6A") };
     private static readonly Brush[] StatusWash = { Freeze("#10E57373"), Freeze("#10FFB74D"), Freeze("#1066BB6A") };
 
-    private static TextBlock SectHeader(string text) => new()
+    /// <summary>Small-caps header; `strong` marks a top-level section of the
+    /// combined landing pane (brighter than its group headers).</summary>
+    private static TextBlock SectHeader(string text, bool strong = false) => new()
     {
         Text = text.ToUpperInvariant(),
-        Foreground = SlotFg,
-        FontSize = 9.5,
+        Foreground = strong ? TextFg : SlotFg,
+        FontSize = strong ? 10.5 : 9.5,
         FontWeight = FontWeights.Bold,
         Margin = new Thickness(0, 9, 0, 4),
     };
@@ -930,17 +911,17 @@ public partial class CharacterSheetView : UserControl
             : tier.Effect;
     }
 
-    private void BuildFocusAllPane()
+    /// <summary>The compact focus audit, appended to the landing pane.</summary>
+    private void AddFocusSection(StackPanel root)
     {
-        PaneTitle.Text = "Focus effects";
         var rows = _audit.Where(a => a.Family.Group != "summoned")
             .OrderBy(a => a.Family.Name, StringComparer.Ordinal).ToList();
         int green = rows.Count(a => a.Status == 2);
         int upg = rows.Count(a => a.Status == 1);
         int missing = rows.Count(a => a.Status == 0);
-        PaneSub.Text = $"{green} worn best · {upg} upgradable · {missing} missing — the audit's verdicts";
+        root.Children.Add(SectHeader(
+            $"Focus effects — {green} worn best · {upg} upgradable · {missing} missing", strong: true));
 
-        var root = new StackPanel();
         void Section(string title, int status)
         {
             var inGroup = rows.Where(a => a.Status == status).ToList();
@@ -1004,21 +985,7 @@ public partial class CharacterSheetView : UserControl
         Section("Wearing the best", 2);
         Section("Upgrade available", 1);
         Section("Missing", 0);
-
-        // The shortcut to the full board.
-        var link = new TextBlock
-        {
-            Text = "Open the full board — Inventory → Focus effects ↗",
-            Foreground = TabOnFg,
-            FontSize = 11.5,
-            Cursor = Cursors.Hand,
-            Margin = new Thickness(0, 10, 0, 0),
-        };
-        link.MouseLeftButtonUp += (_, _) => FocusBoardRequested?.Invoke();
-        root.Children.Add(link);
-
-        PaneGrid.Content = root;
-        PaneGrid.Visibility = Visibility.Visible;
+        // No shortcut line — the Focus board is one tab away in the window.
     }
 
     // ---- Clickies: every click effect you're carrying ----------------------------
@@ -1040,48 +1007,44 @@ public partial class CharacterSheetView : UserControl
         return found;
     }
 
+    /// <summary>One COMPACT line per clicky: icon, effect, carrier — the full
+    /// story on the tooltip.</summary>
     private UIElement ClickyRow(int? iconId, string effect, string via, bool known = true)
     {
-        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 7) };
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
         if (ItemIcons.Get(iconId) is { } icon)
         {
             var img = new System.Windows.Controls.Image
             {
                 Source = icon,
-                Width = 20,
-                Height = 20,
-                VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 1, 7, 0),
+                Width = 16,
+                Height = 16,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 6, 0),
             };
             RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Fant);
             DockPanel.SetDock(img, Dock.Left);
             row.Children.Add(img);
         }
-        var body = new StackPanel();
-        body.Children.Add(new TextBlock
+        var text = new TextBlock
         {
-            Text = effect,
-            Foreground = known ? GreenFg : TextFg,
-            FontWeight = FontWeights.SemiBold,
             FontSize = 11.5,
-            TextWrapping = TextWrapping.Wrap,
-        });
-        body.Children.Add(new TextBlock
-        {
-            Text = via,
-            Foreground = DimFg,
-            FontSize = 10.5,
-            TextWrapping = TextWrapping.Wrap,
-        });
-        row.Children.Add(body);
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            ToolTip = $"{effect} — {via}",
+        };
+        text.Inlines.Add(new System.Windows.Documents.Run(effect)
+            { Foreground = known ? GreenFg : TextFg, FontWeight = FontWeights.SemiBold });
+        text.Inlines.Add(new System.Windows.Documents.Run(" — " + via)
+            { Foreground = DimFg, FontSize = 10.5 });
+        row.Children.Add(text);
         return row;
     }
 
-    private void BuildClickiesPane()
+    /// <summary>The clickies list, appended to the landing pane.</summary>
+    private void AddClickiesSection(StackPanel root)
     {
-        PaneTitle.Text = "Clickies";
-        PaneSub.Text = "every click effect you're carrying";
-        var root = new StackPanel();
+        root.Children.Add(SectHeader("Clickies", strong: true));
 
         // Worn: the item's own click lines, then any Click-Exaltation socket.
         var wornRows = new List<UIElement>();
@@ -1136,11 +1099,6 @@ public partial class CharacterSheetView : UserControl
                 FontSize = 11.5,
                 FontStyle = FontStyles.Italic,
             });
-
-        PaneGrid.Content = root;
-        PaneGrid.Visibility = Visibility.Visible;
-        PaneHint.Text = "Effect names come from the wiki's click lines — an item whose click the wiki doesn't state shows the item alone. Worn gear first, then the game's Activated-Items keyring.";
-        PaneHint.Visibility = Visibility.Visible;
     }
 
     private static SolidColorBrush Freeze(string hex)
