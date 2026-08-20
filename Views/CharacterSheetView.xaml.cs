@@ -17,11 +17,13 @@ namespace EQLOverlay.Views;
 /// three character-wide tabs — Total stats, Focus effects, Clickies — and a
 /// selected slot swaps in ONE combined item view: wiki stats scaled to the
 /// worn tier (eqlwiki's own slider rules, see Services/ItemUpgrade), the
-/// sockets as the dump lists them, and the focus audit's verdicts. The
-/// header rides the session panel's ding//who level machinery and states
-/// the dump's age.
+/// sockets as the dump lists them, and the focus audit's verdicts.
+///
+/// A VIEW, not a window: the Character window (InventoryWindow) parses the
+/// dump once and feeds it in through <see cref="Update"/> — header, dump
+/// watcher and freshness live with the host.
 /// </summary>
-public partial class CharacterSheetWindow : Window
+public partial class CharacterSheetView : UserControl
 {
     private sealed record PaneLineVm(string Key, string Value, Brush Fg, Visibility KeyVis);
 
@@ -50,101 +52,45 @@ public partial class CharacterSheetWindow : Window
     private static readonly Brush TabOnBg = Freeze("#16283E");
     private static readonly Brush TabOnFg = Freeze("#4FC3F7");
 
-    private readonly string _eqRoot;
-    private readonly string _charName;
-    private readonly string _server;
-    private readonly FocusEffects _focus;
-    private readonly ItemStats _stats;
-    private readonly SessionStats? _session;
+    private FocusEffects _focus = null!;
+    private ItemStats _stats = null!;
 
-    private InventoryStore.Dump? _dump;
     private List<FocusEffects.AuditRow> _audit = new();
     private readonly Dictionary<(string Token, int Nth), InventoryStore.Entry> _worn = new();
     private (string Token, int Nth)? _selected;
     private string _charTab = "totals";  // totals | focusall | clickies
     private List<InventoryStore.CarryRow> _rows = new();
 
-    /// <summary>Wired by MainWindow: the compact focus list links to the
-    /// full board (the Inventory window's Focus effects tab).</summary>
+    /// <summary>Wired by the host: the compact focus list links to the full
+    /// board (the Character window's Focus board tab).</summary>
     public Action? FocusBoardRequested { get; set; }
     private readonly List<Border> _cells = new();
 
-    private string? _dumpPath;
-    private System.IO.FileSystemWatcher? _fsWatcher;
-    private readonly System.Windows.Threading.DispatcherTimer _ageTick;
-    private readonly System.Windows.Threading.DispatcherTimer _reloadDebounce;
-
-    public CharacterSheetWindow(string eqRoot, string charName, string server,
-        FocusEffects focus, ItemStats stats, SessionStats? session)
+    public CharacterSheetView()
     {
         InitializeComponent();
-        Interop.WindowTheme.ApplyDark(this);
-        // Fixed 1200×864 (too many aligned elements to survive resizing) —
-        // only the position persists.
-        DialogPlacement.Persist(this, "charsheet", positionOnly: true);
-        _eqRoot = eqRoot;
-        _charName = charName;
-        _server = server;
-        _focus = focus;
-        _stats = stats;
-        _session = session;
-        // "updated 28h ago" must not fossilize while the window sits open.
-        _ageTick = new System.Windows.Threading.DispatcherTimer
-            { Interval = TimeSpan.FromMinutes(1) };
-        _ageTick.Tick += (_, _) => RefreshHeader();
-        // The game rewrites the dump in place — settle before re-reading.
-        _reloadDebounce = new System.Windows.Threading.DispatcherTimer
-            { Interval = TimeSpan.FromMilliseconds(600) };
-        _reloadDebounce.Tick += (_, _) => { _reloadDebounce.Stop(); Reload(); };
-        Loaded += (_, _) => { Reload(); _ageTick.Start(); };
-        Closed += (_, _) =>
-        {
-            _ageTick.Stop();
-            _reloadDebounce.Stop();
-            _fsWatcher?.Dispose();
-            _fsWatcher = null;
-        };
     }
 
-    public void Reload()
+    /// <summary>Give the view its lookup tables — once, before the first
+    /// <see cref="Update"/>.</summary>
+    public void Init(FocusEffects focus, ItemStats stats)
     {
-        CharName.Text = _charName.Length > 0 ? _charName : "Character";
+        _focus = focus;
+        _stats = stats;
+    }
 
-        string? path = InventoryStore.FindDumpFile(_eqRoot, _charName, _server);
-        _dumpPath = path;
-        RefreshHeader();
-        WatchDump(path);
-        if (path is null)
-        {
-            NoDumpText.Visibility = Visibility.Visible;
-            return;
-        }
-        NoDumpText.Visibility = Visibility.Collapsed;
-
-        try
-        {
-            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete);
-            using var reader = new StreamReader(fs);
-            _dump = InventoryStore.Parse(reader.ReadToEnd());
-        }
-        catch
-        {
-            return;
-        }
-
-        var (rows, _) = InventoryStore.CarryAll(_dump);
+    /// <summary>The host parsed the dump — render it. Called on every reload
+    /// (the host owns the file watcher), any number of times.</summary>
+    public void Update(InventoryStore.Dump dump,
+        List<InventoryStore.CarryRow> rows, List<FocusEffects.AuditRow> audit)
+    {
         _rows = rows;
-        _audit = _focus.Audit(rows);
-        int green = _audit.Count(a => a.Family.Group != "summoned" && a.Status == 2);
-        int upgradable = _audit.Count(a => a.Family.Group != "summoned" && a.Status == 1);
-        int missing = _audit.Count(a => a.Family.Group != "summoned" && a.Status == 0);
-        FocusSummary.Text = $"FOCUS  {green} worn best · {upgradable} upgradable · {missing} missing";
+        _audit = audit;
 
         // Worn entries by (token, occurrence) in file order.
         _worn.Clear();
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var e in _dump.Items)
+        foreach (var e in dump.Items)
         {
             if (InventoryStore.LaneOfBase(e.Base) != "worn") continue;
             int nth = counts.TryGetValue(e.Base, out int c) ? c : 0;
@@ -157,101 +103,6 @@ public partial class CharacterSheetWindow : Window
         // and a highlighted cell would claim otherwise.
         if (_selected is { } sel && !_worn.ContainsKey(sel)) _selected = null;
         RefreshPane();
-    }
-
-    // ---- the header (Companion-style: level · age · classes · source) -----------
-
-    private static string AgeText(TimeSpan t)
-    {
-        if (t < TimeSpan.Zero) t = TimeSpan.Zero;
-        if (t.TotalMinutes < 1) return "just now";
-        if (t.TotalMinutes < 60) return $"{(int)t.TotalMinutes}m ago";
-        if (t.TotalHours < 24) return $"{(int)t.TotalHours}h {t.Minutes}m ago";
-        return $"{(int)t.TotalDays}d {t.Hours}h ago";
-    }
-
-    private void RefreshHeader()
-    {
-        ServerText.Text = _server;
-        ClassChips.Children.Clear();
-        LevelText.Text = "";
-        LevelAge.Text = "";
-        WhoHint.Text = "";
-
-        var stmt = _session?.LevelStatement;
-        if (stmt is { } s)
-        {
-            LevelText.Text = "Level " + s.Level;
-            LevelAge.Text = AgeText(DateTime.Now - s.Ts);
-            LevelAge.ToolTip = _session!.LevelInfo(DateTime.Now).Tip;
-        }
-        string classes = _session?.WhoClasses ?? "";
-        foreach (var cls in classes.Split('/', StringSplitOptions.RemoveEmptyEntries))
-            ClassChips.Children.Add(Chip(cls, TextFg, CellBorder));
-        if (stmt is { FromWho: true })
-            ClassChips.Children.Add(Chip("stated by /who", GreenFg, GreenFg));
-        else if (stmt is not null)
-            ClassChips.Children.Add(Chip("from your last ding", DimFg, CellBorder));
-        if (stmt is null && classes.Length == 0)
-            WhoHint.Text = "type /who in game for classes + level";
-
-        if (_dumpPath is { } path && File.Exists(path))
-        {
-            DumpStrip.Visibility = Visibility.Visible;
-            var dumpAge = DateTime.Now - File.GetLastWriteTime(path);
-            DumpAge.Text = "updated " + AgeText(dumpAge);
-            // Same staleness clock as the Inventory window's banner.
-            DumpAge.Foreground = dumpAge.TotalDays >= InventoryStore.DumpStaleDays ? AmberFg : DimFg;
-            DumpAge.ToolTip = path;
-            DumpHow.ToolTip = $"In game, type /outputfile inventory — the game writes "
-                + $"{_charName}_{_server}-Inventory.txt into its own folder and this sheet "
-                + "re-reads it the moment it changes. The Inventory window (the chest on "
-                + "the toolbar) has the full how-to.";
-        }
-        else
-        {
-            DumpStrip.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    private static UIElement Chip(string text, Brush fg, Brush border) => new Border
-    {
-        CornerRadius = new CornerRadius(9),
-        BorderBrush = border,
-        BorderThickness = new Thickness(1),
-        Padding = new Thickness(8, 1, 8, 2),
-        Margin = new Thickness(0, 0, 5, 0),
-        Child = new TextBlock
-        {
-            Text = text,
-            Foreground = fg,
-            FontSize = 10.5,
-            FontWeight = FontWeights.SemiBold,
-        },
-    };
-
-    /// <summary>Re-read the sheet whenever the game rewrites the dump — the
-    /// strip promises "the sheet follows the dump" and this keeps it true.</summary>
-    private void WatchDump(string? path)
-    {
-        string? dir = path is null ? null : Path.GetDirectoryName(path);
-        if (dir is null || !Directory.Exists(dir)) return;
-        if (_fsWatcher is not null &&
-            string.Equals(_fsWatcher.Path, dir, StringComparison.OrdinalIgnoreCase)) return;
-        _fsWatcher?.Dispose();
-        _fsWatcher = new System.IO.FileSystemWatcher(dir, Path.GetFileName(path!))
-        {
-            NotifyFilter = System.IO.NotifyFilters.LastWrite | System.IO.NotifyFilters.FileName,
-            EnableRaisingEvents = true,
-        };
-        void Poke(object? _, System.IO.FileSystemEventArgs __) => Dispatcher.BeginInvoke(() =>
-        {
-            _reloadDebounce.Stop();
-            _reloadDebounce.Start();
-        });
-        _fsWatcher.Changed += Poke;
-        _fsWatcher.Created += Poke;
-        _fsWatcher.Renamed += (s, e) => Poke(s, e);
     }
 
     // ---- the doll ---------------------------------------------------------------

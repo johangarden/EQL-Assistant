@@ -1564,49 +1564,26 @@ public partial class MainWindow : Window
 
     private Views.InventoryWindow? _inventoryWindow;
 
-    /// <summary>The searchable carry ledger over the game's own inventory dump
-    /// (the install root is derived from the followed log's location).</summary>
-    private void OpenInventory()
+    /// <summary>The ONE Character window (sheet · all items · exaltations ·
+    /// focus board) over the game's own inventory dump. The toolbar's helm
+    /// and chest are two doors into it, each landing on its own tab.</summary>
+    private void OpenCharacterWindow(string tab)
     {
         if (_inventoryWindow is null)
         {
             string logPath = _watcher?.CurrentPath ?? "";
             var (name, server) = InventoryStore.ParseLogName(logPath);
             _inventoryWindow = new Views.InventoryWindow(
-                InventoryStore.EqRootOf(logPath), name, server);
+                InventoryStore.EqRootOf(logPath), name, server, _session);
             _inventoryWindow.Closed += (_, _) => _inventoryWindow = null;
             _inventoryWindow.Show();
         }
+        _inventoryWindow.ShowTab(tab);
         BringToFront(_inventoryWindow);
     }
 
-    private Views.CharacterSheetWindow? _sheetWindow;
-    private FocusEffects? _focusFx;
-    private ItemStats? _itemStats;
-
-    /// <summary>The paper-doll: worn gear in anatomical rows with a tabbed
-    /// detail pane (Sockets / Focus / Stats).</summary>
-    private void OpenCharacterSheet()
-    {
-        if (_sheetWindow is null)
-        {
-            string logPath = _watcher?.CurrentPath ?? "";
-            var (name, server) = InventoryStore.ParseLogName(logPath);
-            _focusFx ??= new FocusEffects();
-            _itemStats ??= new ItemStats();
-            _sheetWindow = new Views.CharacterSheetWindow(
-                InventoryStore.EqRootOf(logPath), name, server, _focusFx, _itemStats, _session);
-            // The sheet's compact focus list links to the full audit board.
-            _sheetWindow.FocusBoardRequested = () =>
-            {
-                OpenInventory();
-                _inventoryWindow?.ShowFocusTab();
-            };
-            _sheetWindow.Closed += (_, _) => _sheetWindow = null;
-            _sheetWindow.Show();
-        }
-        BringToFront(_sheetWindow);
-    }
+    private void OpenInventory() => OpenCharacterWindow("items");
+    private void OpenCharacterSheet() => OpenCharacterWindow("sheet");
 
     private Views.DeathRecapWindow? _recapWindow;
     private CombatParser.DeathEvent? _lastDeath;

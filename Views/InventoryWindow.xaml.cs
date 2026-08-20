@@ -52,9 +52,10 @@ public partial class InventoryWindow : Window
 
     private static readonly (string Id, string Label)[] Tabs =
     {
-        ("items", "Items"),
+        ("sheet", "Sheet"),
+        ("items", "All items"),
         ("exalt", "Exaltations"),
-        ("focus", "Focus effects"),
+        ("focus", "Focus board"),
     };
 
     private static readonly Brush SegOnBg = Freeze("#16283E");
@@ -105,14 +106,23 @@ public partial class InventoryWindow : Window
     private Dictionary<string, DateTime> _sectionTimes = new(StringComparer.Ordinal);
     private string CharKey => $"{_charName}_{_server}".ToLowerInvariant();
 
-    public InventoryWindow(string eqRoot, string charName, string server)
+    private readonly SessionStats? _session;
+
+    public InventoryWindow(string eqRoot, string charName, string server,
+        SessionStats? session = null)
     {
         InitializeComponent();
         Interop.WindowTheme.ApplyDark(this);
-        DialogPlacement.Persist(this, "inventory");
+        // "character": a fresh bounds key — the pre-merge Inventory sizes
+        // don't fit the four-tab window.
+        DialogPlacement.Persist(this, "character");
         _eqRoot = eqRoot;
         _charName = charName;
         _server = server;
+        _session = session;
+        SheetView.Init(_focus, _itemStats);
+        SheetView.FocusBoardRequested = () => ShowTab("focus");
+        RefreshCharHeader();
 
         // The game rewrites the file in place; wait for the write to settle.
         _reloadDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -167,6 +177,7 @@ public partial class InventoryWindow : Window
             NoDumpPanel.Visibility = Visibility.Visible;
             ResultsList.Visibility = Visibility.Collapsed;
             FocusList.Visibility = Visibility.Collapsed;
+            SheetView.Visibility = Visibility.Collapsed;
             TabPanel.Children.Clear();
             LanePanel.Children.Clear();
             ParsedText.Visibility = Visibility.Collapsed;
@@ -227,6 +238,9 @@ public partial class InventoryWindow : Window
 
         NoDumpPanel.Visibility = Visibility.Collapsed;
         ResultsList.Visibility = Visibility.Visible;
+
+        // The Sheet tab renders from THIS parse — the dump is read once.
+        SheetView.Update(_dump, _rows, _audit);
 
         BuildTabs();
         BuildLaneChips();
@@ -290,18 +304,25 @@ public partial class InventoryWindow : Window
             // report in two digits. Summoned charms are conjured temporaries
             // and stay out of the score. Row tabs count their rows.
             var scored = _audit.Where(a => a.Family.Group != "summoned").ToList();
-            string text = id == "focus"
-                ? $"{label}  {scored.Count(a => a.Status == 2)}/{scored.Count}"
-                : $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}";
-            AddPill(TabPanel, text, id, id == _tab, picked =>
+            string text = id switch
             {
-                _tab = picked!;
-                RepaintPills(TabPanel, _tab);
-                _lane = null; // a lane picked on one tab means nothing on another
-                BuildLaneChips();
-                ApplyFilters();
-            });
+                "sheet" => label,
+                "focus" => $"{label}  {scored.Count(a => a.Status == 2)}/{scored.Count}",
+                _ => $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}",
+            };
+            AddPill(TabPanel, text, id, id == _tab, picked => ShowTab(picked!));
         }
+    }
+
+    /// <summary>Switch to a tab by id (sheet · items · exalt · focus) — the
+    /// toolbar's helm and chest are two doors into this one window.</summary>
+    public void ShowTab(string id)
+    {
+        _tab = id;
+        RepaintPills(TabPanel, _tab);
+        _lane = null; // a lane picked on one tab means nothing on another
+        BuildLaneChips();
+        ApplyFilters();
     }
 
     /// <summary>The gold coverage story: what this dump does NOT speak for.
@@ -323,8 +344,9 @@ public partial class InventoryWindow : Window
 
     private void BuildLaneChips()
     {
-        // The audit is not row-backed; place is spelled per family instead.
-        if (_tab == "focus")
+        // The audit is not row-backed (and the sheet is not list-backed);
+        // place is spelled per family / per slot instead.
+        if (_tab is "focus" or "sheet")
         {
             LanePanel.Children.Clear();
             LanePanel.Visibility = Visibility.Collapsed;
@@ -450,9 +472,11 @@ public partial class InventoryWindow : Window
         FreshnessText.Foreground = age > TimeSpan.FromHours(24)
             ? (Brush)FindResource("Brush.Gold")
             : (Brush)FindResource("Brush.TextHint");
-        // The pill ages and the stale banner drift with the clock too.
+        // The pill ages, the stale banner and the header's level age all
+        // drift with the clock too.
         BuildSectionPills();
         UpdateCoverage();
+        RefreshCharHeader();
 
         // The watcher just caught a rewrite: celebrate briefly, then let the
         // ordinary freshness line carry it.
@@ -474,6 +498,18 @@ public partial class InventoryWindow : Window
 
     private void ApplyFilters()
     {
+        // The Sheet tab is its own surface — no list, no search, no lanes.
+        bool sheet = _tab == "sheet" && _dump is not null;
+        SheetView.Visibility = sheet ? Visibility.Visible : Visibility.Collapsed;
+        SearchRow.Visibility = sheet ? Visibility.Collapsed : Visibility.Visible;
+        if (sheet)
+        {
+            ResultsList.Visibility = Visibility.Collapsed;
+            FocusList.Visibility = Visibility.Collapsed;
+            EmptyTabText.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         string q = SearchBox.Text.Trim().ToLowerInvariant();
         bool focus = _tab == "focus";
         FocusList.Visibility = focus ? Visibility.Visible : Visibility.Collapsed;
@@ -713,17 +749,64 @@ public partial class InventoryWindow : Window
         return details;
     }
 
-    /// <summary>Selftest hook: front the audit board so its template
-    /// actually instantiates (a collapsed list renders nothing and would
-    /// hide a binding typo).</summary>
+    /// <summary>Front the audit board (also the selftest hook — a collapsed
+    /// list renders nothing and would hide a binding typo).</summary>
     public void ShowFocusTab()
     {
-        _tab = "focus";
-        RepaintPills(TabPanel, _tab);
-        BuildLaneChips();
-        ApplyFilters();
+        ShowTab("focus");
         UpdateLayout();
     }
+
+    // ---- the character header (name · level · classes — the session
+    // panel's ding//who machinery, shared by every tab) ----------------------
+
+    private static readonly Brush HdrText = Freeze("#C9D4E3");
+    private static readonly Brush HdrDim = Freeze("#5C6B82");
+    private static readonly Brush HdrBorder = Freeze("#3A4560");
+
+    private void RefreshCharHeader()
+    {
+        CharName.Text = _charName.Length > 0 ? _charName : "Character";
+        ServerText.Text = _server;
+        ClassChips.Children.Clear();
+        LevelText.Text = "";
+        LevelAge.Text = "";
+        LevelAge.ToolTip = null;
+        WhoHint.Text = "";
+
+        var stmt = _session?.LevelStatement;
+        if (stmt is { } s)
+        {
+            LevelText.Text = "Level " + s.Level;
+            LevelAge.Text = AgoText(DateTime.Now - s.Ts) + " ago";
+            LevelAge.ToolTip = _session!.LevelInfo(DateTime.Now).Tip;
+        }
+        string classes = _session?.WhoClasses ?? "";
+        foreach (var cls in classes.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            ClassChips.Children.Add(HeaderChip(cls, HdrText, HdrBorder));
+        if (stmt is { FromWho: true })
+            ClassChips.Children.Add(HeaderChip("stated by /who", StatusFg[2], StatusFg[2]));
+        else if (stmt is not null)
+            ClassChips.Children.Add(HeaderChip("from your last ding", HdrDim, HdrBorder));
+        if (stmt is null && classes.Length == 0)
+            WhoHint.Text = "type /who in game for classes + level";
+    }
+
+    private static UIElement HeaderChip(string text, Brush fg, Brush border) => new Border
+    {
+        CornerRadius = new CornerRadius(9),
+        BorderBrush = border,
+        BorderThickness = new Thickness(1),
+        Padding = new Thickness(8, 1, 8, 2),
+        Margin = new Thickness(0, 0, 5, 0),
+        Child = new TextBlock
+        {
+            Text = text,
+            Foreground = fg,
+            FontSize = 10.5,
+            FontWeight = FontWeights.SemiBold,
+        },
+    };
 
     /// <summary>What a tier pill says: the effect's own trailing token when
     /// it's a numeral (III, 14 — the resonances' numbers are the mod
