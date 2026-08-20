@@ -53,10 +53,11 @@
                         </ItemsControl>
                         <!-- the Stats tab's item-window grid (label: value columns) -->
                         <ContentControl x:Name="PaneGrid" Visibility="Collapsed" Margin="0,0,0,4"/>
-                        <ItemsControl x:Name="PaneLinesBelow" Visibility="Collapsed">
+                        <ItemsControl x:Name="PaneLinesBelow" Visibility="Collapsed"
+                                      MouseLeftButtonUp="PaneLinesBelow_Click">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Margin="0,0,0,7">
+                                    <StackPanel Margin="0,0,0,7" Cursor="{Binding RowCursor}">
                                         <!-- section rule (the socket ladder → tail divider) -->
                                         <Border Height="1" Background="#232C3E" Margin="0,2,0,9"
                                                 Visibility="{Binding RuleVis}"/>

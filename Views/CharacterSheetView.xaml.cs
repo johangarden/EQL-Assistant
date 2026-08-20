@@ -26,7 +26,21 @@ namespace EQLOverlay.Views;
 public partial class CharacterSheetView : UserControl
 {
     private sealed record PaneLineVm(string Key, string Value, Brush Fg, Visibility KeyVis,
-        Visibility RuleVis = Visibility.Collapsed);
+        Visibility RuleVis = Visibility.Collapsed, bool BoardLink = false)
+    {
+        public System.Windows.Input.Cursor RowCursor =>
+            BoardLink ? Cursors.Hand : Cursors.Arrow;
+    }
+
+    /// <summary>Where an available upgrade lives, from the audit row: a
+    /// better tier OWNED but stored, a better tier still out there to hunt,
+    /// or both.</summary>
+    private static string UpgradeWhere(FocusEffects.AuditRow a)
+    {
+        bool stored = a.BestTier > a.WornTier;
+        bool huntable = a.HuntableMax > a.BestTier;
+        return stored && huntable ? "stored & huntable" : stored ? "stored" : "huntable";
+    }
 
     // The doll's rows: base token + which occurrence of it (two Ears, two
     // Wrists, two Fingers, two Any Slots — file order decides first/second).
@@ -70,6 +84,14 @@ public partial class CharacterSheetView : UserControl
     public CharacterSheetView()
     {
         InitializeComponent();
+    }
+
+    /// <summary>An amber "upgrade … → focus board" line is a link — clicking
+    /// anywhere on it jumps to the board.</summary>
+    private void PaneLinesBelow_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is PaneLineVm { BoardLink: true })
+            FocusBoardRequested?.Invoke();
     }
 
     /// <summary>Give the view its lookup tables — once, before the first
@@ -465,6 +487,7 @@ public partial class CharacterSheetView : UserControl
                 var fx = _focus.EffectsOf(child.Name);
                 string val;
                 Brush fg = GreenFg;
+                bool link = false;
                 if (fx.Count > 0)
                 {
                     string effects = string.Join(", ", fx.Select(e => e.Tier.Effect));
@@ -472,17 +495,17 @@ public partial class CharacterSheetView : UserControl
                     string verdict = arow switch
                     {
                         { Status: 2 } => " · wearing the best",
-                        { Status: 1 } => " · upgrade available",
+                        { Status: 1 } => $" · upgrade {UpgradeWhere(arow)} → focus board",
                         _ => "",
                     };
-                    if (arow is { Status: 1 }) fg = AmberFg;
+                    if (arow is { Status: 1 }) { fg = AmberFg; link = true; }
                     val = $"{effects} — {child.Name}{verdict}";
                 }
                 else
                 {
                     val = child.Name;
                 }
-                lines.Add(new PaneLineVm(key, val, fg, Visibility.Visible));
+                lines.Add(new PaneLineVm(key, val, fg, Visibility.Visible, BoardLink: link));
             }
             else if (child is not null)
             {
@@ -526,6 +549,7 @@ public partial class CharacterSheetView : UserControl
             // and a focus a SOCKET line already states (usually the item's
             // own exaltation copy socketed into itself) is not said twice.
             var ownFx = _focus.EffectsOf(entry.Name);
+            bool anyUpgrade = false;
             var socketed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var child in entry.Children.Where(c => !c.Empty))
                 foreach (var (_, fxTier) in _focus.EffectsOf(child.Name))
@@ -554,12 +578,14 @@ public partial class CharacterSheetView : UserControl
                 fxLines.Add(line + (arow switch
                 {
                     { Status: 2 } => " · wearing the best",
-                    { Status: 1 } => " · upgrade available",
+                    { Status: 1 } => $" · upgrade {UpgradeWhere(arow)} → focus board",
                     _ => "",
                 }));
+                if (arow is { Status: 1 }) anyUpgrade = true;
             }
             if (fxLines.Count > 0)
-                below.Add(new PaneLineVm("EFFECTS", string.Join("\n", fxLines), GreenFg, Visibility.Visible));
+                below.Add(new PaneLineVm("EFFECTS", string.Join("\n", fxLines),
+                    anyUpgrade ? AmberFg : GreenFg, Visibility.Visible, BoardLink: anyUpgrade));
         }
         if (rec.Extras.Length > 0) below.Add(new PaneLineVm("MORE", rec.Extras, DimFg, Visibility.Visible));
         // No footer lecture — gold-vs-brackets reads on its own; the rules
