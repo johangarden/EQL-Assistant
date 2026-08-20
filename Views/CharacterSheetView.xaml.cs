@@ -25,7 +25,8 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class CharacterSheetView : UserControl
 {
-    private sealed record PaneLineVm(string Key, string Value, Brush Fg, Visibility KeyVis);
+    private sealed record PaneLineVm(string Key, string Value, Brush Fg, Visibility KeyVis,
+        Visibility RuleVis = Visibility.Collapsed);
 
     // The doll's rows: base token + which occurrence of it (two Ears, two
     // Wrists, two Fingers, two Any Slots — file order decides first/second).
@@ -430,6 +431,9 @@ public partial class CharacterSheetView : UserControl
         var tail = new List<PaneLineVm>();
         BuildStatLines(entry, lines, tail);
         BuildSocketLines(entry, below);
+        // A rule between the socket ladder and whatever the item adds after.
+        if (tail.Count > 0)
+            tail[0] = tail[0] with { RuleVis = Visibility.Visible };
         below.AddRange(tail);
         if (below.Count > 0)
         {
@@ -519,24 +523,43 @@ public partial class CharacterSheetView : UserControl
         if (rec.Effects.Length > 0)
         {
             // The item's OWN focus lines carry the audit's verdict inline —
-            // the socket lines already carry theirs.
+            // and a focus a SOCKET line already states (usually the item's
+            // own exaltation copy socketed into itself) is not said twice.
             var ownFx = _focus.EffectsOf(entry.Name);
-            var fxLines = rec.Effects.Split('\n').Select(line =>
+            var socketed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var child in entry.Children.Where(c => !c.Empty))
+                foreach (var (_, fxTier) in _focus.EffectsOf(child.Name))
+                    socketed.Add(fxTier.Effect);
+
+            var fxLines = new List<string>();
+            foreach (var line in rec.Effects.Split('\n'))
             {
-                if (!line.StartsWith("focus:", StringComparison.OrdinalIgnoreCase)) return line;
+                if (!line.StartsWith("focus:", StringComparison.OrdinalIgnoreCase))
+                {
+                    fxLines.Add(line);
+                    continue;
+                }
                 string name = line["focus:".Length..].Trim();
+                int paren = name.IndexOf(" (", StringComparison.Ordinal);
+                if (paren > 0) name = name[..paren];
+                if (socketed.Contains(name)) continue; // the socket line owns it
                 var match = ownFx.FirstOrDefault(e =>
                     string.Equals(e.Tier.Effect, name, StringComparison.OrdinalIgnoreCase));
-                if (match.Fam is null) return line;
+                if (match.Fam is null)
+                {
+                    fxLines.Add(line);
+                    continue;
+                }
                 var arow = _audit.FirstOrDefault(a => a.Family == match.Fam);
-                return line + (arow switch
+                fxLines.Add(line + (arow switch
                 {
                     { Status: 2 } => " · wearing the best",
                     { Status: 1 } => " · upgrade available",
                     _ => "",
-                });
-            });
-            below.Add(new PaneLineVm("EFFECTS", string.Join("\n", fxLines), GreenFg, Visibility.Visible));
+                }));
+            }
+            if (fxLines.Count > 0)
+                below.Add(new PaneLineVm("EFFECTS", string.Join("\n", fxLines), GreenFg, Visibility.Visible));
         }
         if (rec.Extras.Length > 0) below.Add(new PaneLineVm("MORE", rec.Extras, DimFg, Visibility.Visible));
         // No footer lecture — gold-vs-brackets reads on its own; the rules
