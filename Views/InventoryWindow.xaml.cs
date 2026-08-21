@@ -855,10 +855,11 @@ public partial class InventoryWindow : Window
 
     private static readonly Thickness DetailDropTab = new(30, 1, 0, 0);
 
-    /// <summary>The eqlwiki page for a mob or item name (MediaWiki spelling:
-    /// spaces become underscores).</summary>
+    /// <summary>The eqlwiki page for a mob or item name — pages live at the
+    /// site ROOT (eqlwiki.com/Chief_Goonda, no /wiki/ segment), spaces spelled
+    /// as underscores.</summary>
     private static string WikiUrl(string name) =>
-        "https://eqlwiki.com/wiki/" + Uri.EscapeDataString(name.Trim().Replace(' ', '_'));
+        "https://eqlwiki.com/" + Uri.EscapeDataString(name.Trim().Replace(' ', '_'));
 
     /// <summary>Front the audit board (also the selftest hook — a collapsed
     /// list renders nothing and would hide a binding typo).</summary>
