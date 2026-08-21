@@ -178,16 +178,19 @@ public sealed class FocusEffects
             "storage" or "keyring" => 2,
             _ => 3,
         };
+        // The three keyrings say WHICH keyring — the game has an on-character
+        // "Storage" keyring AND a Dragon's Hoard, and "augments" alone never
+        // said it meant the Augmentation keyring (the exaltation collection).
         static string PlaceLabel(string lane) => lane switch
         {
             "worn" => "worn",
-            "activated" => "activated item",
-            "storage" => "in storage",
-            "keyring" => "augments",
+            "activated" => "activated keyring",
+            "storage" => "storage keyring",
+            "keyring" => "augment keyring",
             "bags" => "in bags",
             "bank" => "in bank",
             "depot" => "in depot",
-            "hoard" => "in hoard",
+            "hoard" => "dragon's hoard",
             _ => lane,
         };
 

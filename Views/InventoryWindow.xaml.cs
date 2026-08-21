@@ -694,16 +694,18 @@ public partial class InventoryWindow : Window
         _ => 3,
     };
 
+    // Mirrors FocusEffects.PlaceLabel — the keyrings name themselves so
+    // "storage" can never be misread as the Dragon's Hoard.
     private static string OwnLabel(string lane) => lane switch
     {
         "worn" => "worn",
-        "activated" => "activated item",
-        "storage" => "in storage",
-        "keyring" => "augments",
+        "activated" => "activated keyring",
+        "storage" => "storage keyring",
+        "keyring" => "augment keyring",
         "bags" => "in bags",
         "bank" => "in bank",
         "depot" => "in depot",
-        "hoard" => "in hoard",
+        "hoard" => "dragon's hoard",
         _ => lane,
     };
 
