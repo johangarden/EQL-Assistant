@@ -18,9 +18,27 @@
             MouseLeftButtonDown="Card_DragMove">
         <StackPanel>
             <DockPanel Margin="0,0,0,6">
-                <Button DockPanel.Dock="Left" x:Name="ModeToggleBtn" Style="{StaticResource IconBtn}" Click="OnModeToggle"
+                <!-- The one mode decision, worn as a labeled pill (a glyph
+                     couldn't say "who owns the pie" at a glance). -->
+                <Button DockPanel.Dock="Left" x:Name="ModeToggleBtn" Click="OnModeToggle"
                         AutomationProperties.AutomationId="TimerModeBtn"
-                        FontFamily="Segoe MDL2 Assets" Content="&#xE895;"/>
+                        Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand"
+                        VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="PillBorder" CornerRadius="9" Background="#26314A"
+                                    BorderBrush="#3A4560" BorderThickness="1" Padding="8,2">
+                                <TextBlock Text="{TemplateBinding Content}" FontSize="10"
+                                           FontWeight="SemiBold" Foreground="#9FB0C8"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="PillBorder" Property="Background" Value="#33415E"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Click="OnAddRespawn"
                         AutomationProperties.AutomationId="TimerAddRespawnBtn"
                         FontFamily="Segoe MDL2 Assets" Content="&#xE710;"
@@ -46,7 +64,10 @@
                 </TextBlock>
             </Grid>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+            <!-- Egg-timer controls: manual mode only. In automatic the pie is
+                 the respawns' — there is nothing to set, pause or restart. -->
+            <StackPanel x:Name="ManualControls" Orientation="Horizontal" HorizontalAlignment="Center"
+                        Margin="0,8,0,0" Visibility="Collapsed">
                 <Button Style="{StaticResource IconBtn}" Click="OnSet" Margin="0,0,6,0"
                         FontFamily="Segoe MDL2 Assets" Content="&#xE70F;" ToolTip="Set duration"/>
                 <Button x:Name="PlayPauseBtn" Style="{StaticResource IconBtn}" Click="OnPlayPause" Margin="0,0,6,0"

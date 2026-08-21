@@ -351,7 +351,8 @@ public partial class TimerWindow : Window
 
     private void UpdateModeToggle()
     {
-        ModeToggleBtn.Content = _manualMode ? "" : ""; // clock / sync
+        ModeToggleBtn.Content = _manualMode ? "Manual" : "Automatic";
+        ManualControls.Visibility = _manualMode ? Visibility.Visible : Visibility.Collapsed;
         ModeToggleBtn.ToolTip = _manualMode
             ? "Manual timer — respawns run in the list and never take the pie. Click for auto."
             : "Auto — the soonest respawn claims the pie. Click for a manual timer.";
