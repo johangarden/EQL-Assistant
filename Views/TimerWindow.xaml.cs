@@ -45,6 +45,10 @@ public partial class TimerWindow : Window
     /// <summary>"Manage respawns…" picked from the ➕ menu.</summary>
     public Action? ManageRespawnsRequested { get; set; }
 
+    /// <summary>Resolves a repop name to its RespawnEntry (alert config) —
+    /// live edits in the Manager apply to already-running timers.</summary>
+    public Func<string, RespawnEntry?>? RespawnLookup { get; set; }
+
     /// <summary>Test hooks (gated self-test only).</summary>
     internal (string? Mode, double Remaining, bool Running) BigState => (_modeName, _remaining, _running);
     internal IReadOnlyList<string> SecondaryNames => _repops.Select(e => e.Name).ToList();
@@ -56,7 +60,10 @@ public partial class TimerWindow : Window
         public double Total;
         public DateTime EndTime;
         public required SecondaryTimerViewModel Vm;
+        /// <summary>The before-it-spawns notice already fired for this run.</summary>
+        public bool Warned;
     }
+    private bool _bigWarned; // ibid., for the repop on the big pie
     private readonly List<RepopEntry> _repops = new();
     private readonly ObservableCollection<SecondaryTimerViewModel> _secondaries = new();
 
@@ -150,7 +157,7 @@ public partial class TimerWindow : Window
         RemoveSecondary(name);
         if (_modeName is not null && _running && _remaining > 0
             && !string.Equals(_modeName, name, StringComparison.OrdinalIgnoreCase))
-            AddSecondary(_modeName, _total, _endTime);
+            AddSecondary(_modeName, _total, _endTime, _bigWarned);
 
         AddSecondary(name, seconds, DateTime.Now.AddSeconds(seconds));
         PromoteSoonest();
@@ -170,15 +177,16 @@ public partial class TimerWindow : Window
         _endTime = next.EndTime;
         _remaining = Math.Max(0, (_endTime - DateTime.Now).TotalSeconds);
         _running = _remaining > 0;
+        _bigWarned = next.Warned; // the warn state rides along, no double notice
         SortSecondaries();
         UpdateVisual();
     }
 
-    private void AddSecondary(string name, double total, DateTime endTime)
+    private void AddSecondary(string name, double total, DateTime endTime, bool warned = false)
     {
         RemoveSecondary(name);
         var vm = new SecondaryTimerViewModel(name);
-        _repops.Add(new RepopEntry { Name = name, Total = total, EndTime = endTime, Vm = vm });
+        _repops.Add(new RepopEntry { Name = name, Total = total, EndTime = endTime, Vm = vm, Warned = warned });
         _secondaries.Add(vm);
         SortSecondaries();
     }
@@ -353,6 +361,7 @@ public partial class TimerWindow : Window
         _total = _remaining = seconds <= 0 ? 1 : seconds;
         _running = start;
         _endTime = DateTime.Now.AddSeconds(_total);
+        _bigWarned = false; // a fresh run earns a fresh before-notice
         UpdateVisual();
     }
 
@@ -368,18 +377,39 @@ public partial class TimerWindow : Window
         if (_running)
         {
             _remaining = (_endTime - DateTime.Now).TotalSeconds;
+            // The configurable before-notice for the repop on the pie.
+            if (_modeName is not null && !_bigWarned && _remaining > 0
+                && RespawnLookup?.Invoke(_modeName) is { WarnEnabled: true } we
+                && _remaining <= we.WarnSeconds)
+            {
+                _bigWarned = true;
+                if (we.WarnPayload() is { } wp) _alerts.Fire(wp.Speak, wp.Sound);
+            }
             if (_remaining <= 0)
             {
                 _remaining = 0;
                 _running = false;
-                // Spoken, not the Windows pling — a named mob announces itself.
-                _alerts.Speak(_modeName is null ? "Respawn" : $"{_modeName} respawn");
+                FireSpawnAlert(_modeName);
                 // A named repop just spawned — the next-soonest takes the pie.
                 if (_modeName is not null) PromoteSoonest();
             }
         }
         UpdateVisual();
         UpdateSecondaries();
+    }
+
+    /// <summary>The spawn notice: the entry's configured phrase/sound (or the
+    /// spoken default when the mob has no config — the manual timer too).</summary>
+    private void FireSpawnAlert(string? name)
+    {
+        var entry = name is null ? null : RespawnLookup?.Invoke(name);
+        if (entry is null)
+        {
+            // Spoken, not the Windows pling — a named mob announces itself.
+            _alerts.Speak(name is null ? "Respawn" : $"{name} respawn");
+            return;
+        }
+        if (entry.SpawnPayload() is { } p) _alerts.Fire(p.Speak, p.Sound);
     }
 
     private void UpdateSecondaries()
@@ -391,10 +421,16 @@ public partial class TimerWindow : Window
             double rem = (e.EndTime - now).TotalSeconds;
             if (rem <= 0)
             {
-                _alerts.Speak($"{e.Name} respawn");
+                FireSpawnAlert(e.Name);
                 _secondaries.Remove(e.Vm);
                 _repops.RemoveAt(i);
                 continue;
+            }
+            if (!e.Warned && RespawnLookup?.Invoke(e.Name) is { WarnEnabled: true } we
+                && rem <= we.WarnSeconds)
+            {
+                e.Warned = true;
+                if (we.WarnPayload() is { } wp) _alerts.Fire(wp.Speak, wp.Sound);
             }
             e.Vm.RemainingText = Format(rem);
             e.Vm.Foreground = new SolidColorBrush(ColorFor(e.Total > 0 ? rem / e.Total : 0));

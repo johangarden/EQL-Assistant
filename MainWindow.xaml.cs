@@ -674,6 +674,8 @@ public partial class MainWindow : Window
             _vm.Flash($"Respawn added: {name} ({seconds:0}s).");
         };
         _timer.ManageRespawnsRequested = () => OpenManager("Respawns");
+        _timer.RespawnLookup = name => _respawnCache.FirstOrDefault(
+            r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         _timer.Show();
         UpdateTimerVisibility();
     }
@@ -1196,8 +1198,13 @@ public partial class MainWindow : Window
     /// Respawn timers are global (respawns.json), not per-loadout — merge them
     /// into the active trigger set so they survive loadout switches.
     /// </summary>
+    /// <summary>In-memory respawn entries, refreshed on every merge — the
+    /// repop watch reads alert config from here every tick, never the disk.</summary>
+    private List<Models.RespawnEntry> _respawnCache = new();
+
     private void MergeGlobalRespawns(AppConfig cfg)
     {
+        _respawnCache = _configService.LoadRespawns();
         cfg.Triggers.RemoveAll(t => t.Panel == Panels.TimerAuto);
         cfg.Triggers.AddRange(_configService.BuildRespawnTriggers());
     }

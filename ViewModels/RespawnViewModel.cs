@@ -58,6 +58,35 @@ public sealed class RespawnViewModel : ViewModelBase
 
     public string Display => $"{(Enabled ? "" : "○ ")}{Name}  ·  {Seconds:0}s";
 
+    // ---- the two alert notices (mirrors the trigger editor's model) ----
+
+    private bool _warnOn;
+    public bool WarnOn { get => _warnOn; set => SetField(ref _warnOn, value); }
+
+    private double _warnSeconds = 15;
+    public double WarnSeconds { get => _warnSeconds; set => SetField(ref _warnSeconds, value); }
+
+    private string _warnMode = "speak";
+    public string WarnMode { get => _warnMode; set => SetField(ref _warnMode, value); }
+
+    private string _warnSpeak = "";
+    public string WarnSpeak { get => _warnSpeak; set => SetField(ref _warnSpeak, value); }
+
+    private string _warnSound = "";
+    public string WarnSound { get => _warnSound; set => SetField(ref _warnSound, value); }
+
+    private bool _spawnOn = true;
+    public bool SpawnOn { get => _spawnOn; set => SetField(ref _spawnOn, value); }
+
+    private string _spawnMode = "speak";
+    public string SpawnMode { get => _spawnMode; set => SetField(ref _spawnMode, value); }
+
+    private string _spawnSpeak = "";
+    public string SpawnSpeak { get => _spawnSpeak; set => SetField(ref _spawnSpeak, value); }
+
+    private string _spawnSound = "";
+    public string SpawnSound { get => _spawnSound; set => SetField(ref _spawnSound, value); }
+
     public static RespawnViewModel FromEntry(RespawnEntry e) => new()
     {
         Name = e.Name,
@@ -65,6 +94,15 @@ public sealed class RespawnViewModel : ViewModelBase
         Seconds = e.Seconds,
         Pattern = e.Pattern,
         Enabled = e.Enabled,
+        WarnOn = e.WarnEnabled,
+        WarnSeconds = e.WarnSeconds,
+        WarnMode = e.WarnMode,
+        WarnSpeak = e.WarnSpeak,
+        WarnSound = e.WarnSound,
+        SpawnOn = e.SpawnEnabled,
+        SpawnMode = e.SpawnMode,
+        SpawnSpeak = e.SpawnSpeak,
+        SpawnSound = e.SpawnSound,
     };
 
     public RespawnEntry ToEntry() => new()
@@ -74,5 +112,14 @@ public sealed class RespawnViewModel : ViewModelBase
         Seconds = Seconds,
         Pattern = Pattern.Trim(),
         Enabled = Enabled,
+        WarnEnabled = WarnOn,
+        WarnSeconds = WarnSeconds,
+        WarnMode = WarnMode,
+        WarnSpeak = WarnSpeak.Trim(),
+        WarnSound = WarnSound,
+        SpawnEnabled = SpawnOn,
+        SpawnMode = SpawnMode,
+        SpawnSpeak = SpawnSpeak.Trim(),
+        SpawnSound = SpawnSound,
     };
 }

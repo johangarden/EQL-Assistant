@@ -2618,6 +2618,29 @@ public partial class App : Application
                 tw.BigState.Mode == "Kurven" && tw.SecondaryNames is ["Vox", "Baron"]);
 
             tw.Close();
+
+            // ---- alert payloads: toggle + Phrase OR Sound per notice,
+            // empty phrase = the default (which follows renames for free).
+            var re = new Models.RespawnEntry { Name = "Vox" };
+            Check("alerts: spawn notice defaults on, spoken '<name> respawn'",
+                re.SpawnPayload() is { Speak: "Vox respawn", Sound: null }
+                && re.WarnPayload() is null); // before-notice defaults OFF
+            re.WarnEnabled = true;
+            Check("alerts: warn notice speaks its default when enabled",
+                re.WarnPayload() is { Speak: "Vox spawning soon", Sound: null });
+            re.WarnMode = "sound";
+            Check("alerts: a sound notice with no file stays silent",
+                re.WarnPayload() is null);
+            re.WarnSound = @"C:\Windows\Media\tada.wav";
+            Check("alerts: sound mode carries the file, never a phrase",
+                re.WarnPayload() is { Speak: null, Sound: @"C:\Windows\Media\tada.wav" });
+            re.SpawnSpeak = "the dragon is up";
+            re.SpawnEnabled = false;
+            Check("alerts: a disabled notice fires nothing",
+                re.SpawnPayload() is null);
+            re.SpawnEnabled = true;
+            Check("alerts: a hand-written phrase wins over the default",
+                re.SpawnPayload() is { Speak: "the dragon is up", Sound: null });
         }
         catch (Exception ex)
         {
