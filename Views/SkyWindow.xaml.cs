@@ -62,15 +62,17 @@ public partial class SkyWindow : Window
     {
         public Visibility SlotVisibility => Slot.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         public string TrackText => Tracked ? "★" : "☆";
-        public Brush TrackFg => Tracked ? TrackOnFg : NeedFg;
-        public Visibility TrackVisibility => Done ? Visibility.Collapsed : Visibility.Visible;
+        // Done cards keep a ghost star so titles stay aligned; it does nothing.
+        public Brush TrackFg => Done ? TrackGhostFg : Tracked ? TrackOnFg : TrackOffFg;
     }
 
     private static readonly Brush TrackOnFg = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
+    private static readonly Brush TrackOffFg = Freeze(Color.FromRgb(0x9F, 0xB4, 0xD0));
+    private static readonly Brush TrackGhostFg = Freeze(Color.FromRgb(0x3A, 0x45, 0x60));
 
     private void Track_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is QuestVm vm)
+        if ((sender as FrameworkElement)?.DataContext is QuestVm { Done: false } vm)
             _sky.SetTracked(vm.Quest, !vm.Tracked);
     }
 
@@ -105,8 +107,16 @@ public partial class SkyWindow : Window
     private void SetDone(object sender, bool done)
     {
         if (_initializing) return;
-        if ((sender as FrameworkElement)?.DataContext is QuestVm vm)
-            _sky.SetCompleted(vm.Quest, done);
+        if ((sender as FrameworkElement)?.DataContext is not QuestVm vm) return;
+        if (done && !ConfirmDialog.Show(this, "Mark quest complete",
+            $"Mark '{vm.Quest.Name}' as done?\n\nIt leaves the open list (and drops its ★ hunt, "
+            + "if tracked). The reward line in the log normally checks this off by itself.",
+            "Mark done", "Cancel"))
+        {
+            Refresh(); // snap the checkbox back — nothing changed
+            return;
+        }
+        _sky.SetCompleted(vm.Quest, done);
     }
 
     private void Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
