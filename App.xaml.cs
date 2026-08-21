@@ -1481,6 +1481,11 @@ public partial class App : Application
                 Check("item stats: droppers ride the record (mob + zone)",
                     istats.Lookup("Wicked Sallet +5") is { } wsd
                     && wsd.Drops.Any(d => d is ["Lord Elgnub", "Blackburrow"]));
+                // The all-empty 10-slot bag the dump can't tell from sockets —
+                // the wiki's Capacity flag names it a container anyway.
+                Check("item stats: the wiki knows a bag when the dump cannot",
+                    istats.IsContainer("Kavruul`s Mystic Pouch")
+                    && !istats.IsContainer("Wicked Sallet +5"));
                 Check("item stats: the three-regen line is whole (7/7/7 at +5)",
                     istats.Lookup("Talisman of Kejaar Kerrath +5") is { } tkk
                     && tkk.Stats.Any(p => p is ["HP Regen", "2"])

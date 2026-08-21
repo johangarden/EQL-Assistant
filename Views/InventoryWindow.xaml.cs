@@ -599,10 +599,15 @@ public partial class InventoryWindow : Window
             // rule between names. Lanes don't apply — the POINT is the spread
             // across storages — so the chips step aside.
             LanePanel.Visibility = Visibility.Collapsed;
-            var dupKeys = InventoryStore.DuplicateKeys(tabRows);
-            var dupRows = tabRows
-                .Where(r => !r.IsContainer
-                            && dupKeys.Contains(FocusEffects.ItemKey(r.Name))
+            // Bags never count — the dump's own container reading, plus the
+            // wiki's ("Capacity:" flag) for all-empty 10-slot bags (Kavruul's)
+            // the dump can't tell from sockets.
+            var dupCandidates = tabRows
+                .Where(r => !r.IsContainer && !_itemStats.IsContainer(r.Name))
+                .ToList();
+            var dupKeys = InventoryStore.DuplicateKeys(dupCandidates);
+            var dupRows = dupCandidates
+                .Where(r => dupKeys.Contains(FocusEffects.ItemKey(r.Name))
                             && (q.Length == 0 || r.SearchKey.Contains(q, StringComparison.Ordinal)))
                 .ToList();
             var copies = dupRows
