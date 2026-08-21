@@ -1390,12 +1390,15 @@ public partial class App : Application
                     new("Barons Blade +3", "barons blade +3", "Primary", 1, "worn", 3),
                     new("Barons Blade", "barons blade", "Bank 4", 1, "bank", 4),
                     new("One Of A Kind", "one of a kind", "General 2", 5, "bags", 5),
+                    new("Backpack", "backpack", "General 3", 1, "bags", 6, IsContainer: true),
+                    new("Backpack", "backpack", "Bank 5", 1, "bank", 7, IsContainer: true),
                 };
                 var dk = InventoryStore.DuplicateKeys(dupRows);
-                Check("inventory: duplicates fold +N tiers, a lone stack never counts",
+                Check("inventory: duplicates fold +N tiers; stacks and bags never count",
                     dk.Count == 2 && dk.Contains(FocusEffects.ItemKey("Pearl"))
                     && dk.Contains(FocusEffects.ItemKey("Barons Blade"))
-                    && !dk.Contains(FocusEffects.ItemKey("One Of A Kind")));
+                    && !dk.Contains(FocusEffects.ItemKey("One Of A Kind"))
+                    && !dk.Contains(FocusEffects.ItemKey("Backpack")));
 
                 // A malformed row is counted, never thrown on; an unknown-shaped
                 // section is carried as uninterpreted rows.

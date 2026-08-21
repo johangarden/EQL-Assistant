@@ -63,7 +63,7 @@ public static class InventoryStore
     /// this row sits INSIDE (the bearer of an exaltation socket), "" at top
     /// level.</summary>
     public sealed record CarryRow(string Name, string SearchKey, string Location, int Count,
-        string Lane, int Line, string Host = "");
+        string Lane, int Line, string Host = "", bool IsContainer = false);
 
     public const string PrimarySection = "Location";
     public const string LanePrefix = "section:";
@@ -364,7 +364,7 @@ public static class InventoryStore
                     : $"{e.Section} / {e.Location}";
                 string host = parent is { Empty: false } ? parent.Name : "";
                 rows.Add(new CarryRow(e.Name, e.Name.ToLowerInvariant(), location,
-                    e.Count > 0 ? e.Count : 1, lane, e.Line, host));
+                    e.Count > 0 ? e.Count : 1, lane, e.Line, host, IsContainer(e)));
             }
             foreach (var c in e.Children) Walk(c, e);
         }
@@ -395,8 +395,10 @@ public static class InventoryStore
     /// (or two bag slots) — a single stack is one place and never counts.
     /// "+N" folds into its base, so the old +1 in the bank surfaces next to
     /// the worn +4. Call it per tab: items and socketed exaltations share
-    /// names without being the same thing.</summary>
+    /// names without being the same thing. Containers are furniture, not
+    /// clutter — five Backpacks are five bags, so they never count.</summary>
     public static HashSet<string> DuplicateKeys(IEnumerable<CarryRow> rows) => rows
+        .Where(r => !r.IsContainer)
         .GroupBy(r => FocusEffects.ItemKey(r.Name), StringComparer.Ordinal)
         .Where(g => g.Count() >= 2)
         .Select(g => g.Key)

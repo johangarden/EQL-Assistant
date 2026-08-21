@@ -601,7 +601,8 @@ public partial class InventoryWindow : Window
             LanePanel.Visibility = Visibility.Collapsed;
             var dupKeys = InventoryStore.DuplicateKeys(tabRows);
             var dupRows = tabRows
-                .Where(r => dupKeys.Contains(FocusEffects.ItemKey(r.Name))
+                .Where(r => !r.IsContainer
+                            && dupKeys.Contains(FocusEffects.ItemKey(r.Name))
                             && (q.Length == 0 || r.SearchKey.Contains(q, StringComparison.Ordinal)))
                 .ToList();
             var copies = dupRows
