@@ -32,10 +32,6 @@ public partial class TimerWindow : Window
     private double _manualSeconds;   // duration used by "Normal (manual)" mode
     private string? _modeName;       // null = Normal; otherwise the selected preset/mob name
 
-    /// <summary>Supplies the named-mob presets (from timerAuto triggers) for the
-    /// menu, with the zone each mob belongs to (empty = ungrouped).</summary>
-    public Func<IReadOnlyList<(string Name, double Seconds, string Zone)>>? PresetProvider { get; set; }
-
     /// <summary>Recent kills for the ➕ quick-add menu (Tracked = already a respawn).</summary>
     public Func<IReadOnlyList<(string Name, string Zone, DateTime When, bool Tracked)>>? RecentKillsProvider { get; set; }
 
@@ -119,6 +115,7 @@ public partial class TimerWindow : Window
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
         _placement.Attach();
+        UpdateModeToggle();
         UpdateVisual();
         _tick.Start();
     }
@@ -147,8 +144,9 @@ public partial class TimerWindow : Window
         if (sec is not > 0) return;
 
         _lastText = input.Trim();
-        // The pen is a manual override, so drop back to Normal (manual) mode — the
-        // preset's own duration lives in the Manager and still drives auto-start.
+        // The pen takes the pie for a hand-set duration. A repop holding it is
+        // parked in the rows (it keeps counting there), never discarded.
+        if (_modeName is not null) DemoteBig(spawnFired: false, seenAt: null);
         SetMode(null);
         _manualSeconds = sec.Value;
         _onDurationSet?.Invoke(sec.Value);
@@ -250,9 +248,11 @@ public partial class TimerWindow : Window
     }
 
     /// <summary>Move the soonest still-counting repop onto the big pie. Due,
-    /// UP and learning rows never take the pie — they have nothing to count.</summary>
+    /// UP and learning rows never take the pie — they have nothing to count.
+    /// In manual mode nothing does: the pie is the user's egg timer.</summary>
     private void PromoteSoonest()
     {
+        if (_manualMode) return;
         var now = DateTime.Now;
         var next = _repops
             .Where(e => e.SeenAt is null && !e.SpawnFired && e.Total > 0 && e.EndTime > now)
@@ -318,61 +318,43 @@ public partial class TimerWindow : Window
         _secondaries.Remove(e.Vm);
     }
 
-    // ---- mode / preset menu -------------------------------------------------
+    // ---- auto / manual toggle -------------------------------------------------
+    // The learner made the old preset dropdown obsolete: deaths start their own
+    // clocks now. What remains is one decision — does the soonest respawn claim
+    // the pie (auto, the default), or does your egg timer keep it while the
+    // respawns run in the row list (manual)?
 
-    private void OnMenu(object sender, RoutedEventArgs e)
+    private bool _manualMode;
+
+    private void OnModeToggle(object sender, RoutedEventArgs e) => SetManualMode(!_manualMode);
+
+    internal void SetManualMode(bool manual)
     {
-        var menu = new ContextMenu();
-
-        var normal = new MenuItem { Header = "Normal mode (manual)", IsChecked = _modeName is null };
-        normal.Click += (_, _) => { SetMode(null); SetDuration(_manualSeconds, start: false); };
-        menu.Items.Add(normal);
-
-        var presets = PresetProvider?.Invoke();
-        if (presets is { Count: > 0 })
+        if (_manualMode == manual) return;
+        _manualMode = manual;
+        if (manual)
         {
-            // Segment by zone: named zones alphabetically, zoneless mobs last.
-            var groups = presets
-                .GroupBy(p => p.Zone.Trim(), StringComparer.OrdinalIgnoreCase)
-                .OrderBy(g => g.Key.Length == 0 ? 1 : 0)
-                .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            bool severalZones = groups.Count > 1 || groups[0].Key.Length > 0;
-
-            foreach (var group in groups)
-            {
-                menu.Items.Add(new Separator());
-                if (severalZones)
-                    menu.Items.Add(new MenuItem
-                    {
-                        Header = group.Key.Length > 0 ? group.Key : "No zone set",
-                        IsEnabled = false,
-                        FontSize = 10,
-                        FontWeight = System.Windows.FontWeights.Bold,
-                    });
-
-                foreach (var (name, seconds, _) in group
-                    .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
-                {
-                    string cn = name;
-                    double cs = seconds;
-                    // No estimate yet (auto mode, no gaps learned): nothing to
-                    // put on the pie — the next death starts its learning row.
-                    var mi = new MenuItem
-                    {
-                        Header = cs > 0 ? $"{name}  ({Format(seconds)})" : $"{name}  (learning)",
-                        IsEnabled = cs > 0,
-                        IsChecked = string.Equals(name, _modeName, StringComparison.OrdinalIgnoreCase),
-                    };
-                    mi.Click += (_, _) => { SetMode(cn); SetDuration(cs, start: false); };
-                    menu.Items.Add(mi);
-                }
-            }
+            // Park the pie's repop in the rows (it keeps counting there) and
+            // hand the pie back to the manual timer, idle at its last duration.
+            if (_modeName is not null) DemoteBig(spawnFired: false, seenAt: null);
+            SetMode(null);
+            _total = _remaining = _manualSeconds <= 0 ? 1 : _manualSeconds;
+            _running = false;
+            UpdateVisual();
         }
+        else
+        {
+            PromoteSoonest();
+        }
+        UpdateModeToggle();
+    }
 
-        menu.PlacementTarget = (UIElement)sender;
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-        menu.IsOpen = true;
+    private void UpdateModeToggle()
+    {
+        ModeToggleBtn.Content = _manualMode ? "" : ""; // clock / sync
+        ModeToggleBtn.ToolTip = _manualMode
+            ? "Manual timer — respawns run in the list and never take the pie. Click for auto."
+            : "Auto — the soonest respawn claims the pie. Click for a manual timer.";
     }
 
     private void SetMode(string? name)

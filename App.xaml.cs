@@ -2712,6 +2712,20 @@ public partial class App : Application
             Check("watch: sighting the pie mob demotes it to an UP row",
                 tw2.BigState.Mode is null && tw2.RowStates.Count(r => r.State == "up") == 2);
             tw2.Close();
+
+            // ---- the auto/manual toggle: manual = the pie is YOUR egg timer.
+            var tw3 = new TimerWindow(new ConfigService(), mutedAlerts, 300, 1.0, null);
+            tw3.StartWith(200, "Kurven");
+            tw3.SetManualMode(true);
+            Check("manual: the pie's repop parks in the rows",
+                tw3.BigState.Mode is null && tw3.RowStates is [("Kurven", "countdown")]);
+            tw3.StartWith(100, "Vox");
+            Check("manual: a death never steals the pie",
+                tw3.BigState.Mode is null && tw3.SecondaryNames.Count == 2);
+            tw3.SetManualMode(false);
+            Check("auto again: the soonest respawn claims the pie back",
+                tw3.BigState.Mode == "Vox" && tw3.SecondaryNames is ["Kurven"]);
+            tw3.Close();
         }
         catch (Exception ex)
         {

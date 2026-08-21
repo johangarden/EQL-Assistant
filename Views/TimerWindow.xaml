@@ -18,9 +18,9 @@
             MouseLeftButtonDown="Card_DragMove">
         <StackPanel>
             <DockPanel Margin="0,0,0,6">
-                <Button DockPanel.Dock="Left" Style="{StaticResource IconBtn}" Click="OnMenu"
-                        AutomationProperties.AutomationId="TimerMenuBtn"
-                        FontFamily="Segoe MDL2 Assets" Content="&#xE700;" ToolTip="Timer mode / named-mob presets"/>
+                <Button DockPanel.Dock="Left" x:Name="ModeToggleBtn" Style="{StaticResource IconBtn}" Click="OnModeToggle"
+                        AutomationProperties.AutomationId="TimerModeBtn"
+                        FontFamily="Segoe MDL2 Assets" Content="&#xE895;"/>
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Click="OnAddRespawn"
                         AutomationProperties.AutomationId="TimerAddRespawnBtn"
                         FontFamily="Segoe MDL2 Assets" Content="&#xE710;"
