@@ -58,9 +58,22 @@ public partial class SkyWindow : Window
 
     public sealed record QuestVm(SkyQuests.SkyQuest Quest, string Title, string Subtitle,
         string Reward, string RewardStats, string Slot, string ProgressText, Brush ProgressBrush,
-        bool Done, double CardOpacity, List<ChipVm> Chips)
+        bool Done, double CardOpacity, List<ChipVm> Chips, bool Tracked)
     {
         public Visibility SlotVisibility => Slot.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public string TrackText => Tracked ? "★" : "☆";
+        // Done cards keep a ghost star so titles stay aligned; it does nothing.
+        public Brush TrackFg => Done ? TrackGhostFg : Tracked ? TrackOnFg : TrackOffFg;
+    }
+
+    private static readonly Brush TrackOnFg = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
+    private static readonly Brush TrackOffFg = Freeze(Color.FromRgb(0x9F, 0xB4, 0xD0));
+    private static readonly Brush TrackGhostFg = Freeze(Color.FromRgb(0x3A, 0x45, 0x60));
+
+    private void Track_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is QuestVm { Done: false } vm)
+            _sky.SetTracked(vm.Quest, !vm.Tracked);
     }
 
     public SkyWindow(SkyQuests sky)
@@ -94,8 +107,16 @@ public partial class SkyWindow : Window
     private void SetDone(object sender, bool done)
     {
         if (_initializing) return;
-        if ((sender as FrameworkElement)?.DataContext is QuestVm vm)
-            _sky.SetCompleted(vm.Quest, done);
+        if ((sender as FrameworkElement)?.DataContext is not QuestVm vm) return;
+        if (done && !ConfirmDialog.Show(this, "Mark quest complete",
+            $"Mark '{vm.Quest.Name}' as done?\n\nIt leaves the open list (and drops its ★ hunt, "
+            + "if tracked). The reward line in the log normally checks this off by itself.",
+            "Mark done", "Cancel"))
+        {
+            Refresh(); // snap the checkbox back — nothing changed
+            return;
+        }
+        _sky.SetCompleted(vm.Quest, done);
     }
 
     private void Badge_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -215,7 +236,7 @@ public partial class SkyWindow : Window
             q.Reward, q.RewardStats, q.Slot,
             done ? "✓ done" : $"{have}/{need}",
             done ? DoneFg : OpenFg,
-            done, done ? 0.55 : 1.0, chips);
+            done, done ? 0.55 : 1.0, chips, _sky.IsTracked(q));
     }
 
     private static Brush Freeze(Color c)

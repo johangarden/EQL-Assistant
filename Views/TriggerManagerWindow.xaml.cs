@@ -1079,6 +1079,8 @@ public partial class TriggerManagerWindow : Window
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
                 ConditionsVisible = _config.Overlay.ConditionsVisible,   // tray-toggled
+                SkyHelperVisible = _config.Overlay.SkyHelperVisible,     // panels-toggled
+                SkyHelperShowCompleted = _config.Overlay.SkyHelperShowCompleted, // panel-toggled
                 MeterSoloMode = _config.Overlay.MeterSoloMode,           // meter-toggled
                 SessionStatsVisible = _config.Overlay.SessionStatsVisible,       // tray-toggled
                 SessionStatsSlice = _config.Overlay.SessionStatsSlice,           // panel-toggled

@@ -13,13 +13,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE BACK\nAC: 5\nSTA: +2 CHA: +2\nWT: 0.2 Size: SMALL\nClass: BRD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE BACK\nAC: 5\nSTA: +2 CHA: +2\nWT: 0.2 Size: SMALL\nClass: BRD\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Meda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -35,13 +39,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 5\nHP: +10\nWT: 0.5 Size: SMALL\nClass: BRD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 5\nHP: +10\nWT: 0.5 Size: SMALL\nClass: BRD\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Kala",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -57,13 +65,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: PRIMARY\nWind Resonance: 0\nWT: 0.1 Size: SMALL\nClass: BRD\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nSlot: PRIMARY\nWind Resonance: 0\nWT: 0.1 Size: SMALL\nClass: BRD\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Azia",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -79,13 +91,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nAC: 2\nCHA: +4\nWT: 0.2 Size: SMALL\nClass: BRD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nAC: 2\nCHA: +4\nWT: 0.2 Size: SMALL\nClass: BRD\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Caza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -101,20 +117,29 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Efreeti War Horn",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nBrass Resonance: 12\nWT: 5.0 Size: MEDIUM\nClass: BRD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nBrass Resonance: 12\nWT: 5.0 Size: MEDIUM\nClass: BRD\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Fana",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -130,20 +155,28 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti War Spear",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: Piercing Atk Delay: 40\nDMG: 15BACKSTAB: 15\nWT: 5.0 Size: MEDIUM\nClass: WAR BRD ROG SHM\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: Piercing Atk Delay: 40\nDMG: 15BACKSTAB: 15\nWT: 5.0 Size: MEDIUM\nClass: WAR BRD ROG SHM\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air"
+          ]
         },
         {
           "name": "Wind Rune Heda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -159,13 +192,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Beza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -180,13 +217,17 @@
           "name": "Azarack Skin",
           "who": "PoS",
           "where": "Island 2",
-          "count": 1
+          "count": 1,
+          "mobs": [
+            "Protector of Sky"
+          ]
         },
         {
           "name": "Wind Rune Heda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -202,27 +243,39 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Slashing Atk Delay: 20\nDMG: 12\nWT: 2.0 Size: MEDIUM\nClass: PAL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Slashing Atk Delay: 20\nDMG: 12\nWT: 2.0 Size: MEDIUM\nClass: PAL\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Mithril Bands",
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 12.0 Size: LARGE\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 12.0 Size: LARGE\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Brass Knuckles",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "Slot: PRIMARY SECONDARY\nSkill: 1H Blunt Atk Delay: 25\nDMG: 10\nWT: 1.0 Size: MEDIUM\nClass: WAR MNK\nRace: ALL\nDespite being a weapon, this item is stackable."
+          "stats": "Slot: PRIMARY SECONDARY\nSkill: 1H Blunt Atk Delay: 25\nDMG: 10\nWT: 1.0 Size: MEDIUM\nClass: WAR MNK\nRace: ALL\nDespite being a weapon, this item is stackable.",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Izah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -238,13 +291,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "NO DROP\nWT: 1.0 Size: SMALL\nClass: NONE\nRace: NONE"
+          "stats": "NO DROP\nWT: 1.0 Size: SMALL\nClass: NONE\nRace: NONE",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Kala",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -260,13 +317,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Geza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -282,20 +343,27 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY SECONDARY\nSkill: 1H Slashing Atk Delay: 24\nDMG: 10\nWT: 2.0 Size: MEDIUM\nClass: WAR\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY SECONDARY\nSkill: 1H Slashing Atk Delay: 24\nDMG: 10\nWT: 2.0 Size: MEDIUM\nClass: WAR\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Efreeti Standard",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: SECONDARY\nSkill: 1H Blunt Atk Delay: 10\nDMG: 3\nWT: 10.0 Size: LARGE\nClass: WAR CLR PAL RNG SHD DRU MNK BRD ROG SHM NEC WIZ MAG ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: SECONDARY\nSkill: 1H Blunt Atk Delay: 10\nDMG: 3\nWT: 10.0 Size: LARGE\nClass: WAR CLR PAL RNG SHD DRU MNK BRD ROG SHM NEC WIZ MAG ENC\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn"
+          ]
         },
         {
           "name": "Wind Rune Jaka",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -311,13 +379,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Ena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -333,13 +405,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 6\nINT: +2 AGI: +2\nSV MAGIC: +3\nWT: 15.0 Size: LARGE\nClass: WIZ\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 6\nINT: +2 AGI: +2\nSV MAGIC: +3\nWT: 15.0 Size: LARGE\nClass: WIZ\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Ozah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -355,13 +431,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: BACK\nAC: 4\nINT: +3 MANA: +10\nWT: 0.5 Size: SMALL\nClass: MAG\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nSlot: BACK\nAC: 4\nINT: +3 MANA: +10\nWT: 0.5 Size: SMALL\nClass: MAG\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Azia",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -376,13 +456,17 @@
           "name": "Azarack Blood",
           "who": "PoS",
           "where": "Island 2",
-          "count": 1
+          "count": 1,
+          "mobs": [
+            "Protector of Sky"
+          ]
         },
         {
           "name": "Wind Rune Lena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -398,20 +482,29 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 5\nAGI: +2\nWT: 15.0 Size: LARGE\nClass: ROG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 5\nAGI: +2\nWT: 15.0 Size: LARGE\nClass: ROG\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Efreeti Great Staff",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 42\nDMG: 14\nINT: +4\nSV FIRE: +5 SV COLD: +5\nWT: 0.2 Size: SMALL\nClass: NEC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 42\nDMG: 14\nINT: +4\nSV FIRE: +5 SV COLD: +5\nWT: 0.2 Size: SMALL\nClass: NEC\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Dena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -427,13 +520,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 15.0 Size: LARGE\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 15.0 Size: LARGE\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Lena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -449,13 +546,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SECONDARY\nAC: 15\nWIS: +4\nWT: 2.5 Size: SMALL\nClass: CLR\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SECONDARY\nAC: 15\nWIS: +4\nWT: 2.5 Size: SMALL\nClass: CLR\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Meda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -471,13 +572,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 10\nWT: 9.0 Size: MEDIUM\nClass: CLR\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 10\nWT: 9.0 Size: MEDIUM\nClass: CLR\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Caza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -493,13 +598,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nAC: 2\nMANA: +10\nWT: 5.0 Size: MEDIUM\nClass: CLR\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nAC: 2\nMANA: +10\nWT: 5.0 Size: MEDIUM\nClass: CLR\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Neza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -515,20 +624,28 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Efreeti Mace",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 30\nDMG: 10\nWT: 1.0 Size: MEDIUM\nClass: ALL except DRU NEC WIZ MAG ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 30\nDMG: 10\nWT: 1.0 Size: MEDIUM\nClass: ALL except DRU NEC WIZ MAG ENC\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air"
+          ]
         },
         {
           "name": "Wind Rune Kala",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -544,20 +661,27 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 12.0 Size: LARGE\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 12.0 Size: LARGE\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti Standard",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: SECONDARY\nSkill: 1H Blunt Atk Delay: 10\nDMG: 3\nWT: 10.0 Size: LARGE\nClass: WAR CLR PAL RNG SHD DRU MNK BRD ROG SHM NEC WIZ MAG ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: SECONDARY\nSkill: 1H Blunt Atk Delay: 10\nDMG: 3\nWT: 10.0 Size: LARGE\nClass: WAR CLR PAL RNG SHD DRU MNK BRD ROG SHM NEC WIZ MAG ENC\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn"
+          ]
         },
         {
           "name": "Wind Rune Ena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -573,13 +697,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 4\nCHA: +5 INT: +3\nSV DISEASE: +2\nWT: 1.0 Size: MEDIUM\nClass: DRU\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 4\nCHA: +5 INT: +3\nSV DISEASE: +2\nWT: 1.0 Size: MEDIUM\nClass: DRU\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Meda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -595,13 +723,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 4\nWIS: +4 INT: +2\nWT: 2.0 Size: MEDIUM\nClass: DRU\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 4\nWIS: +4 INT: +2\nWT: 2.0 Size: MEDIUM\nClass: DRU\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Kala",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -617,20 +749,29 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 30\nDMG: 8\nWIS: +2 MANA: +10\nWT: 5.0 Size: MEDIUM\nClass: ALL except BRD ROG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 30\nDMG: 8\nWIS: +2 MANA: +10\nWT: 5.0 Size: MEDIUM\nClass: ALL except BRD ROG\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Efreeti Statuette",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "LORE ITEM\nWT: 1.0 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM\nWT: 1.0 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Azia",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -646,13 +787,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Dena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -668,20 +813,27 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Spiroc Elder's Totem",
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Ena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -697,20 +849,28 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti Scimitar",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 1H Slashing Atk Delay: 29\nDMG: 12\nMANA: +10\nWT: 0.1 Size: SMALL\nClass: WAR PAL RNG SHD DRU MNK BRD ROG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 1H Slashing Atk Delay: 29\nDMG: 12\nMANA: +10\nWT: 0.1 Size: SMALL\nClass: WAR PAL RNG SHD DRU MNK BRD ROG\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air"
+          ]
         },
         {
           "name": "Wind Rune Izah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -726,13 +886,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: WAIST\nAC: 3\nMANA: +10\nWT: 9.0 Size: LARGE\nClass: ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: WAIST\nAC: 3\nMANA: +10\nWT: 9.0 Size: LARGE\nClass: ENC\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Meda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -748,13 +912,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 4\nSTA: +3 CHA: +3\nWT: 9.0 Size: LARGE\nClass: ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 4\nSTA: +3 CHA: +3\nWT: 9.0 Size: LARGE\nClass: ENC\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Ozah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -770,13 +938,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: BACK\nAC: 2\nDEX: +3 AGI: +3\nWT: 5.0 Size: MEDIUM\nClass: ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: BACK\nAC: 2\nDEX: +3 AGI: +3\nWT: 5.0 Size: MEDIUM\nClass: ENC\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Beza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -792,13 +964,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: EAR\nMANA: +5\nSV FIRE: +5\nWT: 1.0 Size: MEDIUM\nClass: ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: EAR\nMANA: +5\nSV FIRE: +5\nWT: 1.0 Size: MEDIUM\nClass: ENC\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Caza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -814,13 +990,17 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nAC: 2\nSV DISEASE: +5 SV POISON: +5\nWT: 1.0 Size: MEDIUM\nClass: ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nAC: 2\nSV DISEASE: +5 SV POISON: +5\nWT: 1.0 Size: MEDIUM\nClass: ENC\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Wind Rune Fana",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -836,20 +1016,29 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: MEDIUM\nClass: ALL\nRace: ALL\nThere are two versions of this item: the Large Sky Sapphire (Enchanter), with 15-weight, for the Enchanter quest \"Azure Star Sapphire\", and this 0.1-weight version that looks like a Black Sapphire for the Wizard quest (\"Eye of the Storm\")."
+          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: MEDIUM\nClass: ALL\nRace: ALL\nThere are two versions of this item: the Large Sky Sapphire (Enchanter), with 15-weight, for the Enchanter quest \"Azure Star Sapphire\", and this 0.1-weight version that looks like a Black Sapphire for the Wizard quest (\"Eye of the Storm\").",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti Wind Staff",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 36\nDMG: 12\nINT: +3\nWT: 15.0 Size: LARGE\nClass: CLR DRU SHM NEC WIZ MAG ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 36\nDMG: 12\nINT: +3\nWT: 15.0 Size: LARGE\nClass: CLR DRU SHM NEC WIZ MAG ENC\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Izah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -865,13 +1054,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: BACK\nAC: 4\nINT: +3 MANA: +10\nWT: 0.5 Size: SMALL\nClass: MAG\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nSlot: BACK\nAC: 4\nINT: +3 MANA: +10\nWT: 0.5 Size: SMALL\nClass: MAG\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Lena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -887,13 +1080,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 4\nINT: +2\nWT: 1.0 Size: MEDIUM\nClass: MAG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 4\nINT: +2\nWT: 1.0 Size: MEDIUM\nClass: MAG\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Neza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -909,13 +1106,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 10.0 Size: LARGE\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 10.0 Size: LARGE\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Azia",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -931,13 +1132,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 12.0 Size: LARGE\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 12.0 Size: LARGE\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Dena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -953,13 +1158,17 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FINGER\nAC: 4\nSTA: +4 CHA: +4\nSV FIRE: +3 SV DISEASE: +3\nWT: 0.2 Size: SMALL\nClass: MAG\nRace: ALL\nPart of the Golden Efreeti Armor Set"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FINGER\nAC: 4\nSTA: +4 CHA: +4\nSV FIRE: +3 SV DISEASE: +3\nWT: 0.2 Size: SMALL\nClass: MAG\nRace: ALL\nPart of the Golden Efreeti Armor Set",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Wind Rune Ena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -975,20 +1184,28 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: MAG\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: MAG\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti Magi Staff",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 36\nDMG: 12 AC: 5\nSTA: +2 CHA: +2 INT: +5\nWT: 2.0 Size: LARGE\nClass: NEC WIZ MAG ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 36\nDMG: 12 AC: 5\nSTA: +2 CHA: +2 INT: +5\nWT: 2.0 Size: LARGE\nClass: NEC WIZ MAG ENC\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air"
+          ]
         },
         {
           "name": "Wind Rune Jaka",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1003,27 +1220,37 @@
           "name": "Crown Of Elemental Mastery",
           "who": "Trash",
           "where": "Island 7",
-          "count": 1
+          "count": 1,
+          "mobs": [
+            "Plane of Sky Island 7 trash mobs"
+          ]
         },
         {
           "name": "Large Opal",
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 8.0 Size: LARGE\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 8.0 Size: LARGE\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Djinni Stave",
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "Unlike the majority of Staves in Norrath, this item appears as a bag.\nDjinni Stave\nMAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 19\nDMG: 5\nWT: 0.5 Size: SMALL\nClass: CLR DRU SHM NEC WIZ MAG ENC\nRace: ALL"
+          "stats": "Unlike the majority of Staves in Norrath, this item appears as a bag.\nDjinni Stave\nMAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 19\nDMG: 5\nWT: 0.5 Size: SMALL\nClass: CLR DRU SHM NEC WIZ MAG ENC\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Wind Rune Heda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1039,13 +1266,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.5 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.5 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Caza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1061,13 +1292,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 2\nWT: 0.1 Size: SMALL\nClass: MNK\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 2\nWT: 0.1 Size: SMALL\nClass: MNK\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Geza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1083,13 +1318,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FEET\nAC: 2\nDEX: +3 AGI: +3\nWT: 0.2 Size: SMALL\nClass: MNK\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FEET\nAC: 2\nDEX: +3 AGI: +3\nWT: 0.2 Size: SMALL\nClass: MNK\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Jaka",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1105,13 +1344,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Beza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1127,20 +1370,29 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Brass Knuckles",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "Slot: PRIMARY SECONDARY\nSkill: 1H Blunt Atk Delay: 25\nDMG: 10\nWT: 1.0 Size: MEDIUM\nClass: WAR MNK\nRace: ALL\nDespite being a weapon, this item is stackable."
+          "stats": "Slot: PRIMARY SECONDARY\nSkill: 1H Blunt Atk Delay: 25\nDMG: 10\nWT: 1.0 Size: MEDIUM\nClass: WAR MNK\nRace: ALL\nDespite being a weapon, this item is stackable.",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Neza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1156,13 +1408,17 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Lena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1178,13 +1434,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 18.0 Size: LARGE\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 18.0 Size: LARGE\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Lena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1200,13 +1460,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: BACK\nAC: 3\nMANA: +10\nWT: 0.0 Size: TINY\nClass: NEC\nRace: ALL\nItem Lore : Black Silk Cape"
+          "stats": "LORE ITEM NO DROP\nSlot: BACK\nAC: 3\nMANA: +10\nWT: 0.0 Size: TINY\nClass: NEC\nRace: ALL\nItem Lore : Black Silk Cape",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Neza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1222,13 +1486,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 3\nHP: +15\nWT: 5.0 Size: MEDIUM\nClass: NEC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 3\nHP: +15\nWT: 5.0 Size: MEDIUM\nClass: NEC\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Ozah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1244,13 +1512,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Azia",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1266,13 +1538,17 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: FINGER\nAC: 2\nINT: +4 MANA: +5\nWT: 5.0 Size: MEDIUM\nClass: NEC\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nSlot: FINGER\nAC: 2\nINT: +4 MANA: +5\nWT: 5.0 Size: MEDIUM\nClass: NEC\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Wind Rune Caza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1288,20 +1564,29 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "LORE ITEM\nWT: 12.0 Size: LARGE\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM\nWT: 12.0 Size: LARGE\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Efreeti Great Staff",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 42\nDMG: 14\nINT: +4\nSV FIRE: +5 SV COLD: +5\nWT: 0.2 Size: SMALL\nClass: NEC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 42\nDMG: 14\nINT: +4\nSV FIRE: +5 SV COLD: +5\nWT: 0.2 Size: SMALL\nClass: NEC\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Fana",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1317,13 +1602,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Lena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1339,13 +1628,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Slashing Atk Delay: 16\nDMG: 2\nWT: 1.0 Size: MEDIUM\nClass: PAL\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Slashing Atk Delay: 16\nDMG: 2\nWT: 1.0 Size: MEDIUM\nClass: PAL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Ozah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1361,20 +1654,27 @@
           "who": "",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Plane of Sky Island 7 mobs"
+          ]
         },
         {
           "name": "Sphinx Claw",
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Slashing Atk Delay: 20\nDMG: 12\nWT: 2.0 Size: MEDIUM\nClass: PAL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Slashing Atk Delay: 20\nDMG: 12\nWT: 2.0 Size: MEDIUM\nClass: PAL\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Wind Rune Geza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1390,20 +1690,28 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti Zweihander",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Slashing Atk Delay: 45\nDMG: 24\nWT: 0.1 Size: SMALL\nClass: WAR PAL RNG SHD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Slashing Atk Delay: 45\nDMG: 24\nWT: 0.1 Size: SMALL\nClass: WAR PAL RNG SHD\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air"
+          ]
         },
         {
           "name": "Wind Rune Izah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1419,13 +1727,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.2 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Meda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1441,13 +1753,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: BACK\nAC: 5\nINT: +2 MANA: +10\nWT: 8.0 Size: LARGE\nClass: RNG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: BACK\nAC: 5\nINT: +2 MANA: +10\nWT: 8.0 Size: LARGE\nClass: RNG\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Neza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1463,13 +1779,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 9.0 Size: LARGE\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 9.0 Size: LARGE\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Kala",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1485,13 +1805,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: EAR\nDEX: +4 STA: +4 CHA: +4\nWT: 9.0 Size: LARGE\nClass: RNG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: EAR\nDEX: +4 STA: +4 CHA: +4\nWT: 9.0 Size: LARGE\nClass: RNG\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Azia",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1507,20 +1831,27 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: HEAD\nAC: 4\nSTR: +2 WIS: +2\nWT: 5.0 Size: MEDIUM\nClass: RNG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: HEAD\nAC: 4\nSTR: +2 WIS: +2\nWT: 5.0 Size: MEDIUM\nClass: RNG\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Efreeti Long Sword",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY SECONDARY\nSkill: 1H Slashing Atk Delay: 28\nDMG: 11\nWT: 0.1 Size: SMALL\nClass: WAR PAL RNG SHD BRD ROG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY SECONDARY\nSkill: 1H Slashing Atk Delay: 28\nDMG: 11\nWT: 0.1 Size: SMALL\nClass: WAR PAL RNG SHD BRD ROG\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn"
+          ]
         },
         {
           "name": "Wind Rune Ena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1536,20 +1867,29 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL\nNot to be confused with the Shimmering Pearl* for the Cleric Epic Quest."
+          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL\nNot to be confused with the Shimmering Pearl* for the Cleric Epic Quest.",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti War Bow",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: RANGE\nSkill: Archery Atk Delay: 100\nDMG: 40\nWT: 1.0 Range: 75 Size: MEDIUM\nClass: WAR RNG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: RANGE\nSkill: Archery Atk Delay: 100\nDMG: 40\nWT: 1.0 Range: 75 Size: MEDIUM\nClass: WAR RNG\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Heda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1565,13 +1905,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: NECK\nAC: 6\nAGI: +2 HP: +10\nWT: 0.2 Size: SMALL\nClass: ROG\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nSlot: NECK\nAC: 6\nAGI: +2 HP: +10\nWT: 0.2 Size: SMALL\nClass: ROG\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Ozah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1587,13 +1931,17 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: HEAD\nCharges: 1\nAC: 4\nSTR: +4 DEX: +4\nEffect: Haste (Any Slot, Casting Time: Instant)\nWT: 1.0 Size: SMALL\nClass: ROG\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nSlot: HEAD\nCharges: 1\nAC: 4\nSTR: +4 DEX: +4\nEffect: Haste (Any Slot, Casting Time: Instant)\nWT: 1.0 Size: SMALL\nClass: ROG\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Wind Rune Izah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1609,13 +1957,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 3.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 3.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Ena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1631,13 +1983,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 5\nAGI: +2\nWT: 15.0 Size: LARGE\nClass: ROG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FACE\nAC: 5\nAGI: +2\nWT: 15.0 Size: LARGE\nClass: ROG\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Dena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1653,13 +2009,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: BACK\nAC: 4\nSTR: +2 STA: +2\nWT: 1.0 Size: MEDIUM\nClass: ROG\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: BACK\nAC: 4\nSTR: +2 STA: +2\nWT: 1.0 Size: MEDIUM\nClass: ROG\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Geza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1675,20 +2035,27 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "Were you looking for Bixie Stinger (Bixie God's Stinger)?\nBixie Stinger\nWT: 0.1 Size: SMALL\nClass: NONE\nRace: NONE"
+          "stats": "Were you looking for Bixie Stinger (Bixie God's Stinger)?\nBixie Stinger\nWT: 0.1 Size: SMALL\nClass: NONE\nRace: NONE",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Bloodsky Sapphire",
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 2.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 2.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Jaka",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1704,13 +2071,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: TINY\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: TINY\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Ozah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1726,13 +2097,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FINGER\nSV MAGIC: +5\nWT: 5.0 Size: MEDIUM\nClass: SHD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FINGER\nSV MAGIC: +5\nWT: 5.0 Size: MEDIUM\nClass: SHD\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Beza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1748,13 +2123,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: WAIST\nAC: 1\nINT: +3 AGI: +3\nWT: 0.1 Size: SMALL\nClass: SHD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: WAIST\nAC: 1\nINT: +3 AGI: +3\nWT: 0.1 Size: SMALL\nClass: SHD\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Dena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1770,13 +2149,17 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 7\nDEX: +1\nWT: 1.0 Size: MEDIUM\nClass: SHD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 7\nDEX: +1\nWT: 1.0 Size: MEDIUM\nClass: SHD\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Wind Rune Fana",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1792,13 +2175,18 @@
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: SECONDARY\nAC: 15\nSTR: +5\nSV FIRE: +10\nWT: 2.0 Size: MEDIUM\nClass: WAR CLR PAL RNG SHD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: SECONDARY\nAC: 15\nSTR: +5\nSV FIRE: +10\nWT: 2.0 Size: MEDIUM\nClass: WAR CLR PAL RNG SHD\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air"
+          ]
         },
         {
           "name": "Wind Rune Heda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1814,20 +2202,27 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: FINGER\nMANA: +10\nWT: 2.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: FINGER\nMANA: +10\nWT: 2.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Fae Pauldrons",
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 8\nSTR: +4 DEX: +4\nWT: 2.0 Size: MEDIUM\nClass: SHD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 8\nSTR: +4 DEX: +4\nWT: 2.0 Size: MEDIUM\nClass: SHD\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Izah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1843,20 +2238,27 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 10.0 Size: LARGE\nClass: SHD\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 10.0 Size: LARGE\nClass: SHD\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti War Axe",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Slashing Atk Delay: 28\nDMG: 12\nWT: 0.1 Size: SMALL\nClass: WAR PAL SHD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Slashing Atk Delay: 28\nDMG: 12\nWT: 0.1 Size: SMALL\nClass: WAR PAL SHD\nRace: ALL",
+          "mobs": [
+            "Unknown / not explicit in class table"
+          ]
         },
         {
           "name": "Wind Rune Kala",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1872,13 +2274,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "NO DROP\nWT: 1.0 Size: SMALL\nClass: NONE\nRace: NONE"
+          "stats": "NO DROP\nWT: 1.0 Size: SMALL\nClass: NONE\nRace: NONE",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Meda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1894,13 +2300,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: WAIST\nAC: 6\nWIS: +5\nWT: 0.1 Size: SMALL\nClass: SHM\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: WAIST\nAC: 6\nWIS: +5\nWT: 0.1 Size: SMALL\nClass: SHM\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Kala",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1916,13 +2326,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 5\nSTA: +2 WIS: +2 HP: +10\nWT: 9.0 Size: MEDIUM\nClass: SHM\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 5\nSTA: +2 WIS: +2 HP: +10\nWT: 9.0 Size: MEDIUM\nClass: SHM\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Beza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1938,20 +2352,27 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Efreeti War Club",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 26\nDMG: 11\nWT: 1.0 Size: MEDIUM\nClass: ALL except BRD NEC WIZ MAG ENC\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 26\nDMG: 11\nWT: 1.0 Size: MEDIUM\nClass: ALL except BRD NEC WIZ MAG ENC\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn"
+          ]
         },
         {
           "name": "Wind Rune Ena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1967,20 +2388,27 @@
           "who": "",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Plane of Sky Island 6 mobs"
+          ]
         },
         {
           "name": "Spiritualist`s Ring",
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FINGER\nMANA: +10\nSV FIRE: +5 SV DISEASE: +5 SV COLD: +5\nWT: 5.0 Size: MEDIUM\nClass: SHM\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FINGER\nMANA: +10\nSV FIRE: +5 SV DISEASE: +5 SV COLD: +5\nWT: 5.0 Size: MEDIUM\nClass: SHM\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Wind Rune Heda",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -1996,20 +2424,28 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 5.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti War Maul",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 35\nDMG: 15\nWT: 10.0 Size: LARGE\nClass: WAR PAL RNG SHD SHM\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 35\nDMG: 15\nWT: 10.0 Size: LARGE\nClass: WAR PAL RNG SHD SHM\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air"
+          ]
         },
         {
           "name": "Wind Rune Geza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2025,13 +2461,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FINGER\nAC: 2\nDEX: +2\nWT: 3.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: FINGER\nAC: 2\nDEX: +2\nWT: 3.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Neza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2047,13 +2487,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nSTR: +4 DEX: +4\nWT: 1.0 Size: MEDIUM\nClass: WAR\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nSTR: +4 DEX: +4\nWT: 1.0 Size: MEDIUM\nClass: WAR\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Azia",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2069,13 +2513,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.1 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Beza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2091,20 +2539,28 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 2.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 2.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Efreeti Belt",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: WAIST\nAC: 4\nSTR: +1 WIS: +1 INT: +1\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: WAIST\nAC: 4\nSTR: +1 WIS: +1 INT: +1\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Fana",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2120,20 +2576,27 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY SECONDARY\nSkill: 1H Slashing Atk Delay: 24\nDMG: 10\nWT: 2.0 Size: MEDIUM\nClass: WAR\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY SECONDARY\nSkill: 1H Slashing Atk Delay: 24\nDMG: 10\nWT: 2.0 Size: MEDIUM\nClass: WAR\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Gem of Invigoration",
           "who": "Trash",
           "where": "Island 7",
           "count": 1,
-          "stats": "LORE ITEM\nWT: 1.0 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM\nWT: 1.0 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Plane of Sky Island 7 trash mobs"
+          ]
         },
         {
           "name": "Wind Rune Jaka",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2149,20 +2612,28 @@
           "who": "EoV",
           "where": "Island 8",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 0.5 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 0.5 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti Battle Axe",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Slashing Atk Delay: 28\nDMG: 15\nWT: 0.5 Size: SMALL\nClass: WAR PAL RNG SHD\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Slashing Atk Delay: 28\nDMG: 15\nWT: 0.5 Size: SMALL\nClass: WAR PAL RNG SHD\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air"
+          ]
         },
         {
           "name": "Wind Rune Dena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2178,13 +2649,17 @@
           "who": "Gorga",
           "where": "Island 3",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: BACK\nAC: 4\nINT: +1\nSV FIRE: +3 SV DISEASE: +3\nWT: 1.0 Size: SMALL\nClass: WIZ\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: BACK\nAC: 4\nINT: +1\nSV FIRE: +3 SV DISEASE: +3\nWT: 1.0 Size: SMALL\nClass: WIZ\nRace: ALL",
+          "mobs": [
+            "Gorgalosk"
+          ]
         },
         {
           "name": "Wind Rune Dena",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2200,13 +2675,17 @@
           "who": "KoS",
           "where": "Island 4",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: HEAD\nAC: 4\nMANA: +5\nSV POISON: +2\nWT: 0.1 Size: SMALL\nClass: WIZ\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: HEAD\nAC: 4\nMANA: +5\nSV POISON: +2\nWT: 0.1 Size: SMALL\nClass: WIZ\nRace: ALL",
+          "mobs": [
+            "Keeper of Souls"
+          ]
         },
         {
           "name": "Wind Rune Fana",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2222,13 +2701,17 @@
           "who": "SL",
           "where": "Island 5",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 6\nINT: +2 AGI: +2\nSV MAGIC: +3\nWT: 15.0 Size: LARGE\nClass: WIZ\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SHOULDERS\nAC: 6\nINT: +2 AGI: +2\nSV MAGIC: +3\nWT: 15.0 Size: LARGE\nClass: WIZ\nRace: ALL",
+          "mobs": [
+            "The Spiroc Lord"
+          ]
         },
         {
           "name": "Wind Rune Geza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2244,20 +2727,29 @@
           "who": "BZ",
           "where": "Island 6",
           "count": 1,
-          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM NO DROP\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Bazzt Zzzt"
+          ]
         },
         {
           "name": "Efreeti Statuette",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "LORE ITEM\nWT: 1.0 Size: SMALL\nClass: ALL\nRace: ALL"
+          "stats": "LORE ITEM\nWT: 1.0 Size: SMALL\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Izah",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2273,13 +2765,17 @@
           "who": "SotS",
           "where": "Island 7",
           "count": 1,
-          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nAC: 2\nSTR: +3 STA: +3\nWT: 0.1 Size: MEDIUM\nClass: WIZ\nRace: ALL"
+          "stats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: NECK\nAC: 2\nSTR: +3 STA: +3\nWT: 0.1 Size: MEDIUM\nClass: WIZ\nRace: ALL",
+          "mobs": [
+            "Sister of the Spire"
+          ]
         },
         {
           "name": "Wind Rune Jaka",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     },
@@ -2294,20 +2790,29 @@
           "name": "Large Sky Lapis",
           "who": "EoV",
           "where": "Island 8",
-          "count": 1
+          "count": 1,
+          "mobs": [
+            "Eye of Veeshan"
+          ]
         },
         {
           "name": "Efreeti War Staff",
           "who": "",
           "where": "",
           "count": 1,
-          "stats": "Similar in appearance to the Cracked Staff, Norrath's most trusted weapon.\nEfreeti War Staff\nMAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 30\nDMG: 10\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL"
+          "stats": "Similar in appearance to the Cracked Staff, Norrath's most trusted weapon.\nEfreeti War Staff\nMAGIC ITEM LORE ITEM\nSlot: PRIMARY\nSkill: 2H Blunt Atk Delay: 30\nDMG: 10\nWT: 1.0 Size: MEDIUM\nClass: ALL\nRace: ALL",
+          "mobs": [
+            "Noble Dojorn",
+            "Overseer of Air",
+            "The Hand of Veeshan"
+          ]
         },
         {
           "name": "Wind Rune Caza",
           "who": "random drop — any Plane of Sky mob",
           "where": "Plane of Sky",
-          "count": 1
+          "count": 1,
+          "mobs": []
         }
       ]
     }

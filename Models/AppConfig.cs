@@ -114,6 +114,13 @@ public sealed class OverlayConfig
     /// (materializes only while a condition is active, or unlocked).</summary>
     public bool ConditionsVisible { get; set; } = true;
 
+    /// <summary>Whether the Sky quest helper panel is enabled (materializes
+    /// only when a dropper is sighted or quests are tracked).</summary>
+    public bool SkyHelperVisible { get; set; } = true;
+
+    /// <summary>Helper panel: admit items whose quest is already completed.</summary>
+    public bool SkyHelperShowCompleted { get; set; }
+
     /// <summary>Whether the Session stats panel (XP/AA/motes per hour) is shown.</summary>
     public bool SessionStatsVisible { get; set; } = false;
 

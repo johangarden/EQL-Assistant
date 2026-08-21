@@ -67,6 +67,12 @@ public sealed class ItemStats
     public Record? Lookup(string itemName) =>
         _items.TryGetValue(FocusEffects.ItemKey(itemName), out var rec) ? rec : null;
 
+    /// <summary>The wiki says it's a bag ("Capacity: N" in the flags line).
+    /// Catches what the dump cannot: an ALL-EMPTY 10-slot bag (Kavruul's)
+    /// is indistinguishable from an item with 10 sockets in the dump.</summary>
+    public bool IsContainer(string itemName) =>
+        Lookup(itemName)?.Flags.Contains("Capacity:", StringComparison.Ordinal) == true;
+
     /// <summary>In-window label for a stat key ("STR" → "Strength",
     /// "SV FIRE" → "SV Fire").</summary>
     public static string StatLabel(string key)

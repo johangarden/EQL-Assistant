@@ -88,9 +88,19 @@
                                 Opacity="{Binding CardOpacity}">
                             <StackPanel>
                                 <DockPanel>
-                                    <CheckBox DockPanel.Dock="Left" IsChecked="{Binding Done, Mode=OneWay}"
+                                    <!-- ★ leads the card — tracking is the everyday act: the
+                                         quest stands in the helper panel's Hunting list until
+                                         completed (which un-tracks it). -->
+                                    <TextBlock DockPanel.Dock="Left" Text="{Binding TrackText}"
+                                               Foreground="{Binding TrackFg}" FontSize="17" Cursor="Hand"
+                                               VerticalAlignment="Center" Margin="0,0,9,0"
+                                               ToolTip="Track this hunt — its missing items and their droppers stand on the Sky helper panel"
+                                               MouseLeftButtonUp="Track_Click"/>
+                                    <!-- The manual done-check retires to the far right (rare,
+                                         confirmed) — the reward line normally checks it itself. -->
+                                    <CheckBox DockPanel.Dock="Right" IsChecked="{Binding Done, Mode=OneWay}"
                                               Checked="Done_Checked" Unchecked="Done_Unchecked"
-                                              VerticalAlignment="Center" Margin="0,0,8,0"
+                                              VerticalAlignment="Center" Margin="10,0,0,0"
                                               ToolTip="Mark complete (auto-checks when the reward appears in the log)"/>
                                     <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressText}"
                                                Foreground="{Binding ProgressBrush}" FontWeight="Bold"

@@ -1,0 +1,40 @@
+<Window x:Class="EQLOverlay.Views.SkyHelperWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Border x:Name="RootBorder" CornerRadius="8" Padding="10,8,12,10" Background="#D6141A24"
+            BorderBrush="#3A4560" BorderThickness="1" MaxWidth="340">
+        <StackPanel>
+            <!-- Drag handle + title, shown only when unlocked. -->
+            <Border x:Name="Header" Background="#E01B2130" CornerRadius="5" Padding="8,3" Margin="0,0,0,4"
+                    Visibility="Collapsed" MouseLeftButtonDown="Header_DragMove">
+                <TextBlock Text="Sky quest helper — con/hit a dropper, or ★ quests to hunt"
+                           Foreground="#9FB4D0" FontWeight="Bold" FontSize="11"/>
+            </Border>
+
+            <TextBlock x:Name="Placeholder" Foreground="#7F93AD" FontSize="11" Margin="2,2,2,4"
+                       Visibility="Collapsed" MaxWidth="300" TextWrapping="Wrap"
+                       Text="Con or hit a Plane of Sky quest dropper and its quest items appear here. ★ quests in the Sky window to keep their hunt list standing."/>
+
+            <ItemsControl x:Name="LinesControl">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
+                                   FontWeight="{Binding Weight}" FontSize="{Binding Size}"
+                                   Margin="{Binding Margin}" TextWrapping="Wrap" MaxWidth="316"
+                                   TextDecorations="{Binding Deco}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </Border>
+</Window>

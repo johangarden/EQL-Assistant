@@ -61,6 +61,7 @@ public partial class InventoryWindow : Window
         ("items", "All items"),
         ("exalt", "Exaltations"),
         ("focus", "Focus board"),
+        ("sets", "Armor sets"),
     };
 
     private static readonly Brush SegOnBg = Freeze("#16283E");
@@ -118,6 +119,7 @@ public partial class InventoryWindow : Window
     {
         InitializeComponent();
         Interop.WindowTheme.ApplyDark(this);
+        UpdateDupChip();
         // "character": a fresh bounds key — the pre-merge Inventory sizes
         // don't fit the four-tab window.
         DialogPlacement.Persist(this, "character");
@@ -416,9 +418,9 @@ public partial class InventoryWindow : Window
 
     private void BuildLaneChips()
     {
-        // The audit is not row-backed (and the sheet is not list-backed);
-        // place is spelled per family / per slot instead.
-        if (_tab is "focus" or "sheet")
+        // The audit boards are not row-backed (and the sheet is not
+        // list-backed); place is spelled per family / per slot instead.
+        if (_tab is "focus" or "sheet" or "sets")
         {
             LanePanel.Children.Clear();
             LanePanel.Visibility = Visibility.Collapsed;
@@ -583,12 +585,57 @@ public partial class InventoryWindow : Window
         }
 
         string q = SearchBox.Text.Trim().ToLowerInvariant();
-        bool focus = _tab == "focus";
-        FocusList.Visibility = focus ? Visibility.Visible : Visibility.Collapsed;
-        ResultsList.Visibility = focus ? Visibility.Collapsed : Visibility.Visible;
-        if (focus) { ApplyFocusFilter(q); return; }
+        bool board = _tab is "focus" or "sets"; // both render in FocusList
+        FocusList.Visibility = board ? Visibility.Visible : Visibility.Collapsed;
+        ResultsList.Visibility = board ? Visibility.Collapsed : Visibility.Visible;
+        DupChip.Visibility = board ? Visibility.Collapsed : Visibility.Visible;
+        if (_tab == "sets") { ApplySetsFilter(q); return; }
+        if (board) { ApplyFocusFilter(q); return; }
 
         var tabRows = _rows.Where(r => InventoryStore.TabOf(r) == _tab).ToList();
+
+        if (_dupsOnly)
+        {
+            // The duplicate finder: only names owned as ≥2 physical copies,
+            // copies of one name kept adjacent (worst offenders first), a thin
+            // rule between names. Lanes don't apply — the POINT is the spread
+            // across storages — so the chips step aside.
+            LanePanel.Visibility = Visibility.Collapsed;
+            // Bags never count — the dump's own container reading, plus the
+            // wiki's ("Capacity:" flag) for all-empty 10-slot bags (Kavruul's)
+            // the dump can't tell from sockets.
+            var dupCandidates = tabRows
+                .Where(r => !r.IsContainer && !_itemStats.IsContainer(r.Name))
+                .ToList();
+            var dupKeys = InventoryStore.DuplicateKeys(dupCandidates);
+            var dupRows = dupCandidates
+                .Where(r => dupKeys.Contains(FocusEffects.ItemKey(r.Name))
+                            && (q.Length == 0 || r.SearchKey.Contains(q, StringComparison.Ordinal)))
+                .ToList();
+            var copies = dupRows
+                .GroupBy(r => FocusEffects.ItemKey(r.Name), StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+            var dupSorted = dupRows
+                .OrderByDescending(r => copies[FocusEffects.ItemKey(r.Name)])
+                .ThenBy(r => FocusEffects.ItemKey(r.Name), StringComparer.Ordinal)
+                .ThenBy(r => r.Line)
+                .ToList();
+            ResultsList.ItemsSource = dupSorted.Select((r, i) =>
+            {
+                bool rule = i > 0 && FocusEffects.ItemKey(dupSorted[i - 1].Name)
+                    != FocusEffects.ItemKey(r.Name);
+                return MakeRowVm(r) with { RuleVis = rule ? Visibility.Visible : Visibility.Collapsed };
+            }).ToList();
+            int names = dupSorted.Select(r => FocusEffects.ItemKey(r.Name)).Distinct().Count();
+            CountText.Text = $"{names} duplicated · {dupSorted.Count} copies";
+            EmptyTabText.Text = q.Length > 0
+                ? "No duplicates match the search."
+                : "No duplicates — every name here is a single copy.";
+            EmptyTabText.Visibility = dupSorted.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+        LanePanel.Visibility = LanePanel.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
         var matched = tabRows
             .Where(r => (_lane is null || r.Lane == _lane)
                         && (q.Length == 0 || r.SearchKey.Contains(q, StringComparison.Ordinal)))
@@ -612,6 +659,23 @@ public partial class InventoryWindow : Window
         CountText.Text = $"{matched.Count} of {tabRows.Count}";
         EmptyTabText.Text = _tab == "exalt" ? "No exaltation sockets in this dump." : "Nothing in this dump.";
         EmptyTabText.Visibility = tabRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    // ---- the duplicate finder toggle ----------------------------------------
+
+    private bool _dupsOnly;
+
+    private void DupChip_Click(object sender, MouseButtonEventArgs e)
+    {
+        _dupsOnly = !_dupsOnly;
+        UpdateDupChip();
+        ApplyFilters();
+    }
+
+    private void UpdateDupChip()
+    {
+        DupChip.Background = _dupsOnly ? SegOnBg : Brushes.Transparent;
+        DupChipText.Foreground = _dupsOnly ? SegOnFg : SegOffFg;
     }
 
     /// <summary>The audit board: every family always renders (the gaps ARE
@@ -662,6 +726,156 @@ public partial class InventoryWindow : Window
         EmptyTabText.Visibility = Visibility.Collapsed;
     }
 
+    // ---- the armor-set board (planar class sets vs the dump) -----------------
+
+    private readonly ArmorSets _armorSets = new();
+    private string? _openSet;    // accordion, same rule as the focus board
+    private bool _otherSetsOpen; // the other-classes section starts folded
+
+    /// <summary>The set board: your classes' sets first (from /who), everyone
+    /// else's behind a fold. Ownership is the dump's word via the same item
+    /// key the focus board uses — +N tiers count as the piece.</summary>
+    private void ApplySetsFilter(string q)
+    {
+        var classes = (_session?.WhoClasses ?? "")
+            .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        bool Match(ArmorSets.Set s) => q.Length == 0
+            || s.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || s.Kind.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || s.Zones.Any(z => z.Contains(q, StringComparison.OrdinalIgnoreCase))
+            || s.Pieces.Any(p => p.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
+
+        // Real piece lists first, multi-class after the class's own set,
+        // pieces-unknown pages last — alpha inside each band.
+        static int Band(ArmorSets.Set s) => s.Pieces.Count == 0 ? 2 : s.Multiclass ? 1 : 0;
+        List<ArmorSets.Set> Section(Func<ArmorSets.Set, bool> pick) => _armorSets.Sets
+            .Where(s => pick(s) && Match(s))
+            .OrderBy(Band)
+            .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var mine = Section(s => ArmorSets.Relevant(s, classes));
+        var others = classes.Length == 0
+            ? new List<ArmorSets.Set>()
+            : Section(s => !ArmorSets.Relevant(s, classes));
+
+        var shown = new List<FocusVm>();
+        shown.Add(FocusHeader(classes.Length > 0
+            ? $"Your classes — {string.Join(" / ", classes)}"
+            : "All sets — type /who in game and yours sort first"));
+        shown.AddRange(mine.Select(s => MakeSetVm(s, classes)));
+        if (others.Count > 0)
+        {
+            bool open = _otherSetsOpen || q.Length > 0;
+            shown.Add(FocusHeader((open ? "▾  " : "▸  ") + $"Other classes ({others.Count})",
+                foldToggle: true));
+            if (open) shown.AddRange(others.Select(s => MakeSetVm(s, classes)));
+        }
+        FocusList.ItemsSource = shown;
+
+        int pieceTotal = mine.Sum(s => s.Pieces.Count);
+        int pieceOwned = mine.Sum(s => s.Pieces.Count(p =>
+            _ownedByKey.ContainsKey(FocusEffects.ItemKey(p.Name))));
+        CountText.Text = pieceTotal > 0
+            ? $"{pieceOwned} of {pieceTotal} pieces · {mine.Count} sets"
+            : $"{mine.Count + others.Count} sets";
+        EmptyTabText.Visibility = Visibility.Collapsed;
+    }
+
+    private FocusVm MakeSetVm(ArmorSets.Set s, IReadOnlyCollection<string> classes)
+    {
+        int total = s.Pieces.Count;
+        int worn = 0, stored = 0;
+        foreach (var p in s.Pieces)
+        {
+            if (!_ownedByKey.TryGetValue(FocusEffects.ItemKey(p.Name), out string? lane)) continue;
+            if (lane == "worn") worn++; else stored++;
+        }
+        int owned = worn + stored;
+        int status = total == 0 ? 0 : owned == total ? 2 : owned > 0 ? 1 : 0;
+
+        string verdict;
+        if (total == 0)
+        {
+            verdict = "pieces unknown";
+        }
+        else
+        {
+            verdict = $"{owned}/{total}";
+            var bits = new List<string>();
+            if (worn > 0) bits.Add($"{worn} worn");
+            if (stored > 0) bits.Add($"{stored} stored");
+            if (bits.Count > 0) verdict += " — " + string.Join(" · ", bits);
+        }
+
+        bool open = _openSet == s.Name;
+        return new FocusVm(s.Name, $"{s.Kind} · {string.Join(", ", s.Zones)}", null,
+            total == 0 ? PillOffFg : StatusFg[status], new List<PillVm>(), "", null,
+            s.RaceNote.Length > 0 ? "IKSAR" : "", StatusFg[1],
+            s.RaceNote.Length > 0 ? Visibility.Visible : Visibility.Collapsed,
+            StatusTip: total == 0 ? "The wiki page doesn't list the pieces yet."
+                : status switch { 2 => "Full set owned.", 1 => "Partial set.", _ => "None owned." },
+            RowBg: RowWash[status],
+            Chevron: open ? "▾" : "▸",
+            Details: open ? MakeSetDetails(s, classes) : null,
+            DetailsVis: open ? Visibility.Visible : Visibility.Collapsed,
+            VerdictText: verdict);
+    }
+
+    /// <summary>The fold-out: every piece head-to-toe with where YOUR copy
+    /// sits — and for missing pieces, who drops it (wiki links throughout).</summary>
+    private List<DetailVm> MakeSetDetails(ArmorSets.Set s, IReadOnlyCollection<string> classes)
+    {
+        var details = new List<DetailVm>();
+        if (s.RaceNote.Length > 0)
+            details.Add(new DetailVm(s.RaceNote, DetailDimFg, FontWeights.Normal, DetailTab));
+        if (s.Pieces.Count == 0)
+        {
+            details.Add(new DetailVm(s.Note.Length > 0 ? s.Note : "The wiki page doesn't list the pieces yet.",
+                DetailDimFg, FontWeights.Normal, DetailTab));
+            details.Add(new DetailVm($"↳  {s.Name} on the wiki", DetailDimFg, FontWeights.Normal,
+                DetailDropTab, Url: WikiUrl(s.Name)));
+            return details;
+        }
+
+        foreach (var p in s.Pieces.OrderBy(x => ArmorSets.SlotRank(x.Slot))
+                     .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            bool owned = _ownedByKey.TryGetValue(FocusEffects.ItemKey(p.Name), out string? lane);
+            // Multi-class sets admit classes per piece (Lustrous Russet's
+            // breastplate takes BER, its helm doesn't).
+            bool wearable = classes.Count == 0 || p.Classes.Count == 0
+                || p.Classes.Any(c => classes.Contains(c, StringComparer.OrdinalIgnoreCase));
+
+            var parts = new List<string> { SlotTitle(p.Slot), p.Name };
+            parts.Add(owned ? "you: " + OwnLabel(lane!) : "missing");
+            if (!wearable) parts.Add("not your classes");
+            Brush fg = !owned ? DetailDimFg : lane == "worn" ? StatusFg[2] : StatusFg[1];
+            details.Add(new DetailVm(string.Join("  ·  ", parts), fg, FontWeights.Normal,
+                DetailTab, Url: WikiUrl(p.Name)));
+
+            if (owned || !wearable) continue;
+            var drops = _itemStats.Lookup(p.Name)?.Drops;
+            if (drops is not { Count: > 0 }) continue;
+            foreach (var d in drops.Take(3))
+            {
+                string mob = d.Length > 0 ? d[0] : "";
+                string zone = d.Length > 1 ? d[1] : "";
+                if (mob.Length == 0) continue;
+                details.Add(new DetailVm($"↳  {mob}{(zone.Length > 0 ? $" — {zone}" : "")}",
+                    DetailDimFg, FontWeights.Normal, DetailDropTab, Url: WikiUrl(mob)));
+            }
+            if (drops.Count > 3)
+                details.Add(new DetailVm($"↳  …and {drops.Count - 3} more droppers (wiki page has the full list)",
+                    DetailDimFg, FontWeights.Normal, DetailDropTab, Url: WikiUrl(p.Name)));
+        }
+        return details;
+    }
+
+    private static string SlotTitle(string slot) => slot.Length == 0 ? slot
+        : char.ToUpperInvariant(slot[0]) + slot[1..].ToLowerInvariant();
+
     private void ResultsList_Click(object sender, MouseButtonEventArgs e)
     {
         if ((e.OriginalSource as FrameworkElement)?.DataContext is not RowVm vm) return;
@@ -685,18 +899,23 @@ public partial class InventoryWindow : Window
             return;
         }
         if ((e.OriginalSource as FrameworkElement)?.DataContext is not FocusVm vm) return;
+        bool sets = _tab == "sets"; // the set board shares this list + its folds
         if (vm.IsFoldToggle)
         {
-            _summonedOpen = !_summonedOpen;
+            if (sets) _otherSetsOpen = !_otherSetsOpen;
+            else _summonedOpen = !_summonedOpen;
         }
         else if (vm.RowVis == Visibility.Visible)
         {
             // Accordion: a click opens this family and closes whichever was
             // open; clicking the open one folds it away.
-            _openFamily = _openFamily == vm.Family ? null : vm.Family;
+            if (sets) _openSet = _openSet == vm.Family ? null : vm.Family;
+            else _openFamily = _openFamily == vm.Family ? null : vm.Family;
         }
         else return;
-        ApplyFocusFilter(SearchBox.Text.Trim().ToLowerInvariant());
+        string q = SearchBox.Text.Trim().ToLowerInvariant();
+        if (sets) ApplySetsFilter(q);
+        else ApplyFocusFilter(q);
     }
 
     /// <summary>Where you keep an item, for the fold-out: lower = closer to
