@@ -56,17 +56,19 @@ public partial class MeterWindow : Window
     private static readonly Brush SkillHighFill = Freeze(Color.FromRgb(0x81, 0xC7, 0x84)); // ≥ 85%
 
     private static readonly Brush SelfFill = Freeze(Color.FromRgb(0xFF, 0xC1, 0x2E));
+    // Ability-row palette. The header's cyan (4FC3F7) and anything near the
+    // pet's green (9CCC65) are deliberately ABSENT — those two colors are
+    // identities, and 'slash' once wore pet-green by pure hash luck.
     private static readonly Brush[] Palette =
     {
-        Freeze(Color.FromRgb(0x4F, 0xC3, 0xF7)),
-        Freeze(Color.FromRgb(0x81, 0xC7, 0x84)),
         Freeze(Color.FromRgb(0xE5, 0x73, 0x73)),
         Freeze(Color.FromRgb(0xBA, 0x68, 0xC8)),
         Freeze(Color.FromRgb(0xFF, 0xB7, 0x4D)),
         Freeze(Color.FromRgb(0x64, 0xB5, 0xF6)),
         Freeze(Color.FromRgb(0x4D, 0xB6, 0xAC)),
         Freeze(Color.FromRgb(0xF0, 0x62, 0x92)),
-        Freeze(Color.FromRgb(0xAE, 0xD5, 0x81)),
+        Freeze(Color.FromRgb(0xFF, 0x8A, 0x65)),
+        Freeze(Color.FromRgb(0x79, 0x86, 0xCB)),
         Freeze(Color.FromRgb(0xA1, 0x88, 0x7F)),
     };
 
