@@ -825,7 +825,7 @@ public partial class CharacterSheetView : UserControl
             if (SynthVoid(rec, tier)) voidGrant += tier;
         }
 
-        PaneSub.Text = $"what the {worn.Count} worn items grant at their current tiers";
+        PaneSub.Text = "click any stat to see which items grant it";
         if (counted == 0)
         {
             lines.Add(new PaneLineVm("", "no worn item is in the wiki table yet", DimFg, Visibility.Collapsed));

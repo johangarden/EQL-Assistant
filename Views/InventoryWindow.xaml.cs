@@ -27,7 +27,7 @@ public partial class InventoryWindow : Window
         ImageSource? Icon = null, Visibility IconVis = Visibility.Collapsed);
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
     private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight, Thickness Margin = default,
-        string? Url = null)
+        string? Url = null, double FontSize = 11)
     {
         public bool IsLink => Url is not null;
     }
@@ -812,9 +812,11 @@ public partial class InventoryWindow : Window
             var tier = a.Family.Tiers[i];
             string cap = tier.LevelCap is { } c ? $" · decays over lvl {c}" : "";
             string summoned = tier.SummonedOnly ? " · summoned only" : "";
-            // The tier title wears its pill's color: green when you own it.
+            // The tier title wears its pill's color (green when you own it),
+            // a marker and a size step up — it anchors the whole block below.
             Brush headerFg = a.TierLanes[i] is not null ? StatusFg[2] : DetailHeaderFg;
-            details.Add(new DetailVm($"{tier.Effect}{cap}{summoned}", headerFg, FontWeights.SemiBold, DetailHeadPad));
+            details.Add(new DetailVm($"▸  {tier.Effect}{cap}{summoned}", headerFg,
+                FontWeights.SemiBold, DetailHeadPad, FontSize: 12.5));
             if (tier.Description.Length > 0)
                 details.Add(new DetailVm(tier.Description, DetailDimFg, FontWeights.Normal, DetailTab));
             if (tier.Items.Count == 0)
