@@ -279,9 +279,10 @@ public partial class InventoryWindow : Window
             FontSize = 11,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 6, 0),
-            ToolTip = "Worn, bags, bank, shared bank, depot, Dragon's Hoard and key rings — "
-                + "the game only writes a storage while its window is open. Re-type "
-                + "/outputfile inventory in game whenever your gear or bags change.",
+            ToolTip = "Worn, bags, bank, shared bank, depot, the Dragon Hoard and the "
+                + "exaltation & storage collections — the game only writes a storage "
+                + "while its window is open. Re-type /outputfile inventory in game "
+                + "whenever your gear or bags change.",
         });
 
         foreach (var (label, seen) in problems)
@@ -694,18 +695,18 @@ public partial class InventoryWindow : Window
         _ => 3,
     };
 
-    // Mirrors FocusEffects.PlaceLabel — the keyrings name themselves so
-    // "storage" can never be misread as the Dragon's Hoard.
+    // Mirrors FocusEffects.PlaceLabel — in-game vocabulary, never the dump's
+    // legacy "keyring" word.
     private static string OwnLabel(string lane) => lane switch
     {
         "worn" => "worn",
-        "activated" => "activated keyring",
-        "storage" => "storage keyring",
-        "keyring" => "augment keyring",
+        "activated" => "activated items",
+        "storage" => "in storage",
+        "keyring" => "exaltations",
         "bags" => "in bags",
         "bank" => "in bank",
         "depot" => "in depot",
-        "hoard" => "dragon's hoard",
+        "hoard" => "dragon hoard",
         _ => lane,
     };
 

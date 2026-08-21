@@ -1374,26 +1374,26 @@ public partial class CharacterSheetView : UserControl
             foreach (var r in wornRows) root.Children.Add(r);
         }
 
-        // The game's own clicky collection: the Activated-Items keyring.
-        var keyringRows = new List<UIElement>();
+        // The game's own clicky collection: Activated items.
+        var activatedRows = new List<UIElement>();
         foreach (var r in _rows.Where(r => r.Lane == "activated"))
         {
             var rec = _stats.Lookup(r.Name);
             var fxs = ClickLines(rec);
             var (baseName, _) = SplitTier(r.Name);
             if (fxs.Count == 0)
-                keyringRows.Add(ClickyRow(rec?.Icon, baseName,
-                    "Activated keyring — click effect not in the wiki table", known: false));
+                activatedRows.Add(ClickyRow(rec?.Icon, baseName,
+                    "Activated items — click effect not in the wiki table", known: false));
             foreach (var fx in fxs)
-                keyringRows.Add(ClickyRow(rec?.Icon, fx, $"{r.Name} · Activated keyring"));
+                activatedRows.Add(ClickyRow(rec?.Icon, fx, $"{r.Name} · Activated items"));
         }
-        if (keyringRows.Count > 0)
+        if (activatedRows.Count > 0)
         {
-            root.Children.Add(SectHeader("Activated keyring"));
-            foreach (var r in keyringRows) root.Children.Add(r);
+            root.Children.Add(SectHeader("Activated items"));
+            foreach (var r in activatedRows) root.Children.Add(r);
         }
 
-        if (wornRows.Count == 0 && keyringRows.Count == 0)
+        if (wornRows.Count == 0 && activatedRows.Count == 0)
             root.Children.Add(new TextBlock
             {
                 Text = "no clickies found in the dump",
