@@ -378,20 +378,25 @@ public partial class CharacterSheetView : UserControl
 
         if (!itemMode)
         {
-            if (_drillKey is { } drill)
-            {
-                // A clicked stat: which worn items grant it, best first.
-                BuildStatDrill(drill);
-                PaneLines.ItemsSource = lines;
-                return;
-            }
             // ONE combined landing view: totals grid, focus verdicts,
-            // clickies — no tabs, click a slot for the item view.
+            // clickies — no tabs, click a slot for the item view. A clicked
+            // stat slides the drill DRAWER in over it.
             PaneTitle.Text = "Stats from gear";
             BuildLandingPane(lines);
             PaneLines.ItemsSource = lines;
+            if (_drillKey is { } drill)
+            {
+                PopulateDrawer(drill);
+                ShowDrawer();
+            }
+            else
+            {
+                Drawer.Visibility = Visibility.Collapsed;
+            }
             return;
         }
+
+        Drawer.Visibility = Visibility.Collapsed; // the item view owns the pane
 
         if (!_worn.TryGetValue(_selected!.Value, out var entry) || entry.Empty)
         {
@@ -894,42 +899,65 @@ public partial class CharacterSheetView : UserControl
         return root;
     }
 
-    /// <summary>Every totals row is a question — clicking it answers "which
-    /// items grant this?" with the ranked drill view.</summary>
+    private static readonly Brush DrillActiveFg = Freeze("#4FC3F7");
+
+    /// <summary>Every totals row is a question — clicking it slides the drill
+    /// drawer in with "which items grant this?"; clicking it again folds the
+    /// drawer away. The active stat wears the accent + an underline.</summary>
     private void MakeDrillable(StatCell cell, string key, string label)
     {
+        if (_drillKey == key)
+        {
+            cell.Label.Foreground = DrillActiveFg;
+            cell.Label.TextDecorations = TextDecorations.Underline;
+        }
         foreach (var tb in new[] { cell.Label, cell.Value })
         {
             tb.Cursor = Cursors.Hand;
             tb.ToolTip = $"click — which items grant {label}";
             tb.MouseLeftButtonUp += (_, _) =>
             {
-                _drillKey = key;
+                _drillKey = _drillKey == key ? null : key;
                 _drillLabel = label;
-                _selected = null;
                 RefreshPane();
             };
         }
     }
 
-    /// <summary>The drill: every worn item granting the clicked stat, ranked
-    /// by its at-tier contribution, each row clicking through to the item.</summary>
-    private void BuildStatDrill(string key)
+    private void DrawerClose_Click(object sender, MouseButtonEventArgs e)
     {
-        PaneTitle.Text = _drillLabel;
-        PaneSub.Text = "worn items granting it — at worn tier, best first";
+        _drillKey = null;
+        RefreshPane();
+    }
 
-        var root = new StackPanel();
-        var back = new TextBlock
+    /// <summary>Show the drawer, sliding it in from the right when it was
+    /// closed (already-open swaps content in place).</summary>
+    private void ShowDrawer()
+    {
+        bool wasHidden = Drawer.Visibility != Visibility.Visible;
+        Drawer.Visibility = Visibility.Visible;
+        if (wasHidden)
         {
-            Text = "← all stats",
-            Foreground = SlotFg,
-            FontSize = 11,
-            Cursor = Cursors.Hand,
-            Margin = new Thickness(0, 0, 0, 8),
-        };
-        back.MouseLeftButtonUp += (_, _) => { _drillKey = null; RefreshPane(); };
-        root.Children.Add(back);
+            var slide = new System.Windows.Media.Animation.DoubleAnimation(
+                Drawer.Width, 0, TimeSpan.FromMilliseconds(170))
+            {
+                EasingFunction = new System.Windows.Media.Animation.CubicEase
+                    { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut },
+            };
+            DrawerSlide.BeginAnimation(
+                System.Windows.Media.TranslateTransform.XProperty, slide);
+        }
+    }
+
+    /// <summary>The drill drawer: every worn item granting the clicked stat,
+    /// ranked at worn tier, each row clicking through to the item — then the
+    /// dimmed deficit list.</summary>
+    private void PopulateDrawer(string key)
+    {
+        DrawerTitle.Text = _drillLabel;
+        DrawerSub.Text = "worn items granting it — at worn tier, best first";
+        var root = DrawerBody;
+        root.Children.Clear();
 
         var found = new List<(double Rank, UIElement Row)>();
         var without = new List<(string Sort, UIElement Row)>();
@@ -998,8 +1026,6 @@ public partial class CharacterSheetView : UserControl
                 root.Children.Add(row);
         }
 
-        PaneGrid.Content = root;
-        PaneGrid.Visibility = Visibility.Visible;
     }
 
     /// <summary>A deficit row: dim everything — this item gives none of the
