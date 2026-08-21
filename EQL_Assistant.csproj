@@ -64,6 +64,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="data\item-stats.json" />
+    <!-- Planar class armor sets (eqlwiki Category:Armor_Sets scrape). -->
+    <None Update="data\armor-sets.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <EmbeddedResource Include="data\armor-sets.json" />
     <!-- The wiki's 40×40 item icons (eqlwiki/p99 art shipped by Companion),
          keyed item-<iconId>.png — WPF resources, looked up via pack URI. -->
     <Resource Include="data\item-icons\*.png" />

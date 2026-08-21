@@ -1,0 +1,1450 @@
+{
+  "source": "https://eqlwiki.com/Category:Armor_Sets",
+  "scope": "EverQuest Legends class-specific planar armor sets",
+  "notes": [
+    "Classic planar sets are based on the EQL Wiki class armor progression table and planar armor category.",
+    "Iksar-only planar alternatives are included where the wiki lists them.",
+    "Plane of Hate 2.0 / Fear-Hate revamp sets are separated from classic planar sets.",
+    "Individual pieces were added from the EQL Wiki set/zone pages. Some EQL-specific Beastlord, Berserker and Iksar revamp set pages currently list fewer pieces than the traditional seven-slot planar sets, so only wiki-listed pieces are included for those sets."
+  ],
+  "classes": [
+    {
+      "class": "Warrior",
+      "abbr": "WAR",
+      "classic_planar": [
+        {
+          "set": "Indicolite Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Indicolite_Armor",
+          "pieces": [
+            {
+              "name": "Indicolite Helm",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Indicolite_Helm"
+            },
+            {
+              "name": "Indicolite Breastplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Indicolite_Breastplate"
+            },
+            {
+              "name": "Indicolite Vambraces",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Indicolite_Vambraces"
+            },
+            {
+              "name": "Indicolite Bracer",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Indicolite_Bracer"
+            },
+            {
+              "name": "Indicolite Gauntlets",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Indicolite_Gauntlets"
+            },
+            {
+              "name": "Indicolite Greaves",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Indicolite_Greaves"
+            },
+            {
+              "name": "Indicolite Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Indicolite_Boots"
+            }
+          ]
+        },
+        {
+          "set": "Legionnaire Scale Armor",
+          "zones": [
+            "Plane of Hate"
+          ],
+          "race_restriction": "Iksar only",
+          "wiki_url": "https://eqlwiki.com/Legionnaire_Scale_Armor",
+          "pieces": [
+            {
+              "name": "Legionnaire Scale Helm",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Legionnaire_Scale_Helm"
+            },
+            {
+              "name": "Legionnaire Scale Breastplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Legionnaire_Scale_Breastplate"
+            },
+            {
+              "name": "Legionnaire Scale Pauldron",
+              "slot": "SHOULDERS",
+              "wiki_url": "https://eqlwiki.com/Legionnaire_Scale_Pauldron"
+            },
+            {
+              "name": "Legionnaire Scale Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Legionnaire_Scale_Boots"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Monk",
+      "abbr": "MNK",
+      "classic_planar": [
+        {
+          "set": "Shiverback-hide Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Shiverback-hide_Armor",
+          "pieces": [
+            {
+              "name": "Shiverback-hide Armbands",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Shiverback-hide_Armbands"
+            },
+            {
+              "name": "Shiverback-hide Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Shiverback-hide_Boots"
+            },
+            {
+              "name": "Shiverback-hide Gloves",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Shiverback-hide_Gloves"
+            },
+            {
+              "name": "Shiverback-hide Jerkin",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Shiverback-hide_Jerkin"
+            },
+            {
+              "name": "Shiverback-hide Leggings",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Shiverback-hide_Leggings"
+            },
+            {
+              "name": "Shiverback-hide Wristbands",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Shiverback-hide_Wristbands"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Rogue",
+      "abbr": "ROG",
+      "classic_planar": [
+        {
+          "set": "Woven Shadow Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Woven_Shadow_Armor",
+          "pieces": [
+            {
+              "name": "Woven Shadow Helm",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Woven_Shadow_Helm"
+            },
+            {
+              "name": "Woven Shadow Chestplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Woven_Shadow_Chestplate"
+            },
+            {
+              "name": "Woven Shadow Vambraces",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Woven_Shadow_Vambraces"
+            },
+            {
+              "name": "Woven Shadow Bracer",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Woven_Shadow_Bracer"
+            },
+            {
+              "name": "Woven Shadow Gauntlets",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Woven_Shadow_Gauntlets"
+            },
+            {
+              "name": "Woven Shadow Greaves",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Woven_Shadow_Greaves"
+            },
+            {
+              "name": "Woven Shadow Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Woven_Shadow_Boots"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Bard",
+      "abbr": "BRD",
+      "classic_planar": [
+        {
+          "set": "Imbrued Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Imbrued_Armor",
+          "pieces": [
+            {
+              "name": "Imbrued Platemail Helm",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Imbrued_Platemail_Helm"
+            },
+            {
+              "name": "Imbrued Platemail Breastplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Imbrued_Platemail_Breastplate"
+            },
+            {
+              "name": "Imbrued Platemail Vambraces",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Imbrued_Platemail_Vambraces"
+            },
+            {
+              "name": "Imbrued Platemail Bracer",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Imbrued_Platemail_Bracer"
+            },
+            {
+              "name": "Imbrued Platemail Gauntlets",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Imbrued_Platemail_Gauntlets"
+            },
+            {
+              "name": "Imbrued Platemail Greaves",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Imbrued_Platemail_Greaves"
+            },
+            {
+              "name": "Imbrued Platemail Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Imbrued_Platemail_Boots"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Shadow Knight",
+      "abbr": "SHD",
+      "classic_planar": [
+        {
+          "set": "Umbral Platemail",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Umbral_Platemail",
+          "pieces": [
+            {
+              "name": "Umbral Platemail Helm",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Umbral_Platemail_Helm"
+            },
+            {
+              "name": "Umbral Platemail Breastplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Umbral_Platemail_Breastplate"
+            },
+            {
+              "name": "Umbral Platemail Vambraces",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Umbral_Platemail_Vambraces"
+            },
+            {
+              "name": "Umbral Platemail Bracer",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Umbral_Platemail_Bracer"
+            },
+            {
+              "name": "Umbral Platemail Gauntlets",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Umbral_Platemail_Gauntlets"
+            },
+            {
+              "name": "Umbral Platemail Greaves",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Umbral_Platemail_Greaves"
+            },
+            {
+              "name": "Umbral Platemail Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Umbral_Platemail_Boots"
+            }
+          ]
+        },
+        {
+          "set": "Greenmist Armor",
+          "zones": [
+            "Plane of Fear"
+          ],
+          "race_restriction": "Iksar only",
+          "wiki_url": "https://eqlwiki.com/Greenmist_Armor",
+          "pieces": [
+            {
+              "name": "Greenmist Helm",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Greenmist_Helm"
+            },
+            {
+              "name": "Greenmist Mask",
+              "slot": "FACE",
+              "wiki_url": "https://eqlwiki.com/Greenmist_Mask"
+            },
+            {
+              "name": "Greenmist Breastplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Greenmist_Breastplate"
+            },
+            {
+              "name": "Greenmist Vambraces",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Greenmist_Vambraces"
+            },
+            {
+              "name": "Greenmist Bracer",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Greenmist_Bracer"
+            },
+            {
+              "name": "Greenmist Greaves",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Greenmist_Greaves"
+            },
+            {
+              "name": "Greenmist Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Greenmist_Boots"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Paladin",
+      "abbr": "PAL",
+      "classic_planar": [
+        {
+          "set": "Valorium Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Valorium_Armor",
+          "pieces": [
+            {
+              "name": "Valorium Helmet",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Valorium_Helmet"
+            },
+            {
+              "name": "Valorium Chestplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Valorium_Chestplate"
+            },
+            {
+              "name": "Valorium Vambraces",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Valorium_Vambraces"
+            },
+            {
+              "name": "Valorium Bracers",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Valorium_Bracers"
+            },
+            {
+              "name": "Valorium Gauntlets",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Valorium_Gauntlets"
+            },
+            {
+              "name": "Valorium Greaves",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Valorium_Greaves"
+            },
+            {
+              "name": "Valorium Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Valorium_Boots"
+            }
+          ]
+        }
+      ],
+      "hate_2_0": [
+        {
+          "set": "Righteous Armor",
+          "zones": [
+            "Plane of Hate"
+          ],
+          "wiki_url": "https://eqlwiki.com/Righteous_Armor",
+          "pieces": [],
+          "pieces_note": "Not expanded in this pass; set is a Hate 2.0/revamp set."
+        }
+      ]
+    },
+    {
+      "class": "Ranger",
+      "abbr": "RNG",
+      "classic_planar": [
+        {
+          "set": "Thorny Vine Armor",
+          "zones": [
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Thorny_Vine_Armor",
+          "pieces": [
+            {
+              "name": "Thorny Vine Helm",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Thorny_Vine_Helm"
+            },
+            {
+              "name": "Thorny Vine Chestplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Thorny_Vine_Chestplate"
+            },
+            {
+              "name": "Thorny Vine Vambraces",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Thorny_Vine_Vambraces"
+            },
+            {
+              "name": "Thorny Vine Bracer",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Thorny_Vine_Bracer"
+            },
+            {
+              "name": "Thorny Vine Gauntlets",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Thorny_Vine_Gauntlets"
+            },
+            {
+              "name": "Thorny Vine Greaves",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Thorny_Vine_Greaves"
+            },
+            {
+              "name": "Thorny Vine Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Thorny_Vine_Boots"
+            }
+          ]
+        }
+      ],
+      "hate_2_0": [
+        {
+          "set": "Armor of the Untamed",
+          "zones": [
+            "Plane of Hate"
+          ],
+          "wiki_url": "https://eqlwiki.com/Armor_of_the_Untamed",
+          "pieces": [],
+          "pieces_note": "Not expanded in this pass; set is a Hate 2.0/revamp set."
+        }
+      ]
+    },
+    {
+      "class": "Druid",
+      "abbr": "DRU",
+      "classic_planar": [
+        {
+          "set": "Vermiculated Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Vermiculated_Armor",
+          "pieces": [
+            {
+              "name": "Vermiculated Crown",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Vermiculated_Crown"
+            },
+            {
+              "name": "Vermiculated Tunic",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Vermiculated_Tunic"
+            },
+            {
+              "name": "Vermiculated Armplates",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Vermiculated_Armplates"
+            },
+            {
+              "name": "Vermiculated Bracelet",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Vermiculated_Bracelet"
+            },
+            {
+              "name": "Vermiculated Gloves",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Vermiculated_Gloves"
+            },
+            {
+              "name": "Vermiculated Leggings",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Vermiculated_Leggings"
+            },
+            {
+              "name": "Vermiculated Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Vermiculated_Boots"
+            }
+          ]
+        }
+      ],
+      "hate_2_0": [
+        {
+          "set": "Armor of Harmony",
+          "zones": [
+            "Plane of Hate"
+          ],
+          "wiki_url": "https://eqlwiki.com/Armor_of_Harmony",
+          "pieces": [],
+          "pieces_note": "Not expanded in this pass; set is a Hate 2.0/revamp set."
+        }
+      ]
+    },
+    {
+      "class": "Shaman",
+      "abbr": "SHM",
+      "classic_planar": [
+        {
+          "set": "Rune Etched Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Rune_Etched_Armor",
+          "pieces": [
+            {
+              "name": "Rune Etched Helm",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Rune_Etched_Helm"
+            },
+            {
+              "name": "Rune Etched Chestplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Rune_Etched_Chestplate"
+            },
+            {
+              "name": "Rune Etched Vambraces",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Rune_Etched_Vambraces"
+            },
+            {
+              "name": "Rune Etched Bracer",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Rune_Etched_Bracer"
+            },
+            {
+              "name": "Rune Etched Gauntlets",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Rune_Etched_Gauntlets"
+            },
+            {
+              "name": "Rune Etched Greaves",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Rune_Etched_Greaves"
+            },
+            {
+              "name": "Rune Etched Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Rune_Etched_Boots"
+            }
+          ]
+        },
+        {
+          "set": "Scaled Heirophant Armor",
+          "zones": [
+            "Plane of Hate"
+          ],
+          "race_restriction": "Iksar only",
+          "wiki_url": "https://eqlwiki.com/Scaled_Heirophant_Armor",
+          "pieces": [],
+          "pieces_note": "Not expanded in this pass; set is a Hate 2.0/revamp set."
+        }
+      ]
+    },
+    {
+      "class": "Cleric",
+      "abbr": "CLR",
+      "classic_planar": [
+        {
+          "set": "Ethereal Mist Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Ethereal_Mist_Armor",
+          "pieces": [
+            {
+              "name": "Ethereal Mist Helm",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Ethereal_Mist_Helm"
+            },
+            {
+              "name": "Ethereal Mist Chestplate",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Ethereal_Mist_Chestplate"
+            },
+            {
+              "name": "Ethereal Mist Vambraces",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Ethereal_Mist_Vambraces"
+            },
+            {
+              "name": "Ethereal Mist Bracers",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Ethereal_Mist_Bracers"
+            },
+            {
+              "name": "Ethereal Mist Gauntlets",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Ethereal_Mist_Gauntlets"
+            },
+            {
+              "name": "Ethereal Mist Greaves",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Ethereal_Mist_Greaves"
+            },
+            {
+              "name": "Ethereal Mist Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Ethereal_Mist_Boots"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Necromancer",
+      "abbr": "NEC",
+      "classic_planar": [
+        {
+          "set": "Blighted Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Blighted_Armor",
+          "pieces": [
+            {
+              "name": "Blighted Skullcap",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Blighted_Skullcap"
+            },
+            {
+              "name": "Blighted Robe",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Blighted_Robe"
+            },
+            {
+              "name": "Blighted Sleeves",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Blighted_Sleeves"
+            },
+            {
+              "name": "Blighted Armband",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Blighted_Armband"
+            },
+            {
+              "name": "Blighted Gloves",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Blighted_Gloves"
+            },
+            {
+              "name": "Blighted Trousers",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Blighted_Trousers"
+            },
+            {
+              "name": "Blighted Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Blighted_Boots"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Magician",
+      "abbr": "MAG",
+      "classic_planar": [
+        {
+          "set": "Apothic Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Apothic_Armor",
+          "pieces": [
+            {
+              "name": "Apothic Crown",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Apothic_Crown"
+            },
+            {
+              "name": "Apothic Robe",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Apothic_Robe"
+            },
+            {
+              "name": "Apothic Sleeves",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Apothic_Sleeves"
+            },
+            {
+              "name": "Apothic Warband",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Apothic_Warband"
+            },
+            {
+              "name": "Apothic Gloves",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Apothic_Gloves"
+            },
+            {
+              "name": "Apothic Kilt",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Apothic_Kilt"
+            },
+            {
+              "name": "Apothic Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Apothic_Boots"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Enchanter",
+      "abbr": "ENC",
+      "classic_planar": [
+        {
+          "set": "Insidious Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Insidious_Armor",
+          "pieces": [
+            {
+              "name": "Insidious Halo",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Insidious_Halo"
+            },
+            {
+              "name": "Insidious Robe",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Insidious_Robe"
+            },
+            {
+              "name": "Insidious Sleeves",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Insidious_Sleeves"
+            },
+            {
+              "name": "Insidious Manacle",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Insidious_Manacle"
+            },
+            {
+              "name": "Insidious Gloves",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Insidious_Gloves"
+            },
+            {
+              "name": "Insidious Pantaloons",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Insidious_Pantaloons"
+            },
+            {
+              "name": "Insidious Slippers",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Insidious_Slippers"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Wizard",
+      "abbr": "WIZ",
+      "classic_planar": [
+        {
+          "set": "Carmine Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Carmine_Armor",
+          "pieces": [
+            {
+              "name": "Carmine Turban",
+              "slot": "HEAD",
+              "wiki_url": "https://eqlwiki.com/Carmine_Turban"
+            },
+            {
+              "name": "Carmine Robe",
+              "slot": "CHEST",
+              "wiki_url": "https://eqlwiki.com/Carmine_Robe"
+            },
+            {
+              "name": "Carmine Sleeves",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Carmine_Sleeves"
+            },
+            {
+              "name": "Carmine Bracelet",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Carmine_Bracelet"
+            },
+            {
+              "name": "Carmine Gloves",
+              "slot": "HANDS",
+              "wiki_url": "https://eqlwiki.com/Carmine_Gloves"
+            },
+            {
+              "name": "Carmine Pants",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Carmine_Pants"
+            },
+            {
+              "name": "Carmine Boots",
+              "slot": "FEET",
+              "wiki_url": "https://eqlwiki.com/Carmine_Boots"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Beastlord",
+      "abbr": "BST",
+      "classic_planar": [
+        {
+          "set": "Anthemion Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Anthemion_Armor",
+          "pieces": [
+            {
+              "name": "Anthemion Armbands",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Anthemion_Armbands"
+            },
+            {
+              "name": "Anthemion Wristguard",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Anthemion_Wristguard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "class": "Berserker",
+      "abbr": "BER",
+      "classic_planar": [
+        {
+          "set": "Shadow Rage Armor",
+          "zones": [
+            "Plane of Hate",
+            "Plane of Fear"
+          ],
+          "wiki_url": "https://eqlwiki.com/Shadow_Rage_Armor",
+          "pieces": [
+            {
+              "name": "Shadow Rage Sleeves",
+              "slot": "ARMS",
+              "wiki_url": "https://eqlwiki.com/Shadow_Rage_Sleeves"
+            },
+            {
+              "name": "Shadow Rage Wristguard",
+              "slot": "WRIST",
+              "wiki_url": "https://eqlwiki.com/Shadow_Rage_Wristguard"
+            },
+            {
+              "name": "Shadow Rage Leggings",
+              "slot": "LEGS",
+              "wiki_url": "https://eqlwiki.com/Shadow_Rage_Leggings"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "multiclass_planar": [
+    {
+      "set": "Lustrous Russet Armor",
+      "category": "chain_plate_multiclass",
+      "zones": [
+        "Plane of Fear",
+        "Plane of Hate"
+      ],
+      "description": "Planar armor set for chain and plate wearing classes.",
+      "wiki_url": "https://eqlwiki.com/Lustrous_Russet_Armor",
+      "pieces": [
+        {
+          "name": "Lustrous Russet Helm",
+          "slot": "HEAD",
+          "ac": 15,
+          "stats": {
+            "INT": 5,
+            "CHA": 5
+          },
+          "resists": {},
+          "weight": 4.5,
+          "classes": [
+            "WAR",
+            "CLR",
+            "PAL",
+            "RNG",
+            "SHD",
+            "BRD",
+            "ROG",
+            "SHM"
+          ],
+          "race": "ALL",
+          "flags": [
+            "MAGIC ITEM",
+            "NO DROP"
+          ],
+          "drops_from": [
+            "phoboplasm",
+            "Cleric of Innoruuk"
+          ],
+          "wiki_url": "https://eqlwiki.com/Lustrous_Russet_Helm"
+        },
+        {
+          "name": "Lustrous Russet Breastplate",
+          "slot": "CHEST",
+          "ac": 26,
+          "stats": {
+            "STR": 15,
+            "STA": 15,
+            "DEX": 15
+          },
+          "resists": {},
+          "weight": 7.5,
+          "classes": [
+            "WAR",
+            "CLR",
+            "PAL",
+            "RNG",
+            "SHD",
+            "BRD",
+            "ROG",
+            "SHM",
+            "BER"
+          ],
+          "race": "ALL",
+          "flags": [
+            "LORE EQUIPPED",
+            "NO TRADE"
+          ],
+          "drops_from": [
+            "a haunted chest",
+            "a glare lord"
+          ],
+          "wiki_url": "https://eqlwiki.com/Lustrous_Russet_Breastplate"
+        },
+        {
+          "name": "Lustrous Russet Vambraces",
+          "slot": "ARMS",
+          "ac": 15,
+          "stats": {
+            "STR": 9,
+            "DEX": 5
+          },
+          "resists": {},
+          "weight": 4.9,
+          "classes": [
+            "WAR",
+            "CLR",
+            "PAL",
+            "RNG",
+            "SHD",
+            "BRD",
+            "ROG",
+            "SHM"
+          ],
+          "race": "ALL",
+          "flags": [
+            "MAGIC ITEM",
+            "NO DROP"
+          ],
+          "drops_from": [
+            "a forsaken revenant (female)",
+            "an ire ghast"
+          ],
+          "wiki_url": "https://eqlwiki.com/Lustrous_Russet_Vambraces"
+        },
+        {
+          "name": "Lustrous Russet Bracer",
+          "slot": "WRIST",
+          "ac": 9,
+          "stats": {
+            "STR": 3,
+            "DEX": 3
+          },
+          "resists": {
+            "MR": 7,
+            "FR": 7,
+            "CR": 7
+          },
+          "weight": 3.0,
+          "classes": [
+            "WAR",
+            "CLR",
+            "PAL",
+            "RNG",
+            "SHD",
+            "BRD",
+            "ROG",
+            "SHM",
+            "BER"
+          ],
+          "race": "ALL",
+          "flags": [
+            "NO TRADE"
+          ],
+          "drops_from": [
+            "a scorn banshee",
+            "a samhain",
+            "an abhorrent",
+            "a decrepit warder"
+          ],
+          "wiki_url": "https://eqlwiki.com/Lustrous_Russet_Bracer"
+        },
+        {
+          "name": "Lustrous Russet Gauntlets",
+          "slot": "HANDS",
+          "ac": 12,
+          "stats": {
+            "HP": 50,
+            "STA": 5,
+            "DEX": 5
+          },
+          "resists": {},
+          "weight": 3.8,
+          "classes": [
+            "WAR",
+            "CLR",
+            "PAL",
+            "RNG",
+            "SHD",
+            "BRD",
+            "ROG",
+            "SHM"
+          ],
+          "race": "ALL",
+          "flags": [
+            "MAGIC ITEM",
+            "NO DROP"
+          ],
+          "drops_from": [
+            "a scareling",
+            "a shiverback"
+          ],
+          "wiki_url": "https://eqlwiki.com/Lustrous_Russet_Gauntlets"
+        },
+        {
+          "name": "Lustrous Russet Greaves",
+          "slot": "LEGS",
+          "ac": 15,
+          "stats": {
+            "STR": 5,
+            "STA": 5,
+            "AGI": 5
+          },
+          "resists": {},
+          "weight": 5.6,
+          "classes": [
+            "WAR",
+            "CLR",
+            "PAL",
+            "RNG",
+            "SHD",
+            "BRD",
+            "ROG",
+            "SHM"
+          ],
+          "race": "ALL",
+          "flags": [
+            "MAGIC ITEM",
+            "NO DROP"
+          ],
+          "drops_from": [
+            "an elite dragoon (male)",
+            "Innoruuk's Chosen (male)",
+            "a Disciple of Innoruuk",
+            "a Knight of Innoruuk"
+          ],
+          "wiki_url": "https://eqlwiki.com/Lustrous_Russet_Greaves"
+        },
+        {
+          "name": "Lustrous Russet Boots",
+          "slot": "FEET",
+          "ac": 15,
+          "stats": {
+            "INT": 5,
+            "WIS": 5,
+            "AGI": 5
+          },
+          "resists": {
+            "DR": 15,
+            "PR": 15
+          },
+          "weight": 4.9,
+          "classes": [
+            "WAR",
+            "CLR",
+            "PAL",
+            "RNG",
+            "SHD",
+            "BRD",
+            "ROG",
+            "SHM"
+          ],
+          "race": "ALL",
+          "flags": [
+            "MAGIC ITEM",
+            "NO DROP"
+          ],
+          "drops_from": [
+            "a boogeyman",
+            "a phantasm",
+            "a haunted chest"
+          ],
+          "wiki_url": "https://eqlwiki.com/Lustrous_Russet_Boots"
+        }
+      ],
+      "wiki_totals": {
+        "AC": 116,
+        "HP": 50,
+        "MANA": 0,
+        "END": 0,
+        "STR": 35,
+        "STA": 25,
+        "INT": 10,
+        "WIS": 5,
+        "AGI": 10,
+        "DEX": 31,
+        "CHA": 5,
+        "MR": 14,
+        "FR": 14,
+        "CR": 14,
+        "DR": 15,
+        "PR": 15,
+        "weight": 37.2
+      }
+    },
+    {
+      "set": "Midnight Clad Armor",
+      "category": "cloth_leather_multiclass",
+      "zones": [
+        "Plane of Fear",
+        "Plane of Hate"
+      ],
+      "description": "Planar armor set for cloth and leather wearing classes.",
+      "wiki_url": "https://eqlwiki.com/Midnight_Clad_Armor",
+      "pieces": [
+        {
+          "name": "Midnight Clad Headband",
+          "slot": "HEAD",
+          "ac": 2,
+          "stats": {
+            "STA": 10,
+            "INT": 10,
+            "WIS": 10
+          },
+          "resists": {},
+          "weight": 0.1,
+          "classes": [
+            "DRU",
+            "MNK",
+            "ROG",
+            "NEC",
+            "WIZ",
+            "MAG",
+            "ENC",
+            "BST"
+          ],
+          "race": "ALL",
+          "flags": [
+            "LORE EQUIPPED",
+            "NO TRADE"
+          ],
+          "drops_from": [
+            "a loathing lich",
+            "a spite golem"
+          ],
+          "wiki_url": "https://eqlwiki.com/Midnight_Clad_Headband"
+        },
+        {
+          "name": "Midnight Clad Straps",
+          "slot": "CHEST",
+          "ac": 10,
+          "stats": {
+            "STR": 13,
+            "STA": 13,
+            "INT": 13,
+            "WIS": 13
+          },
+          "resists": {},
+          "weight": 0.5,
+          "classes": [
+            "DRU",
+            "MNK",
+            "ROG",
+            "NEC",
+            "WIZ",
+            "MAG",
+            "ENC",
+            "BST"
+          ],
+          "race": "ALL",
+          "flags": [
+            "LORE EQUIPPED",
+            "NO TRADE"
+          ],
+          "drops_from": [
+            "a loathing lich",
+            "Amygldalan knight",
+            "amygdalan knight",
+            "amygdalan warrior"
+          ],
+          "wiki_url": "https://eqlwiki.com/Midnight_Clad_Straps"
+        },
+        {
+          "name": "Midnight Clad Armbands",
+          "slot": "ARMS",
+          "ac": 5,
+          "stats": {
+            "STR": 5,
+            "STA": 9,
+            "INT": 5
+          },
+          "resists": {
+            "CR": 7,
+            "DR": 5,
+            "PR": 5
+          },
+          "weight": 0.1,
+          "classes": [
+            "DRU",
+            "MNK",
+            "ROG",
+            "NEC",
+            "WIZ",
+            "MAG",
+            "ENC",
+            "BST"
+          ],
+          "race": "ALL",
+          "flags": [
+            "LORE EQUIPPED",
+            "NO TRADE"
+          ],
+          "drops_from": [
+            "a loathing lich",
+            "a forsaken revenant (male)",
+            "an ashenbone drake"
+          ],
+          "wiki_url": "https://eqlwiki.com/Midnight_Clad_Armbands"
+        },
+        {
+          "name": "Midnight Clad Wristbands",
+          "slot": "WRIST",
+          "ac": 4,
+          "stats": {
+            "STA": 5,
+            "WIS": 5,
+            "DEX": 5
+          },
+          "resists": {},
+          "weight": 0.1,
+          "classes": [
+            "DRU",
+            "MNK",
+            "ROG",
+            "NEC",
+            "WIZ",
+            "MAG",
+            "ENC",
+            "BST"
+          ],
+          "race": "ALL",
+          "flags": [
+            "LORE EQUIPPED",
+            "NO TRADE"
+          ],
+          "drops_from": [
+            "a loathing lich",
+            "a revultant rat",
+            "a kiraikuei",
+            "a loathling lich",
+            "a fetid fiend",
+            "a spinechiller spider"
+          ],
+          "wiki_url": "https://eqlwiki.com/Midnight_Clad_Wristbands"
+        },
+        {
+          "name": "Midnight Clad Fistwraps",
+          "slot": "HANDS",
+          "ac": 5,
+          "stats": {
+            "STR": 5,
+            "INT": 5,
+            "DEX": 9
+          },
+          "resists": {
+            "MR": 7
+          },
+          "weight": 0.1,
+          "classes": [
+            "DRU",
+            "MNK",
+            "ROG",
+            "NEC",
+            "WIZ",
+            "MAG",
+            "ENC",
+            "BST"
+          ],
+          "race": "ALL",
+          "flags": [
+            "LORE EQUIPPED",
+            "NO TRADE"
+          ],
+          "drops_from": [
+            "a loathing lich",
+            "a frightfinger",
+            "a turmoil toad",
+            "a worry wraith"
+          ],
+          "wiki_url": "https://eqlwiki.com/Midnight_Clad_Fistwraps"
+        },
+        {
+          "name": "Midnight Clad Leggings",
+          "slot": "LEGS",
+          "ac": 5,
+          "stats": {
+            "STA": 9,
+            "INT": 5,
+            "WIS": 5
+          },
+          "resists": {
+            "FR": 8
+          },
+          "weight": 0.1,
+          "classes": [
+            "DRU",
+            "MNK",
+            "ROG",
+            "NEC",
+            "WIZ",
+            "MAG",
+            "ENC",
+            "BST"
+          ],
+          "race": "ALL",
+          "flags": [
+            "LORE EQUIPPED",
+            "NO TRADE"
+          ],
+          "drops_from": [
+            "an elite dragoon",
+            "a loathing lich",
+            "an elite dragoon (female)",
+            "Innoruuk's Chosen (female)",
+            "an Agent of Innoruuk",
+            "a Champion of Innoruuk",
+            "a Sage of Innoruuk"
+          ],
+          "wiki_url": "https://eqlwiki.com/Midnight_Clad_Leggings"
+        },
+        {
+          "name": "Midnight Clad Footwraps",
+          "slot": "FEET",
+          "ac": 6,
+          "stats": {
+            "STR": 5,
+            "STA": 9
+          },
+          "resists": {
+            "MR": 8,
+            "FR": 8,
+            "CR": 8
+          },
+          "weight": 0.1,
+          "classes": [
+            "DRU",
+            "MNK",
+            "ROG",
+            "NEC",
+            "WIZ",
+            "MAG",
+            "ENC",
+            "BST"
+          ],
+          "race": "ALL",
+          "flags": [
+            "LORE EQUIPPED",
+            "NO TRADE"
+          ],
+          "drops_from": [
+            "a loathing lich",
+            "a gorgon",
+            "a nightmare"
+          ],
+          "wiki_url": "https://eqlwiki.com/Midnight_Clad_Footwraps"
+        }
+      ],
+      "wiki_totals": {
+        "AC": 41,
+        "HP": 0,
+        "MANA": 0,
+        "END": 0,
+        "STR": 28,
+        "STA": 60,
+        "INT": 38,
+        "WIS": 38,
+        "AGI": 0,
+        "DEX": 19,
+        "CHA": 0,
+        "MR": 0,
+        "FR": 0,
+        "CR": 0,
+        "DR": 0,
+        "PR": 0,
+        "weight": 1.2
+      }
+    }
+  ],
+  "source_pages": [
+    "https://eqlwiki.com/Lustrous_Russet_Armor",
+    "https://eqlwiki.com/Midnight_Clad_Armor",
+    "https://eqlwiki.com/Plane_of_Hate",
+    "https://eqlwiki.com/Plane_of_Fear"
+  ]
+}

@@ -193,6 +193,8 @@ public partial class App : Application
             var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
             invWin.Show();
             invWin.ShowFocusTab(); // instantiate the audit-board template
+            invWin.ShowTab("sets"); // and the armor-set board (owns a Valorium piece)
+            invWin.UpdateLayout();
             invWin.Close();
 
             // The Sheet tab renders the doll + detail pane from a real-format
@@ -1399,6 +1401,31 @@ public partial class App : Application
                     && dk.Contains(FocusEffects.ItemKey("Barons Blade"))
                     && !dk.Contains(FocusEffects.ItemKey("One Of A Kind"))
                     && !dk.Contains(FocusEffects.ItemKey("Backpack")));
+
+                // ---- planar armor sets (data\armor-sets.json, eqlwiki scrape).
+                var asets = new ArmorSets();
+                Check("armor sets: the library loads — classic + Iksar + multiclass",
+                    asets.Sets.Count >= 20
+                    && asets.Sets.FirstOrDefault(s => s.Name == "Umbral Platemail")
+                        is { Pieces.Count: 7, Multiclass: false, Classes: ["SHD"] }
+                    && asets.Sets.FirstOrDefault(s => s.Name == "Greenmist Armor")
+                        is { RaceNote: "Iksar only" });
+                var lrset = asets.Sets.FirstOrDefault(s => s.Name == "Lustrous Russet Armor");
+                Check("armor sets: multiclass sets carry per-piece class lists",
+                    lrset is { Multiclass: true, Pieces.Count: 7 }
+                    && lrset.Classes.Contains("SHD") && lrset.Classes.Contains("BER")
+                    && lrset.Pieces.First(p => p.Slot == "CHEST").Classes.Contains("BER")
+                    && !lrset.Pieces.First(p => p.Slot == "HEAD").Classes.Contains("BER"));
+                var thorrak = new[] { "SHD", "ROG", "SHM" };
+                Check("armor sets: relevance follows /who classes (unknown = all)",
+                    ArmorSets.Relevant(asets.Sets.First(s => s.Name == "Umbral Platemail"), thorrak)
+                    && ArmorSets.Relevant(lrset!, thorrak)
+                    && !ArmorSets.Relevant(asets.Sets.First(s => s.Name == "Indicolite Armor"), thorrak)
+                    && ArmorSets.Relevant(asets.Sets.First(s => s.Name == "Indicolite Armor"),
+                        Array.Empty<string>()));
+                Check("armor sets: pieces-unknown pages load as note-only sets",
+                    asets.Sets.FirstOrDefault(s => s.Name == "Righteous Armor")
+                        is { Pieces.Count: 0 } ra && ra.Note.Length > 0);
 
                 // A malformed row is counted, never thrown on; an unknown-shaped
                 // section is carried as uninterpreted rows.
