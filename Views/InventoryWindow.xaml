@@ -4,7 +4,7 @@
         xmlns:v="clr-namespace:EQLOverlay.Views"
         Title="EQL Assistant — Character"
         Width="1200" Height="940"
-        MinWidth="1170" MinHeight="940"
+        MinWidth="1170" MinHeight="940" MaxHeight="940"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Brush.Window}"
         Icon="/assets/eqloverlay.ico"
