@@ -316,6 +316,7 @@ public partial class MeterWindow : Window
             row.Fill = FillFor(r.Name);
             row.Margin = new Thickness(0, 0, 0, 3); // rows are recycled across scopes
             row.IsFold = false;
+            row.BarHeight = 17;
         }
     }
 
@@ -353,6 +354,7 @@ public partial class MeterWindow : Window
         _selfHeaderVm.Fraction = combined > 0 ? 1 : 0;
         _selfHeaderVm.ValueText = $"{FormatDps(dur > 0 ? combined / dur : 0)}  ({FormatNum(combined)})";
         _selfHeaderVm.Fill = SelfBarFill;
+        _selfHeaderVm.BarHeight = 22; // the totals stand taller than ability rows
         SelfHeaderChevron.Text = _selfExpanded ? "▼" : "▶";
 
         var fills = new List<Action<MeterRowViewModel>>();
@@ -385,6 +387,7 @@ public partial class MeterWindow : Window
                     vm.Detail = "click to fold the pet's per-ability split in and out";
                     vm.IsFold = true;
                     vm.Margin = new Thickness(0, 0, 0, 3);
+                    vm.BarHeight = 22; // a TOTAL bar, like the header
                 });
                 if (_petExpanded)
                 {
@@ -414,6 +417,7 @@ public partial class MeterWindow : Window
         row.Fill = FillFor(r.Name);
         row.Margin = margin;
         row.IsFold = false;
+        row.BarHeight = 17; // rows recycle — a former pet row must shrink back
 
         var extra = new List<string>();
         if (r.Hits > 0) extra.Add($"{r.Hits} hit{(r.Hits == 1 ? "" : "s")}");

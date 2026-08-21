@@ -28,6 +28,11 @@ public sealed class MeterRowViewModel : ViewModelBase
     private Thickness _margin = new(0, 0, 0, 3);
     public Thickness Margin { get => _margin; set => SetField(ref _margin, value); }
 
+    /// <summary>Bar height: the TOTAL bars (you + pet, the pet's ranked row)
+    /// stand taller than ability rows — the stay-alive-bars rule.</summary>
+    private double _barHeight = 17;
+    public double BarHeight { get => _barHeight; set => SetField(ref _barHeight, value); }
+
     /// <summary>True on the pet's ranked row: clicking it folds the pet's
     /// per-ability split in and out.</summary>
     private bool _isFold;
