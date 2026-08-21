@@ -59,6 +59,16 @@
             <DockPanel x:Name="SearchRow" Margin="0,0,0,6">
                 <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.TextHint}"
                            FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                <!-- The duplicate finder: fold the list to names owned as more
+                     than one physical copy, wherever they sit. -->
+                <Border x:Name="DupChip" DockPanel.Dock="Right" CornerRadius="9" Padding="9,2,9,3"
+                        Margin="8,0,0,0" BorderBrush="#3A4560" BorderThickness="1" Cursor="Hand"
+                        Background="Transparent" MouseLeftButtonUp="DupChip_Click"
+                        VerticalAlignment="Center"
+                        AutomationProperties.AutomationId="InventoryDupChip"
+                        ToolTip="Only items you own more than one copy of — across every storage, +N tiers folded together with their base">
+                    <TextBlock x:Name="DupChipText" Text="Duplicates" FontSize="11"/>
+                </Border>
                 <TextBox x:Name="SearchBox" TextChanged="Filters_Changed"
                          AutomationProperties.AutomationId="InventorySearchBox"
                          ToolTip="Search by item name"/>

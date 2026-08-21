@@ -389,6 +389,19 @@ public static class InventoryStore
         return (rows, LanesOf(rows, dump));
     }
 
+    /// <summary>The duplicate finder's set: item keys (tier-stripped, via
+    /// <see cref="FocusEffects.ItemKey"/>) that appear as MORE THAN ONE
+    /// physical row in the given rows. Two rows = two copies in two places
+    /// (or two bag slots) — a single stack is one place and never counts.
+    /// "+N" folds into its base, so the old +1 in the bank surfaces next to
+    /// the worn +4. Call it per tab: items and socketed exaltations share
+    /// names without being the same thing.</summary>
+    public static HashSet<string> DuplicateKeys(IEnumerable<CarryRow> rows) => rows
+        .GroupBy(r => FocusEffects.ItemKey(r.Name), StringComparer.Ordinal)
+        .Where(g => g.Count() >= 2)
+        .Select(g => g.Key)
+        .ToHashSet(StringComparer.Ordinal);
+
     /// <summary>The lane chips a set of rows deserves: fixed lanes first, then
     /// any extra section, only ever lanes that actually have rows.</summary>
     public static List<(string Id, string Label)> LanesOf(IEnumerable<CarryRow> rows, Dump dump)

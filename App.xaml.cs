@@ -1381,6 +1381,22 @@ public partial class App : Application
                     && InventoryStore.CarryAll(hoardish).Rows
                         .Any(r => r.Lane == "section:Hoard" && r.Name == "Shiny Thing"));
 
+                // The duplicate finder: ≥2 physical rows per tier-stripped
+                // name; a lone stack is one place and never counts.
+                var dupRows = new List<InventoryStore.CarryRow>
+                {
+                    new("Pearl", "pearl", "General 1-Slot 1", 3, "bags", 1),
+                    new("Pearl", "pearl", "Bank 2", 1, "bank", 2),
+                    new("Barons Blade +3", "barons blade +3", "Primary", 1, "worn", 3),
+                    new("Barons Blade", "barons blade", "Bank 4", 1, "bank", 4),
+                    new("One Of A Kind", "one of a kind", "General 2", 5, "bags", 5),
+                };
+                var dk = InventoryStore.DuplicateKeys(dupRows);
+                Check("inventory: duplicates fold +N tiers, a lone stack never counts",
+                    dk.Count == 2 && dk.Contains(FocusEffects.ItemKey("Pearl"))
+                    && dk.Contains(FocusEffects.ItemKey("Barons Blade"))
+                    && !dk.Contains(FocusEffects.ItemKey("One Of A Kind")));
+
                 // A malformed row is counted, never thrown on; an unknown-shaped
                 // section is carried as uninterpreted rows.
                 var odd = InventoryStore.Parse("Location\tName\tID\tCount\tSlots\r\nJunkRowWithoutTabs\r\n"

@@ -118,6 +118,7 @@ public partial class InventoryWindow : Window
     {
         InitializeComponent();
         Interop.WindowTheme.ApplyDark(this);
+        UpdateDupChip();
         // "character": a fresh bounds key — the pre-merge Inventory sizes
         // don't fit the four-tab window.
         DialogPlacement.Persist(this, "character");
@@ -586,9 +587,47 @@ public partial class InventoryWindow : Window
         bool focus = _tab == "focus";
         FocusList.Visibility = focus ? Visibility.Visible : Visibility.Collapsed;
         ResultsList.Visibility = focus ? Visibility.Collapsed : Visibility.Visible;
+        DupChip.Visibility = focus ? Visibility.Collapsed : Visibility.Visible;
         if (focus) { ApplyFocusFilter(q); return; }
 
         var tabRows = _rows.Where(r => InventoryStore.TabOf(r) == _tab).ToList();
+
+        if (_dupsOnly)
+        {
+            // The duplicate finder: only names owned as ≥2 physical copies,
+            // copies of one name kept adjacent (worst offenders first), a thin
+            // rule between names. Lanes don't apply — the POINT is the spread
+            // across storages — so the chips step aside.
+            LanePanel.Visibility = Visibility.Collapsed;
+            var dupKeys = InventoryStore.DuplicateKeys(tabRows);
+            var dupRows = tabRows
+                .Where(r => dupKeys.Contains(FocusEffects.ItemKey(r.Name))
+                            && (q.Length == 0 || r.SearchKey.Contains(q, StringComparison.Ordinal)))
+                .ToList();
+            var copies = dupRows
+                .GroupBy(r => FocusEffects.ItemKey(r.Name), StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+            var dupSorted = dupRows
+                .OrderByDescending(r => copies[FocusEffects.ItemKey(r.Name)])
+                .ThenBy(r => FocusEffects.ItemKey(r.Name), StringComparer.Ordinal)
+                .ThenBy(r => r.Line)
+                .ToList();
+            ResultsList.ItemsSource = dupSorted.Select((r, i) =>
+            {
+                bool rule = i > 0 && FocusEffects.ItemKey(dupSorted[i - 1].Name)
+                    != FocusEffects.ItemKey(r.Name);
+                return MakeRowVm(r) with { RuleVis = rule ? Visibility.Visible : Visibility.Collapsed };
+            }).ToList();
+            int names = dupSorted.Select(r => FocusEffects.ItemKey(r.Name)).Distinct().Count();
+            CountText.Text = $"{names} duplicated · {dupSorted.Count} copies";
+            EmptyTabText.Text = q.Length > 0
+                ? "No duplicates match the search."
+                : "No duplicates — every name here is a single copy.";
+            EmptyTabText.Visibility = dupSorted.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+        LanePanel.Visibility = LanePanel.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
         var matched = tabRows
             .Where(r => (_lane is null || r.Lane == _lane)
                         && (q.Length == 0 || r.SearchKey.Contains(q, StringComparison.Ordinal)))
@@ -612,6 +651,23 @@ public partial class InventoryWindow : Window
         CountText.Text = $"{matched.Count} of {tabRows.Count}";
         EmptyTabText.Text = _tab == "exalt" ? "No exaltation sockets in this dump." : "Nothing in this dump.";
         EmptyTabText.Visibility = tabRows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    // ---- the duplicate finder toggle ----------------------------------------
+
+    private bool _dupsOnly;
+
+    private void DupChip_Click(object sender, MouseButtonEventArgs e)
+    {
+        _dupsOnly = !_dupsOnly;
+        UpdateDupChip();
+        ApplyFilters();
+    }
+
+    private void UpdateDupChip()
+    {
+        DupChip.Background = _dupsOnly ? SegOnBg : Brushes.Transparent;
+        DupChipText.Foreground = _dupsOnly ? SegOnFg : SegOffFg;
     }
 
     /// <summary>The audit board: every family always renders (the gaps ARE
