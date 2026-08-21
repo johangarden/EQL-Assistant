@@ -1367,7 +1367,7 @@ public partial class App : Application
                     && !InventoryStore.IsContainer(dump.Items.First(e => e.Location == "Hoard 1")));
                 Check("inventory: an old dump names everything it left unsaid",
                     InventoryStore.MissingStorages(partial).SequenceEqual(
-                        new[] { "bank", "tradeskill depot", "Dragon's Hoard", "key rings" }));
+                        new[] { "bank", "tradeskill depot", "Dragon's Hoard", "exaltations & storage" }));
                 var hoardish = InventoryStore.Parse(string.Join("\r\n", new[]
                 {
                     "Location\tName\tID\tCount\tSlots",
@@ -1459,6 +1459,9 @@ public partial class App : Application
                 // The wiki's "HP Regen: 2 Mana Regen: 2 End Regen: 2" line once
                 // shattered in the scrape (stray "HP", a "2 End" value) — the
                 // build repairs it from the raw block: 2/2/2 base, 7/7/7 at +5.
+                Check("item stats: droppers ride the record (mob + zone)",
+                    istats.Lookup("Wicked Sallet +5") is { } wsd
+                    && wsd.Drops.Any(d => d is ["Lord Elgnub", "Blackburrow"]));
                 Check("item stats: the three-regen line is whole (7/7/7 at +5)",
                     istats.Lookup("Talisman of Kejaar Kerrath +5") is { } tkk
                     && tkk.Stats.Any(p => p is ["HP Regen", "2"])
@@ -2618,6 +2621,111 @@ public partial class App : Application
                 tw.BigState.Mode == "Kurven" && tw.SecondaryNames is ["Vox", "Baron"]);
 
             tw.Close();
+
+            // ---- alert payloads: toggle + Phrase OR Sound per notice,
+            // empty phrase = the default (which follows renames for free).
+            var re = new Models.RespawnEntry { Name = "Vox" };
+            Check("alerts: spawn notice defaults on, spoken '<name> respawn'",
+                re.SpawnPayload() is { Speak: "Vox respawn", Sound: null }
+                && re.WarnPayload() is null); // before-notice defaults OFF
+            re.WarnEnabled = true;
+            Check("alerts: warn notice speaks its default when enabled",
+                re.WarnPayload() is { Speak: "Vox spawning soon", Sound: null });
+            re.WarnMode = "sound";
+            Check("alerts: a sound notice with no file stays silent",
+                re.WarnPayload() is null);
+            re.WarnSound = @"C:\Windows\Media\tada.wav";
+            Check("alerts: sound mode carries the file, never a phrase",
+                re.WarnPayload() is { Speak: null, Sound: @"C:\Windows\Media\tada.wav" });
+            re.SpawnSpeak = "the dragon is up";
+            re.SpawnEnabled = false;
+            Check("alerts: a disabled notice fires nothing",
+                re.SpawnPayload() is null);
+            re.SpawnEnabled = true;
+            Check("alerts: a hand-written phrase wins over the default",
+                re.SpawnPayload() is { Speak: "the dragon is up", Sound: null });
+
+            // ---- the estimate ladder: typed number > learned minimum > nothing.
+            var le = new Models.RespawnEntry { Name = "x", Seconds = 0 };
+            Check("ladder: no estimate before evidence", le.EffectiveSeconds is null);
+            le.AddGap(400, DateTime.Now);
+            le.AddGap(380, DateTime.Now);
+            Check("ladder: learned = the MINIMUM gap (upper bounds converge down)",
+                le.EffectiveSeconds == 380 && le.LearnedSeconds == 380);
+            le.Seconds = 500;
+            Check("ladder: a typed number outranks the learner", le.EffectiveSeconds == 500);
+            for (int i = 0; i < 12; i++) le.AddGap(600 + i, DateTime.Now);
+            Check("ladder: gap list capped at 8, newest first",
+                le.Gaps.Count == Models.RespawnEntry.MaxGaps && le.Gaps[0].Seconds == 611);
+
+            Check("trigger: auto entry compiles with duration 0 (learning row)",
+                ConfigService.BuildRespawnTrigger(new Models.RespawnEntry { Name = "Ghoul", Seconds = 0 })
+                    is { DurationSeconds: 0 });
+            var lrn = new Models.RespawnEntry { Name = "Ghoul", Seconds = 0 };
+            lrn.AddGap(380, DateTime.Now);
+            Check("trigger: learned minimum becomes the trigger duration",
+                ConfigService.BuildRespawnTrigger(lrn) is { DurationSeconds: 380 });
+
+            // ---- the learner: death → next-appearance, same zone stay only.
+            var rl = new RespawnLearner();
+            rl.UpdateEntries(new[] { new Models.RespawnEntry { Name = "Kurven the Cruel", Seconds = 0 } });
+            var gaps = new List<(string Name, double Gap)>();
+            int sightings = 0;
+            rl.GapLearned += (n, g, _) => gaps.Add((n, g));
+            rl.Sighted += _ => sightings++;
+            var b0 = new DateTime(2026, 8, 20, 20, 0, 0);
+            string L(int s, string body) => $"[{b0.AddSeconds(s).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+
+            rl.ProcessLine(L(0, "You have entered Befallen 3 (Fused)."));
+            rl.ProcessLine(L(10, "You have slain Kurven the Cruel!"));
+            rl.ProcessLine(L(20, "Kurven the Cruel hits YOU for 30 points of damage."));
+            Check("learner: the fight's tail is not a spawn", gaps.Count == 0 && sightings == 0);
+            rl.ProcessLine(L(410, "Kurven the Cruel hits YOU for 30 points of damage."));
+            Check("learner: reappearance closes the gap and marks a sighting",
+                gaps is [("Kurven the Cruel", 400.0)] && sightings == 1);
+            rl.ProcessLine(L(500, "You have slain Kurven the Cruel!"));
+            rl.ProcessLine(L(520, "You have entered East Commonlands."));
+            rl.ProcessLine(L(560, "You have entered Befallen 3 (Fused)."));
+            rl.ProcessLine(L(900, "Kurven the Cruel begins casting a spell."));
+            Check("learner: zoning between death and reappearance discards the sample",
+                gaps.Count == 1 && sightings == 2);
+            rl.ProcessLine(L(1000, "You have slain Kurven the Cruel!"));
+            rl.ProcessLine(L(1500, "Kurven the Cruel has been slain by Caladar!"));
+            Check("learner: death→death closes a gap too",
+                gaps.Count == 2 && Math.Abs(gaps[1].Gap - 500) < 0.1);
+            rl.ProcessLine(L(1600, "You looted a Rusty Sword from Kurven the Cruel's corpse."));
+            Check("learner: a corpse is not a sighting", sightings == 2);
+
+            // ---- the watch's row states: learning, UP, due machinery.
+            var mutedAlerts = new AlertService { Muted = true };
+            var tw2 = new TimerWindow(new ConfigService(), mutedAlerts, 400, 1.0, null);
+            tw2.StartWith(0, "Ghost"); // no estimate: a learning row, never the pie
+            Check("watch: learning kill takes a row, not the pie",
+                tw2.BigState.Mode is null && tw2.RowStates is [("Ghost", "learning")]);
+            tw2.NotifySighted("Ghost");
+            Check("watch: a sighting flips the learning row UP",
+                tw2.RowStates is [("Ghost", "up")]);
+            tw2.StartWith(200, "Kurven");
+            Check("watch: a countdown claims the pie past the UP row",
+                tw2.BigState.Mode == "Kurven" && tw2.RowStates is [("Ghost", "up")]);
+            tw2.NotifySighted("Kurven"); // named mid-countdown → alert now, row UP
+            Check("watch: sighting the pie mob demotes it to an UP row",
+                tw2.BigState.Mode is null && tw2.RowStates.Count(r => r.State == "up") == 2);
+            tw2.Close();
+
+            // ---- the auto/manual toggle: manual = the pie is YOUR egg timer.
+            var tw3 = new TimerWindow(new ConfigService(), mutedAlerts, 300, 1.0, null);
+            tw3.StartWith(200, "Kurven");
+            tw3.SetManualMode(true);
+            Check("manual: the pie's repop parks in the rows",
+                tw3.BigState.Mode is null && tw3.RowStates is [("Kurven", "countdown")]);
+            tw3.StartWith(100, "Vox");
+            Check("manual: a death never steals the pie",
+                tw3.BigState.Mode is null && tw3.SecondaryNames.Count == 2);
+            tw3.SetManualMode(false);
+            Check("auto again: the soonest respawn claims the pie back",
+                tw3.BigState.Mode == "Vox" && tw3.SecondaryNames is ["Kurven"]);
+            tw3.Close();
         }
         catch (Exception ex)
         {

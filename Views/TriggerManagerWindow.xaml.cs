@@ -292,10 +292,16 @@ public partial class TriggerManagerWindow : Window
         }
     }
 
+    private RespawnViewModel? SelectedRespawn => RespawnList.SelectedItem as RespawnViewModel;
+
     private void RespawnList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         RespawnEditor.DataContext = RespawnList.SelectedItem;
         RespawnEditor.IsEnabled = RespawnList.SelectedItem is not null;
+        _soundUxLoading = true;
+        SyncSoundCombo(RespawnWarnSoundBox, SelectedRespawn?.WarnSound);
+        SyncSoundCombo(RespawnSpawnSoundBox, SelectedRespawn?.SpawnSound);
+        _soundUxLoading = false;
     }
 
     private void RespawnAdd_Click(object sender, RoutedEventArgs e)
@@ -303,7 +309,7 @@ public partial class TriggerManagerWindow : Window
         var vm = new RespawnViewModel
         {
             Name = "New respawn",
-            Seconds = 400,
+            Seconds = 0, // auto: the learner measures it from your kills
             Zone = _combat.CurrentZone, // where you are is the best guess
         };
         _respawns.Add(vm);
@@ -408,11 +414,16 @@ public partial class TriggerManagerWindow : Window
             return;
         }
 
-        var vm = new RespawnViewModel { Name = death.Name, Zone = death.Zone, Seconds = 400 };
+        var vm = new RespawnViewModel { Name = death.Name, Zone = death.Zone, Seconds = 0 };
         _respawns.Add(vm);
         RespawnList.SelectedItem = vm;
-        Status($"Added respawn for '{death.Name}' — set its respawn time and Save.");
+        Status($"Added respawn for '{death.Name}' — Save, and its time will be learned from your kills (or type one).");
     }
+
+    /// <summary>"Forget learned times" — clears the gap evidence; the next
+    /// kill cycle starts measuring fresh.</summary>
+    private void RespawnForgetGaps_Click(object sender, RoutedEventArgs e) =>
+        SelectedRespawn?.ClearGaps();
 
     private void RespawnDelete_Click(object sender, RoutedEventArgs e)
     {
@@ -587,6 +598,8 @@ public partial class TriggerManagerWindow : Window
         // share its default collection view, which would sync their selections.
         WarnSoundBox.ItemsSource = LoadSoundPresets();
         FadedSoundBox.ItemsSource = LoadSoundPresets();
+        RespawnWarnSoundBox.ItemsSource = LoadSoundPresets();
+        RespawnSpawnSoundBox.ItemsSource = LoadSoundPresets();
     }
 
     private void WarnSound_Changed(object sender, SelectionChangedEventArgs e)
@@ -792,6 +805,45 @@ public partial class TriggerManagerWindow : Window
         if (Selected is null) return;
         if (_alerts.Muted) { Status("Unmute to preview."); return; }
         _alerts.Fire(speak, sound);
+    }
+
+    // ---- respawn alert previews (empty phrase previews the default) ----------
+
+    private void RespawnWarnSpeak_Click(object sender, RoutedEventArgs e) =>
+        PreviewRespawn(SelectedRespawn is { } r
+            ? (string.IsNullOrWhiteSpace(r.WarnSpeak)
+                ? Models.RespawnEntry.DefaultWarnPhrase(r.Name) : r.WarnSpeak)
+            : null, null);
+
+    private void RespawnSpawnSpeak_Click(object sender, RoutedEventArgs e) =>
+        PreviewRespawn(SelectedRespawn is { } r
+            ? (string.IsNullOrWhiteSpace(r.SpawnSpeak)
+                ? Models.RespawnEntry.DefaultSpawnPhrase(r.Name) : r.SpawnSpeak)
+            : null, null);
+
+    private void RespawnWarnPlay_Click(object sender, RoutedEventArgs e) =>
+        PreviewRespawn(null, SelectedRespawn?.WarnSound);
+
+    private void RespawnSpawnPlay_Click(object sender, RoutedEventArgs e) =>
+        PreviewRespawn(null, SelectedRespawn?.SpawnSound);
+
+    private void PreviewRespawn(string? speak, string? sound)
+    {
+        if (SelectedRespawn is null) return;
+        if (_alerts.Muted) { Status("Unmute to preview."); return; }
+        _alerts.Fire(speak, sound);
+    }
+
+    private void RespawnWarnSound_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_soundUxLoading || SelectedRespawn is null) return;
+        if (RespawnWarnSoundBox.SelectedItem is SoundPreset p) SelectedRespawn.WarnSound = p.Path;
+    }
+
+    private void RespawnSpawnSound_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_soundUxLoading || SelectedRespawn is null) return;
+        if (RespawnSpawnSoundBox.SelectedItem is SoundPreset p) SelectedRespawn.SpawnSound = p.Path;
     }
 
     /// <summary>Jump to a sidebar page by its title ("Repop timer", "General", …).</summary>

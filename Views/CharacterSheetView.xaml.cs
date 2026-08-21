@@ -299,13 +299,15 @@ public partial class CharacterSheetView : UserControl
         {
             if (!byType.TryGetValue(label, out var child) || child.Empty) continue;
             // Each socket TYPE owns a color (SocketColors — shared with the
-            // Inventory window's pills).
+            // Inventory window's pills). A single letter wears a CIRCLE, not
+            // a pill — centered, same size every time.
             var fill = SocketColors.Fill(label);
             pills.Children.Add(new Border
             {
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(3, 0, 3, 1),
-                Margin = new Thickness(0, 0, 2, 0),
+                Width = 15,
+                Height = 15,
+                CornerRadius = new CornerRadius(7.5),
+                Margin = new Thickness(0, 0, 3, 0),
                 Background = fill,
                 BorderBrush = fill,
                 BorderThickness = new Thickness(1),
@@ -316,6 +318,8 @@ public partial class CharacterSheetView : UserControl
                     FontSize = 8.5,
                     FontWeight = FontWeights.Bold,
                     Foreground = SocketColors.Ink,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
                 },
             });
         }
@@ -374,20 +378,25 @@ public partial class CharacterSheetView : UserControl
 
         if (!itemMode)
         {
-            if (_drillKey is { } drill)
-            {
-                // A clicked stat: which worn items grant it, best first.
-                BuildStatDrill(drill);
-                PaneLines.ItemsSource = lines;
-                return;
-            }
             // ONE combined landing view: totals grid, focus verdicts,
-            // clickies — no tabs, click a slot for the item view.
+            // clickies — no tabs, click a slot for the item view. A clicked
+            // stat slides the drill DRAWER in over it.
             PaneTitle.Text = "Stats from gear";
             BuildLandingPane(lines);
             PaneLines.ItemsSource = lines;
+            if (_drillKey is { } drill)
+            {
+                PopulateDrawer(drill);
+                SetDrawerVisible(true);
+            }
+            else
+            {
+                SetDrawerVisible(false);
+            }
             return;
         }
+
+        SetDrawerVisible(false); // the item view owns the pane
 
         if (!_worn.TryGetValue(_selected!.Value, out var entry) || entry.Empty)
         {
@@ -816,7 +825,7 @@ public partial class CharacterSheetView : UserControl
             if (SynthVoid(rec, tier)) voidGrant += tier;
         }
 
-        PaneSub.Text = $"what the {worn.Count} worn items grant at their current tiers";
+        PaneSub.Text = "click any stat to see which items grant it";
         if (counted == 0)
         {
             lines.Add(new PaneLineVm("", "no worn item is in the wiki table yet", DimFg, Visibility.Collapsed));
@@ -890,42 +899,70 @@ public partial class CharacterSheetView : UserControl
         return root;
     }
 
-    /// <summary>Every totals row is a question — clicking it answers "which
-    /// items grant this?" with the ranked drill view.</summary>
+    private static readonly Brush DrillActiveFg = Freeze("#4FC3F7");
+
+    /// <summary>Every totals row is a question — clicking it slides the drill
+    /// drawer in with "which items grant this?"; clicking it again folds the
+    /// drawer away. The active stat wears the accent + an underline.</summary>
     private void MakeDrillable(StatCell cell, string key, string label)
     {
+        if (_drillKey == key)
+        {
+            cell.Label.Foreground = DrillActiveFg;
+            cell.Label.TextDecorations = TextDecorations.Underline;
+        }
         foreach (var tb in new[] { cell.Label, cell.Value })
         {
             tb.Cursor = Cursors.Hand;
             tb.ToolTip = $"click — which items grant {label}";
             tb.MouseLeftButtonUp += (_, _) =>
             {
-                _drillKey = key;
+                Services.Log.Info($"[sheet] stat drill toggle: {key}");
+                _drillKey = _drillKey == key ? null : key;
                 _drillLabel = label;
-                _selected = null;
                 RefreshPane();
             };
         }
     }
 
-    /// <summary>The drill: every worn item granting the clicked stat, ranked
-    /// by its at-tier contribution, each row clicking through to the item.</summary>
-    private void BuildStatDrill(string key)
-    {
-        PaneTitle.Text = _drillLabel;
-        PaneSub.Text = "worn items granting it — at worn tier, best first";
+    /// <summary>Raised when the drawer opens (true) or closes (false) so the
+    /// HOST window can grow/shrink its width by the drawer strip.</summary>
+    public Action<bool>? DrawerExtendRequested { get; set; }
 
-        var root = new StackPanel();
-        var back = new TextBlock
-        {
-            Text = "← all stats",
-            Foreground = SlotFg,
-            FontSize = 11,
-            Cursor = Cursors.Hand,
-            Margin = new Thickness(0, 0, 0, 8),
-        };
-        back.MouseLeftButtonUp += (_, _) => { _drillKey = null; RefreshPane(); };
-        root.Children.Add(back);
+    /// <summary>The width the host should grow by: drawer + its margins.</summary>
+    public const double DrawerGrowth = 384;
+
+    private void DrawerClose_Click(object sender, MouseButtonEventArgs e)
+    {
+        _drillKey = null;
+        RefreshPane();
+    }
+
+    /// <summary>Host hook: fold the drawer away (tab switches, etc.).</summary>
+    public void CloseDrawer()
+    {
+        if (_drillKey is null) return;
+        _drillKey = null;
+        RefreshPane();
+    }
+
+    private void SetDrawerVisible(bool on)
+    {
+        bool cur = Drawer.Visibility == Visibility.Visible;
+        if (cur == on) return;
+        Drawer.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        DrawerExtendRequested?.Invoke(on);
+    }
+
+    /// <summary>The drill drawer: every worn item granting the clicked stat,
+    /// ranked at worn tier, each row clicking through to the item — then the
+    /// dimmed deficit list.</summary>
+    private void PopulateDrawer(string key)
+    {
+        DrawerTitle.Text = _drillLabel;
+        DrawerSub.Text = "worn items granting it — at worn tier, best first";
+        var root = DrawerBody;
+        root.Children.Clear();
 
         var found = new List<(double Rank, UIElement Row)>();
         var without = new List<(string Sort, UIElement Row)>();
@@ -994,8 +1031,6 @@ public partial class CharacterSheetView : UserControl
                 root.Children.Add(row);
         }
 
-        PaneGrid.Content = root;
-        PaneGrid.Visibility = Visibility.Visible;
     }
 
     /// <summary>A deficit row: dim everything — this item gives none of the
@@ -1151,17 +1186,6 @@ public partial class CharacterSheetView : UserControl
         Margin = new Thickness(0, 9, 0, 4),
     };
 
-    /// <summary>"Improved Damage" at tier 3 → "III" (the ladder's own effect
-    /// spelling, family prefix stripped); an unnamed tier reads "T3".</summary>
-    private static string RomanOf(FocusEffects.Family fam, int tierNum)
-    {
-        var tier = fam.Tiers.FirstOrDefault(t => t.TierNum == tierNum);
-        if (tier is null) return "T" + tierNum;
-        return tier.Effect.StartsWith(fam.Name + " ", StringComparison.Ordinal)
-            ? tier.Effect[(fam.Name.Length + 1)..]
-            : tier.Effect;
-    }
-
     /// <summary>The compact focus audit, appended to the landing pane.</summary>
     private void AddFocusSection(StackPanel root)
     {
@@ -1173,21 +1197,6 @@ public partial class CharacterSheetView : UserControl
         root.Children.Add(SectHeader(
             $"Focus effects — {green} worn best · {upg} upgradable · {missing} missing", strong: true));
 
-        // A row's verdict: green "worn best", or amber with WHERE the
-        // upgrade lives — the stored tier, the huntable tier, or both.
-        string Verdict(FocusEffects.AuditRow a)
-        {
-            if (a.Status == 2) return $"{RomanOf(a.Family, a.WornTier)} — worn best";
-            if (a.BestTier == 0) return "none owned";
-            bool stored = a.BestTier > a.WornTier;
-            bool huntable = a.HuntableMax > a.BestTier;
-            var parts = new List<string>();
-            if (stored) parts.Add($"{RomanOf(a.Family, a.BestTier)} stored");
-            if (huntable) parts.Add($"{RomanOf(a.Family, a.HuntableMax)} huntable");
-            string prefix = a.WornTier > 0 ? $"{RomanOf(a.Family, a.WornTier)} worn → " : "";
-            return prefix + string.Join(" · ", parts);
-        }
-
         // Grouped by PLACE, not verdict: what's on your body (best or not,
         // the color still judges), what's owned but stored, what's missing.
         void Section(string title, Func<FocusEffects.AuditRow, bool> pick)
@@ -1198,7 +1207,7 @@ public partial class CharacterSheetView : UserControl
             foreach (var a in inGroup)
             {
                 int status = a.Status;
-                string verdict = Verdict(a);
+                string verdict = FocusEffects.VerdictText(a);
                 var row = new DockPanel { Margin = new Thickness(0, 0, 0, 1) };
                 var dot = new System.Windows.Shapes.Ellipse
                 {
@@ -1339,26 +1348,26 @@ public partial class CharacterSheetView : UserControl
             foreach (var r in wornRows) root.Children.Add(r);
         }
 
-        // The game's own clicky collection: the Activated-Items keyring.
-        var keyringRows = new List<UIElement>();
+        // The game's own clicky collection: Activated items.
+        var activatedRows = new List<UIElement>();
         foreach (var r in _rows.Where(r => r.Lane == "activated"))
         {
             var rec = _stats.Lookup(r.Name);
             var fxs = ClickLines(rec);
             var (baseName, _) = SplitTier(r.Name);
             if (fxs.Count == 0)
-                keyringRows.Add(ClickyRow(rec?.Icon, baseName,
-                    "Activated keyring — click effect not in the wiki table", known: false));
+                activatedRows.Add(ClickyRow(rec?.Icon, baseName,
+                    "Activated items — click effect not in the wiki table", known: false));
             foreach (var fx in fxs)
-                keyringRows.Add(ClickyRow(rec?.Icon, fx, $"{r.Name} · Activated keyring"));
+                activatedRows.Add(ClickyRow(rec?.Icon, fx, $"{r.Name} · Activated items"));
         }
-        if (keyringRows.Count > 0)
+        if (activatedRows.Count > 0)
         {
-            root.Children.Add(SectHeader("Activated keyring"));
-            foreach (var r in keyringRows) root.Children.Add(r);
+            root.Children.Add(SectHeader("Activated items"));
+            foreach (var r in activatedRows) root.Children.Add(r);
         }
 
-        if (wornRows.Count == 0 && keyringRows.Count == 0)
+        if (wornRows.Count == 0 && activatedRows.Count == 0)
             root.Children.Add(new TextBlock
             {
                 Text = "no clickies found in the dump",

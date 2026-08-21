@@ -115,6 +115,7 @@ public partial class MainWindow : Window
         if (retyped > 0) Log.Info($"Retyped {retyped} library trigger(s) (HoTs/DoTs split).");
         _durations = new SpellDurations(_configService, _spellLib);
         _conditions = new ConditionWatcher(_spellLib);
+        WireRespawnLearner();
         // Enemy-DoT countdowns: learned first, library figure as the fallback.
         _combat.DotDurationLookup = spell =>
             spell.StartsWith("Demo ", StringComparison.Ordinal) ? 30 // Ctrl+Alt+T bars
@@ -643,17 +644,6 @@ public partial class MainWindow : Window
         if (_timer is not null) { try { _timer.Close(); } catch { /* ignore */ } }
         _timer = new TimerWindow(_configService, _alerts, _config.Overlay.TimerSeconds, _config.Overlay.Opacity,
             onDurationSet: s => { _config.Overlay.TimerSeconds = s; _configService.SaveSettings(_config); });
-        _timer.PresetProvider = () =>
-        {
-            // Zones live on the respawn entries, not the derived triggers.
-            var zones = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var r in _configService.LoadRespawns())
-                zones[r.Name] = r.Zone;
-            return (IReadOnlyList<(string, double, string)>)_config.Triggers
-                .Where(t => t.Panel == Panels.TimerAuto && t.Enabled)
-                .Select(t => (t.Name, t.DurationSeconds, zones.GetValueOrDefault(t.Name, "")))
-                .ToList();
-        };
         _timer.RecentKillsProvider = () =>
         {
             var tracked = _configService.LoadRespawns();
@@ -671,9 +661,13 @@ public partial class MainWindow : Window
             // The engine holds the same trigger list instance, so re-merging the
             // timerAuto triggers makes the new respawn live immediately.
             MergeGlobalRespawns(_config);
-            _vm.Flash($"Respawn added: {name} ({seconds:0}s).");
+            _vm.Flash(seconds > 0
+                ? $"Respawn added: {name} ({Services.DurationText.Compact(seconds)})."
+                : $"Respawn added: {name} — learning its time from your kills.");
         };
         _timer.ManageRespawnsRequested = () => OpenManager("Respawns");
+        _timer.RespawnLookup = name => _respawnCache.FirstOrDefault(
+            r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         _timer.Show();
         UpdateTimerVisibility();
     }
@@ -927,6 +921,7 @@ public partial class MainWindow : Window
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _conditions.ProcessLine(line); // live CC state — not fed on catch-up
+                _respawnLearner.ProcessLine(line); // live-only too: stale lines would mint stale sightings
                 _session.ProcessLine(line);    // leveling pace (rebuilt by catch-up)
                 if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
@@ -1196,10 +1191,40 @@ public partial class MainWindow : Window
     /// Respawn timers are global (respawns.json), not per-loadout — merge them
     /// into the active trigger set so they survive loadout switches.
     /// </summary>
+    /// <summary>In-memory respawn entries, refreshed on every merge — the
+    /// repop watch reads alert config from here every tick, never the disk.</summary>
+    private List<Models.RespawnEntry> _respawnCache = new();
+
     private void MergeGlobalRespawns(AppConfig cfg)
     {
+        _respawnCache = _configService.LoadRespawns();
         cfg.Triggers.RemoveAll(t => t.Panel == Panels.TimerAuto);
         cfg.Triggers.AddRange(_configService.BuildRespawnTriggers());
+        _respawnLearner.UpdateEntries(_respawnCache);
+    }
+
+    // ---- respawn learner (death → next-appearance gaps + UP sightings) --------
+
+    private readonly Services.RespawnLearner _respawnLearner = new();
+
+    private void WireRespawnLearner()
+    {
+        _respawnLearner.Sighted += name => _timer?.NotifySighted(name);
+        _respawnLearner.GapLearned += (name, gap, when) =>
+        {
+            var entry = _respawnCache.FirstOrDefault(r =>
+                r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (entry is null) return;
+            entry.AddGap(gap, when);
+            _configService.SaveRespawns(_respawnCache);
+            // Re-merge so the timerAuto trigger picks up the new estimate —
+            // the engine holds the same trigger list instance.
+            MergeGlobalRespawns(_config);
+            _engine.UpdateConfig(_config);
+            double est = entry.EffectiveSeconds ?? gap;
+            _vm.Flash($"{name}: respawn ≤ {Services.DurationText.Compact(est)} ({entry.Gaps.Count} gap{(entry.Gaps.Count == 1 ? "" : "s")})");
+            Log.Info($"[respawn] {name} gap {gap:0}s recorded — estimate now {est:0}s from {entry.Gaps.Count} gap(s).");
+        };
     }
 
     /// <summary>Apply settings + active loadout saved from the manager, live.</summary>

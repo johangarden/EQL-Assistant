@@ -17,7 +17,7 @@
         <!-- One proportional bar row, shared by the rankings and the skills
              section (tooltip only shows when a Detail is set). -->
         <DataTemplate x:Key="BarRow" DataType="{x:Type vm:MeterRowViewModel}">
-            <Grid Height="17" Margin="{Binding Margin}" ToolTip="{Binding Detail}">
+            <Grid Height="{Binding BarHeight}" Margin="{Binding Margin}" ToolTip="{Binding Detail}">
                 <Border CornerRadius="3" Background="#C8101318"/>
                 <Grid>
                     <Grid.ColumnDefinitions>

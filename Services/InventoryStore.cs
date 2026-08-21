@@ -107,14 +107,16 @@ public static class InventoryStore
     public static readonly IReadOnlyDictionary<string, string> LaneLabels =
         new Dictionary<string, string>
         {
+            // In-game vocabulary only — "keyring" is the dump's legacy word
+            // from the old EQ client and never appears in the UI.
             ["worn"] = "Worn",
             ["bags"] = "Bags",
-            ["storage"] = "Storage",          // KeyRing / Equipment — in-game "Storage"
+            ["storage"] = "Storage",           // KeyRing / Equipment — in-game "Storage"
             ["activated"] = "Activated items", // KeyRing / Activated
-            ["keyring"] = "Augments",          // KeyRing / Augmentation (and any future category)
+            ["keyring"] = "Exaltations",       // KeyRing / Augmentation — in-game "Exaltations"
             ["bank"] = "Bank",
             ["depot"] = "Depot",
-            ["hoard"] = "Hoard",
+            ["hoard"] = "Dragon Hoard",
             ["elsewhere"] = "Elsewhere",
         };
 
@@ -418,7 +420,7 @@ public static class InventoryStore
         ("sharedBank", "Shared bank"),
         ("depot", "Depot"),
         ("hoard", "Dragon's Hoard"),
-        ("keyring", "Key rings"),
+        ("keyring", "Exaltations & storage"),
     };
 
     /// <summary>The storages this dump does NOT speak for, in the order the
@@ -434,7 +436,7 @@ public static class InventoryStore
         // The hoard is "Hoard N" rows in the primary table (sampled); an
         // unknown extra item table is still accepted as it, for older clients.
         if (!dump.Covered.Contains("hoard") && !dump.HasExtraItemSection) missing.Add("Dragon's Hoard");
-        if (!dump.Covered.Contains("keyring")) missing.Add("key rings");
+        if (!dump.Covered.Contains("keyring")) missing.Add("exaltations & storage");
         return missing;
     }
 

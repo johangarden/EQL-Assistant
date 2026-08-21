@@ -4,7 +4,7 @@
         xmlns:v="clr-namespace:EQLOverlay.Views"
         Title="EQL Assistant — Character"
         Width="1200" Height="940"
-        MinWidth="1170" MinHeight="940"
+        MinWidth="1170" MinHeight="940" MaxHeight="940"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Brush.Window}"
         Icon="/assets/eqloverlay.ico"
@@ -115,11 +115,13 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border CornerRadius="8" Padding="6,0,6,1" Margin="0,0,4,0"
+                                            <!-- single-letter socket badge: a circle, letter centered -->
+                                            <Border Width="18" Height="18" CornerRadius="9" Margin="0,0,4,0"
                                                     Background="{Binding Bg}" BorderBrush="{Binding Border}"
                                                     BorderThickness="1" ToolTip="{Binding Tip}">
                                                 <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold"
-                                                           Foreground="{Binding Fg}"/>
+                                                           Foreground="{Binding Fg}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -137,7 +139,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
-                                                   FontWeight="{Binding Weight}" FontSize="11"
+                                                   FontWeight="{Binding Weight}" FontSize="{Binding FontSize}"
                                                    TextWrapping="Wrap" Margin="{Binding Margin}"/>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -181,6 +183,11 @@
                                     <TextBlock Text="{Binding Kind}" Foreground="{StaticResource Brush.TextHint}"
                                                FontSize="10" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
+                                <!-- The audit's verdict, rightmost — the sheet's language:
+                                     "II — worn best", "II worn → III huntable", "III stored". -->
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding VerdictText}"
+                                           Foreground="{Binding StatusBrush}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
                                 <!-- Place badge: green WORN when the best owned tier is on
                                      your body, amber IN BANK / STORAGE / … when it isn't. -->
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding PlaceText}"
@@ -211,14 +218,26 @@
                                 </ItemsControl>
                             </DockPanel>
                             <!-- The fold-out: tiers, effect text, every known
-                                 carrier with slot/classes and your copy's place. -->
+                                 carrier with slot/classes, your copy's place,
+                                 and the droppers (underlined = wiki link). -->
                             <ItemsControl ItemsSource="{Binding Details}" Visibility="{Binding DetailsVis}"
                                           Margin="42,5,0,3">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
-                                                   FontWeight="{Binding Weight}" FontSize="11"
-                                                   TextWrapping="Wrap" Margin="{Binding Margin}"/>
+                                                   FontWeight="{Binding Weight}" FontSize="{Binding FontSize}"
+                                                   TextWrapping="Wrap" Margin="{Binding Margin}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLink}" Value="True">
+                                                            <Setter Property="TextDecorations" Value="Underline"/>
+                                                            <Setter Property="Cursor" Value="Hand"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

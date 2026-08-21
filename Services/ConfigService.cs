@@ -547,7 +547,9 @@ public sealed class ConfigService
         SaveRespawns(respawns); // writes the file even when empty, so this runs once
     }
 
-    /// <summary>A respawn entry compiled into the engine's timerAuto trigger form.</summary>
+    /// <summary>A respawn entry compiled into the engine's timerAuto trigger form.
+    /// Duration = the estimate ladder (typed > learned minimum); 0 = no estimate
+    /// yet — the death still starts a counting-UP "learning" row on the watch.</summary>
     public static TriggerDefinition? BuildRespawnTrigger(RespawnEntry r)
     {
         if (!r.Enabled || string.IsNullOrWhiteSpace(r.Name)) return null;
@@ -557,7 +559,7 @@ public sealed class ConfigService
             Id = "respawn-" + Slug(r.Name),
             Name = r.Name.Trim(),
             Panel = Panels.TimerAuto,
-            DurationSeconds = r.Seconds,
+            DurationSeconds = r.EffectiveSeconds ?? 0,
             StartPattern = string.IsNullOrWhiteSpace(r.Pattern)
                 ? $@"(?:{n} has been slain by|You have slain {n})"
                 : r.Pattern,
