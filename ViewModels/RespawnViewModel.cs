@@ -12,7 +12,7 @@ public sealed class RespawnViewModel : ViewModelBase
         set { if (SetField(ref _name, value)) OnPropertyChanged(nameof(Display)); }
     }
 
-    private double _seconds = 400;
+    private double _seconds; // 0 = auto: the learner's estimate stands in
     public double Seconds
     {
         get => _seconds;
@@ -24,14 +24,18 @@ public sealed class RespawnViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Friendly face of <see cref="Seconds"/>: shows "6m40s",
-    /// accepts "400", "15m", "6m40s" or "6:40". Invalid input snaps back.</summary>
+    /// <summary>Friendly face of <see cref="Seconds"/>: shows "6m40s" (or
+    /// "auto" when unset), accepts "400", "15m", "6m40s", "6:40" — and
+    /// "auto" or empty to hand the number back to the learner.</summary>
     public string SecondsText
     {
-        get => Services.DurationText.Compact(Seconds);
+        get => Seconds > 0 ? Services.DurationText.Compact(Seconds) : "auto";
         set
         {
-            if (Services.DurationText.Parse(value) is double s) Seconds = s;
+            string t = value.Trim();
+            if (t.Length == 0 || t.Equals("auto", StringComparison.OrdinalIgnoreCase))
+                Seconds = 0;
+            else if (Services.DurationText.Parse(t) is double s) Seconds = s;
             OnPropertyChanged(nameof(SecondsText)); // normalize ("400" -> "6m40s") or snap back
         }
     }
@@ -56,7 +60,36 @@ public sealed class RespawnViewModel : ViewModelBase
         set { if (SetField(ref _enabled, value)) OnPropertyChanged(nameof(Display)); }
     }
 
-    public string Display => $"{(Enabled ? "" : "○ ")}{Name}  ·  {Seconds:0}s";
+    public string Display => $"{(Enabled ? "" : "○ ")}{Name}  ·  " + (Seconds > 0
+        ? Services.DurationText.Compact(Seconds)
+        : LearnedSeconds is { } l ? $"≤ {Services.DurationText.Compact(l)} auto" : "auto");
+
+    // ---- the learner's evidence (death → next-appearance gaps) ----
+
+    private bool _learnOn = true;
+    public bool LearnOn { get => _learnOn; set => SetField(ref _learnOn, value); }
+
+    /// <summary>Observed gaps, newest first — carried through so a Manager
+    /// save never throws away what the learner measured.</summary>
+    public List<RespawnGap> Gaps { get; set; } = new();
+
+    public double? LearnedSeconds => Gaps.Count > 0 ? Gaps.Min(g => g.Seconds) : null;
+
+    public bool HasGaps => Gaps.Count > 0;
+
+    /// <summary>The evidence list: every gap is an upper bound ("≤"), and the
+    /// minimum of them is the learned estimate.</summary>
+    public string GapsText => string.Join("\n", Gaps.Select(g =>
+        $"≤ {Services.DurationText.Compact(g.Seconds)}   ·   {g.When:d MMM HH:mm}"));
+
+    public void ClearGaps()
+    {
+        Gaps.Clear();
+        OnPropertyChanged(nameof(GapsText));
+        OnPropertyChanged(nameof(HasGaps));
+        OnPropertyChanged(nameof(Display));
+        OnPropertyChanged(nameof(SecondsText));
+    }
 
     // ---- the two alert notices (mirrors the trigger editor's model) ----
 
@@ -94,6 +127,8 @@ public sealed class RespawnViewModel : ViewModelBase
         Seconds = e.Seconds,
         Pattern = e.Pattern,
         Enabled = e.Enabled,
+        LearnOn = e.Learn,
+        Gaps = e.Gaps.Select(g => new RespawnGap { Seconds = g.Seconds, When = g.When }).ToList(),
         WarnOn = e.WarnEnabled,
         WarnSeconds = e.WarnSeconds,
         WarnMode = e.WarnMode,
@@ -112,6 +147,8 @@ public sealed class RespawnViewModel : ViewModelBase
         Seconds = Seconds,
         Pattern = Pattern.Trim(),
         Enabled = Enabled,
+        Learn = LearnOn,
+        Gaps = Gaps.Select(g => new RespawnGap { Seconds = g.Seconds, When = g.When }).ToList(),
         WarnEnabled = WarnOn,
         WarnSeconds = WarnSeconds,
         WarnMode = WarnMode,

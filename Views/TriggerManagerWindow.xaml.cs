@@ -309,7 +309,7 @@ public partial class TriggerManagerWindow : Window
         var vm = new RespawnViewModel
         {
             Name = "New respawn",
-            Seconds = 400,
+            Seconds = 0, // auto: the learner measures it from your kills
             Zone = _combat.CurrentZone, // where you are is the best guess
         };
         _respawns.Add(vm);
@@ -414,11 +414,16 @@ public partial class TriggerManagerWindow : Window
             return;
         }
 
-        var vm = new RespawnViewModel { Name = death.Name, Zone = death.Zone, Seconds = 400 };
+        var vm = new RespawnViewModel { Name = death.Name, Zone = death.Zone, Seconds = 0 };
         _respawns.Add(vm);
         RespawnList.SelectedItem = vm;
-        Status($"Added respawn for '{death.Name}' — set its respawn time and Save.");
+        Status($"Added respawn for '{death.Name}' — Save, and its time will be learned from your kills (or type one).");
     }
+
+    /// <summary>"Forget learned times" — clears the gap evidence; the next
+    /// kill cycle starts measuring fresh.</summary>
+    private void RespawnForgetGaps_Click(object sender, RoutedEventArgs e) =>
+        SelectedRespawn?.ClearGaps();
 
     private void RespawnDelete_Click(object sender, RoutedEventArgs e)
     {

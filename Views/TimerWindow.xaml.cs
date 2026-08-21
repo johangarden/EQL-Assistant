@@ -52,22 +52,43 @@ public partial class TimerWindow : Window
     /// <summary>Test hooks (gated self-test only).</summary>
     internal (string? Mode, double Remaining, bool Running) BigState => (_modeName, _remaining, _running);
     internal IReadOnlyList<string> SecondaryNames => _repops.Select(e => e.Name).ToList();
+    internal IReadOnlyList<(string Name, string State)> RowStates => _repops
+        .Select(e => (e.Name, RankOf(e) switch { 0 => "up", 2 => "due", 3 => "learning", _ => "countdown" }))
+        .ToList();
 
-    // Secondary named repops still running (the big watch shows the most recent).
+    // Named repops in the row list. The big pie shows the soonest LIVE
+    // countdown; every other state — due (estimate elapsed, nothing seen),
+    // UP (the log named it), learning (no estimate yet, counts up) — is a row.
     private sealed class RepopEntry
     {
         public required string Name;
+        /// <summary>The estimate at kill time; 0 = none — a learning row.</summary>
         public double Total;
-        public DateTime EndTime;
+        /// <summary>The death that started this cycle.</summary>
+        public DateTime StartTime;
+        public DateTime EndTime; // meaningful only when Total > 0
         public required SecondaryTimerViewModel Vm;
         /// <summary>The before-it-spawns notice already fired for this run.</summary>
         public bool Warned;
+        /// <summary>The spawn notice fired — estimate elapsed OR first sighting.</summary>
+        public bool SpawnFired;
+        /// <summary>Last log line naming this mob — the row reads UP.</summary>
+        public DateTime? SeenAt;
     }
-    private bool _bigWarned; // ibid., for the repop on the big pie
+    private bool _bigWarned;    // ibid., for the repop on the big pie
+    private DateTime _bigStart; // the death that started the big pie's cycle
     private readonly List<RepopEntry> _repops = new();
     private readonly ObservableCollection<SecondaryTimerViewModel> _secondaries = new();
 
+    // How long finished rows stay on the panel before tidying themselves: an
+    // UP row after its last sighting, a due row after the estimate elapsed, a
+    // learning row after the kill. The Manager entry always survives — the
+    // next death restarts any of them.
+    private const double UpLingerSec = 180, DueLingerSec = 900, LearnLingerSec = 3600;
+
     private static readonly Brush WarnRed = Freeze(Color.FromRgb(0xFF, 0x52, 0x52));
+    private static readonly Brush UpGreen = Freeze(Color.FromRgb(0x66, 0xBB, 0x6A));
+    private static readonly Brush LearnDim = Freeze(Color.FromRgb(0x8A, 0x99, 0xB0));
 
     public TimerWindow(ConfigService config, AlertService alerts,
         double initialSeconds, double opacity, Action<double>? onDurationSet)
@@ -144,57 +165,144 @@ public partial class TimerWindow : Window
     /// </summary>
     public void StartWith(double seconds, string? name = null)
     {
-        if (seconds <= 0) return;
-
         if (name is null)
         {
-            SetDuration(seconds, start: true);
+            if (seconds > 0) SetDuration(seconds, start: true);
             return;
         }
 
-        // Upsert: drop any old entry for this mob, keep the current big repop
-        // as a candidate too, then let the soonest of them claim the pie.
+        // Upsert: a fresh death replaces any old row for this mob (whatever
+        // state it was in), keeps the current big repop as a candidate, then
+        // the soonest countdown claims the pie. No estimate (seconds 0) =
+        // a learning row that counts UP until the log names the mob again.
         RemoveSecondary(name);
-        if (_modeName is not null && _running && _remaining > 0
-            && !string.Equals(_modeName, name, StringComparison.OrdinalIgnoreCase))
-            AddSecondary(_modeName, _total, _endTime, _bigWarned);
+        if (_modeName is not null
+            && string.Equals(_modeName, name, StringComparison.OrdinalIgnoreCase))
+        {
+            // Re-kill of the mob on the pie: its old cycle is over — without
+            // this, a learning re-kill would leave the stale countdown running.
+            SetMode(null);
+            _running = false;
+            _remaining = 0;
+        }
+        else if (_modeName is not null && _running && _remaining > 0)
+            DemoteBig(spawnFired: false, seenAt: null);
 
-        AddSecondary(name, seconds, DateTime.Now.AddSeconds(seconds));
+        var now = DateTime.Now;
+        AddRow(new RepopEntry
+        {
+            Name = name,
+            Total = seconds,
+            StartTime = now,
+            EndTime = now.AddSeconds(Math.Max(0, seconds)),
+            Vm = new SecondaryTimerViewModel(name),
+        });
         PromoteSoonest();
     }
 
-    /// <summary>Move the soonest-to-spawn repop out of the list and onto the big pie.</summary>
+    /// <summary>The log just NAMED this mob (RespawnLearner) — it is UP. Flip
+    /// its row green and fire the spawn notice NOW instead of when the guess
+    /// runs out. A sighting never moves any clock's base.</summary>
+    public void NotifySighted(string name)
+    {
+        var now = DateTime.Now;
+        if (_modeName is not null && _running
+            && string.Equals(_modeName, name, StringComparison.OrdinalIgnoreCase))
+        {
+            FireSpawnAlert(_modeName);
+            DemoteBig(spawnFired: true, seenAt: now);
+            SetMode(null);
+            _running = false;
+            _remaining = 0;
+            PromoteSoonest();
+            return;
+        }
+
+        var e = _repops.FirstOrDefault(x =>
+            string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (e is null) return;
+        e.SeenAt = now; // repeats refresh the UP linger, never re-alert
+        if (!e.SpawnFired)
+        {
+            e.SpawnFired = true;
+            FireSpawnAlert(e.Name);
+        }
+        SortSecondaries();
+        UpdateSecondaries();
+    }
+
+    /// <summary>Move the big pie's repop back into the row list — as a
+    /// countdown candidate, a due row, or an UP row (its fields say which).</summary>
+    private void DemoteBig(bool spawnFired, DateTime? seenAt)
+    {
+        if (_modeName is null) return;
+        AddRow(new RepopEntry
+        {
+            Name = _modeName,
+            Total = _total,
+            StartTime = _bigStart,
+            EndTime = _endTime,
+            Vm = new SecondaryTimerViewModel(_modeName),
+            Warned = _bigWarned,
+            SpawnFired = spawnFired,
+            SeenAt = seenAt,
+        });
+    }
+
+    /// <summary>Move the soonest still-counting repop onto the big pie. Due,
+    /// UP and learning rows never take the pie — they have nothing to count.</summary>
     private void PromoteSoonest()
     {
-        if (_repops.Count == 0) return;
-
-        var next = _repops.MinBy(e => e.EndTime)!;
+        var now = DateTime.Now;
+        var next = _repops
+            .Where(e => e.SeenAt is null && !e.SpawnFired && e.Total > 0 && e.EndTime > now)
+            .MinBy(e => e.EndTime);
+        if (next is null)
+        {
+            UpdateVisual();
+            return;
+        }
         _repops.Remove(next);
         _secondaries.Remove(next.Vm);
 
         SetMode(next.Name);
         _total = next.Total;
         _endTime = next.EndTime;
-        _remaining = Math.Max(0, (_endTime - DateTime.Now).TotalSeconds);
+        _bigStart = next.StartTime;
+        _remaining = Math.Max(0, (_endTime - now).TotalSeconds);
         _running = _remaining > 0;
         _bigWarned = next.Warned; // the warn state rides along, no double notice
         SortSecondaries();
         UpdateVisual();
     }
 
-    private void AddSecondary(string name, double total, DateTime endTime, bool warned = false)
+    private void AddRow(RepopEntry entry)
     {
-        RemoveSecondary(name);
-        var vm = new SecondaryTimerViewModel(name);
-        _repops.Add(new RepopEntry { Name = name, Total = total, EndTime = endTime, Vm = vm, Warned = warned });
-        _secondaries.Add(vm);
+        RemoveSecondary(entry.Name);
+        _repops.Add(entry);
+        _secondaries.Add(entry.Vm);
         SortSecondaries();
     }
 
-    /// <summary>Keep the secondary rows ordered by time left (soonest first).</summary>
+    /// <summary>Row order: UP first (go get it), then countdowns soonest-first,
+    /// then due (freshest first), then learning (newest kill first).</summary>
+    private static int RankOf(RepopEntry e) =>
+        e.SeenAt is not null ? 0 : e.Total <= 0 ? 3 : e.SpawnFired || e.EndTime <= DateTime.Now ? 2 : 1;
+
     private void SortSecondaries()
     {
-        _repops.Sort((a, b) => a.EndTime.CompareTo(b.EndTime));
+        _repops.Sort((a, b) =>
+        {
+            int ra = RankOf(a), rb = RankOf(b);
+            if (ra != rb) return ra.CompareTo(rb);
+            return ra switch
+            {
+                0 => Nullable.Compare(b.SeenAt, a.SeenAt),
+                2 => b.EndTime.CompareTo(a.EndTime),
+                3 => b.StartTime.CompareTo(a.StartTime),
+                _ => a.EndTime.CompareTo(b.EndTime),
+            };
+        });
         for (int i = 0; i < _repops.Count; i++)
         {
             int cur = _secondaries.IndexOf(_repops[i].Vm);
@@ -248,9 +356,12 @@ public partial class TimerWindow : Window
                 {
                     string cn = name;
                     double cs = seconds;
+                    // No estimate yet (auto mode, no gaps learned): nothing to
+                    // put on the pie — the next death starts its learning row.
                     var mi = new MenuItem
                     {
-                        Header = $"{name}  ({Format(seconds)})",
+                        Header = cs > 0 ? $"{name}  ({Format(seconds)})" : $"{name}  (learning)",
+                        IsEnabled = cs > 0,
                         IsChecked = string.Equals(name, _modeName, StringComparison.OrdinalIgnoreCase),
                     };
                     mi.Click += (_, _) => { SetMode(cn); SetDuration(cs, start: false); };
@@ -315,11 +426,16 @@ public partial class TimerWindow : Window
     private void PromptAddRespawn(string name, string zone)
     {
         string? input = PromptDialog.Show(this, "Add respawn",
-            $"Respawn time for '{name}' — m:ss, 900s, 15m or 6m40s:");
+            $"Respawn time for '{name}' — 15m, 6m40s… or leave empty to learn it from your kills:");
         if (input is null) return;
-        double? sec = ParseDuration(input);
-        if (sec is not > 0) return;
-        AddRespawnRequested?.Invoke(name, zone, sec.Value);
+        double sec = 0; // empty / "auto" = the learner's job
+        string t = input.Trim();
+        if (t.Length > 0 && !t.Equals("auto", StringComparison.OrdinalIgnoreCase))
+        {
+            if (ParseDuration(t) is not { } s || s <= 0) return;
+            sec = s;
+        }
+        AddRespawnRequested?.Invoke(name, zone, sec);
     }
 
     private static string Ago(DateTime when)
@@ -390,8 +506,15 @@ public partial class TimerWindow : Window
                 _remaining = 0;
                 _running = false;
                 FireSpawnAlert(_modeName);
-                // A named repop just spawned — the next-soonest takes the pie.
-                if (_modeName is not null) PromoteSoonest();
+                if (_modeName is not null)
+                {
+                    // The estimate elapsed — that's all it means ("due", not
+                    // "it's up"): the mob keeps a due row until the log names
+                    // it or the next death restarts its cycle.
+                    DemoteBig(spawnFired: true, seenAt: null);
+                    SetMode(null);
+                    PromoteSoonest();
+                }
             }
         }
         UpdateVisual();
@@ -415,17 +538,49 @@ public partial class TimerWindow : Window
     private void UpdateSecondaries()
     {
         var now = DateTime.Now;
+        bool resort = false;
         for (int i = _repops.Count - 1; i >= 0; i--)
         {
             var e = _repops[i];
-            double rem = (e.EndTime - now).TotalSeconds;
-            if (rem <= 0)
+
+            // UP: the log named it. Reads green until sightings stop coming.
+            if (e.SeenAt is { } seen)
             {
-                FireSpawnAlert(e.Name);
-                _secondaries.Remove(e.Vm);
-                _repops.RemoveAt(i);
+                double ago = (now - seen).TotalSeconds;
+                if (ago > UpLingerSec) { DropRow(i); continue; }
+                e.Vm.RemainingText = $"UP {Format(ago)}";
+                e.Vm.Foreground = UpGreen;
                 continue;
             }
+
+            // Learning: no estimate yet — count UP; this span becomes sample #1.
+            if (e.Total <= 0)
+            {
+                double up = (now - e.StartTime).TotalSeconds;
+                if (up > LearnLingerSec) { DropRow(i); continue; }
+                e.Vm.RemainingText = $"{Format(up)}↑";
+                e.Vm.Foreground = LearnDim;
+                continue;
+            }
+
+            double rem = (e.EndTime - now).TotalSeconds;
+
+            // Due: the estimate elapsed and nothing has been seen. The row
+            // stays (counting how overdue the GUESS is) instead of vanishing.
+            if (rem <= 0)
+            {
+                if (!e.SpawnFired)
+                {
+                    e.SpawnFired = true;
+                    FireSpawnAlert(e.Name);
+                    resort = true;
+                }
+                if (-rem > DueLingerSec) { DropRow(i); continue; }
+                e.Vm.RemainingText = $"due {Format(-rem)}";
+                e.Vm.Foreground = WarnRed;
+                continue;
+            }
+
             if (!e.Warned && RespawnLookup?.Invoke(e.Name) is { WarnEnabled: true } we
                 && rem <= we.WarnSeconds)
             {
@@ -435,6 +590,13 @@ public partial class TimerWindow : Window
             e.Vm.RemainingText = Format(rem);
             e.Vm.Foreground = new SolidColorBrush(ColorFor(e.Total > 0 ? rem / e.Total : 0));
         }
+        if (resort) SortSecondaries();
+    }
+
+    private void DropRow(int index)
+    {
+        _secondaries.Remove(_repops[index].Vm);
+        _repops.RemoveAt(index);
     }
 
     private void UpdateVisual()
