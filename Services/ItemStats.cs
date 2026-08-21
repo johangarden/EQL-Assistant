@@ -38,6 +38,8 @@ public sealed class ItemStats
         [JsonPropertyName("extras")] public string Extras { get; set; } = "";
         /// <summary>The wiki icon id — data\item-icons\item-{Icon}.png.</summary>
         [JsonPropertyName("icon")] public int? Icon { get; set; }
+        /// <summary>[["mob","zone"], …] — the wiki's own dropsFrom table.</summary>
+        [JsonPropertyName("drops")] public List<string[]> Drops { get; set; } = new();
     }
 
     private sealed class FileShape

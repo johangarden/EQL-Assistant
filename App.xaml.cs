@@ -1459,6 +1459,9 @@ public partial class App : Application
                 // The wiki's "HP Regen: 2 Mana Regen: 2 End Regen: 2" line once
                 // shattered in the scrape (stray "HP", a "2 End" value) — the
                 // build repairs it from the raw block: 2/2/2 base, 7/7/7 at +5.
+                Check("item stats: droppers ride the record (mob + zone)",
+                    istats.Lookup("Wicked Sallet +5") is { } wsd
+                    && wsd.Drops.Any(d => d is ["Lord Elgnub", "Blackburrow"]));
                 Check("item stats: the three-regen line is whole (7/7/7 at +5)",
                     istats.Lookup("Talisman of Kejaar Kerrath +5") is { } tkk
                     && tkk.Stats.Any(p => p is ["HP Regen", "2"])

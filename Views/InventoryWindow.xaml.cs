@@ -26,7 +26,11 @@ public partial class InventoryWindow : Window
         Visibility RuleVis = Visibility.Collapsed,
         ImageSource? Icon = null, Visibility IconVis = Visibility.Collapsed);
     private sealed record PillVm(string Label, Brush Bg, Brush Border, Brush Fg, string Tip);
-    private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight, Thickness Margin = default);
+    private sealed record DetailVm(string Text, Brush Fg, FontWeight Weight, Thickness Margin = default,
+        string? Url = null)
+    {
+        public bool IsLink => Url is not null;
+    }
 
     private static readonly Thickness DetailTab = new(16, 1, 0, 0);      // sub-lines tab in
     private static readonly Thickness DetailHeadPad = new(0, 4, 0, 0);   // headers breathe
@@ -36,7 +40,8 @@ public partial class InventoryWindow : Window
         Visibility HeaderVis = Visibility.Collapsed, Visibility RowVis = Visibility.Visible,
         bool IsFoldToggle = false, string? StatusTip = null, Brush? RowBg = null,
         string Chevron = "▸", List<DetailVm>? Details = null,
-        Visibility DetailsVis = Visibility.Collapsed);
+        Visibility DetailsVis = Visibility.Collapsed,
+        string VerdictText = "");
 
     /// <summary>A section header row ("Spells", "Songs & instruments").</summary>
     private static FocusVm FocusHeader(string title, bool foldToggle = false) => new(title, "", null,
@@ -621,31 +626,28 @@ public partial class InventoryWindow : Window
             || a.Family.Tiers.Any(t => t.Effect.Contains(q, StringComparison.OrdinalIgnoreCase)
                 || t.Items.Any(i => i.Name.Contains(q, StringComparison.OrdinalIgnoreCase)));
 
-        // Within a section: what you WEAR first, then what you own in
-        // storage, the gaps last — alphabetical inside each bucket.
-        static int OwnBucket(FocusEffects.AuditRow a) =>
-            a.WornTier > 0 ? 0 : a.BestTier > 0 ? 1 : 2;
+        // Grouped by PLACE, the character sheet's language: what's on your
+        // body, what's owned but stored, what's missing — alpha inside.
         List<FocusEffects.AuditRow> Section(Func<FocusEffects.AuditRow, bool> pick) => _audit
             .Where(a => pick(a) && Match(a))
-            .OrderBy(OwnBucket)
-            .ThenBy(a => a.Family.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(a => a.Family.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var spells = Section(a => a.Family.Group is not ("song" or "summoned"));
-        var songs = Section(a => a.Family.Group == "song");
+        var worn = Section(a => a.Family.Group != "summoned" && a.WornTier > 0);
+        var stored = Section(a => a.Family.Group != "summoned" && a.WornTier == 0 && a.BestTier > 0);
+        var missing = Section(a => a.Family.Group != "summoned" && a.BestTier == 0);
         var summoned = Section(a => a.Family.Group == "summoned");
 
         var shown = new List<FocusVm>();
-        if (spells.Count > 0)
+        void Group(string title, List<FocusEffects.AuditRow> rows)
         {
-            shown.Add(FocusHeader("Spells"));
-            shown.AddRange(spells.Select(MakeFocusVm));
+            if (rows.Count == 0) return;
+            shown.Add(FocusHeader(title));
+            shown.AddRange(rows.Select(MakeFocusVm));
         }
-        if (songs.Count > 0)
-        {
-            shown.Add(FocusHeader("Songs & instruments"));
-            shown.AddRange(songs.Select(MakeFocusVm));
-        }
+        Group("Worn", worn);
+        Group("Stored", stored);
+        Group("Missing", missing);
         if (summoned.Count > 0)
         {
             // Folded by default — these are caster-conjured temporaries, not
@@ -656,7 +658,7 @@ public partial class InventoryWindow : Window
             if (open) shown.AddRange(summoned.Select(MakeFocusVm));
         }
         FocusList.ItemsSource = shown;
-        CountText.Text = $"{spells.Count + songs.Count + summoned.Count} of {_audit.Count} effects";
+        CountText.Text = $"{worn.Count + stored.Count + missing.Count + summoned.Count} of {_audit.Count} effects";
         EmptyTabText.Visibility = Visibility.Collapsed;
     }
 
@@ -670,6 +672,18 @@ public partial class InventoryWindow : Window
 
     private void FocusList_Click(object sender, MouseButtonEventArgs e)
     {
+        // A dropper line opens its wiki page — and must NOT toggle the fold.
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is DetailVm { Url: { } url })
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch { /* no browser is not our problem to solve */ }
+            e.Handled = true;
+            return;
+        }
         if ((e.OriginalSource as FrameworkElement)?.DataContext is not FocusVm vm) return;
         if (vm.IsFoldToggle)
         {
@@ -758,11 +772,9 @@ public partial class InventoryWindow : Window
         }
 
         bool wornIsBest = a.BestTier > 0 && a.WornTier == a.BestTier;
-        string best = a.BestTier == 0
-            ? "none owned"
-            : a.WornTier > 0 && !wornIsBest
-                ? $"{a.BestItem} (wearing {a.WornTier})"
-                : a.BestItem;
+        // The verdict carries the "wearing II → III out there" story now, so
+        // the item cell shows just the best owned carrier.
+        string best = a.BestTier == 0 ? "none owned" : a.BestItem;
         string statusTip = a.Status switch
         {
             2 => "Wearing the best.",
@@ -776,12 +788,15 @@ public partial class InventoryWindow : Window
             place, wornIsBest ? StatusFg[2] : StatusFg[1],
             a.BestTier == 0 ? Visibility.Collapsed : Visibility.Visible,
             StatusTip: statusTip,
-            // The wash follows the sort bands — wearing / stored / missing —
-            // so the background and the row order always agree.
+            // The wash follows the section bands — worn / stored / missing —
+            // so the background and the grouping always agree.
             RowBg: RowWash[a.WornTier > 0 ? 2 : a.BestTier > 0 ? 1 : 0],
             Chevron: open ? "▾" : "▸",
             Details: open ? MakeDetails(a) : null,
-            DetailsVis: open ? Visibility.Visible : Visibility.Collapsed);
+            DetailsVis: open ? Visibility.Visible : Visibility.Collapsed,
+            // Summoned charms skip the verdict — "huntable" would lie about
+            // a conjured temporary.
+            VerdictText: a.Family.Group == "summoned" ? "" : FocusEffects.VerdictText(a));
     }
 
     private static readonly Brush DetailHeaderFg = Freeze("#9FB4D0");
@@ -813,10 +828,35 @@ public partial class InventoryWindow : Window
                 if (owned) parts.Add("you: " + OwnLabel(lane!));
                 Brush fg = !owned ? DetailDimFg : lane == "worn" ? StatusFg[2] : StatusFg[1];
                 details.Add(new DetailVm(string.Join("  ·  ", parts), fg, FontWeights.Normal, DetailTab));
+
+                // Who drops it, and where — from the wiki's own table; the
+                // mob line links to its wiki page.
+                var drops = _itemStats.Lookup(item.Name)?.Drops;
+                if (drops is not { Count: > 0 }) continue;
+                foreach (var d in drops.Take(3))
+                {
+                    string mob = d.Length > 0 ? d[0] : "";
+                    string zone = d.Length > 1 ? d[1] : "";
+                    if (mob.Length == 0) continue;
+                    details.Add(new DetailVm(
+                        $"↳  {mob}{(zone.Length > 0 ? $" — {zone}" : "")}",
+                        DetailDimFg, FontWeights.Normal, DetailDropTab,
+                        Url: WikiUrl(mob)));
+                }
+                if (drops.Count > 3)
+                    details.Add(new DetailVm($"↳  …and {drops.Count - 3} more droppers (wiki page has the full list)",
+                        DetailDimFg, FontWeights.Normal, DetailDropTab, Url: WikiUrl(item.Name)));
             }
         }
         return details;
     }
+
+    private static readonly Thickness DetailDropTab = new(30, 1, 0, 0);
+
+    /// <summary>The eqlwiki page for a mob or item name (MediaWiki spelling:
+    /// spaces become underscores).</summary>
+    private static string WikiUrl(string name) =>
+        "https://eqlwiki.com/wiki/" + Uri.EscapeDataString(name.Trim().Replace(' ', '_'));
 
     /// <summary>Front the audit board (also the selftest hook — a collapsed
     /// list renders nothing and would hide a binding typo).</summary>

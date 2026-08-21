@@ -183,6 +183,11 @@
                                     <TextBlock Text="{Binding Kind}" Foreground="{StaticResource Brush.TextHint}"
                                                FontSize="10" TextTrimming="CharacterEllipsis"/>
                                 </StackPanel>
+                                <!-- The audit's verdict, rightmost — the sheet's language:
+                                     "II — worn best", "II worn → III huntable", "III stored". -->
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding VerdictText}"
+                                           Foreground="{Binding StatusBrush}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
                                 <!-- Place badge: green WORN when the best owned tier is on
                                      your body, amber IN BANK / STORAGE / … when it isn't. -->
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding PlaceText}"
@@ -213,14 +218,26 @@
                                 </ItemsControl>
                             </DockPanel>
                             <!-- The fold-out: tiers, effect text, every known
-                                 carrier with slot/classes and your copy's place. -->
+                                 carrier with slot/classes, your copy's place,
+                                 and the droppers (underlined = wiki link). -->
                             <ItemsControl ItemsSource="{Binding Details}" Visibility="{Binding DetailsVis}"
                                           Margin="42,5,0,3">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
                                                    FontWeight="{Binding Weight}" FontSize="11"
-                                                   TextWrapping="Wrap" Margin="{Binding Margin}"/>
+                                                   TextWrapping="Wrap" Margin="{Binding Margin}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLink}" Value="True">
+                                                            <Setter Property="TextDecorations" Value="Underline"/>
+                                                            <Setter Property="Cursor" Value="Hand"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

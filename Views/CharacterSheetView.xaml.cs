@@ -1186,17 +1186,6 @@ public partial class CharacterSheetView : UserControl
         Margin = new Thickness(0, 9, 0, 4),
     };
 
-    /// <summary>"Improved Damage" at tier 3 → "III" (the ladder's own effect
-    /// spelling, family prefix stripped); an unnamed tier reads "T3".</summary>
-    private static string RomanOf(FocusEffects.Family fam, int tierNum)
-    {
-        var tier = fam.Tiers.FirstOrDefault(t => t.TierNum == tierNum);
-        if (tier is null) return "T" + tierNum;
-        return tier.Effect.StartsWith(fam.Name + " ", StringComparison.Ordinal)
-            ? tier.Effect[(fam.Name.Length + 1)..]
-            : tier.Effect;
-    }
-
     /// <summary>The compact focus audit, appended to the landing pane.</summary>
     private void AddFocusSection(StackPanel root)
     {
@@ -1208,21 +1197,6 @@ public partial class CharacterSheetView : UserControl
         root.Children.Add(SectHeader(
             $"Focus effects — {green} worn best · {upg} upgradable · {missing} missing", strong: true));
 
-        // A row's verdict: green "worn best", or amber with WHERE the
-        // upgrade lives — the stored tier, the huntable tier, or both.
-        string Verdict(FocusEffects.AuditRow a)
-        {
-            if (a.Status == 2) return $"{RomanOf(a.Family, a.WornTier)} — worn best";
-            if (a.BestTier == 0) return "none owned";
-            bool stored = a.BestTier > a.WornTier;
-            bool huntable = a.HuntableMax > a.BestTier;
-            var parts = new List<string>();
-            if (stored) parts.Add($"{RomanOf(a.Family, a.BestTier)} stored");
-            if (huntable) parts.Add($"{RomanOf(a.Family, a.HuntableMax)} huntable");
-            string prefix = a.WornTier > 0 ? $"{RomanOf(a.Family, a.WornTier)} worn → " : "";
-            return prefix + string.Join(" · ", parts);
-        }
-
         // Grouped by PLACE, not verdict: what's on your body (best or not,
         // the color still judges), what's owned but stored, what's missing.
         void Section(string title, Func<FocusEffects.AuditRow, bool> pick)
@@ -1233,7 +1207,7 @@ public partial class CharacterSheetView : UserControl
             foreach (var a in inGroup)
             {
                 int status = a.Status;
-                string verdict = Verdict(a);
+                string verdict = FocusEffects.VerdictText(a);
                 var row = new DockPanel { Margin = new Thickness(0, 0, 0, 1) };
                 var dot = new System.Windows.Shapes.Ellipse
                 {

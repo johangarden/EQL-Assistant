@@ -59,6 +59,33 @@ public sealed class FocusEffects
     /// something — worn lower, or best sitting in storage (orange),
     /// 0 = nothing (red). TierLanes carries WHERE each owned tier sits
     /// (null = not owned).</summary>
+    /// <summary>The ladder's own spelling of a tier — "III" for spells,
+    /// a plain "14" for instruments; "T3" when the tier has no name.</summary>
+    public static string TierShort(Family fam, int tierNum)
+    {
+        var tier = fam.Tiers.FirstOrDefault(t => t.TierNum == tierNum);
+        if (tier is null) return "T" + tierNum;
+        return tier.Effect.StartsWith(fam.Name + " ", StringComparison.Ordinal)
+            ? tier.Effect[(fam.Name.Length + 1)..]
+            : tier.Effect;
+    }
+
+    /// <summary>The audit's one-line verdict, shared by the character sheet's
+    /// compact list and the Inventory focus board: green "II — worn best",
+    /// amber "II worn → III huntable" / "III stored", red "none owned".</summary>
+    public static string VerdictText(AuditRow a)
+    {
+        if (a.Status == 2) return $"{TierShort(a.Family, a.WornTier)} — worn best";
+        if (a.BestTier == 0) return "none owned";
+        bool stored = a.BestTier > a.WornTier;
+        bool huntable = a.HuntableMax > a.BestTier;
+        var parts = new List<string>();
+        if (stored) parts.Add($"{TierShort(a.Family, a.BestTier)} stored");
+        if (huntable) parts.Add($"{TierShort(a.Family, a.HuntableMax)} huntable");
+        string prefix = a.WornTier > 0 ? $"{TierShort(a.Family, a.WornTier)} worn → " : "";
+        return prefix + string.Join(" · ", parts);
+    }
+
     public sealed record AuditRow(Family Family, int BestTier, string BestEffect,
         string BestItem, string BestPlace, IReadOnlyList<string?> TierLanes, int WornTier)
     {
@@ -178,6 +205,7 @@ public sealed class FocusEffects
             "storage" or "keyring" => 2,
             _ => 3,
         };
+        // (see also TierShort/VerdictText below — the shared audit language)
         // In-game vocabulary ("keyring" is the dump's legacy word): the
         // Augmentation table is the Exaltations collection, Equipment is
         // Storage, and the hoard names itself so storage can't be misread.
