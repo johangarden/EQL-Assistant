@@ -197,6 +197,20 @@ public partial class App : Application
             invWin.UpdateLayout();
             invWin.Close();
 
+            // The Sky helper panel renders its line list (temp progress file).
+            string helperProg = Path.Combine(Path.GetTempPath(), "eql_test_helper_prog.json");
+            try { File.Delete(helperProg); } catch { /* fresh */ }
+            var helperSky = new SkyQuests(new ConfigService(), new LootTracker(new ConfigService()), helperProg);
+            helperSky.SetTracked(helperSky.Quests[0], true);
+            var helperWin = new Views.SkyHelperWindow(
+                new SkyHelper(helperSky), helperSky, new ConfigService(), 1.0);
+            helperWin.Show();
+            helperWin.UpdateLayout();
+            if (helperWin.LineTexts.Count == 0)
+                throw new Exception("Sky helper panel rendered no lines for a tracked quest");
+            helperWin.Close();
+            try { File.Delete(helperProg); } catch { /* temp */ }
+
             // The Sheet tab renders the doll + detail pane from a real-format
             // dump (worn item with a socket) inside the same window.
             File.WriteAllText(Path.Combine(invDir, "Sheetchar_paineel-Inventory.txt"),
@@ -1426,6 +1440,52 @@ public partial class App : Application
                 Check("armor sets: pieces-unknown pages load as note-only sets",
                     asets.Sets.FirstOrDefault(s => s.Name == "Righteous Armor")
                         is { Pieces.Count: 0 } ra && ra.Note.Length > 0);
+
+                // ---- Sky quest helper: full dropper names + sighting matcher.
+                string skyProg = Path.Combine(Path.GetTempPath(),
+                    $"eql_test_skyprog_{Guid.NewGuid():N}.json");
+                var skyCfg = new ConfigService();
+                var skyLoot = new LootTracker(skyCfg);
+                var sq = new SkyQuests(skyCfg, skyLoot, skyProg);
+                var voice = sq.Quests.First(q => q.Name == "Bard Test of Voice");
+                Check("sky helper: the library carries FULL dropper names",
+                    voice.Items.First(i => i.Name == "Light Woolen Mantle").Mobs
+                        .Contains("Keeper of Souls")
+                    && voice.Items.First(i => i.Name.StartsWith("Wind Rune")).Mobs.Count == 0
+                    && sq.Quests.All(q => q.Items.Count > 0));
+
+                var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };
+                var sighted = new List<string>();
+                helper.Sighted += m => sighted.Add(m);
+                helper.ProcessLine("[x] Keeper of Souls glowers at you dubiously -- it appears to be quite formidable. (Lvl: 60)");
+                Check("sky helper: a /con line sights the dropper",
+                    sighted is ["Keeper of Souls"]
+                    && helper.ItemsFor("Keeper of Souls")
+                        is [{ Item: "Light Woolen Mantle", Class: "BRD", Held: 0, Need: 1 }]);
+                helper.ProcessLine("[x] You slash Gorgalosk for 50 points of damage.");
+                Check("sky helper: a damage line sights the dropper",
+                    sighted.Count == 2 && sighted[1] == "Gorgalosk");
+                helper.ProcessLine("[x] You have slain a bixie drone!");
+                Check("sky helper: an unrelated mob sights nothing", sighted.Count == 2);
+                sq.SetCompleted(voice, true);
+                sighted.Clear();
+                helper.ProcessLine("[x] Keeper of Souls hits YOU for 120 points of damage.");
+                Check("sky helper: a completed quest's drop is silent by default",
+                    sighted.Count == 0 && helper.ItemsFor("Keeper of Souls").Count == 0);
+                helper.ShowCompleted = true;
+                Check("sky helper: ...and speaks when configured to",
+                    helper.ItemsFor("Keeper of Souls") is [{ QuestDone: true }]);
+
+                // Tracking: ★ persists, completion un-tracks.
+                sq.SetCompleted(voice, false);
+                sq.SetTracked(voice, true);
+                var sq2 = new SkyQuests(skyCfg, skyLoot, skyProg);
+                Check("sky helper: a tracked hunt survives a relaunch",
+                    sq2.IsTracked(sq2.Quests.First(q => q.Name == "Bard Test of Voice")));
+                sq.SetCompleted(voice, true);
+                Check("sky helper: a finished hunt un-tracks itself",
+                    !sq.IsTracked(voice) && sq.TrackedQuests().Count == 0);
+                try { File.Delete(skyProg); } catch { /* temp */ }
 
                 // A malformed row is counted, never thrown on; an unknown-shaped
                 // section is carried as uninterpreted rows.

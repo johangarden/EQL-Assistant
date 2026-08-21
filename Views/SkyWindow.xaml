@@ -92,6 +92,14 @@
                                               Checked="Done_Checked" Unchecked="Done_Unchecked"
                                               VerticalAlignment="Center" Margin="0,0,8,0"
                                               ToolTip="Mark complete (auto-checks when the reward appears in the log)"/>
+                                    <!-- ★ = tracked: the quest stands in the helper panel's
+                                         Hunting list until completed (which un-tracks it). -->
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding TrackText}"
+                                               Foreground="{Binding TrackFg}" FontSize="14" Cursor="Hand"
+                                               VerticalAlignment="Center" Margin="10,0,0,0"
+                                               Visibility="{Binding TrackVisibility}"
+                                               ToolTip="Track this hunt — its missing items and their droppers stand on the Sky helper panel"
+                                               MouseLeftButtonUp="Track_Click"/>
                                     <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressText}"
                                                Foreground="{Binding ProgressBrush}" FontWeight="Bold"
                                                FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0"/>

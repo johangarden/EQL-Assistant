@@ -30,6 +30,8 @@ public partial class MainWindow : Window
     private MeterWindow? _meter;
     private EnemyDotsWindow? _enemyDotsWin;
     private ConditionsWindow? _conditionsWin;
+    private SkyHelperWindow? _skyHelperWin;
+    private SkyHelper _skyHelper = null!;
     private SessionStatsWindow? _sessionWin;
     private RemindersWindow? _remindersWin;
     private ConditionWatcher _conditions = null!;
@@ -104,6 +106,12 @@ public partial class MainWindow : Window
         _loot.Added += e => _raids.AttributeLoot(e);   // pin drops to raid kills
         _raids.BackfillLoot(_loot.Entries);            // one-time: history -> past kills
         _skyQuests = new SkyQuests(_configService, _loot);
+        _skyHelper = new SkyHelper(_skyQuests)
+        {
+            // Lazy: a late /who updates the filter with no re-wiring.
+            ClassesProvider = () => (_session?.WhoClasses ?? "")
+                .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+        };
         _skyQuests.QuestCompleted += q =>
         {
             if (!_suppressSct) // replay/reparse re-completions shouldn't flash-spam
@@ -757,6 +765,7 @@ public partial class MainWindow : Window
             _engine.TargetCells, defaultLeft: 420, defaultTop: 420);
         RebuildEnemyDotsWindow();
         RebuildConditionsWindow();
+        RebuildSkyHelperWindow();
         RebuildSessionStatsWindow();
         RebuildRemindersWindow();
         UpdateMatrixVisibility();
@@ -823,6 +832,33 @@ public partial class MainWindow : Window
         _configService.SaveSettings(_config);
         RebuildConditionsWindow();
         _vm.Flash(_config.Overlay.ConditionsVisible ? "Condition badges shown." : "Condition badges hidden.");
+    }
+
+    private void RebuildSkyHelperWindow()
+    {
+        if (_skyHelperWin is not null) { try { _skyHelperWin.Close(); } catch { /* ignore */ } _skyHelperWin = null; }
+        if (!_config.Overlay.SkyHelperVisible) return;
+        _skyHelper.ShowCompleted = _config.Overlay.SkyHelperShowCompleted;
+        _skyHelperWin = new SkyHelperWindow(_skyHelper, _skyQuests, _configService, _config.Overlay.Opacity)
+        {
+            OpenSkyRequested = OpenSkyQuests,
+            ShowCompletedChanged = on =>
+            {
+                _config.Overlay.SkyHelperShowCompleted = on;
+                _configService.SaveSettings(_config);
+            },
+        };
+        _skyHelperWin.Show();
+        _skyHelperWin.SetLocked(_vm.Locked);
+        _skyHelperWin.SetHidden(_hidden);
+    }
+
+    private void ToggleSkyHelper()
+    {
+        _config.Overlay.SkyHelperVisible = !_config.Overlay.SkyHelperVisible;
+        _configService.SaveSettings(_config);
+        RebuildSkyHelperWindow();
+        _vm.Flash(_config.Overlay.SkyHelperVisible ? "Sky quest helper on." : "Sky quest helper off.");
     }
 
     private void RebuildSessionStatsWindow()
@@ -922,6 +958,7 @@ public partial class MainWindow : Window
                 _durations.ProcessLine(line);
                 _conditions.ProcessLine(line); // live CC state — not fed on catch-up
                 _respawnLearner.ProcessLine(line); // live-only too: stale lines would mint stale sightings
+                _skyHelper.ProcessLine(line);      // ibid. — quest-dropper sightings
                 _session.ProcessLine(line);    // leveling pace (rebuilt by catch-up)
                 if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
                 _logBus.Publish(line);
@@ -1030,6 +1067,7 @@ public partial class MainWindow : Window
         _targetMatrix?.SetLocked(_vm.Locked);
         _enemyDotsWin?.SetLocked(_vm.Locked);
         _conditionsWin?.SetLocked(_vm.Locked);
+        _skyHelperWin?.SetLocked(_vm.Locked);
         _sessionWin?.SetLocked(_vm.Locked);
         _remindersWin?.SetLocked(_vm.Locked);
         _flash?.SetLocked(_vm.Locked);
@@ -1059,6 +1097,7 @@ public partial class MainWindow : Window
         _hidden = !_hidden;
         _enemyDotsWin?.SetHidden(_hidden);
         _conditionsWin?.SetHidden(_hidden);
+        _skyHelperWin?.SetHidden(_hidden);
         _sessionWin?.SetHidden(_hidden);
         _remindersWin?.SetHidden(_hidden);
         UpdateBarsVisibility();
@@ -1091,6 +1130,7 @@ public partial class MainWindow : Window
             _targetMatrix?.SetLocked(false);
             _enemyDotsWin?.SetLocked(false);
             _conditionsWin?.SetLocked(false);
+            _skyHelperWin?.SetLocked(false);
             _sessionWin?.SetLocked(false);
             _remindersWin?.SetLocked(false);
             _flash?.SetLocked(false);
@@ -1103,6 +1143,7 @@ public partial class MainWindow : Window
         _targetMatrix?.ResetPosition();
         _enemyDotsWin?.ResetPosition();
         _conditionsWin?.ResetPosition();
+        _skyHelperWin?.ResetPosition();
         _sessionWin?.ResetPosition();
         _remindersWin?.ResetPosition();
         _timer?.ResetPosition();
@@ -1418,6 +1459,7 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("Rebuff reminders", ToggleReminders, "Bars & matrices", () => _config.Overlay.RemindersVisible));
         panels.Items.Add(BurgerPanelRow("Enemy DoTs", ToggleEnemyDots, "Bars & matrices", () => _config.Overlay.EnemyDotsVisible));
         panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, null, () => _config.Overlay.ConditionsVisible));
+        panels.Items.Add(BurgerPanelRow("Sky quest helper", ToggleSkyHelper, null, () => _config.Overlay.SkyHelperVisible));
         panels.Items.Add(BurgerPanelRow("Session stats (XP/AA/motes)", ToggleSessionStats, null, () => _config.Overlay.SessionStatsVisible));
         panels.Items.Add(BurgerPanelRow("Repop timer", ToggleTimer, "Repop timer", () => !_timerHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs", () => !_meterHidden));
@@ -1848,6 +1890,7 @@ public partial class MainWindow : Window
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
         try { _enemyDotsWin?.Close(); } catch { /* ignore */ }
         try { _conditionsWin?.Close(); } catch { /* ignore */ }
+        try { _skyHelperWin?.Close(); } catch { /* ignore */ }
         try { _sessionWin?.Close(); } catch { /* ignore */ }
         try { _remindersWin?.Close(); } catch { /* ignore */ }
         try { _timer?.Close(); } catch { /* ignore */ }

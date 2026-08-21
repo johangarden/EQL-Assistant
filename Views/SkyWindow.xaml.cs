@@ -58,9 +58,20 @@ public partial class SkyWindow : Window
 
     public sealed record QuestVm(SkyQuests.SkyQuest Quest, string Title, string Subtitle,
         string Reward, string RewardStats, string Slot, string ProgressText, Brush ProgressBrush,
-        bool Done, double CardOpacity, List<ChipVm> Chips)
+        bool Done, double CardOpacity, List<ChipVm> Chips, bool Tracked)
     {
         public Visibility SlotVisibility => Slot.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public string TrackText => Tracked ? "★" : "☆";
+        public Brush TrackFg => Tracked ? TrackOnFg : NeedFg;
+        public Visibility TrackVisibility => Done ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private static readonly Brush TrackOnFg = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
+
+    private void Track_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is QuestVm vm)
+            _sky.SetTracked(vm.Quest, !vm.Tracked);
     }
 
     public SkyWindow(SkyQuests sky)
@@ -215,7 +226,7 @@ public partial class SkyWindow : Window
             q.Reward, q.RewardStats, q.Slot,
             done ? "✓ done" : $"{have}/{need}",
             done ? DoneFg : OpenFg,
-            done, done ? 0.55 : 1.0, chips);
+            done, done ? 0.55 : 1.0, chips, _sky.IsTracked(q));
     }
 
     private static Brush Freeze(Color c)

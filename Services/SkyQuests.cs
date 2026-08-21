@@ -18,10 +18,15 @@ public sealed class SkyQuests
     public sealed class SkyItem
     {
         public string Name { get; set; } = "";
+        /// <summary>Display shorthand from the wiki table ("Gorga", "KoS").</summary>
         public string Who { get; set; } = "";
         public string Where { get; set; } = "";
         public int Count { get; set; } = 1;
         public string? Stats { get; set; }
+        /// <summary>FULL dropper names as the log prints them ("Keeper of
+        /// Souls") — the sighting matcher's food. Empty = wind rune (any Sky
+        /// mob) or an island-only wiki entry: nothing to match a line against.</summary>
+        public List<string> Mobs { get; set; } = new();
     }
 
     public sealed class SkyQuest
@@ -53,11 +58,13 @@ public sealed class SkyQuests
     {
         public Dictionary<string, int> Counts { get; set; } = new();
         public List<string> Completed { get; set; } = new();
+        public List<string> Tracked { get; set; } = new();
     }
 
     private readonly string _progressPath;
     private readonly Dictionary<string, int> _counts = new();          // ItemKey -> held
     private readonly HashSet<string> _completed = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _tracked = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _questItemKeys = new();           // fast loot filter
     private readonly List<SkyQuest> _quests = new();
 
@@ -135,6 +142,7 @@ public sealed class SkyQuests
             if (!body.Contains(q.Reward, StringComparison.OrdinalIgnoreCase)) continue;
 
             _completed.Add(q.Key);
+            _tracked.Remove(q.Key); // a finished hunt un-tracks itself
             SaveProgress();
             Log.Info($"Sky quest complete: {q.Name} -> {q.Reward}");
             QuestCompleted?.Invoke(q);
@@ -162,10 +170,31 @@ public sealed class SkyQuests
     public void SetCompleted(SkyQuest q, bool done)
     {
         bool changed = done ? _completed.Add(q.Key) : _completed.Remove(q.Key);
+        if (done) changed |= _tracked.Remove(q.Key); // a finished hunt un-tracks itself
         if (!changed) return;
         SaveProgress();
         Changed?.Invoke();
     }
+
+    // ---- tracking (the helper panel's Hunting list) --------------------------
+
+    public bool IsTracked(SkyQuest q) => _tracked.Contains(q.Key);
+
+    public int TrackedCount => _tracked.Count;
+
+    /// <summary>The ★ toggle: a tracked quest stands in the helper panel's
+    /// Hunting list until completed (which un-tracks it) or un-starred.</summary>
+    public void SetTracked(SkyQuest q, bool tracked)
+    {
+        bool changed = tracked ? _tracked.Add(q.Key) : _tracked.Remove(q.Key);
+        if (!changed) return;
+        SaveProgress();
+        Changed?.Invoke();
+    }
+
+    /// <summary>Tracked quests in data order.</summary>
+    public IReadOnlyList<SkyQuest> TrackedQuests() =>
+        _quests.Where(q => _tracked.Contains(q.Key)).ToList();
 
     /// <summary>Items still owed for a quest (0 when ready to turn in).</summary>
     public (int Have, int Need) Progress(SkyQuest q)
@@ -190,6 +219,7 @@ public sealed class SkyQuests
             if (doc is null) return;
             foreach (var (k, v) in doc.Counts) _counts[k] = v;
             foreach (var k in doc.Completed) _completed.Add(k);
+            foreach (var k in doc.Tracked) _tracked.Add(k);
         }
         catch { /* corrupt -> start empty */ }
     }
@@ -202,6 +232,7 @@ public sealed class SkyQuests
             {
                 Counts = new Dictionary<string, int>(_counts),
                 Completed = _completed.ToList(),
+                Tracked = _tracked.ToList(),
             }, JsonOpts));
         }
         catch { /* best-effort */ }
