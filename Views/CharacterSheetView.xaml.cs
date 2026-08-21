@@ -299,13 +299,15 @@ public partial class CharacterSheetView : UserControl
         {
             if (!byType.TryGetValue(label, out var child) || child.Empty) continue;
             // Each socket TYPE owns a color (SocketColors — shared with the
-            // Inventory window's pills).
+            // Inventory window's pills). A single letter wears a CIRCLE, not
+            // a pill — centered, same size every time.
             var fill = SocketColors.Fill(label);
             pills.Children.Add(new Border
             {
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(3, 0, 3, 1),
-                Margin = new Thickness(0, 0, 2, 0),
+                Width = 15,
+                Height = 15,
+                CornerRadius = new CornerRadius(7.5),
+                Margin = new Thickness(0, 0, 3, 0),
                 Background = fill,
                 BorderBrush = fill,
                 BorderThickness = new Thickness(1),
@@ -316,6 +318,8 @@ public partial class CharacterSheetView : UserControl
                     FontSize = 8.5,
                     FontWeight = FontWeights.Bold,
                     Foreground = SocketColors.Ink,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
                 },
             });
         }

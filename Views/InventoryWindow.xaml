@@ -115,11 +115,13 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border CornerRadius="8" Padding="6,0,6,1" Margin="0,0,4,0"
+                                            <!-- single-letter socket badge: a circle, letter centered -->
+                                            <Border Width="18" Height="18" CornerRadius="9" Margin="0,0,4,0"
                                                     Background="{Binding Bg}" BorderBrush="{Binding Border}"
                                                     BorderThickness="1" ToolTip="{Binding Tip}">
                                                 <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold"
-                                                           Foreground="{Binding Fg}"/>
+                                                           Foreground="{Binding Fg}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
