@@ -122,6 +122,7 @@ public partial class InventoryWindow : Window
         _session = session;
         SheetView.Init(_focus, _itemStats);
         SheetView.FocusBoardRequested = () => ShowTab("focus");
+        SheetView.DrawerExtendRequested = ExtendForDrawer;
         RefreshCharHeader();
 
         // The game rewrites the file in place; wait for the write to settle.
@@ -341,11 +342,53 @@ public partial class InventoryWindow : Window
     /// toolbar's helm and chest are two doors into this one window.</summary>
     public void ShowTab(string id)
     {
+        if (id != "sheet") SheetView.CloseDrawer(); // the extension is sheet-only
         _tab = id;
         RepaintPills(TabPanel, _tab);
         _lane = null; // a lane picked on one tab means nothing on another
         BuildLaneChips();
         ApplyFilters();
+    }
+
+    // ---- the drill drawer extends the WINDOW itself ---------------------------
+
+    private bool _drawerExtended;
+
+    /// <summary>Grow (or shrink) the window's width by the sheet's drill
+    /// drawer strip, animated — the drawer lives OUTSIDE the fixed canvas.</summary>
+    private void ExtendForDrawer(bool extend)
+    {
+        Log.Info($"[sheet] drawer extend: {extend} (was {_drawerExtended}, width {Width:0})");
+        if (extend == _drawerExtended) return;
+        _drawerExtended = extend;
+        double delta = CharacterSheetView.DrawerGrowth;
+        double target = Width + (extend ? delta : -delta);
+        var anim = new System.Windows.Media.Animation.DoubleAnimation(
+            Width, target, TimeSpan.FromMilliseconds(170))
+        {
+            EasingFunction = new System.Windows.Media.Animation.CubicEase
+                { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut },
+        };
+        // Release the animation's hold afterwards so the user can still resize.
+        anim.Completed += (_, _) =>
+        {
+            BeginAnimation(WidthProperty, null);
+            Width = target;
+        };
+        BeginAnimation(WidthProperty, anim);
+    }
+
+    /// <summary>Runs BEFORE the Closing event — the persisted bounds must
+    /// never remember the drawer's borrowed width.</summary>
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        if (_drawerExtended)
+        {
+            BeginAnimation(WidthProperty, null);
+            Width = Math.Max(MinWidth, Width - CharacterSheetView.DrawerGrowth);
+            _drawerExtended = false;
+        }
+        base.OnClosing(e);
     }
 
     /// <summary>The gold coverage story: what this dump does NOT speak for.

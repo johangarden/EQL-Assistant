@@ -6,8 +6,11 @@
 
     <!-- The doll + detail pane, hosted by the Character window's Sheet tab.
          The DOLL is static — the window's minimum size guarantees it fits —
-         and only the detail pane scrolls, inside its own column. -->
-    <DockPanel Width="1128" HorizontalAlignment="Center" Margin="2,4,2,10">
+         and only the detail pane scrolls, inside its own column. The stat
+         drill drawer is a SIBLING strip: opening it grows the WINDOW to the
+         right (the host animates its width), closing shrinks it back. -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+    <DockPanel Width="1128" Margin="2,4,2,10">
         <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.55*"/>
@@ -18,10 +21,8 @@
                 <!-- the doll: anatomical rows, built in code — never scrolls -->
                 <StackPanel x:Name="DollRows" Grid.Column="0" VerticalAlignment="Top"/>
 
-                <!-- detail pane: the only thing that scrolls. ClipToBounds so
-                     the drill drawer can slide in from the right edge. -->
-                <Grid Grid.Column="2" ClipToBounds="True">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <!-- detail pane: the only thing that scrolls -->
+                <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
                 <Border Background="#1A2230" BorderBrush="#232C3E" BorderThickness="1"
                         CornerRadius="8" Padding="14,12" VerticalAlignment="Top" Margin="0,0,2,0">
                     <StackPanel>
@@ -73,32 +74,29 @@
                     </StackPanel>
                 </Border>
                 </ScrollViewer>
-
-                <!-- the stat drill drawer: slides in over the pane when a
-                     totals stat is clicked; the stat (or ✕) folds it away -->
-                <Border x:Name="Drawer" Visibility="Collapsed" HorizontalAlignment="Right"
-                        Width="380" Background="#141A24" BorderBrush="#3A4560"
-                        BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,2,0">
-                    <Border.RenderTransform>
-                        <TranslateTransform x:Name="DrawerSlide"/>
-                    </Border.RenderTransform>
-                    <DockPanel>
-                        <DockPanel DockPanel.Dock="Top">
-                            <TextBlock DockPanel.Dock="Right" Text="✕" Foreground="#7F93AD"
-                                       FontSize="13" Cursor="Hand" Padding="8,0,0,0"
-                                       MouseLeftButtonUp="DrawerClose_Click"
-                                       ToolTip="close (or click the stat again)"/>
-                            <StackPanel>
-                                <TextBlock x:Name="DrawerTitle" FontWeight="SemiBold" FontSize="14"/>
-                                <TextBlock x:Name="DrawerSub" Foreground="#5C6B82" FontSize="11"/>
-                            </StackPanel>
-                        </DockPanel>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                            <StackPanel x:Name="DrawerBody" Margin="0,10,4,0"/>
-                        </ScrollViewer>
-                    </DockPanel>
-                </Border>
-                </Grid>
             </Grid>
     </DockPanel>
+
+    <!-- the stat drill drawer: the window's right-side EXTENSION — visible
+         only while a totals stat is drilled; the stat (or ✕) folds it away -->
+    <Border x:Name="Drawer" Visibility="Collapsed" Width="372"
+            Background="#141A24" BorderBrush="#3A4560" BorderThickness="1"
+            CornerRadius="8" Padding="14,12" Margin="8,4,4,10">
+        <DockPanel>
+            <DockPanel DockPanel.Dock="Top">
+                <TextBlock DockPanel.Dock="Right" Text="✕" Foreground="#7F93AD"
+                           FontSize="13" Cursor="Hand" Padding="8,0,0,0"
+                           MouseLeftButtonUp="DrawerClose_Click"
+                           ToolTip="close (or click the stat again)"/>
+                <StackPanel>
+                    <TextBlock x:Name="DrawerTitle" FontWeight="SemiBold" FontSize="14"/>
+                    <TextBlock x:Name="DrawerSub" Foreground="#5C6B82" FontSize="11"/>
+                </StackPanel>
+            </DockPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="DrawerBody" Margin="0,10,4,0"/>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+    </StackPanel>
 </UserControl>

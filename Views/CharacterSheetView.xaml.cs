@@ -387,16 +387,16 @@ public partial class CharacterSheetView : UserControl
             if (_drillKey is { } drill)
             {
                 PopulateDrawer(drill);
-                ShowDrawer();
+                SetDrawerVisible(true);
             }
             else
             {
-                Drawer.Visibility = Visibility.Collapsed;
+                SetDrawerVisible(false);
             }
             return;
         }
 
-        Drawer.Visibility = Visibility.Collapsed; // the item view owns the pane
+        SetDrawerVisible(false); // the item view owns the pane
 
         if (!_worn.TryGetValue(_selected!.Value, out var entry) || entry.Empty)
         {
@@ -917,6 +917,7 @@ public partial class CharacterSheetView : UserControl
             tb.ToolTip = $"click — which items grant {label}";
             tb.MouseLeftButtonUp += (_, _) =>
             {
+                Services.Log.Info($"[sheet] stat drill toggle: {key}");
                 _drillKey = _drillKey == key ? null : key;
                 _drillLabel = label;
                 RefreshPane();
@@ -924,29 +925,33 @@ public partial class CharacterSheetView : UserControl
         }
     }
 
+    /// <summary>Raised when the drawer opens (true) or closes (false) so the
+    /// HOST window can grow/shrink its width by the drawer strip.</summary>
+    public Action<bool>? DrawerExtendRequested { get; set; }
+
+    /// <summary>The width the host should grow by: drawer + its margins.</summary>
+    public const double DrawerGrowth = 384;
+
     private void DrawerClose_Click(object sender, MouseButtonEventArgs e)
     {
         _drillKey = null;
         RefreshPane();
     }
 
-    /// <summary>Show the drawer, sliding it in from the right when it was
-    /// closed (already-open swaps content in place).</summary>
-    private void ShowDrawer()
+    /// <summary>Host hook: fold the drawer away (tab switches, etc.).</summary>
+    public void CloseDrawer()
     {
-        bool wasHidden = Drawer.Visibility != Visibility.Visible;
-        Drawer.Visibility = Visibility.Visible;
-        if (wasHidden)
-        {
-            var slide = new System.Windows.Media.Animation.DoubleAnimation(
-                Drawer.Width, 0, TimeSpan.FromMilliseconds(170))
-            {
-                EasingFunction = new System.Windows.Media.Animation.CubicEase
-                    { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut },
-            };
-            DrawerSlide.BeginAnimation(
-                System.Windows.Media.TranslateTransform.XProperty, slide);
-        }
+        if (_drillKey is null) return;
+        _drillKey = null;
+        RefreshPane();
+    }
+
+    private void SetDrawerVisible(bool on)
+    {
+        bool cur = Drawer.Visibility == Visibility.Visible;
+        if (cur == on) return;
+        Drawer.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        DrawerExtendRequested?.Invoke(on);
     }
 
     /// <summary>The drill drawer: every worn item granting the clicked stat,
