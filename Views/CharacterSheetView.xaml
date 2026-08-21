@@ -9,8 +9,12 @@
          and only the detail pane scrolls, inside its own column. The stat
          drill drawer is a SIBLING strip: opening it grows the WINDOW to the
          right (the host animates its width), closing shrinks it back. -->
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-    <DockPanel Width="1128" Margin="2,4,2,10">
+    <!-- LEFT-anchored, deliberately: centered content re-centers while the
+         window width animates, and the whole sheet shimmied on every drawer
+         toggle. Anchored left, the doll and totals never move a pixel — the
+         growing right edge simply reveals the drawer. -->
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+    <DockPanel Width="1128" Margin="8,4,2,10">
         <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.55*"/>
