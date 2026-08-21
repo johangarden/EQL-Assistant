@@ -90,9 +90,10 @@
                 </Button>
                 <Button DockPanel.Dock="Right" Click="OnQuests" Style="{StaticResource IconBtn}"
                         Margin="6,0,0,0" AutomationProperties.AutomationId="QuestsBtn"
-                        ToolTip="Quests — Plane of Sky tests (class badges, turn-in progress)">
-                    <Path Fill="#64B5F6" Width="14" Height="14" Stretch="Uniform"
-                          Data="M6 2.5 L14.5 2.5 L18.5 6.5 L18.5 21.5 L6 21.5 Z M14 3.6 L17.4 7 L14 7 Z M8.5 10 L16 10 L16 11.5 L8.5 11.5 Z M8.5 13.5 L16 13.5 L16 15 L8.5 15 Z M8.5 17 L13.5 17 L13.5 18.5 L8.5 18.5 Z"/>
+                        ToolTip="Quests — tracking, droppers and turn-in progress">
+                    <!-- The classic quest-giver "!": a tapered gold bar + dot. -->
+                    <Path Fill="#E8C15A" Width="14" Height="14" Stretch="Uniform"
+                          Data="M9.6 2 L14.4 2 L13.3 15 L10.7 15 Z M12 17.4 A2.4 2.4 0 1 0 12 22.2 A2.4 2.4 0 1 0 12 17.4 Z"/>
                 </Button>
                 <Button DockPanel.Dock="Right" Click="OnRaid" Style="{StaticResource IconBtn}"
                         Margin="6,0,0,0" AutomationProperties.AutomationId="RaidBtn"
