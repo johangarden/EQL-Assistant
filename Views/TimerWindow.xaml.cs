@@ -68,8 +68,13 @@ public partial class TimerWindow : Window
         public bool Warned;
         /// <summary>The spawn notice fired — estimate elapsed OR first sighting.</summary>
         public bool SpawnFired;
-        /// <summary>Last log line naming this mob — the row reads UP.</summary>
+        /// <summary>Last log line naming this mob — the row reads UP (and the
+        /// linger runs from here: repeats keep the row alive).</summary>
         public DateTime? SeenAt;
+        /// <summary>FIRST sighting of this cycle — the UP counter's base.
+        /// Repeats must never reset it (fighting the mob re-sights it every
+        /// couple of seconds, and a counter that keeps snapping to zero lies).</summary>
+        public DateTime? FirstSeenAt;
     }
     private bool _bigWarned;    // ibid., for the repop on the big pie
     private DateTime _bigStart; // the death that started the big pie's cycle
@@ -219,7 +224,8 @@ public partial class TimerWindow : Window
         var e = _repops.FirstOrDefault(x =>
             string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
         if (e is null) return;
-        e.SeenAt = now; // repeats refresh the UP linger, never re-alert
+        e.SeenAt = now;        // repeats refresh the UP linger, never re-alert
+        e.FirstSeenAt ??= now; // ...and never reset the UP counter
         if (!e.SpawnFired)
         {
             e.SpawnFired = true;
@@ -244,6 +250,7 @@ public partial class TimerWindow : Window
             Warned = _bigWarned,
             SpawnFired = spawnFired,
             SeenAt = seenAt,
+            FirstSeenAt = seenAt,
         });
     }
 
@@ -526,12 +533,13 @@ public partial class TimerWindow : Window
         {
             var e = _repops[i];
 
-            // UP: the log named it. Reads green until sightings stop coming.
+            // UP: the log named it. The counter runs from the FIRST sighting;
+            // the linger runs from the last (repeats keep the row alive).
             if (e.SeenAt is { } seen)
             {
-                double ago = (now - seen).TotalSeconds;
-                if (ago > UpLingerSec) { DropRow(i); continue; }
-                e.Vm.RemainingText = $"UP {Format(ago)}";
+                if ((now - seen).TotalSeconds > UpLingerSec) { DropRow(i); continue; }
+                double up = (now - (e.FirstSeenAt ?? seen)).TotalSeconds;
+                e.Vm.RemainingText = $"UP {Format(up)}";
                 e.Vm.Foreground = UpGreen;
                 continue;
             }
