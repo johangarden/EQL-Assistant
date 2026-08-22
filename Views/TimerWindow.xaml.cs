@@ -88,6 +88,7 @@ public partial class TimerWindow : Window
     private const double UpLingerSec = 180, DueLingerSec = 900, LearnLingerSec = 3600;
 
     private static readonly Brush WarnRed = Freeze(Color.FromRgb(0xFF, 0x52, 0x52));
+    private static readonly Brush GoldText = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
     private static readonly Brush UpGreen = Freeze(Color.FromRgb(0x66, 0xBB, 0x6A));
     private static readonly Brush LearnDim = Freeze(Color.FromRgb(0x8A, 0x99, 0xB0));
 
@@ -368,7 +369,7 @@ public partial class TimerWindow : Window
     private void SetMode(string? name)
     {
         _modeName = name;
-        ModeLabel.Text = name ?? "Timer";
+        ModeLabel.Text = name ?? "Spawn Timer";
     }
 
     // ---- ➕ quick-add respawn -------------------------------------------------
@@ -593,8 +594,8 @@ public partial class TimerWindow : Window
     private void UpdateVisual()
     {
         double frac = _total > 0 ? Math.Clamp(_remaining / _total, 0, 1) : 0;
-        BuildWedge(frac);
-        Wedge.Fill = new SolidColorBrush(ColorFor(frac)); // green -> amber -> red as it runs down
+        BuildSegments(frac);
+        SegmentsLit.Fill = new SolidColorBrush(ColorFor(frac)); // green -> amber -> red as it runs down
         TimeText.Text = Format(_remaining);
 
         // Toggle button reflects state: ▶ when stopped, ⏸ when running.
@@ -605,13 +606,13 @@ public partial class TimerWindow : Window
         if (warn)
         {
             bool on = (DateTime.Now.Millisecond / 300) % 2 == 0; // ~3 blinks/sec
-            TimeText.Foreground = on ? Brushes.White : WarnRed;
-            Wedge.Opacity = on ? 1.0 : 0.5;
+            TimeText.Foreground = on ? GoldText : WarnRed;
+            SegmentsLit.Opacity = on ? 1.0 : 0.5;
         }
         else
         {
-            TimeText.Foreground = Brushes.White;
-            Wedge.Opacity = _running ? 1.0 : 0.82; // dim while paused/idle
+            TimeText.Foreground = GoldText;
+            SegmentsLit.Opacity = _running ? 1.0 : 0.82; // dim while paused/idle
         }
     }
 
@@ -635,24 +636,36 @@ public partial class TimerWindow : Window
             (byte)(a.B + (b.B - a.B) * t));
     }
 
-    private void BuildWedge(double frac)
+    /// <summary>The segment ring: 24 annular blocks from 12 o'clock clockwise;
+    /// lit blocks cover the remaining fraction, the rest sit dark in the track.</summary>
+    private void BuildSegments(double frac)
     {
-        const double cx = 66, cy = 66, r = 63;
-        if (frac <= 0) { Wedge.Data = null; return; }
-        if (frac >= 0.9999) { Wedge.Data = new EllipseGeometry(new Point(cx, cy), r, r); return; }
+        const int n = 24;
+        const double cx = 70, cy = 70, rOut = 62, rIn = 47, gapDeg = 4, step = 360.0 / n;
+        var lit = new PathGeometry();
+        var dim = new PathGeometry();
+        for (int i = 0; i < n; i++)
+        {
+            double a0 = -90 + i * step + gapDeg / 2;
+            var fig = SegmentFigure(cx, cy, rOut, rIn, a0, a0 + step - gapDeg);
+            ((i + 0.5) / n <= frac ? lit : dim).Figures.Add(fig);
+        }
+        SegmentsLit.Data = lit;
+        SegmentsDim.Data = dim;
+    }
 
-        double sweepDeg = 360 * frac;
-        double a = sweepDeg * Math.PI / 180.0;
-        var start = new Point(cx, cy - r);                        // 12 o'clock
-        var end = new Point(cx + r * Math.Sin(a), cy - r * Math.Cos(a)); // clockwise
-
-        var fig = new PathFigure { StartPoint = new Point(cx, cy), IsClosed = true };
-        fig.Segments.Add(new LineSegment(start, true));
-        fig.Segments.Add(new ArcSegment(end, new Size(r, r), 0, sweepDeg > 180,
+    private static PathFigure SegmentFigure(double cx, double cy, double rOut, double rIn,
+        double a0Deg, double a1Deg)
+    {
+        double a0 = a0Deg * Math.PI / 180, a1 = a1Deg * Math.PI / 180;
+        Point P(double r, double a) => new(cx + r * Math.Cos(a), cy + r * Math.Sin(a));
+        var fig = new PathFigure { StartPoint = P(rOut, a0), IsClosed = true };
+        fig.Segments.Add(new ArcSegment(P(rOut, a1), new Size(rOut, rOut), 0, false,
             SweepDirection.Clockwise, true));
-        var geo = new PathGeometry();
-        geo.Figures.Add(fig);
-        Wedge.Data = geo;
+        fig.Segments.Add(new LineSegment(P(rIn, a1), true));
+        fig.Segments.Add(new ArcSegment(P(rIn, a0), new Size(rIn, rIn), 0, false,
+            SweepDirection.Counterclockwise, true));
+        return fig;
     }
 
     // ---- helpers ------------------------------------------------------------
