@@ -889,7 +889,7 @@ public partial class TriggerManagerWindow : Window
             ["Triggers"] = TriggersPage,
             ["Loadouts"] = LoadoutsPage,
             ["Bars & matrices"] = BarsPage,
-            ["Repop timer"] = TimerPage,
+            ["Spawn timer"] = TimerPage,
             ["DPS + Skills, Procs"] = MeterPage,
             ["Combat text"] = SctPage,
             ["Flash alerts"] = FlashPage,

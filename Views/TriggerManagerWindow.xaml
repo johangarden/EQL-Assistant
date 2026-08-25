@@ -112,13 +112,12 @@
                     <ListBoxItem Content="Loadouts"/>
                     <ListBoxItem Content="PANELS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="Bars &amp; matrices"/>
-                    <ListBoxItem Content="Repop timer"/>
+                    <ListBoxItem Content="Spawn timer"/>
+                    <ListBoxItem Content="Respawns"/>
                     <ListBoxItem Content="DPS + Skills, Procs"/>
                     <ListBoxItem Content="Combat text"/>
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
-                    <ListBoxItem Content="KNOWLEDGE" Style="{StaticResource NavHeader}"/>
-                    <ListBoxItem Content="Respawns"/>
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
                     <ListBoxItem Content="Data"/>
@@ -691,11 +690,11 @@
                     <ScrollViewer x:Name="TimerPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Repop timer" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="Spawn timer" Style="{StaticResource PageTitle}"/>
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="The circular respawn watch panel. Toggle in game: ☰/tray → Panels, or Ctrl+Alt+R. The mobs it watches live on the Respawns page (KNOWLEDGE)."/>
+                                       Text="The circular spawn-clock panel. Toggle in game: ☰/tray → Panels, or Ctrl+Alt+R. The mobs it watches live on the Respawns page, right below in the sidebar."/>
 
                             <CheckBox x:Name="TimerVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
 

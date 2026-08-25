@@ -226,7 +226,7 @@ public partial class TimerWindow : Window
 
     public void PromptSet()
     {
-        string? input = PromptDialog.Show(this, "Repop timer", "Duration — m:ss, 90s, 6m or 9m12s:", _lastText);
+        string? input = PromptDialog.Show(this, "Spawn timer", "Duration — m:ss, 90s, 6m or 9m12s:", _lastText);
         if (input is null) return;
         double? sec = ParseDuration(input);
         if (sec is not > 0) return;

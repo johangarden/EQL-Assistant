@@ -24,7 +24,16 @@
             </LinearGradientBrush>
         </Border.BorderBrush>
         <StackPanel>
-            <DockPanel Margin="0,0,0,6">
+            <!-- The title stands alone up top; the controls keep their own row. -->
+            <TextBlock x:Name="ModeLabel" Text="Spawn Timer" Foreground="#E8C15A"
+                       FontFamily="Georgia" FontWeight="SemiBold" FontSize="13"
+                       HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       MaxWidth="150" Margin="0,0,0,4">
+                <TextBlock.Effect>
+                    <DropShadowEffect ShadowDepth="1" BlurRadius="2" Opacity="0.8" Color="Black"/>
+                </TextBlock.Effect>
+            </TextBlock>
+            <DockPanel Margin="0,0,0,6" LastChildFill="False">
                 <!-- The one mode decision, worn as a labeled pill (a glyph
                      couldn't say "who owns the pie" at a glance). -->
                 <Button DockPanel.Dock="Left" x:Name="ModeToggleBtn" Click="OnModeToggle"
@@ -50,14 +59,6 @@
                         AutomationProperties.AutomationId="TimerAddRespawnBtn"
                         FontFamily="Segoe MDL2 Assets" Content="&#xE710;"
                         ToolTip="Add a respawn from your recent kills"/>
-                <TextBlock x:Name="ModeLabel" Text="Spawn Timer" Foreground="#E8C15A"
-                           FontFamily="Georgia" FontWeight="SemiBold" FontSize="13"
-                           VerticalAlignment="Center" HorizontalAlignment="Center"
-                           TextTrimming="CharacterEllipsis" Margin="6,0,4,0">
-                    <TextBlock.Effect>
-                        <DropShadowEffect ShadowDepth="1" BlurRadius="2" Opacity="0.8" Color="Black"/>
-                    </TextBlock.Effect>
-                </TextBlock>
             </DockPanel>
 
             <!-- The spawn clock: a beveled steel ring of segment blocks that go

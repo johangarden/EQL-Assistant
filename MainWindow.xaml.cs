@@ -697,7 +697,7 @@ public partial class MainWindow : Window
         _configService.SaveSettings(_config);
         if (_hidden && !_timerHidden) ToggleHide(); // unhide everything if it was globally hidden
         UpdateTimerVisibility();
-        _vm.Flash(_timerHidden ? "Repop timer hidden." : "Repop timer shown.");
+        _vm.Flash(_timerHidden ? "Spawn timer hidden." : "Spawn timer shown.");
     }
 
     // ---- DPS meter panel ----------------------------------------------------
@@ -1466,7 +1466,7 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, null, () => _config.Overlay.ConditionsVisible));
         panels.Items.Add(BurgerPanelRow("Sky quest helper", ToggleSkyHelper, null, () => _config.Overlay.SkyHelperVisible));
         panels.Items.Add(BurgerPanelRow("Session stats (XP/AA/motes)", ToggleSessionStats, null, () => _config.Overlay.SessionStatsVisible));
-        panels.Items.Add(BurgerPanelRow("Repop timer", ToggleTimer, "Repop timer", () => !_timerHidden));
+        panels.Items.Add(BurgerPanelRow("Spawn timer", ToggleTimer, "Spawn timer", () => !_timerHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs", () => !_meterHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter · skills section", ToggleSkills, "DPS + Skills, Procs", () => !_skillsHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter · proc watcher", ToggleProcs, "DPS + Skills, Procs", () => _config.Overlay.ProcWatcherVisible));
@@ -1566,8 +1566,8 @@ public partial class MainWindow : Window
         if (_hidden) ToggleHide();
         UpdateTimerVisibility();
         _timer?.StartWith(seconds, name);
-        _vm.Flash($"{name} down — repop timer started.");
-        Log.Info($"Auto-started repop timer ({seconds:0}s) from trigger '{name}'.");
+        _vm.Flash($"{name} down — spawn timer started.");
+        Log.Info($"Auto-started spawn timer ({seconds:0}s) from trigger '{name}'.");
     }
 
     // ---- interrupt / resist notices ------------------------------------------
@@ -1805,7 +1805,7 @@ public partial class MainWindow : Window
     private System.Windows.Forms.ToolStripMenuItem BuildPanelsMenu()
     {
         var panelsItem = new System.Windows.Forms.ToolStripMenuItem("Panels");
-        var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Repop timer", null, (_, _) => ToggleTimer());
+        var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Spawn timer", null, (_, _) => ToggleTimer());
         var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
         var panelSkills = new System.Windows.Forms.ToolStripMenuItem("DPS meter · skills section", null, (_, _) => ToggleSkills());
         var panelProcs = new System.Windows.Forms.ToolStripMenuItem("DPS meter · proc watcher", null, (_, _) => ToggleProcs());
