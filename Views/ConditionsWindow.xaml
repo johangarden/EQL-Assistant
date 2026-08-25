@@ -16,13 +16,13 @@
             <!-- Drag handle + title, shown only when unlocked. -->
             <Border x:Name="Header" Background="#E01B2130" CornerRadius="5" Padding="8,3" Margin="0,0,0,4"
                     Visibility="Collapsed" MouseLeftButtonDown="Header_DragMove">
-                <TextBlock Text="Conditions — stun / fear / charm / mez" Foreground="#9FB4D0"
-                           FontWeight="Bold" FontSize="11"/>
+                <TextBlock Text="Conditions — stun / fear / charm / mez · interrupt / resist"
+                           Foreground="#9FB4D0" FontWeight="Bold" FontSize="11"/>
             </Border>
 
             <TextBlock x:Name="Placeholder" Foreground="#7F93AD" FontSize="11" Margin="2,2,2,4"
                        Visibility="Collapsed" MaxWidth="220" TextWrapping="Wrap"
-                       Text="A big badge appears here while you are stunned, feared, charmed or mesmerized — for as long as it lasts."/>
+                       Text="A big badge appears here while you are stunned, feared, charmed or mesmerized — for as long as it lasts. Your own interrupted or resisted casts flash here too."/>
 
             <ItemsControl x:Name="BadgesControl">
                 <ItemsControl.ItemsPanel>
@@ -40,10 +40,12 @@
                                       Width="52" Height="52" Stretch="Uniform"
                                       HorizontalAlignment="Center"/>
                                 <TextBlock Text="{Binding Kind}" Foreground="{Binding Stroke}"
-                                           FontWeight="Bold" FontSize="13"
-                                           HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                                           FontWeight="Bold" FontSize="12"
+                                           HorizontalAlignment="Center" Margin="0,5,0,0"
+                                           TextTrimming="CharacterEllipsis"/>
                                 <TextBlock Text="{Binding Elapsed}" Foreground="#C9D4E3"
-                                           FontSize="11" HorizontalAlignment="Center"/>
+                                           FontSize="11" HorizontalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                         </Border>
                     </DataTemplate>

@@ -772,6 +772,20 @@ public partial class App : Application
             cw.ProcessLine($"[{AT(95)}] You have entered The Plane of Hate.");
             Check("conditions: zoning clears the badges",
                 cw.Active(new DateTime(2026, 8, 10, 23, 1, 36)).Count == 0);
+            // Moment flashes: YOUR broken/bounced casts only — pets' and
+            // groupmates' spells ("Xarer's", "Gonartik's") stay silent.
+            cw.ProcessLine($"[{AT(100)}] Your Siphon Life spell is interrupted.");
+            cw.ProcessLine($"[{AT(100)}] Xarer's Frost Dagger spell is interrupted.");
+            Check("conditions: YOUR interrupt flashes, then expires (a pet's never shows)",
+                cw.Active(new DateTime(2026, 8, 10, 23, 1, 41)) is
+                    [{ Kind: ConditionWatcher.Interrupted, Detail: "Siphon Life" }]
+                && cw.Active(new DateTime(2026, 8, 10, 23, 1, 45)).Count == 0);
+            cw.ProcessLine($"[{AT(110)}] A froglok shin knight resisted your Ignite!");
+            cw.ProcessLine($"[{AT(110)}] A ghoul assassin resisted Gonartik's Drowsy!");
+            Check("conditions: YOUR resist flashes with the spell (a pet's never)",
+                cw.Active(new DateTime(2026, 8, 10, 23, 1, 51)) is
+                    [{ Kind: ConditionWatcher.Resisted, Detail: "Ignite" }]
+                && cw.Active(new DateTime(2026, 8, 10, 23, 1, 55)).Count == 0);
             var dur = new SpellDurations(new ConfigService(), lib2, durPath);
             Check("durations: rank suffix pools",
                 SpellDurations.BaseKey("Mesmerization VII") == "mesmerization"
