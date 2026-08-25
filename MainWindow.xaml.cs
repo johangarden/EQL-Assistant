@@ -1334,6 +1334,7 @@ public partial class MainWindow : Window
 
         RebuildFlashWindow();
         RebuildSctLanes();
+        RebuildConditionsWindow(); // its page owns visibility now
         if (_toolbarWin is not null)
         {
             _toolbarWin.DataContext = _vm; // rebound: the VM was rebuilt above
@@ -1463,7 +1464,7 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("Target-debuffs matrix", ToggleTargetMatrix, "Bars & matrices", () => _config.Overlay.TargetMatrixVisible));
         panels.Items.Add(BurgerPanelRow("Rebuff reminders", ToggleReminders, "Bars & matrices", () => _config.Overlay.RemindersVisible));
         panels.Items.Add(BurgerPanelRow("Enemy DoTs", ToggleEnemyDots, "Bars & matrices", () => _config.Overlay.EnemyDotsVisible));
-        panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, null, () => _config.Overlay.ConditionsVisible));
+        panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, "Condition badges", () => _config.Overlay.ConditionsVisible));
         panels.Items.Add(BurgerPanelRow("Sky quest helper", ToggleSkyHelper, null, () => _config.Overlay.SkyHelperVisible));
         panels.Items.Add(BurgerPanelRow("Session stats (XP/AA/motes)", ToggleSessionStats, null, () => _config.Overlay.SessionStatsVisible));
         panels.Items.Add(BurgerPanelRow("Spawn timer", ToggleTimer, "Spawn timer", () => !_timerHidden));

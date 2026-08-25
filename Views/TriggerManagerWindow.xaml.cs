@@ -895,6 +895,7 @@ public partial class TriggerManagerWindow : Window
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Respawns"] = RespawnsPage,
+            ["Condition badges"] = ConditionsPage,
             ["General"] = GeneralPage,
             ["Data"] = DataPage,
             ["Shortcuts"] = ShortcutsPage,
@@ -972,6 +973,7 @@ public partial class TriggerManagerWindow : Window
 
     private void LoadSettingsFields()
     {
+        ConditionsVisibleCheck.IsChecked = _config.Overlay.ConditionsVisible;
         _soundUxLoading = true;
         InterruptOnCheck.IsChecked = _config.Overlay.InterruptNoticeEnabled;
         InterruptModeBox.SelectedValue = _config.Overlay.InterruptNoticeMode;
@@ -1148,7 +1150,7 @@ public partial class TriggerManagerWindow : Window
                 RemindersVisible = _config.Overlay.RemindersVisible,       // tray-toggled
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
-                ConditionsVisible = _config.Overlay.ConditionsVisible,   // tray-toggled
+                ConditionsVisible = ConditionsVisibleCheck.IsChecked == true,
                 SkyHelperVisible = _config.Overlay.SkyHelperVisible,     // panels-toggled
                 SkyHelperShowCompleted = _config.Overlay.SkyHelperShowCompleted, // panel-toggled
                 InterruptNoticeEnabled = InterruptOnCheck.IsChecked == true,

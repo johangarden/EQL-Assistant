@@ -118,6 +118,7 @@
                     <ListBoxItem Content="Combat text"/>
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
+                    <ListBoxItem Content="Condition badges"/>
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
                     <ListBoxItem Content="Data"/>
@@ -478,41 +479,6 @@
                                        Text="Launch with Windows so a forgotten start never costs you data. On every start the app automatically catches up today's log lines (loot, kills, fights, seen spells — alerts stay quiet for old lines); tray → 'Catch up from today's log' re-runs it any time."/>
 
                             <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows (this exe)" Margin="0,10,0,0"/>
-
-                            <Border Style="{StaticResource PageSep}"/>
-                            <TextBlock Text="Interrupt &amp; resist notices" Style="{StaticResource SectionTitle}"/>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="Your own broken or bounced casts flash a badge on the Conditions panel — these add a notice. Sound is the default: a short ding cuts through without adding voice clutter; switch to Phrase to hear 'Interrupted!' / 'Resisted!' spoken instead."/>
-
-                            <CheckBox x:Name="InterruptOnCheck" Content="When your cast is interrupted"
-                                      FontWeight="SemiBold" Margin="0,8,0,0"
-                                      Checked="MomentNotice_Changed" Unchecked="MomentNotice_Changed"/>
-                            <StackPanel x:Name="InterruptRow" Orientation="Horizontal" Margin="24,6,0,0">
-                                <ComboBox x:Name="InterruptModeBox" Width="90" SelectedValuePath="Tag"
-                                          SelectionChanged="MomentNotice_Changed">
-                                    <ComboBoxItem Content="Sound" Tag="sound"/>
-                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
-                                </ComboBox>
-                                <ComboBox x:Name="InterruptSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
-                                <TextBox x:Name="InterruptSpeakBox" Width="200" Margin="8,0,0,0"
-                                         ToolTip="Spoken via text-to-speech — empty speaks 'Interrupted!'"/>
-                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="InterruptTest_Click"/>
-                            </StackPanel>
-
-                            <CheckBox x:Name="ResistOnCheck" Content="When your spell is resisted"
-                                      FontWeight="SemiBold" Margin="0,10,0,0"
-                                      Checked="MomentNotice_Changed" Unchecked="MomentNotice_Changed"/>
-                            <StackPanel x:Name="ResistRow" Orientation="Horizontal" Margin="24,6,0,0">
-                                <ComboBox x:Name="ResistModeBox" Width="90" SelectedValuePath="Tag"
-                                          SelectionChanged="MomentNotice_Changed">
-                                    <ComboBoxItem Content="Sound" Tag="sound"/>
-                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
-                                </ComboBox>
-                                <ComboBox x:Name="ResistSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
-                                <TextBox x:Name="ResistSpeakBox" Width="200" Margin="8,0,0,0"
-                                         ToolTip="Spoken via text-to-speech — empty speaks 'Resisted!'"/>
-                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="ResistTest_Click"/>
-                            </StackPanel>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Log source" Style="{StaticResource SectionTitle}"/>
@@ -929,6 +895,55 @@
                                         <Button Content="Play" Click="RespawnSpawnPlay_Click" Width="50" Margin="8,0,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ============================ CONDITION BADGES ============================ -->
+                    <ScrollViewer x:Name="ConditionsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Condition badges" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Big badges near screen centre while you are stunned, feared, charmed or mesmerized — landing to wear-off, no guessing. Your own interrupted or resisted casts flash there too, briefly."/>
+
+                            <CheckBox x:Name="ConditionsVisibleCheck" Content="Show the panel" Margin="0,12,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Interrupt &amp; resist notices" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="The badge flashes regardless — these add a notice. Sound is the default: a short ding cuts through without adding voice clutter; switch to Phrase to hear 'Interrupted!' / 'Resisted!' spoken instead."/>
+
+                            <CheckBox x:Name="InterruptOnCheck" Content="When your cast is interrupted"
+                                      FontWeight="SemiBold" Margin="0,8,0,0"
+                                      Checked="MomentNotice_Changed" Unchecked="MomentNotice_Changed"/>
+                            <StackPanel x:Name="InterruptRow" Orientation="Horizontal" Margin="24,6,0,0">
+                                <ComboBox x:Name="InterruptModeBox" Width="90" SelectedValuePath="Tag"
+                                          SelectionChanged="MomentNotice_Changed">
+                                    <ComboBoxItem Content="Sound" Tag="sound"/>
+                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                </ComboBox>
+                                <ComboBox x:Name="InterruptSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
+                                <TextBox x:Name="InterruptSpeakBox" Width="200" Margin="8,0,0,0"
+                                         ToolTip="Spoken via text-to-speech — empty speaks 'Interrupted!'"/>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="InterruptTest_Click"/>
+                            </StackPanel>
+
+                            <CheckBox x:Name="ResistOnCheck" Content="When your spell is resisted"
+                                      FontWeight="SemiBold" Margin="0,10,0,0"
+                                      Checked="MomentNotice_Changed" Unchecked="MomentNotice_Changed"/>
+                            <StackPanel x:Name="ResistRow" Orientation="Horizontal" Margin="24,6,0,0">
+                                <ComboBox x:Name="ResistModeBox" Width="90" SelectedValuePath="Tag"
+                                          SelectionChanged="MomentNotice_Changed">
+                                    <ComboBoxItem Content="Sound" Tag="sound"/>
+                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                </ComboBox>
+                                <ComboBox x:Name="ResistSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
+                                <TextBox x:Name="ResistSpeakBox" Width="200" Margin="8,0,0,0"
+                                         ToolTip="Spoken via text-to-speech — empty speaks 'Resisted!'"/>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="ResistTest_Click"/>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
