@@ -12,32 +12,13 @@ public sealed class RespawnViewModel : ViewModelBase
         set { if (SetField(ref _name, value)) OnPropertyChanged(nameof(Display)); }
     }
 
-    private double _seconds; // 0 = auto: the learner's estimate stands in
+    // Legacy passthrough only — typed times are retired; loading migrates
+    // them into the first gap sample, so this is 0 everywhere post-load.
+    private double _seconds;
     public double Seconds
     {
         get => _seconds;
-        set
-        {
-            if (!SetField(ref _seconds, value)) return;
-            OnPropertyChanged(nameof(Display));
-            OnPropertyChanged(nameof(SecondsText));
-        }
-    }
-
-    /// <summary>Friendly face of <see cref="Seconds"/>: shows "6m40s" (or
-    /// "auto" when unset), accepts "400", "15m", "6m40s", "6:40" — and
-    /// "auto" or empty to hand the number back to the learner.</summary>
-    public string SecondsText
-    {
-        get => Seconds > 0 ? Services.DurationText.Compact(Seconds) : "auto";
-        set
-        {
-            string t = value.Trim();
-            if (t.Length == 0 || t.Equals("auto", StringComparison.OrdinalIgnoreCase))
-                Seconds = 0;
-            else if (Services.DurationText.Parse(t) is double s) Seconds = s;
-            OnPropertyChanged(nameof(SecondsText)); // normalize ("400" -> "6m40s") or snap back
-        }
+        set { if (SetField(ref _seconds, value)) OnPropertyChanged(nameof(Display)); }
     }
 
     private string _zone = "";
@@ -60,14 +41,16 @@ public sealed class RespawnViewModel : ViewModelBase
         set { if (SetField(ref _enabled, value)) OnPropertyChanged(nameof(Display)); }
     }
 
-    public string Display => $"{(Enabled ? "" : "○ ")}{Name}  ·  " + (Seconds > 0
-        ? Services.DurationText.Compact(Seconds)
-        : LearnedSeconds is { } l ? $"≤ {Services.DurationText.Compact(l)} auto" : "auto");
+    public string Display => $"{(Enabled ? "" : "○ ")}{Name}  ·  "
+        + (LearnedSeconds is { } l ? $"≤ {Services.DurationText.Compact(l)}" : "learning");
+
+    /// <summary>The selected mob's one-line story: the estimate and where it
+    /// came from (the editor's read-only header).</summary>
+    public string EffectiveText => LearnedSeconds is { } l
+        ? $"estimate ≤ {Services.DurationText.Compact(l)} — the shortest observed gap"
+        : "learning — the first kill cycle becomes the estimate";
 
     // ---- the learner's evidence (death → next-appearance gaps) ----
-
-    private bool _learnOn = true;
-    public bool LearnOn { get => _learnOn; set => SetField(ref _learnOn, value); }
 
     /// <summary>Observed gaps, newest first — carried through so a Manager
     /// save never throws away what the learner measured.</summary>
@@ -77,10 +60,27 @@ public sealed class RespawnViewModel : ViewModelBase
 
     public bool HasGaps => Gaps.Count > 0;
 
-    /// <summary>The evidence list: every gap is an upper bound ("≤"), and the
-    /// minimum of them is the learned estimate.</summary>
-    public string GapsText => string.Join("\n", Gaps.Select(g =>
-        $"≤ {Services.DurationText.Compact(g.Seconds)}   ·   {g.When:d MMM HH:mm}"));
+    /// <summary>The evidence list: every gap is an upper bound ("≤"), the
+    /// MINIMUM is the estimate — and the line that holds it says so.</summary>
+    public string GapsText
+    {
+        get
+        {
+            if (Gaps.Count == 0) return "";
+            double min = Gaps.Min(g => g.Seconds);
+            bool marked = false;
+            return string.Join("\n", Gaps.Select(g =>
+            {
+                string line = $"≤ {Services.DurationText.Compact(g.Seconds)}   ·   {g.When:d MMM HH:mm}";
+                if (!marked && g.Seconds == min)
+                {
+                    marked = true;
+                    line += "   ◄ the estimate (shortest)";
+                }
+                return line;
+            }));
+        }
+    }
 
     public void ClearGaps()
     {
@@ -88,37 +88,8 @@ public sealed class RespawnViewModel : ViewModelBase
         OnPropertyChanged(nameof(GapsText));
         OnPropertyChanged(nameof(HasGaps));
         OnPropertyChanged(nameof(Display));
-        OnPropertyChanged(nameof(SecondsText));
+        OnPropertyChanged(nameof(EffectiveText));
     }
-
-    // ---- the two alert notices (mirrors the trigger editor's model) ----
-
-    private bool _warnOn;
-    public bool WarnOn { get => _warnOn; set => SetField(ref _warnOn, value); }
-
-    private double _warnSeconds = 15;
-    public double WarnSeconds { get => _warnSeconds; set => SetField(ref _warnSeconds, value); }
-
-    private string _warnMode = "speak";
-    public string WarnMode { get => _warnMode; set => SetField(ref _warnMode, value); }
-
-    private string _warnSpeak = "";
-    public string WarnSpeak { get => _warnSpeak; set => SetField(ref _warnSpeak, value); }
-
-    private string _warnSound = "";
-    public string WarnSound { get => _warnSound; set => SetField(ref _warnSound, value); }
-
-    private bool _spawnOn = true;
-    public bool SpawnOn { get => _spawnOn; set => SetField(ref _spawnOn, value); }
-
-    private string _spawnMode = "speak";
-    public string SpawnMode { get => _spawnMode; set => SetField(ref _spawnMode, value); }
-
-    private string _spawnSpeak = "";
-    public string SpawnSpeak { get => _spawnSpeak; set => SetField(ref _spawnSpeak, value); }
-
-    private string _spawnSound = "";
-    public string SpawnSound { get => _spawnSound; set => SetField(ref _spawnSound, value); }
 
     public static RespawnViewModel FromEntry(RespawnEntry e) => new()
     {
@@ -127,17 +98,7 @@ public sealed class RespawnViewModel : ViewModelBase
         Seconds = e.Seconds,
         Pattern = e.Pattern,
         Enabled = e.Enabled,
-        LearnOn = e.Learn,
         Gaps = e.Gaps.Select(g => new RespawnGap { Seconds = g.Seconds, When = g.When }).ToList(),
-        WarnOn = e.WarnEnabled,
-        WarnSeconds = e.WarnSeconds,
-        WarnMode = e.WarnMode,
-        WarnSpeak = e.WarnSpeak,
-        WarnSound = e.WarnSound,
-        SpawnOn = e.SpawnEnabled,
-        SpawnMode = e.SpawnMode,
-        SpawnSpeak = e.SpawnSpeak,
-        SpawnSound = e.SpawnSound,
     };
 
     public RespawnEntry ToEntry() => new()
@@ -147,16 +108,6 @@ public sealed class RespawnViewModel : ViewModelBase
         Seconds = Seconds,
         Pattern = Pattern.Trim(),
         Enabled = Enabled,
-        Learn = LearnOn,
         Gaps = Gaps.Select(g => new RespawnGap { Seconds = g.Seconds, When = g.When }).ToList(),
-        WarnEnabled = WarnOn,
-        WarnSeconds = WarnSeconds,
-        WarnMode = WarnMode,
-        WarnSpeak = WarnSpeak.Trim(),
-        WarnSound = WarnSound,
-        SpawnEnabled = SpawnOn,
-        SpawnMode = SpawnMode,
-        SpawnSpeak = SpawnSpeak.Trim(),
-        SpawnSound = SpawnSound,
     };
 }

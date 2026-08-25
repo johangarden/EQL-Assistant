@@ -136,6 +136,22 @@ public sealed class OverlayConfig
     public string ResistNoticeSpeak { get; set; } = "";
     public string ResistNoticeSound { get; set; } = @"C:\Windows\Media\Windows Ding.wav";
 
+    // ---- spawn-timer notices, GLOBAL (one setting for every watched mob;
+    // "{mob}" in a phrase becomes the mob's name — see RespawnNotice).
+
+    public bool RespawnWarnEnabled { get; set; }
+    public double RespawnWarnSeconds { get; set; } = 15;
+    /// <summary>"speak" | "sound".</summary>
+    public string RespawnWarnMode { get; set; } = "speak";
+    public string RespawnWarnPhrase { get; set; } = "";
+    public string RespawnWarnSound { get; set; } = "";
+
+    /// <summary>On by default — the spoken "&lt;mob&gt; respawn" everyone knows.</summary>
+    public bool RespawnSpawnEnabled { get; set; } = true;
+    public string RespawnSpawnMode { get; set; } = "speak";
+    public string RespawnSpawnPhrase { get; set; } = "";
+    public string RespawnSpawnSound { get; set; } = "";
+
     /// <summary>Whether the Session stats panel (XP/AA/motes per hour) is shown.</summary>
     public bool SessionStatsVisible { get; set; } = false;
 

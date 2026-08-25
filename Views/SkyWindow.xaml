@@ -108,9 +108,6 @@
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Title}" Foreground="{StaticResource Brush.TextDim}"
                                                    FontWeight="Bold" FontSize="13"/>
-                                        <TextBlock Text="{Binding Reward}" Foreground="{StaticResource Brush.Gold}"
-                                                   FontWeight="SemiBold" FontSize="12" Margin="10,0,0,0"
-                                                   ToolTip="{Binding RewardStats}"/>
                                         <Border CornerRadius="3" Background="{StaticResource Brush.Card}"
                                                 Padding="5,1" Margin="8,0,0,0" VerticalAlignment="Center"
                                                 Visibility="{Binding SlotVisibility}">
@@ -119,24 +116,41 @@
                                         </Border>
                                     </StackPanel>
                                 </DockPanel>
-                                <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource Brush.TextHint}"
-                                           FontSize="11" Margin="24,1,0,4"/>
-                                <ItemsControl ItemsSource="{Binding Chips}" Margin="24,0,0,0">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
+                                <!-- the reward item on its own line, then the drops
+                                     stacked, then who takes the turn-in -->
+                                <StackPanel Orientation="Horizontal" Margin="24,2,0,0"
+                                            ToolTip="{Binding RewardStats}">
+                                    <Image Source="{Binding RewardIcon}" Width="18" Height="18"
+                                           Margin="0,0,6,0" VerticalAlignment="Center"
+                                           Visibility="{Binding RewardIconVis}"
+                                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    <TextBlock Text="{Binding Reward}" Foreground="{StaticResource Brush.Gold}"
+                                               FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{Binding Chips}" Margin="24,4,0,0">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border CornerRadius="4" Background="{Binding Bg}" Padding="7,2"
-                                                    Margin="0,2,6,2" ToolTip="{Binding Tip}">
-                                                <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
-                                                           FontSize="11" FontWeight="SemiBold"/>
+                                                    Margin="0,1,0,1" ToolTip="{Binding Tip}" Cursor="Hand"
+                                                    HorizontalAlignment="Left"
+                                                    MouseLeftButtonUp="Chip_Click">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Name}" Foreground="{Binding Fg}"
+                                                               FontSize="11" FontWeight="SemiBold"
+                                                               TextDecorations="Underline"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding CountText}" Foreground="{Binding Fg}"
+                                                               FontSize="11" FontWeight="SemiBold" Margin="6,0,0,0"/>
+                                                    <TextBlock Text="{Binding Sub}" Foreground="{Binding Fg}"
+                                                               Opacity="0.72" FontSize="10.5" Margin="10,0,0,0"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource Brush.TextHint}"
+                                           FontSize="11" Margin="24,4,0,0"/>
                             </StackPanel>
                         </Border>
                     </DataTemplate>

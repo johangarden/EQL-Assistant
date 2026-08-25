@@ -227,6 +227,7 @@ public partial class TriggerManagerWindow : Window
             RefreshSeenSkills();
             UpdateCharInfo();
             UpdateDurationUx(); // live play mints samples while the editor is open
+            UpdateDirtyCta();   // Save lights up when edits appear
         };
         _deathsTick.Start();
         Closed += (_, _) => _deathsTick.Stop();
@@ -235,6 +236,66 @@ public partial class TriggerManagerWindow : Window
         LoadoutCombo.SelectedItem = _currentName; // triggers ShowLoadout via SelectionChanged
 
         Closed += (_, _) => _bus.LineReceived -= OnLine;
+
+        // Unsaved-changes guard: the clean state is what the UI would save
+        // RIGHT NOW; closing with a different answer asks first.
+        _cleanFingerprint = Fingerprint();
+        Closing += OnClosingConfirm;
+        UpdateDirtyCta(clean: true);
+    }
+
+    /// <summary>The CTA follows the state: Save wears the primary style while
+    /// changes are unsaved, Close while there is nothing to save. Re-checked
+    /// on the same 2s tick that refreshes the recent-deaths list.</summary>
+    private void UpdateDirtyCta(bool? clean = null)
+    {
+        bool isClean = clean ?? Fingerprint() == _cleanFingerprint;
+        var primary = (Style)FindResource("PrimaryBtn");
+        var normal = (Style)FindResource(typeof(System.Windows.Controls.Button));
+        SaveBtn.Style = isClean ? normal : primary;
+        CloseBtn.Style = isClean ? primary : normal;
+    }
+
+    // ---- discard-changes guard -----------------------------------------------
+
+    private string _cleanFingerprint = "";
+
+    /// <summary>Everything Save would write, serialized — comparing this at
+    /// close against the last-saved snapshot IS the dirty check (no per-field
+    /// tracking to forget).</summary>
+    private string Fingerprint()
+    {
+        try
+        {
+            var doc = new
+            {
+                Loadouts = BuildLoadouts(null),
+                Config = BuildConfigFromUi(),
+                Respawns = _respawns.Select(r => r.ToEntry()).ToList(),
+                Anchors = new[]
+                    {
+                        BarsAnchorBox, EnemyDotsAnchorBox, RemindersAnchorBox, SelfAnchorBox,
+                        TargetAnchorBox, TimerAnchorBox, MeterAnchorBox, FlashAnchorBox,
+                    }
+                    .Select(b => b.SelectedValue as string ?? "").ToList(),
+                AutoStart = StartWithWindowsCheck.IsChecked == true,
+            };
+            return System.Text.Json.JsonSerializer.Serialize(doc);
+        }
+        catch
+        {
+            return Guid.NewGuid().ToString(); // un-buildable UI state = dirty
+        }
+    }
+
+    private void OnClosingConfirm(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (Fingerprint() == _cleanFingerprint) return;
+        if (!ConfirmDialog.Show(this, "Discard changes?",
+                "You have unsaved changes in this window.\n\n"
+                + "Close and discard them? (Save & apply keeps them.)",
+                "Discard", "Keep editing"))
+            e.Cancel = true;
     }
 
     private ObservableCollection<TriggerEditViewModel> CurrentList => _byName[_currentName];
@@ -298,22 +359,6 @@ public partial class TriggerManagerWindow : Window
     {
         RespawnEditor.DataContext = RespawnList.SelectedItem;
         RespawnEditor.IsEnabled = RespawnList.SelectedItem is not null;
-        _soundUxLoading = true;
-        SyncSoundCombo(RespawnWarnSoundBox, SelectedRespawn?.WarnSound);
-        SyncSoundCombo(RespawnSpawnSoundBox, SelectedRespawn?.SpawnSound);
-        _soundUxLoading = false;
-    }
-
-    private void RespawnAdd_Click(object sender, RoutedEventArgs e)
-    {
-        var vm = new RespawnViewModel
-        {
-            Name = "New respawn",
-            Seconds = 0, // auto: the learner measures it from your kills
-            Zone = _combat.CurrentZone, // where you are is the best guess
-        };
-        _respawns.Add(vm);
-        RespawnList.SelectedItem = vm;
     }
 
     // ---- recent-kills picker --------------------------------------------------
@@ -644,10 +689,11 @@ public partial class TriggerManagerWindow : Window
         LiveLogRow.Height = new GridLength(show ? 210 : 0);
     }
 
-    /// <summary>Title bar carries version + the auto-detected character (+ pet).</summary>
+    /// <summary>Title bar carries the face + version + character (+ pet).</summary>
     private void UpdateCharInfo()
     {
-        string title = $"EQL Assistant — Manager · v{UpdateService.CurrentVersion.ToString(3)}";
+        string face = _mode == "triggers" ? "Triggers" : "Settings";
+        string title = $"EQL Assistant — {face} · v{UpdateService.CurrentVersion.ToString(3)}";
         string self = _combat.SelfName;
         if (!string.IsNullOrEmpty(self) && self != "You") title += $" · Character: {self}";
         string pet = _config.Overlay.PetName;
@@ -828,43 +874,53 @@ public partial class TriggerManagerWindow : Window
         _alerts.Fire(speak, sound);
     }
 
-    // ---- respawn alert previews (empty phrase previews the default) ----------
+    // ---- the GLOBAL spawn-timer notices (one setting for every watched mob) ---
 
-    private void RespawnWarnSpeak_Click(object sender, RoutedEventArgs e) =>
-        PreviewRespawn(SelectedRespawn is { } r
-            ? (string.IsNullOrWhiteSpace(r.WarnSpeak)
-                ? Models.RespawnEntry.DefaultWarnPhrase(r.Name) : r.WarnSpeak)
-            : null, null);
+    private void RespawnNotice_Changed(object sender, RoutedEventArgs e) => UpdateRespawnNoticeUx();
 
-    private void RespawnSpawnSpeak_Click(object sender, RoutedEventArgs e) =>
-        PreviewRespawn(SelectedRespawn is { } r
-            ? (string.IsNullOrWhiteSpace(r.SpawnSpeak)
-                ? Models.RespawnEntry.DefaultSpawnPhrase(r.Name) : r.SpawnSpeak)
-            : null, null);
-
-    private void RespawnWarnPlay_Click(object sender, RoutedEventArgs e) =>
-        PreviewRespawn(null, SelectedRespawn?.WarnSound);
-
-    private void RespawnSpawnPlay_Click(object sender, RoutedEventArgs e) =>
-        PreviewRespawn(null, SelectedRespawn?.SpawnSound);
-
-    private void PreviewRespawn(string? speak, string? sound)
+    /// <summary>Rows follow their checkbox; the mode picks which input shows
+    /// (phrase OR sound preset — one channel, never both).</summary>
+    private void UpdateRespawnNoticeUx()
     {
-        if (SelectedRespawn is null) return;
+        if (RespawnWarnRow is null || RespawnSpawnRow is null) return;
+        RespawnWarnRow.IsEnabled = RespawnWarnOnCheck.IsChecked == true;
+        RespawnSpawnRow.IsEnabled = RespawnSpawnOnCheck.IsChecked == true;
+        bool wSound = RespawnWarnModeBox.SelectedValue as string == "sound";
+        RespawnWarnSpeakBox.Visibility = wSound ? Visibility.Collapsed : Visibility.Visible;
+        RespawnWarnSoundBox.Visibility = wSound ? Visibility.Visible : Visibility.Collapsed;
+        bool sSound = RespawnSpawnModeBox.SelectedValue as string == "sound";
+        RespawnSpawnSpeakBox.Visibility = sSound ? Visibility.Collapsed : Visibility.Visible;
+        RespawnSpawnSoundBox.Visibility = sSound ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RespawnWarnTest_Click(object sender, RoutedEventArgs e) =>
+        TestRespawnNotice(RespawnWarnModeBox, RespawnWarnSpeakBox, RespawnWarnSoundBox,
+            Models.RespawnNotice.DefaultWarnPhrase);
+
+    private void RespawnSpawnTest_Click(object sender, RoutedEventArgs e) =>
+        TestRespawnNotice(RespawnSpawnModeBox, RespawnSpawnSpeakBox, RespawnSpawnSoundBox,
+            Models.RespawnNotice.DefaultSpawnPhrase);
+
+    /// <summary>Previews with the selected mob's name in {mob} (or a stand-in).</summary>
+    private void TestRespawnNotice(System.Windows.Controls.ComboBox mode,
+        System.Windows.Controls.TextBox speak, System.Windows.Controls.ComboBox sound,
+        Func<string, string> defaultPhrase)
+    {
         if (_alerts.Muted) { Status("Unmute to preview."); return; }
-        _alerts.Fire(speak, sound);
-    }
-
-    private void RespawnWarnSound_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (_soundUxLoading || SelectedRespawn is null) return;
-        if (RespawnWarnSoundBox.SelectedItem is SoundPreset p) SelectedRespawn.WarnSound = p.Path;
-    }
-
-    private void RespawnSpawnSound_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (_soundUxLoading || SelectedRespawn is null) return;
-        if (RespawnSpawnSoundBox.SelectedItem is SoundPreset p) SelectedRespawn.SpawnSound = p.Path;
+        string mob = SelectedRespawn?.Name is { Length: > 0 } n ? n : "Princess Cherista";
+        if (mode.SelectedValue as string != "sound")
+        {
+            var p = Models.RespawnNotice.Payload(true, "speak", speak.Text.Trim(), "", mob, defaultPhrase);
+            _alerts.Fire(p?.Speak, null);
+        }
+        else if (sound.SelectedItem is SoundPreset p && p.Path.Length > 0)
+        {
+            _alerts.Fire(null, p.Path);
+        }
+        else
+        {
+            Status("Pick a sound first.");
+        }
     }
 
     /// <summary>Jump to a sidebar page by its title ("Repop timer", "General", …).</summary>
@@ -876,6 +932,32 @@ public partial class TriggerManagerWindow : Window
                 item.IsSelected = true;
                 return;
             }
+    }
+
+    // ---- the window's two faces ----------------------------------------------
+    // Owner ask: Triggers should feel like its own window, not a Settings
+    // page. One window class keeps the (deeply intertwined) save machinery,
+    // but the ⚡ bolt opens it as TRIGGERS (triggers + loadouts only) and the
+    // cog's Settings… opens it as SETTINGS (panels + app only).
+
+    private string _mode = "settings";
+
+    private static readonly string[] TriggerFace = { "TRIGGERS", "Triggers", "Loadouts" };
+
+    public void SetMode(string mode)
+    {
+        _mode = mode;
+        bool triggers = mode == "triggers";
+        foreach (var item in NavList.Items.OfType<System.Windows.Controls.ListBoxItem>())
+        {
+            bool trigItem = TriggerFace.Contains(item.Content as string);
+            item.Visibility = trigItem == triggers ? Visibility.Visible : Visibility.Collapsed;
+        }
+        // A selection hidden by the face switch falls to the face's first page.
+        if (NavList.SelectedItem is System.Windows.Controls.ListBoxItem sel
+            && sel.Visibility != Visibility.Visible)
+            SelectPage(triggers ? "Triggers" : "Bars & matrices");
+        UpdateCharInfo();
     }
 
     // ---- sidebar navigation ---------------------------------------------------
@@ -891,7 +973,7 @@ public partial class TriggerManagerWindow : Window
             ["Bars & matrices"] = BarsPage,
             ["Spawn timer"] = RespawnsPage,
             ["DPS + Skills, Procs"] = MeterPage,
-            ["Combat text"] = SctPage,
+            ["Scrolling combat text"] = SctPage,
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
@@ -987,6 +1069,21 @@ public partial class TriggerManagerWindow : Window
         SyncSoundCombo(ResistSoundBox, _config.Overlay.ResistNoticeSound);
         _soundUxLoading = false;
         UpdateMomentNoticeUx();
+
+        // The global spawn-timer notices — phrase boxes show their {mob}
+        // templates instead of standing empty.
+        RespawnWarnOnCheck.IsChecked = _config.Overlay.RespawnWarnEnabled;
+        RespawnWarnSecondsBox.Text = _config.Overlay.RespawnWarnSeconds.ToString(CultureInfo.InvariantCulture);
+        RespawnWarnModeBox.SelectedValue = _config.Overlay.RespawnWarnMode;
+        RespawnWarnSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.RespawnWarnPhrase)
+            ? "{mob} spawning soon" : _config.Overlay.RespawnWarnPhrase;
+        SyncSoundCombo(RespawnWarnSoundBox, _config.Overlay.RespawnWarnSound);
+        RespawnSpawnOnCheck.IsChecked = _config.Overlay.RespawnSpawnEnabled;
+        RespawnSpawnModeBox.SelectedValue = _config.Overlay.RespawnSpawnMode;
+        RespawnSpawnSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.RespawnSpawnPhrase)
+            ? "{mob} respawn" : _config.Overlay.RespawnSpawnPhrase;
+        SyncSoundCombo(RespawnSpawnSoundBox, _config.Overlay.RespawnSpawnSound);
+        UpdateRespawnNoticeUx();
 
         LogDirBox.Text = _config.Log.Directory;
         FilePatternBox.Text = _config.Log.FilePattern;
@@ -1093,23 +1190,34 @@ public partial class TriggerManagerWindow : Window
 
     // ---- save ---------------------------------------------------------------
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    /// <summary>Every loadout's triggers as definitions; with an error sink,
+    /// each pattern is also compile-checked (the save-time validation).</summary>
+    private List<Loadout> BuildLoadouts(List<string>? errors)
     {
-        // Validate every trigger in every loadout.
         var loadouts = new List<Loadout>();
-        var errors = new List<string>();
         foreach (var name in _order)
         {
             var defs = new List<TriggerDefinition>();
             foreach (var vm in _byName[name])
             {
                 var d = vm.ToDefinition();
-                try { ConfigService.CompileOne(d); }
-                catch (ArgumentException ex) { errors.Add($"  • [{name}] {d.Name}: {ex.Message}"); }
+                if (errors is not null)
+                {
+                    try { ConfigService.CompileOne(d); }
+                    catch (ArgumentException ex) { errors.Add($"  • [{name}] {d.Name}: {ex.Message}"); }
+                }
                 defs.Add(d);
             }
             loadouts.Add(new Loadout { Name = name, Triggers = defs });
         }
+        return loadouts;
+    }
+
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        // Validate every trigger in every loadout.
+        var errors = new List<string>();
+        var loadouts = BuildLoadouts(errors);
 
         if (errors.Count > 0)
         {
@@ -1119,7 +1227,47 @@ public partial class TriggerManagerWindow : Window
             return;
         }
 
-        var cfg = new AppConfig
+        var cfg = BuildConfigFromUi();
+
+        try
+        {
+            foreach (var lo in loadouts) _configService.SaveLoadout(lo);
+            _configService.SyncDeleteLoadouts(_order);
+            _configService.SaveSettings(cfg);
+            _configService.SaveRespawns(_respawns.Select(r => r.ToEntry())
+                .Where(r => !string.IsNullOrWhiteSpace(r.Name)).ToList());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Couldn't write files:\n" + ex.Message, "Save failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        ApplyAutoStart(StartWithWindowsCheck.IsChecked == true);
+
+        // Persist panel anchors (offsets are preserved) before the overlay re-applies.
+        ApplyAnchor("main", BarsAnchorBox);
+        ApplyAnchor("enemyDots", EnemyDotsAnchorBox);
+        ApplyAnchor("reminders", RemindersAnchorBox);
+        ApplyAnchor("selfMatrix", SelfAnchorBox);
+        ApplyAnchor("targetDebuffs", TargetAnchorBox);
+        ApplyAnchor("timer", TimerAnchorBox);
+        ApplyAnchor("meter", MeterAnchorBox);
+        ApplyAnchor("flash", FlashAnchorBox);
+
+        _config = cfg;
+        _onApplied(_currentName);
+        _cleanFingerprint = Fingerprint(); // this IS the saved state now
+        UpdateDirtyCta(clean: true);
+        Status($"Saved {loadouts.Count} loadout(s). Active: {_currentName}.");
+    }
+
+    /// <summary>The AppConfig exactly as Save would write it, read from the UI
+    /// (shared by the save and the dirty-check fingerprint).</summary>
+    private AppConfig BuildConfigFromUi()
+    {
+        return new AppConfig
         {
             CharacterName = _config.CharacterName, // auto-detected; hand-editable in config.json only
             ActiveLoadout = _currentName,
@@ -1165,6 +1313,18 @@ public partial class TriggerManagerWindow : Window
                 ResistNoticeSpeak = ResistSpeakBox.Text.Trim(),
                 ResistNoticeSound = (ResistSoundBox.SelectedItem as SoundPreset)?.Path
                     ?? _config.Overlay.ResistNoticeSound,
+                RespawnWarnEnabled = RespawnWarnOnCheck.IsChecked == true,
+                RespawnWarnSeconds = double.TryParse(RespawnWarnSecondsBox.Text,
+                    NumberStyles.Float, CultureInfo.InvariantCulture, out double rws) && rws > 0 ? rws : 15,
+                RespawnWarnMode = RespawnWarnModeBox.SelectedValue as string ?? "speak",
+                RespawnWarnPhrase = RespawnWarnSpeakBox.Text.Trim(),
+                RespawnWarnSound = (RespawnWarnSoundBox.SelectedItem as SoundPreset)?.Path
+                    ?? _config.Overlay.RespawnWarnSound,
+                RespawnSpawnEnabled = RespawnSpawnOnCheck.IsChecked == true,
+                RespawnSpawnMode = RespawnSpawnModeBox.SelectedValue as string ?? "speak",
+                RespawnSpawnPhrase = RespawnSpawnSpeakBox.Text.Trim(),
+                RespawnSpawnSound = (RespawnSpawnSoundBox.SelectedItem as SoundPreset)?.Path
+                    ?? _config.Overlay.RespawnSpawnSound,
                 MeterSoloMode = _config.Overlay.MeterSoloMode,           // meter-toggled
                 SessionStatsVisible = _config.Overlay.SessionStatsVisible,       // tray-toggled
                 SessionStatsSlice = _config.Overlay.SessionStatsSlice,           // panel-toggled
@@ -1197,37 +1357,6 @@ public partial class TriggerManagerWindow : Window
                 SctXpLifetime = Math.Clamp(ParseOr(SctXpLifetimeBox.Text, _config.Overlay.SctXpLifetime), 1, 15),
             },
         };
-
-        try
-        {
-            foreach (var lo in loadouts) _configService.SaveLoadout(lo);
-            _configService.SyncDeleteLoadouts(_order);
-            _configService.SaveSettings(cfg);
-            _configService.SaveRespawns(_respawns.Select(r => r.ToEntry())
-                .Where(r => !string.IsNullOrWhiteSpace(r.Name)).ToList());
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Couldn't write files:\n" + ex.Message, "Save failed",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
-
-        ApplyAutoStart(StartWithWindowsCheck.IsChecked == true);
-
-        // Persist panel anchors (offsets are preserved) before the overlay re-applies.
-        ApplyAnchor("main", BarsAnchorBox);
-        ApplyAnchor("enemyDots", EnemyDotsAnchorBox);
-        ApplyAnchor("reminders", RemindersAnchorBox);
-        ApplyAnchor("selfMatrix", SelfAnchorBox);
-        ApplyAnchor("targetDebuffs", TargetAnchorBox);
-        ApplyAnchor("timer", TimerAnchorBox);
-        ApplyAnchor("meter", MeterAnchorBox);
-        ApplyAnchor("flash", FlashAnchorBox);
-
-        _config = cfg;
-        _onApplied(_currentName);
-        Status($"Saved {loadouts.Count} loadout(s). Active: {_currentName}.");
     }
 
     // ---- start with Windows (HKCU Run key) -----------------------------------

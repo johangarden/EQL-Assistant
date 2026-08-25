@@ -661,23 +661,33 @@ public partial class MainWindow : Window
                     tracked.Any(r => r.Name.Equals(d.Name, StringComparison.OrdinalIgnoreCase))))
                 .ToList();
         };
-        _timer.AddRespawnRequested = (name, zone, seconds) =>
+        _timer.AddRespawnRequested = (name, zone) =>
         {
             var list = _configService.LoadRespawns();
             if (list.Any(r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return;
-            list.Add(new Models.RespawnEntry { Name = name, Zone = zone, Seconds = seconds });
+            list.Add(new Models.RespawnEntry { Name = name, Zone = zone });
             _configService.SaveRespawns(list);
             // The engine holds the same trigger list instance, so re-merging the
             // timerAuto triggers makes the new respawn live immediately.
             MergeGlobalRespawns(_config);
-            _vm.Flash(seconds > 0
-                ? $"Respawn added: {name} ({Services.DurationText.Compact(seconds)})."
-                : $"Respawn added: {name} — learning its time from your kills.");
+            _vm.Flash($"Respawn added: {name} — learning its time from your kills.");
         };
         _timer.ManageRespawnsRequested = () => OpenManager("Spawn timer");
         _timer.RespawnLookup = name => _respawnCache.FirstOrDefault(
             r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         _timer.RespawnsProvider = () => _respawnCache;
+        // The GLOBAL notices, resolved per mob ("{mob}" in a phrase becomes
+        // the name) — read live so Manager saves apply to running timers.
+        _timer.AlertPayloads = name =>
+        {
+            var o = _config.Overlay;
+            return new Views.TimerWindow.RespawnAlerts(
+                Models.RespawnNotice.Payload(o.RespawnWarnEnabled, o.RespawnWarnMode,
+                    o.RespawnWarnPhrase, o.RespawnWarnSound, name, Models.RespawnNotice.DefaultWarnPhrase),
+                o.RespawnWarnSeconds,
+                Models.RespawnNotice.Payload(o.RespawnSpawnEnabled, o.RespawnSpawnMode,
+                    o.RespawnSpawnPhrase, o.RespawnSpawnSound, name, Models.RespawnNotice.DefaultSpawnPhrase));
+        };
         _timer.Show();
         _timer.RefreshWatching(); // quiet rows for the current zone's watched mobs
         UpdateTimerVisibility();
@@ -1183,6 +1193,9 @@ public partial class MainWindow : Window
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
         }
+        // The window has two faces: the bolt's pages open it as TRIGGERS,
+        // everything else as SETTINGS (Johan's split, one save machinery).
+        _manager.SetMode(page is "Triggers" or "Loadouts" ? "triggers" : "settings");
         if (page is not null) _manager.SelectPage(page);
         BringToFront(_manager);
     }
@@ -1473,7 +1486,7 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs", () => !_meterHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter · skills section", ToggleSkills, "DPS + Skills, Procs", () => !_skillsHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter · proc watcher", ToggleProcs, "DPS + Skills, Procs", () => _config.Overlay.ProcWatcherVisible));
-        panels.Items.Add(BurgerPanelRow("Combat text", ToggleSct, "Combat text", () => !_sctHidden));
+        panels.Items.Add(BurgerPanelRow("Scrolling combat text", ToggleSct, "Scrolling combat text", () => !_sctHidden));
         panels.Items.Add(BurgerPanelRow("Flash alerts", ToggleFlash, "Flash alerts", () => !_flashHidden));
         panels.SubmenuOpened += (_, _) =>
         {
@@ -1812,7 +1825,7 @@ public partial class MainWindow : Window
         var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
         var panelSkills = new System.Windows.Forms.ToolStripMenuItem("DPS meter · skills section", null, (_, _) => ToggleSkills());
         var panelProcs = new System.Windows.Forms.ToolStripMenuItem("DPS meter · proc watcher", null, (_, _) => ToggleProcs());
-        var panelSct = new System.Windows.Forms.ToolStripMenuItem("Combat text", null, (_, _) => ToggleSct());
+        var panelSct = new System.Windows.Forms.ToolStripMenuItem("Scrolling combat text", null, (_, _) => ToggleSct());
         var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
         var panelToolbar = new System.Windows.Forms.ToolStripMenuItem("Toolbar", null, (_, _) => ToggleToolbar());
         var panelBars = new System.Windows.Forms.ToolStripMenuItem("Buff bars", null, (_, _) => ToggleBars());

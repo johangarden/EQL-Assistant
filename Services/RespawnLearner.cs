@@ -189,7 +189,6 @@ public sealed class RespawnLearner
     {
         if (w.DeathAt is not { } death) return null;
         w.DeathAt = null;
-        if (!w.Entry.Learn) return null;
         if (w.DeathStay != _stay) return null; // left the zone: a true-but-useless bound
         double gap = (time - death).TotalSeconds;
         return gap is >= MinGapSeconds and <= MaxGapSeconds ? gap : null;

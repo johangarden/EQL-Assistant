@@ -500,8 +500,12 @@ public sealed class ConfigService
         if (!File.Exists(RespawnsPath)) return new();
         try
         {
-            return JsonSerializer.Deserialize<List<RespawnEntry>>(
+            var list = JsonSerializer.Deserialize<List<RespawnEntry>>(
                 File.ReadAllText(RespawnsPath), ReadOptions) ?? new();
+            // Typed times retired (owner ruling): each becomes the first gap
+            // sample. In-memory until the next save; idempotent either way.
+            foreach (var r in list) r.MigrateTypedTime(DateTime.Now);
+            return list;
         }
         catch { return new(); }
     }
@@ -548,8 +552,8 @@ public sealed class ConfigService
     }
 
     /// <summary>A respawn entry compiled into the engine's timerAuto trigger form.
-    /// Duration = the estimate ladder (typed > learned minimum); 0 = no estimate
-    /// yet — the death still starts a counting-UP "learning" row on the watch.</summary>
+    /// Duration = the learned minimum gap; 0 = no evidence yet — the death
+    /// still starts a counting-UP "learning" row on the watch.</summary>
     public static TriggerDefinition? BuildRespawnTrigger(RespawnEntry r)
     {
         if (!r.Enabled || string.IsNullOrWhiteSpace(r.Name)) return null;
