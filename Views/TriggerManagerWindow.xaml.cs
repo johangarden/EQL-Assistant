@@ -628,10 +628,11 @@ public partial class TriggerManagerWindow : Window
         LiveLogRow.Height = new GridLength(show ? 210 : 0);
     }
 
-    /// <summary>Title bar carries version + the auto-detected character (+ pet).</summary>
+    /// <summary>Title bar carries the face + version + character (+ pet).</summary>
     private void UpdateCharInfo()
     {
-        string title = $"EQL Assistant — Manager · v{UpdateService.CurrentVersion.ToString(3)}";
+        string face = _mode == "triggers" ? "Triggers" : "Settings";
+        string title = $"EQL Assistant — {face} · v{UpdateService.CurrentVersion.ToString(3)}";
         string self = _combat.SelfName;
         if (!string.IsNullOrEmpty(self) && self != "You") title += $" · Character: {self}";
         string pet = _config.Overlay.PetName;
@@ -870,6 +871,32 @@ public partial class TriggerManagerWindow : Window
                 item.IsSelected = true;
                 return;
             }
+    }
+
+    // ---- the window's two faces ----------------------------------------------
+    // Owner ask: Triggers should feel like its own window, not a Settings
+    // page. One window class keeps the (deeply intertwined) save machinery,
+    // but the ⚡ bolt opens it as TRIGGERS (triggers + loadouts only) and the
+    // cog's Settings… opens it as SETTINGS (panels + app only).
+
+    private string _mode = "settings";
+
+    private static readonly string[] TriggerFace = { "TRIGGERS", "Triggers", "Loadouts" };
+
+    public void SetMode(string mode)
+    {
+        _mode = mode;
+        bool triggers = mode == "triggers";
+        foreach (var item in NavList.Items.OfType<System.Windows.Controls.ListBoxItem>())
+        {
+            bool trigItem = TriggerFace.Contains(item.Content as string);
+            item.Visibility = trigItem == triggers ? Visibility.Visible : Visibility.Collapsed;
+        }
+        // A selection hidden by the face switch falls to the face's first page.
+        if (NavList.SelectedItem is System.Windows.Controls.ListBoxItem sel
+            && sel.Visibility != Visibility.Visible)
+            SelectPage(triggers ? "Triggers" : "Bars & matrices");
+        UpdateCharInfo();
     }
 
     // ---- sidebar navigation ---------------------------------------------------

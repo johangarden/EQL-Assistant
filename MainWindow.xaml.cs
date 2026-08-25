@@ -1193,6 +1193,9 @@ public partial class MainWindow : Window
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
         }
+        // The window has two faces: the bolt's pages open it as TRIGGERS,
+        // everything else as SETTINGS (Johan's split, one save machinery).
+        _manager.SetMode(page is "Triggers" or "Loadouts" ? "triggers" : "settings");
         if (page is not null) _manager.SelectPage(page);
         BringToFront(_manager);
     }
