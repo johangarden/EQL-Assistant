@@ -693,11 +693,11 @@
                     <ScrollViewer x:Name="RespawnsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Named respawns" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="Respawns" Style="{StaticResource PageTitle}"/>
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="World knowledge, independent of loadouts: when a mob's death line appears in the log, the repop watch auto-starts with its respawn time — typed, or learned from your own kills (leave the time on 'auto'). Quick-add in game: the watch's ➕ button."/>
+                                       Text="World knowledge, independent of loadouts: when a mob's death line appears in the log, the Spawn timer auto-starts with its respawn time — typed, or learned from your own kills (leave the time on 'auto'). Quick-add in game: the Spawn timer's ➕ button."/>
 
                             <Grid Margin="0,10,0,0">
                                 <Grid.ColumnDefinitions>
