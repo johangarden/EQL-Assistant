@@ -88,11 +88,12 @@
             <!-- Buttons dock FIRST so a long status line can never push them
                  off — the text fills what's left and trims with an ellipsis. -->
             <DockPanel>
-                <Button Content="Close" Click="Close_Click" DockPanel.Dock="Right"
+                <!-- The CTA follows the state: Save lights up while there are
+                     unsaved changes, Close while there is nothing to save. -->
+                <Button x:Name="CloseBtn" Content="Close" Click="Close_Click" DockPanel.Dock="Right"
                         Width="90" Height="30" Margin="8,0,0,0"/>
-                <Button Content="Save" Click="Save_Click" DockPanel.Dock="Right"
-                        Width="120" Height="30" FontWeight="Bold"
-                        Style="{StaticResource PrimaryBtn}"/>
+                <Button x:Name="SaveBtn" Content="Save" Click="Save_Click" DockPanel.Dock="Right"
+                        Width="120" Height="30" FontWeight="Bold"/>
                 <TextBlock x:Name="StatusText" Foreground="#6FCF97" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,10,0"
                            ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>

@@ -227,6 +227,7 @@ public partial class TriggerManagerWindow : Window
             RefreshSeenSkills();
             UpdateCharInfo();
             UpdateDurationUx(); // live play mints samples while the editor is open
+            UpdateDirtyCta();   // Save lights up when edits appear
         };
         _deathsTick.Start();
         Closed += (_, _) => _deathsTick.Stop();
@@ -240,6 +241,19 @@ public partial class TriggerManagerWindow : Window
         // RIGHT NOW; closing with a different answer asks first.
         _cleanFingerprint = Fingerprint();
         Closing += OnClosingConfirm;
+        UpdateDirtyCta(clean: true);
+    }
+
+    /// <summary>The CTA follows the state: Save wears the primary style while
+    /// changes are unsaved, Close while there is nothing to save. Re-checked
+    /// on the same 2s tick that refreshes the recent-deaths list.</summary>
+    private void UpdateDirtyCta(bool? clean = null)
+    {
+        bool isClean = clean ?? Fingerprint() == _cleanFingerprint;
+        var primary = (Style)FindResource("PrimaryBtn");
+        var normal = (Style)FindResource(typeof(System.Windows.Controls.Button));
+        SaveBtn.Style = isClean ? normal : primary;
+        CloseBtn.Style = isClean ? primary : normal;
     }
 
     // ---- discard-changes guard -----------------------------------------------
@@ -1245,6 +1259,7 @@ public partial class TriggerManagerWindow : Window
         _config = cfg;
         _onApplied(_currentName);
         _cleanFingerprint = Fingerprint(); // this IS the saved state now
+        UpdateDirtyCta(clean: true);
         Status($"Saved {loadouts.Count} loadout(s). Active: {_currentName}.");
     }
 
