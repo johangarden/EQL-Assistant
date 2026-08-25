@@ -135,10 +135,6 @@
                                                     HorizontalAlignment="Left"
                                                     MouseLeftButtonUp="Chip_Click">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <Image Source="{Binding Icon}" Width="16" Height="16"
-                                                           Margin="0,0,6,0" VerticalAlignment="Center"
-                                                           Visibility="{Binding IconVis}"
-                                                           RenderOptions.BitmapScalingMode="HighQuality"/>
                                                     <TextBlock Text="{Binding Name}" Foreground="{Binding Fg}"
                                                                FontSize="11" FontWeight="SemiBold"
                                                                TextDecorations="Underline"

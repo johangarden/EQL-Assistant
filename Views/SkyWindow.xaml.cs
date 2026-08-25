@@ -26,13 +26,10 @@ public partial class SkyWindow : Window
     private static readonly Brush OpenFg = Freeze(Color.FromRgb(0xDC, 0xE6, 0xF5));
 
     public sealed record ChipVm(string Name, string CountText, string Sub, Brush Bg, Brush Fg,
-        string Tip, string Url, ImageSource? Icon)
-    {
-        public Visibility IconVis => Icon is null ? Visibility.Collapsed : Visibility.Visible;
-    }
+        string Tip, string Url);
 
-    // The wiki icons ride along (the same embedded set the Character window
-    // draws) — one shared stats instance, loaded on first Sky window.
+    // The REWARD wears its wiki icon (the same embedded set the Character
+    // window draws) — the drop rows stay text-only, by owner taste.
     private static readonly Lazy<ItemStats> SharedItemStats = new(() => new ItemStats());
 
     /// <summary>A chip is a door to the item's wiki page.</summary>
@@ -261,8 +258,7 @@ public partial class SkyWindow : Window
             return new ChipVm(it.Name, $"{held}/{it.Count}", sub, bg, fg,
                 $"{it.Name} — drops from {it.Who} ({it.Where}). Click for the wiki page."
                 + (it.Stats is null ? "" : "\n\n" + it.Stats),
-                WikiUrl(it.Name),
-                ItemIcons.Get(SharedItemStats.Value.Lookup(it.Name)?.Icon));
+                WikiUrl(it.Name));
         }).ToList();
 
         return new QuestVm(q,
