@@ -19,9 +19,32 @@ public sealed class ConditionWatcher
     public const string Feared = "FEARED";
     public const string Charmed = "CHARMED";
     public const string Mezzed = "MEZZED";
+    // MOMENT badges — not states with wear-offs, but flashes about YOUR cast:
+    // it broke, or it bounced. They expire by themselves after a beat.
+    public const string Interrupted = "INTERRUPTED";
+    public const string Resisted = "RESISTED";
 
-    /// <summary>One active condition: what, and for how long so far.</summary>
-    public sealed record View(string Kind, double ElapsedSeconds);
+    /// <summary>One active condition: what, for how long so far — and, for the
+    /// moment badges, which spell (shown where the elapsed time would sit).</summary>
+    public sealed record View(string Kind, double ElapsedSeconds, string Detail = "");
+
+    private const double MomentSeconds = 1.5; // a flash, not a lecture (owner tuning)
+
+    /// <summary>A moment just fired: (kind, spell) — the audible notice's cue.</summary>
+    public event Action<string, string>? Moment;
+    private readonly Dictionary<string, (DateTime Since, DateTime Deadline, string Detail)> _moments
+        = new(StringComparer.Ordinal);
+
+    // Own-cast markers, confirmed in the real logs: "Your Siphon Life spell is
+    // interrupted." (a pet's says "Xarer's …" and stays silent) and
+    // "A froglok shin knight resisted your Ignite!" / "Your target resisted
+    // the X spell." ("resisted Gonartik's" is the pet's spell, silent).
+    private static readonly Regex OwnInterruptRx = new(
+        @"^Your (?<s>.+?) spell is interrupted\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex OwnResistRx = new(
+        @"^(?:Your target resisted the (?<s1>.+?) spell\.|.+? resisted your (?<s2>.+?)!)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // The uniform wear-off families (observed in the wiki scrape). NOTE:
     // "Your charm spell has worn off." is the CASTER side of a pet charm
@@ -111,6 +134,21 @@ public sealed class ConditionWatcher
             return;
         }
 
+        // The moment flashes: your cast broke / your spell bounced.
+        if (OwnInterruptRx.Match(body) is { Success: true } im)
+        {
+            _moments[Interrupted] = (time, time.AddSeconds(MomentSeconds), im.Groups["s"].Value);
+            Moment?.Invoke(Interrupted, im.Groups["s"].Value);
+            return;
+        }
+        if (OwnResistRx.Match(body) is { Success: true } rm)
+        {
+            string spell = rm.Groups["s1"].Success ? rm.Groups["s1"].Value : rm.Groups["s2"].Value;
+            _moments[Resisted] = (time, time.AddSeconds(MomentSeconds), spell);
+            Moment?.Invoke(Resisted, spell);
+            return;
+        }
+
         // Censors: death breaks everything on you; zoning means it's over too.
         if (body.StartsWith("You died.", StringComparison.Ordinal)
             || body.StartsWith("You have been slain", StringComparison.Ordinal)
@@ -119,6 +157,7 @@ public sealed class ConditionWatcher
             if (_active.Count > 0)
                 Log.Info($"[conditions] cleared ({string.Join(", ", _active.Keys)}) at {time:HH:mm:ss} — censor line: \"{body}\"");
             _active.Clear();
+            _moments.Clear();
         }
     }
 
@@ -133,20 +172,34 @@ public sealed class ConditionWatcher
             _active.Remove(kind);
         }
 
+        foreach (var kind in _moments.Where(kv => now > kv.Value.Deadline)
+                     .Select(kv => kv.Key).ToList())
+            _moments.Remove(kind);
+
         return _active
             .OrderBy(kv => kv.Value.Since)
             .Select(kv => new View(kv.Key, Math.Max(0, (now - kv.Value.Since).TotalSeconds)))
+            .Concat(_moments
+                .OrderBy(kv => kv.Value.Since)
+                .Select(kv => new View(kv.Key,
+                    Math.Max(0, (now - kv.Value.Since).TotalSeconds), kv.Value.Detail)))
             .ToList();
     }
 
-    public void Clear() => _active.Clear();
+    public void Clear()
+    {
+        _active.Clear();
+        _moments.Clear();
+    }
 
-    /// <summary>Test hook: all four badges, self-clearing after ~12s.</summary>
+    /// <summary>Test hook: every badge, self-clearing after ~12s.</summary>
     public void AddDemo()
     {
         var now = DateTime.Now;
         foreach (string kind in new[] { Stunned, Feared, Charmed, Mezzed })
             _active[kind] = (now, now.AddSeconds(12));
+        _moments[Interrupted] = (now, now.AddSeconds(12), "Siphon Life");
+        _moments[Resisted] = (now, now.AddSeconds(12), "Ignite");
     }
 
     private static DateTime ExtractTimestamp(string rawLine, out string body)

@@ -48,6 +48,15 @@ public partial class ConditionsWindow : Window
         [ConditionWatcher.Mezzed] = (Freeze("#64B5F6"), Geometry.Parse(
             // crescent moon
             "M14.5 2 A10 10 0 1 0 14.5 22 A8 8 0 1 1 14.5 2 Z")),
+        [ConditionWatcher.Interrupted] = (Freeze("#FFB74D"), Geometry.Parse(
+            // a cast bar snapped by a bolt
+            "M1.5 10.5 L8.5 10.5 L8.5 13.5 L1.5 13.5 Z M15.5 10.5 L22.5 10.5 L22.5 13.5 L15.5 13.5 Z " +
+            "M14 2 L9 11.5 L11.7 11.5 L10 22 L15 12.5 L12.3 12.5 Z")),
+        [ConditionWatcher.Resisted] = (Freeze("#4DD0E1"), Geometry.Parse(
+            // a shield, the spell turned away (even-odd X cut)
+            "M12 1.5 L20.5 4.8 L20.5 11 C20.5 17 17 20.7 12 22.5 C7 20.7 3.5 17 3.5 11 L3.5 4.8 Z " +
+            "M8.6 7.2 L12 10.6 L15.4 7.2 L16.8 8.6 L13.4 12 L16.8 15.4 L15.4 16.8 L12 13.4 " +
+            "L8.6 16.8 L7.2 15.4 L10.6 12 L7.2 8.6 Z")),
     };
 
     public ConditionsWindow(ConditionWatcher watcher, ConfigService configService, double opacity)
@@ -97,7 +106,10 @@ public partial class ConditionsWindow : Window
         var active = _watcher.Active(DateTime.Now);
         BadgesControl.ItemsSource = active
             .Where(v => Badges.ContainsKey(v.Kind))
-            .Select(v => new BadgeVm(v.Kind, $"+{v.ElapsedSeconds:0}s",
+            // Moment badges (interrupt/resist) name the SPELL where a state
+            // badge counts its seconds.
+            .Select(v => new BadgeVm(v.Kind,
+                v.Detail.Length > 0 ? v.Detail : $"+{v.ElapsedSeconds:0}s",
                 Badges[v.Kind].Stroke, Badges[v.Kind].Glyph))
             .ToList();
 

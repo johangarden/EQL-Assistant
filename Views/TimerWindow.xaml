@@ -14,10 +14,26 @@
 
     <!-- Drag anywhere on the card (buttons handle their own clicks). -->
     <Border x:Name="RootBorder" CornerRadius="10" Padding="10"
-            Background="#D6141A24" BorderBrush="#3A4560" BorderThickness="1"
+            Background="#E60F141D" BorderThickness="1.5"
             MouseLeftButtonDown="Card_DragMove">
+        <Border.BorderBrush>
+            <!-- a whisper of bronze around the card — the ring's metal, echoed -->
+            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#8A7448" Offset="0"/>
+                <GradientStop Color="#3A2F1C" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.BorderBrush>
         <StackPanel>
-            <DockPanel Margin="0,0,0,6">
+            <!-- The title stands alone up top; the controls keep their own row. -->
+            <TextBlock x:Name="ModeLabel" Text="Spawn Timer" Foreground="#E8C15A"
+                       FontFamily="Georgia" FontWeight="SemiBold" FontSize="13"
+                       HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       MaxWidth="150" Margin="0,0,0,4">
+                <TextBlock.Effect>
+                    <DropShadowEffect ShadowDepth="1" BlurRadius="2" Opacity="0.8" Color="Black"/>
+                </TextBlock.Effect>
+            </TextBlock>
+            <DockPanel Margin="0,0,0,6" LastChildFill="False">
                 <!-- The one mode decision, worn as a labeled pill (a glyph
                      couldn't say "who owns the pie" at a glance). -->
                 <Button DockPanel.Dock="Left" x:Name="ModeToggleBtn" Click="OnModeToggle"
@@ -43,20 +59,37 @@
                         AutomationProperties.AutomationId="TimerAddRespawnBtn"
                         FontFamily="Segoe MDL2 Assets" Content="&#xE710;"
                         ToolTip="Add a respawn from your recent kills"/>
-                <TextBlock x:Name="ModeLabel" Text="Timer" Foreground="#C9D4E3" FontWeight="SemiBold"
-                           VerticalAlignment="Center" HorizontalAlignment="Center"
-                           TextTrimming="CharacterEllipsis" Margin="6,0,4,0"/>
             </DockPanel>
 
-            <Grid Width="132" Height="132">
-                <!-- face -->
-                <Ellipse Fill="#66101722" Stroke="#46567A" StrokeThickness="2"/>
-                <!-- shrinking red pie (Data set in code) -->
-                <Path x:Name="Wedge" Fill="#E53935"/>
-                <!-- inner mask so the pie reads as a ring-less disc face + hub -->
-                <Ellipse Width="14" Height="14" Fill="#20293A" Stroke="#46567A" StrokeThickness="1"
-                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <TextBlock x:Name="TimeText" Text="0:00" Foreground="White" FontSize="24" FontWeight="Bold"
+            <!-- The spawn clock: a beveled steel ring of segment blocks that go
+                 out as time drains (geometry built in code), gold serif digits. -->
+            <Grid Width="140" Height="140">
+                <!-- outer metal bevel -->
+                <Ellipse>
+                    <Ellipse.Stroke>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#5A6A86" Offset="0"/>
+                            <GradientStop Color="#141A26" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Ellipse.Stroke>
+                    <Ellipse.StrokeThickness>5</Ellipse.StrokeThickness>
+                </Ellipse>
+                <!-- the segment track -->
+                <Ellipse Margin="5" Fill="#CC0B0F16"/>
+                <Path x:Name="SegmentsDim" Fill="#1B222E"/>
+                <Path x:Name="SegmentsLit" Fill="#4CAF50"/>
+                <!-- inner face: a dark disc with its own rim -->
+                <Ellipse Margin="26">
+                    <Ellipse.Fill>
+                        <RadialGradientBrush>
+                            <GradientStop Color="#1D2534" Offset="0"/>
+                            <GradientStop Color="#0C1017" Offset="1"/>
+                        </RadialGradientBrush>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <Ellipse Margin="26" Stroke="#3A4560" StrokeThickness="1.5"/>
+                <TextBlock x:Name="TimeText" Text="0:00" Foreground="#E8C15A"
+                           FontFamily="Georgia" FontSize="27" FontWeight="Bold"
                            HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock.Effect>
                         <DropShadowEffect ShadowDepth="1" BlurRadius="4" Opacity="0.9" Color="Black"/>
@@ -80,7 +113,7 @@
             <ItemsControl x:Name="SecondariesControl" Margin="0,8,0,0" MaxWidth="150">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <DockPanel Margin="2,1">
+                        <DockPanel Margin="2,1" Visibility="{Binding RowVis}">
                             <TextBlock DockPanel.Dock="Right" Text="{Binding RemainingText}"
                                        Foreground="{Binding Foreground}" FontWeight="Bold" FontSize="12"
                                        Margin="8,0,0,0"/>

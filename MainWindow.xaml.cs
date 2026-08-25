@@ -123,6 +123,7 @@ public partial class MainWindow : Window
         if (retyped > 0) Log.Info($"Retyped {retyped} library trigger(s) (HoTs/DoTs split).");
         _durations = new SpellDurations(_configService, _spellLib);
         _conditions = new ConditionWatcher(_spellLib);
+        _conditions.Moment += (kind, _) => OnConditionMoment(kind);
         WireRespawnLearner();
         // Enemy-DoT countdowns: learned first, library figure as the fallback.
         _combat.DotDurationLookup = spell =>
@@ -673,10 +674,12 @@ public partial class MainWindow : Window
                 ? $"Respawn added: {name} ({Services.DurationText.Compact(seconds)})."
                 : $"Respawn added: {name} — learning its time from your kills.");
         };
-        _timer.ManageRespawnsRequested = () => OpenManager("Respawns");
+        _timer.ManageRespawnsRequested = () => OpenManager("Spawn timer");
         _timer.RespawnLookup = name => _respawnCache.FirstOrDefault(
             r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        _timer.RespawnsProvider = () => _respawnCache;
         _timer.Show();
+        _timer.RefreshWatching(); // quiet rows for the current zone's watched mobs
         UpdateTimerVisibility();
     }
 
@@ -694,7 +697,7 @@ public partial class MainWindow : Window
         _configService.SaveSettings(_config);
         if (_hidden && !_timerHidden) ToggleHide(); // unhide everything if it was globally hidden
         UpdateTimerVisibility();
-        _vm.Flash(_timerHidden ? "Repop timer hidden." : "Repop timer shown.");
+        _vm.Flash(_timerHidden ? "Spawn timer hidden." : "Spawn timer shown.");
     }
 
     // ---- DPS meter panel ----------------------------------------------------
@@ -1242,6 +1245,7 @@ public partial class MainWindow : Window
         cfg.Triggers.RemoveAll(t => t.Panel == Panels.TimerAuto);
         cfg.Triggers.AddRange(_configService.BuildRespawnTriggers());
         _respawnLearner.UpdateEntries(_respawnCache);
+        _timer?.RefreshWatching(); // the watching rows mirror the list
     }
 
     // ---- respawn learner (death → next-appearance gaps + UP sightings) --------
@@ -1251,6 +1255,7 @@ public partial class MainWindow : Window
     private void WireRespawnLearner()
     {
         _respawnLearner.Sighted += name => _timer?.NotifySighted(name);
+        _respawnLearner.ZoneChanged += zone => _timer?.SetZone(zone);
         _respawnLearner.GapLearned += (name, gap, when) =>
         {
             var entry = _respawnCache.FirstOrDefault(r =>
@@ -1329,6 +1334,7 @@ public partial class MainWindow : Window
 
         RebuildFlashWindow();
         RebuildSctLanes();
+        RebuildConditionsWindow(); // its page owns visibility now
         if (_toolbarWin is not null)
         {
             _toolbarWin.DataContext = _vm; // rebound: the VM was rebuilt above
@@ -1380,6 +1386,7 @@ public partial class MainWindow : Window
             LockRequested = ToggleLock,
             MuteRequested = ToggleMute,
             ManageRequested = () => OpenManager(),
+            TriggerRequested = () => OpenManager("Triggers"),
             MenuRequested = el => ShowMainMenu(el as UIElement),
             RaidRequested = OpenRaidKills,
             QuestsRequested = OpenSkyQuests,
@@ -1445,10 +1452,11 @@ public partial class MainWindow : Window
     {
         var menu = new ContextMenu();
 
-        // The most common play-time task sits on top.
-        var create = new MenuItem { Header = "Create trigger…" };
-        create.Click += (_, _) => OpenManager("Triggers");
-        menu.Items.Add(create);
+        // Create-trigger moved to its own toolbar button; the cog's menu
+        // leads with the Manager itself.
+        var settings = new MenuItem { Header = "Settings…" };
+        settings.Click += (_, _) => OpenManager();
+        menu.Items.Add(settings);
         menu.Items.Add(new Separator());
 
         var panels = new MenuItem { Header = "Panels" };
@@ -1458,10 +1466,10 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("Target-debuffs matrix", ToggleTargetMatrix, "Bars & matrices", () => _config.Overlay.TargetMatrixVisible));
         panels.Items.Add(BurgerPanelRow("Rebuff reminders", ToggleReminders, "Bars & matrices", () => _config.Overlay.RemindersVisible));
         panels.Items.Add(BurgerPanelRow("Enemy DoTs", ToggleEnemyDots, "Bars & matrices", () => _config.Overlay.EnemyDotsVisible));
-        panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, null, () => _config.Overlay.ConditionsVisible));
+        panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, "Condition badges", () => _config.Overlay.ConditionsVisible));
         panels.Items.Add(BurgerPanelRow("Sky quest helper", ToggleSkyHelper, null, () => _config.Overlay.SkyHelperVisible));
         panels.Items.Add(BurgerPanelRow("Session stats (XP/AA/motes)", ToggleSessionStats, null, () => _config.Overlay.SessionStatsVisible));
-        panels.Items.Add(BurgerPanelRow("Repop timer", ToggleTimer, "Repop timer", () => !_timerHidden));
+        panels.Items.Add(BurgerPanelRow("Spawn timer", ToggleTimer, "Spawn timer", () => !_timerHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs", () => !_meterHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter · skills section", ToggleSkills, "DPS + Skills, Procs", () => !_skillsHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter · proc watcher", ToggleProcs, "DPS + Skills, Procs", () => _config.Overlay.ProcWatcherVisible));
@@ -1561,8 +1569,37 @@ public partial class MainWindow : Window
         if (_hidden) ToggleHide();
         UpdateTimerVisibility();
         _timer?.StartWith(seconds, name);
-        _vm.Flash($"{name} down — repop timer started.");
-        Log.Info($"Auto-started repop timer ({seconds:0}s) from trigger '{name}'.");
+        _vm.Flash($"{name} down — spawn timer started.");
+        Log.Info($"Auto-started spawn timer ({seconds:0}s) from trigger '{name}'.");
+    }
+
+    // ---- interrupt / resist notices ------------------------------------------
+
+    private DateTime _lastInterruptAlert, _lastResistAlert;
+
+    /// <summary>The audible half of a moment badge. A short per-kind cooldown
+    /// keeps a chain-bashed cast from stacking dings on dings.</summary>
+    private void OnConditionMoment(string kind)
+    {
+        bool interrupt = kind == ConditionWatcher.Interrupted;
+        var o = _config.Overlay;
+        if (!(interrupt ? o.InterruptNoticeEnabled : o.ResistNoticeEnabled)) return;
+
+        var now = DateTime.Now;
+        if ((now - (interrupt ? _lastInterruptAlert : _lastResistAlert)).TotalSeconds < 2.5) return;
+        if (interrupt) _lastInterruptAlert = now; else _lastResistAlert = now;
+
+        if ((interrupt ? o.InterruptNoticeMode : o.ResistNoticeMode) == "speak")
+        {
+            string phrase = interrupt ? o.InterruptNoticeSpeak : o.ResistNoticeSpeak;
+            _alerts.Fire(string.IsNullOrWhiteSpace(phrase)
+                ? (interrupt ? "Interrupted!" : "Resisted!") : phrase, null);
+        }
+        else
+        {
+            string sound = interrupt ? o.InterruptNoticeSound : o.ResistNoticeSound;
+            if (!string.IsNullOrWhiteSpace(sound)) _alerts.Fire(null, sound);
+        }
     }
 
     private void ToggleMute()
@@ -1771,7 +1808,7 @@ public partial class MainWindow : Window
     private System.Windows.Forms.ToolStripMenuItem BuildPanelsMenu()
     {
         var panelsItem = new System.Windows.Forms.ToolStripMenuItem("Panels");
-        var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Repop timer", null, (_, _) => ToggleTimer());
+        var panelTimer = new System.Windows.Forms.ToolStripMenuItem("Spawn timer", null, (_, _) => ToggleTimer());
         var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
         var panelSkills = new System.Windows.Forms.ToolStripMenuItem("DPS meter · skills section", null, (_, _) => ToggleSkills());
         var panelProcs = new System.Windows.Forms.ToolStripMenuItem("DPS meter · proc watcher", null, (_, _) => ToggleProcs());

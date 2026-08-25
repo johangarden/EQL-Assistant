@@ -600,6 +600,8 @@ public partial class TriggerManagerWindow : Window
         FadedSoundBox.ItemsSource = LoadSoundPresets();
         RespawnWarnSoundBox.ItemsSource = LoadSoundPresets();
         RespawnSpawnSoundBox.ItemsSource = LoadSoundPresets();
+        InterruptSoundBox.ItemsSource = LoadSoundPresets();
+        ResistSoundBox.ItemsSource = LoadSoundPresets();
     }
 
     private void WarnSound_Changed(object sender, SelectionChangedEventArgs e)
@@ -707,11 +709,30 @@ public partial class TriggerManagerWindow : Window
         if (!auto || Selected is null)
         {
             DurationEffectiveText.Text = "";
+            DurationForgetBtn.Visibility = Visibility.Collapsed;
             return;
         }
-        DurationEffectiveText.Text = _durations?.LearnedMaxSeconds(Selected.Name) is double sec
-            ? $"learning → currently {DurationText.Compact(sec)} ({_durations!.SampleCount(Selected.Name)} samples)"
-            : "learning → nothing observed yet, starts from this value";
+        double? eff = _durations?.LearnedMaxSeconds(Selected.Name);
+        double? raw = _durations?.ObservedMaxSeconds(Selected.Name);
+        int n = _durations?.SampleCount(Selected.Name) ?? 0;
+        DurationForgetBtn.Visibility = raw is not null ? Visibility.Visible : Visibility.Collapsed;
+        DurationEffectiveText.Text = eff is { } sec
+            ? $"learning → currently {DurationText.Compact(sec)} ({n} samples)"
+            : raw is { } r && _durations?.LibraryFloorSeconds(Selected.Name) is { } floor
+                // Shared landing/wear-off sentences read short (a lesser regen
+                // crossing a Chloroplast) — the evidence shows, but never rules.
+                ? $"observed {DurationText.Compact(r)} ignored — below the library's {DurationText.Compact(floor)} ({n} samples)"
+                : "learning → nothing observed yet, starts from this value";
+    }
+
+    /// <summary>Owner ruling: a polluted learned number needs a way back —
+    /// wipe this spell's samples and let the log teach it again.</summary>
+    private void DurationForget_Click(object sender, RoutedEventArgs e)
+    {
+        if (Selected is null) return;
+        _durations?.Forget(Selected.Name);
+        UpdateDurationUx();
+        Status($"Forgot learned duration for '{Selected.Name}'.");
     }
 
     // ---- trigger list buttons ----------------------------------------------
@@ -868,12 +889,12 @@ public partial class TriggerManagerWindow : Window
             ["Triggers"] = TriggersPage,
             ["Loadouts"] = LoadoutsPage,
             ["Bars & matrices"] = BarsPage,
-            ["Repop timer"] = TimerPage,
+            ["Spawn timer"] = RespawnsPage,
             ["DPS + Skills, Procs"] = MeterPage,
             ["Combat text"] = SctPage,
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
-            ["Respawns"] = RespawnsPage,
+            ["Condition badges"] = ConditionsPage,
             ["General"] = GeneralPage,
             ["Data"] = DataPage,
             ["Shortcuts"] = ShortcutsPage,
@@ -951,6 +972,22 @@ public partial class TriggerManagerWindow : Window
 
     private void LoadSettingsFields()
     {
+        ConditionsVisibleCheck.IsChecked = _config.Overlay.ConditionsVisible;
+        _soundUxLoading = true;
+        InterruptOnCheck.IsChecked = _config.Overlay.InterruptNoticeEnabled;
+        InterruptModeBox.SelectedValue = _config.Overlay.InterruptNoticeMode;
+        // The default phrase shows IN the box — an empty field reads as broken.
+        InterruptSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.InterruptNoticeSpeak)
+            ? "Interrupted!" : _config.Overlay.InterruptNoticeSpeak;
+        SyncSoundCombo(InterruptSoundBox, _config.Overlay.InterruptNoticeSound);
+        ResistOnCheck.IsChecked = _config.Overlay.ResistNoticeEnabled;
+        ResistModeBox.SelectedValue = _config.Overlay.ResistNoticeMode;
+        ResistSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.ResistNoticeSpeak)
+            ? "Resisted!" : _config.Overlay.ResistNoticeSpeak;
+        SyncSoundCombo(ResistSoundBox, _config.Overlay.ResistNoticeSound);
+        _soundUxLoading = false;
+        UpdateMomentNoticeUx();
+
         LogDirBox.Text = _config.Log.Directory;
         FilePatternBox.Text = _config.Log.FilePattern;
         // The live "Following eqlog_…" line moved here from the toolbar —
@@ -1008,6 +1045,43 @@ public partial class TriggerManagerWindow : Window
     {
         if (combo.SelectedValue is string s && Enum.TryParse<Anchor>(s, out var a))
             _configService.SetPanelAnchor(panel, a);
+    }
+
+    // ---- interrupt / resist notice UX ---------------------------------------
+
+    private void MomentNotice_Changed(object sender, RoutedEventArgs e) => UpdateMomentNoticeUx();
+
+    /// <summary>Rows follow their checkbox; the mode picks which input shows
+    /// (sound preset OR phrase — one channel, never both).</summary>
+    private void UpdateMomentNoticeUx()
+    {
+        if (InterruptRow is null || ResistRow is null) return;
+        InterruptRow.IsEnabled = InterruptOnCheck.IsChecked == true;
+        ResistRow.IsEnabled = ResistOnCheck.IsChecked == true;
+        bool iSound = InterruptModeBox.SelectedValue as string != "speak";
+        InterruptSoundBox.Visibility = iSound ? Visibility.Visible : Visibility.Collapsed;
+        InterruptSpeakBox.Visibility = iSound ? Visibility.Collapsed : Visibility.Visible;
+        bool rSound = ResistModeBox.SelectedValue as string != "speak";
+        ResistSoundBox.Visibility = rSound ? Visibility.Visible : Visibility.Collapsed;
+        ResistSpeakBox.Visibility = rSound ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void InterruptTest_Click(object sender, RoutedEventArgs e) =>
+        TestMomentNotice(InterruptModeBox, InterruptSpeakBox, InterruptSoundBox, "Interrupted!");
+
+    private void ResistTest_Click(object sender, RoutedEventArgs e) =>
+        TestMomentNotice(ResistModeBox, ResistSpeakBox, ResistSoundBox, "Resisted!");
+
+    private void TestMomentNotice(System.Windows.Controls.ComboBox mode,
+        System.Windows.Controls.TextBox speak, System.Windows.Controls.ComboBox sound, string def)
+    {
+        if (_alerts.Muted) { Status("Unmute to preview."); return; }
+        if (mode.SelectedValue as string == "speak")
+            _alerts.Fire(string.IsNullOrWhiteSpace(speak.Text) ? def : speak.Text.Trim(), null);
+        else if (sound.SelectedItem is SoundPreset p && p.Path.Length > 0)
+            _alerts.Fire(null, p.Path);
+        else
+            Status("Pick a sound first.");
     }
 
     private void BrowseLogDir_Click(object sender, RoutedEventArgs e)
@@ -1078,9 +1152,19 @@ public partial class TriggerManagerWindow : Window
                 RemindersVisible = _config.Overlay.RemindersVisible,       // tray-toggled
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
-                ConditionsVisible = _config.Overlay.ConditionsVisible,   // tray-toggled
+                ConditionsVisible = ConditionsVisibleCheck.IsChecked == true,
                 SkyHelperVisible = _config.Overlay.SkyHelperVisible,     // panels-toggled
                 SkyHelperShowCompleted = _config.Overlay.SkyHelperShowCompleted, // panel-toggled
+                InterruptNoticeEnabled = InterruptOnCheck.IsChecked == true,
+                InterruptNoticeMode = InterruptModeBox.SelectedValue as string ?? "sound",
+                InterruptNoticeSpeak = InterruptSpeakBox.Text.Trim(),
+                InterruptNoticeSound = (InterruptSoundBox.SelectedItem as SoundPreset)?.Path
+                    ?? _config.Overlay.InterruptNoticeSound,
+                ResistNoticeEnabled = ResistOnCheck.IsChecked == true,
+                ResistNoticeMode = ResistModeBox.SelectedValue as string ?? "sound",
+                ResistNoticeSpeak = ResistSpeakBox.Text.Trim(),
+                ResistNoticeSound = (ResistSoundBox.SelectedItem as SoundPreset)?.Path
+                    ?? _config.Overlay.ResistNoticeSound,
                 MeterSoloMode = _config.Overlay.MeterSoloMode,           // meter-toggled
                 SessionStatsVisible = _config.Overlay.SessionStatsVisible,       // tray-toggled
                 SessionStatsSlice = _config.Overlay.SessionStatsSlice,           // panel-toggled

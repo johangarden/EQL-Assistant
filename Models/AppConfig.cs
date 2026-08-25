@@ -121,6 +121,21 @@ public sealed class OverlayConfig
     /// <summary>Helper panel: admit items whose quest is already completed.</summary>
     public bool SkyHelperShowCompleted { get; set; }
 
+    // ---- interrupt / resist notices: the badge flashes regardless; these add
+    // sound. Default = a short SOUND, not speech — too many spoken phrases
+    // clutter (owner ruling); Phrase mode speaks "Interrupted!" / "Resisted!".
+
+    public bool InterruptNoticeEnabled { get; set; } = true;
+    /// <summary>"sound" | "speak".</summary>
+    public string InterruptNoticeMode { get; set; } = "sound";
+    public string InterruptNoticeSpeak { get; set; } = "";
+    public string InterruptNoticeSound { get; set; } = @"C:\Windows\Media\Windows Exclamation.wav";
+
+    public bool ResistNoticeEnabled { get; set; } = true;
+    public string ResistNoticeMode { get; set; } = "sound";
+    public string ResistNoticeSpeak { get; set; } = "";
+    public string ResistNoticeSound { get; set; } = @"C:\Windows\Media\Windows Ding.wav";
+
     /// <summary>Whether the Session stats panel (XP/AA/motes per hour) is shown.</summary>
     public bool SessionStatsVisible { get; set; } = false;
 

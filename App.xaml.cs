@@ -772,6 +772,20 @@ public partial class App : Application
             cw.ProcessLine($"[{AT(95)}] You have entered The Plane of Hate.");
             Check("conditions: zoning clears the badges",
                 cw.Active(new DateTime(2026, 8, 10, 23, 1, 36)).Count == 0);
+            // Moment flashes: YOUR broken/bounced casts only — pets' and
+            // groupmates' spells ("Xarer's", "Gonartik's") stay silent.
+            cw.ProcessLine($"[{AT(100)}] Your Siphon Life spell is interrupted.");
+            cw.ProcessLine($"[{AT(100)}] Xarer's Frost Dagger spell is interrupted.");
+            Check("conditions: YOUR interrupt flashes, then expires (a pet's never shows)",
+                cw.Active(new DateTime(2026, 8, 10, 23, 1, 41)) is
+                    [{ Kind: ConditionWatcher.Interrupted, Detail: "Siphon Life" }]
+                && cw.Active(new DateTime(2026, 8, 10, 23, 1, 45)).Count == 0);
+            cw.ProcessLine($"[{AT(110)}] A froglok shin knight resisted your Ignite!");
+            cw.ProcessLine($"[{AT(110)}] A ghoul assassin resisted Gonartik's Drowsy!");
+            Check("conditions: YOUR resist flashes with the spell (a pet's never)",
+                cw.Active(new DateTime(2026, 8, 10, 23, 1, 51)) is
+                    [{ Kind: ConditionWatcher.Resisted, Detail: "Ignite" }]
+                && cw.Active(new DateTime(2026, 8, 10, 23, 1, 55)).Count == 0);
             var dur = new SpellDurations(new ConfigService(), lib2, durPath);
             Check("durations: rank suffix pools",
                 SpellDurations.BaseKey("Mesmerization VII") == "mesmerization"
@@ -817,6 +831,29 @@ public partial class App : Application
             dur.ProcessLine($"[{T(12403)}] The spirit of wolf leaves you.");
             Check("durations: an external re-land contaminates the cycle",
                 dur.SampleCount("Spirit of Wolf") == 2);
+            // The library floor (owner ruling, Chloroplast): the regen family
+            // shares its landing/wear-off sentences, so cycles can close SHORT
+            // — a learned figure below the library's stated duration is
+            // pollution and stays silent. The evidence remains visible.
+            dur.ProcessLine($"[{T(20000)}] You begin casting Chloroplast.");
+            dur.ProcessLine($"[{T(20005)}] You begin to regenerate.");
+            dur.ProcessLine($"[{T(20261)}] You have stopped regenerating.");
+            Check("durations: a sample below the library's duration is ignored",
+                dur.LearnedMaxSeconds("Chloroplast") is null
+                && dur.ObservedMaxSeconds("Chloroplast") is double chloroRaw
+                && Math.Abs(chloroRaw - 256) < 0.01
+                && dur.LibraryFloorSeconds("Chloroplast") == 960);
+            dur.ProcessLine($"[{T(30000)}] You begin casting Chloroplast.");
+            dur.ProcessLine($"[{T(30005)}] You begin to regenerate.");
+            dur.ProcessLine($"[{T(31085)}] You have stopped regenerating.");
+            Check("durations: a genuine extension past the library still teaches",
+                dur.LearnedMaxSeconds("Chloroplast") is double chloroSec
+                && Math.Abs(chloroSec - 1080) < 0.01);
+            dur.Forget("Chloroplast");
+            Check("durations: Forget wipes one spell and only that spell",
+                dur.ObservedMaxSeconds("Chloroplast") is null
+                && dur.SampleCount("Spirit of Wolf") == 2);
+
             var dur2 = new SpellDurations(new ConfigService(), lib2, durPath);
             Check("durations: samples persist across restarts",
                 dur2.LearnedMaxSeconds("Spirit of Wolf") is double d3 && Math.Abs(d3 - 2400) < 0.01);
@@ -2837,6 +2874,42 @@ public partial class App : Application
             Check("auto again: the soonest respawn claims the pie back",
                 tw3.BigState.Mode == "Vox" && tw3.SecondaryNames is ["Kurven"]);
             tw3.Close();
+
+            // ---- watching rows + zone scoping: an added mob shows before its
+            // first death, and zoning HIDES other zones' clocks (world state —
+            // the mob keeps cooking while you bank; nothing is deleted).
+            var zEntries = new List<Models.RespawnEntry>
+            {
+                new() { Name = "Kurven", Zone = "Befallen 3 (Fused)", Seconds = 200 },
+                new() { Name = "Vox", Zone = "Permafrost", Seconds = 400 },
+                new() { Name = "Wanderer", Seconds = 100 }, // zoneless: shows everywhere
+            };
+            var tw4 = new TimerWindow(new ConfigService(), mutedAlerts, 300, 1.0, null)
+            {
+                RespawnsProvider = () => zEntries,
+                RespawnLookup = n => zEntries.FirstOrDefault(
+                    r => r.Name.Equals(n, StringComparison.OrdinalIgnoreCase)),
+            };
+            tw4.RefreshWatching();
+            Check("watching: every enabled respawn takes a quiet row",
+                tw4.BigState.Mode is null
+                && tw4.RowStates.Count(r => r.State == "watching") == 3);
+            tw4.SetZone("Befallen 3 (Fused)");
+            Check("watching: rows follow the zone (zoneless shows everywhere)",
+                tw4.HiddenNames is ["Vox"]);
+            tw4.StartWith(200, "Kurven");
+            Check("watching: a death turns the watcher into the clock",
+                tw4.BigState.Mode == "Kurven"
+                && tw4.RowStates.Count(r => r.State == "watching") == 2);
+            tw4.SetZone("Permafrost");
+            Check("zoning parks the other zone's clock, still counting",
+                tw4.BigState.Mode is null
+                && tw4.RowStates.Any(r => r is { Name: "Kurven", State: "countdown" })
+                && tw4.HiddenNames.Contains("Kurven") && !tw4.HiddenNames.Contains("Vox"));
+            tw4.SetZone("Befallen 3 (Fused)");
+            Check("zoning back promotes the intact clock to the pie",
+                tw4.BigState is { Mode: "Kurven", Remaining: > 150 and <= 200 });
+            tw4.Close();
         }
         catch (Exception ex)
         {

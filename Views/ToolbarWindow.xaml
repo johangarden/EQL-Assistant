@@ -17,9 +17,10 @@
     </Window.Resources>
 
     <!-- The app's command strip: always visible and clickable, locked or not.
-         The padlock governs the OTHER panels; hide this one via ☰/tray → Panels.
-         One row, three zones: app · features · state — the cog (settings mode)
-         stands alone behind its own separator. -->
+         The padlock governs the OTHER panels; hide this one via cog/tray → Panels.
+         One row, four zones: app · features · create-trigger (isolated — the
+         most common play-time task) · state (mute · lock · cog, where the cog
+         carries the whole menu). -->
     <StackPanel>
         <Border Background="#E01B2130" CornerRadius="5" Padding="8,5" Width="384"
                 MouseLeftButtonDown="Root_DragMove">
@@ -27,12 +28,11 @@
                 <Button DockPanel.Dock="Left" Content="✕" Click="OnQuit" Style="{StaticResource CloseBtn}"
                         ToolTip="Quit EQL Assistant"/>
 
-                <!-- settings mode, isolated at the far end -->
-                <Button DockPanel.Dock="Right" Click="OnManage" Style="{StaticResource IconBtn}"
+                <!-- the state cluster: the cog opens the menu (Settings lives inside) -->
+                <Button DockPanel.Dock="Right" Click="OnMenu" Style="{StaticResource IconBtn}"
                         Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE713;"
-                        AutomationProperties.AutomationId="ManageBtn"
-                        ToolTip="Manage settings — triggers, panels, everything"/>
-                <Border DockPanel.Dock="Right" Width="1" Height="18" Background="#3A4560" Margin="6,0,0,0"/>
+                        AutomationProperties.AutomationId="MainMenuBtn"
+                        ToolTip="Menu — settings, panel toggles, loadouts, catch-up"/>
 
                 <Button DockPanel.Dock="Right" Click="OnLock" Margin="6,0,0,0"
                         FontFamily="Segoe MDL2 Assets"
@@ -72,10 +72,17 @@
                     </Button.Style>
                 </Button>
 
-                <Button DockPanel.Dock="Right" Click="OnMenu" Style="{StaticResource IconBtn}"
-                        Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE700;"
-                        AutomationProperties.AutomationId="MainMenuBtn"
-                        ToolTip="Menu — panel toggles, loadouts, show/hide, catch-up"/>
+                <Border DockPanel.Dock="Right" Width="1" Height="18" Background="#3A4560" Margin="6,0,0,0"/>
+
+                <!-- create trigger: isolated between its separators — the most
+                     common play-time task gets its own door -->
+                <Button DockPanel.Dock="Right" Click="OnCreateTrigger" Style="{StaticResource IconBtn}"
+                        Margin="6,0,0,0" AutomationProperties.AutomationId="CreateTriggerBtn"
+                        ToolTip="Create trigger — turn a log line into a bar, flash or timer">
+                    <!-- a bolt: the trigger fires -->
+                    <Path Fill="#4FC3F7" Width="14" Height="14" Stretch="Uniform"
+                          Data="M13.5 2 L6 13 L10.6 13 L9 22 L17 10.5 L12.2 10.5 Z"/>
+                </Button>
 
                 <Border DockPanel.Dock="Right" Width="1" Height="18" Background="#3A4560" Margin="6,0,0,0"/>
 

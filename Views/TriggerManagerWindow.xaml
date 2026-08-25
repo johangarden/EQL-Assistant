@@ -112,13 +112,12 @@
                     <ListBoxItem Content="Loadouts"/>
                     <ListBoxItem Content="PANELS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="Bars &amp; matrices"/>
-                    <ListBoxItem Content="Repop timer"/>
+                    <ListBoxItem Content="Spawn timer"/>
                     <ListBoxItem Content="DPS + Skills, Procs"/>
                     <ListBoxItem Content="Combat text"/>
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
-                    <ListBoxItem Content="KNOWLEDGE" Style="{StaticResource NavHeader}"/>
-                    <ListBoxItem Content="Respawns"/>
+                    <ListBoxItem Content="Condition badges"/>
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
                     <ListBoxItem Content="Data"/>
@@ -263,6 +262,10 @@
                                                  ToolTip="660, 11m, 9m12s or 9:12"/>
                                         <TextBlock x:Name="DurationEffectiveText" Style="{StaticResource Hint}"
                                                    Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        <Button x:Name="DurationForgetBtn" Content="Forget" Width="60"
+                                                Margin="10,0,0,0" Visibility="Collapsed"
+                                                Click="DurationForget_Click"
+                                                ToolTip="Clears the learned samples for this spell — the duration returns to the value in the box until the log teaches it again"/>
                                     </StackPanel>
                                     <CheckBox x:Name="DurationAutoCheck" IsChecked="{Binding DurationAuto}"
                                               Checked="DurationAuto_Changed" Unchecked="DurationAuto_Changed"
@@ -649,27 +652,6 @@
                     </ScrollViewer>
 
                     <!-- ============================ REPOP TIMER ============================ -->
-                    <ScrollViewer x:Name="TimerPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Repop timer" Style="{StaticResource PageTitle}"/>
-                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="The circular respawn watch panel. Toggle in game: ☰/tray → Panels, or Ctrl+Alt+R. The mobs it watches live on the Respawns page (KNOWLEDGE)."/>
-
-                            <CheckBox x:Name="TimerVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
-
-                            <TextBlock Text="Screen anchor" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox x:Name="TimerAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
-                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
-                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
-                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
-                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
-                            </ComboBox>
-                        </StackPanel>
-                    </ScrollViewer>
-
                     <!-- ============================ DEATH RECAP ============================ -->
                     <ScrollViewer x:Name="DeathPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
@@ -685,15 +667,30 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- ============================ RESPAWNS (KNOWLEDGE) ============================ -->
+                    <!-- ============================ SPAWN TIMER (panel + its respawns) ============================ -->
                     <ScrollViewer x:Name="RespawnsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Named respawns" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="Spawn timer" Style="{StaticResource PageTitle}"/>
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="World knowledge, independent of loadouts: when a mob's death line appears in the log, the repop watch auto-starts with its respawn time — typed, or learned from your own kills (leave the time on 'auto'). Quick-add in game: the watch's ➕ button."/>
+                                       Text="The circular spawn-clock panel and the mobs it watches. Toggle in game: cog/tray → Panels, or Ctrl+Alt+R."/>
+
+                            <CheckBox x:Name="TimerVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
+
+                            <TextBlock Text="Screen anchor" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox x:Name="TimerAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
+                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
+                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
+                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
+                            </ComboBox>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Respawns" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="World knowledge, independent of loadouts: when a mob's death line appears in the log, the Spawn timer auto-starts with its respawn time — typed, or learned from your own kills (leave the time on 'auto'). Quick-add in game: the Spawn timer's ➕ button."/>
 
                             <Grid Margin="0,10,0,0">
                                 <Grid.ColumnDefinitions>
@@ -891,6 +888,55 @@
                                         <Button Content="Play" Click="RespawnSpawnPlay_Click" Width="50" Margin="8,0,0,0"/>
                                     </StackPanel>
                                 </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ============================ CONDITION BADGES ============================ -->
+                    <ScrollViewer x:Name="ConditionsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Condition badges" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Big badges near screen centre while you are stunned, feared, charmed or mesmerized — landing to wear-off, no guessing. Your own interrupted or resisted casts flash there too, briefly."/>
+
+                            <CheckBox x:Name="ConditionsVisibleCheck" Content="Show the panel" Margin="0,12,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Interrupt &amp; resist notices" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="The badge flashes regardless — these add a notice. Sound is the default: a short ding cuts through without adding voice clutter; switch to Phrase to hear 'Interrupted!' / 'Resisted!' spoken instead."/>
+
+                            <CheckBox x:Name="InterruptOnCheck" Content="When your cast is interrupted"
+                                      FontWeight="SemiBold" Margin="0,8,0,0"
+                                      Checked="MomentNotice_Changed" Unchecked="MomentNotice_Changed"/>
+                            <StackPanel x:Name="InterruptRow" Orientation="Horizontal" Margin="24,6,0,0">
+                                <ComboBox x:Name="InterruptModeBox" Width="90" SelectedValuePath="Tag"
+                                          SelectionChanged="MomentNotice_Changed">
+                                    <ComboBoxItem Content="Sound" Tag="sound"/>
+                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                </ComboBox>
+                                <ComboBox x:Name="InterruptSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
+                                <TextBox x:Name="InterruptSpeakBox" Width="200" Margin="8,0,0,0"
+                                         ToolTip="Spoken via text-to-speech — empty speaks 'Interrupted!'"/>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="InterruptTest_Click"/>
+                            </StackPanel>
+
+                            <CheckBox x:Name="ResistOnCheck" Content="When your spell is resisted"
+                                      FontWeight="SemiBold" Margin="0,10,0,0"
+                                      Checked="MomentNotice_Changed" Unchecked="MomentNotice_Changed"/>
+                            <StackPanel x:Name="ResistRow" Orientation="Horizontal" Margin="24,6,0,0">
+                                <ComboBox x:Name="ResistModeBox" Width="90" SelectedValuePath="Tag"
+                                          SelectionChanged="MomentNotice_Changed">
+                                    <ComboBoxItem Content="Sound" Tag="sound"/>
+                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                </ComboBox>
+                                <ComboBox x:Name="ResistSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
+                                <TextBox x:Name="ResistSpeakBox" Width="200" Margin="8,0,0,0"
+                                         ToolTip="Spoken via text-to-speech — empty speaks 'Resisted!'"/>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="ResistTest_Click"/>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>

@@ -45,12 +45,19 @@ public partial class TimerWindow : Window
     /// live edits in the Manager apply to already-running timers.</summary>
     public Func<string, RespawnEntry?>? RespawnLookup { get; set; }
 
+    /// <summary>All respawn entries — feeds the quiet "watching" rows, so an
+    /// added mob shows on the panel before its first death line.</summary>
+    public Func<IReadOnlyList<RespawnEntry>>? RespawnsProvider { get; set; }
+
     /// <summary>Test hooks (gated self-test only).</summary>
     internal (string? Mode, double Remaining, bool Running) BigState => (_modeName, _remaining, _running);
     internal IReadOnlyList<string> SecondaryNames => _repops.Select(e => e.Name).ToList();
     internal IReadOnlyList<(string Name, string State)> RowStates => _repops
-        .Select(e => (e.Name, RankOf(e) switch { 0 => "up", 2 => "due", 3 => "learning", _ => "countdown" }))
+        .Select(e => (e.Name, RankOf(e) switch
+            { 0 => "up", 2 => "due", 3 => "learning", 4 => "watching", _ => "countdown" }))
         .ToList();
+    internal IReadOnlyList<string> HiddenNames => _repops
+        .Where(e => !RowVisible(e)).Select(e => e.Name).ToList();
 
     // Named repops in the row list. The big pie shows the soonest LIVE
     // countdown; every other state — due (estimate elapsed, nothing seen),
@@ -68,8 +75,16 @@ public partial class TimerWindow : Window
         public bool Warned;
         /// <summary>The spawn notice fired — estimate elapsed OR first sighting.</summary>
         public bool SpawnFired;
-        /// <summary>Last log line naming this mob — the row reads UP.</summary>
+        /// <summary>Last log line naming this mob — the row reads UP (and the
+        /// linger runs from here: repeats keep the row alive).</summary>
         public DateTime? SeenAt;
+        /// <summary>FIRST sighting of this cycle — the UP counter's base.
+        /// Repeats must never reset it (fighting the mob re-sights it every
+        /// couple of seconds, and a counter that keeps snapping to zero lies).</summary>
+        public DateTime? FirstSeenAt;
+        /// <summary>A quiet row: the mob is watched but no clock has started —
+        /// visible so an added respawn shows before its first death line.</summary>
+        public bool Watching;
     }
     private bool _bigWarned;    // ibid., for the repop on the big pie
     private DateTime _bigStart; // the death that started the big pie's cycle
@@ -83,8 +98,81 @@ public partial class TimerWindow : Window
     private const double UpLingerSec = 180, DueLingerSec = 900, LearnLingerSec = 3600;
 
     private static readonly Brush WarnRed = Freeze(Color.FromRgb(0xFF, 0x52, 0x52));
+    private static readonly Brush GoldText = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
     private static readonly Brush UpGreen = Freeze(Color.FromRgb(0x66, 0xBB, 0x6A));
     private static readonly Brush LearnDim = Freeze(Color.FromRgb(0x8A, 0x99, 0xB0));
+    private static readonly Brush WatchDim = Freeze(Color.FromRgb(0x55, 0x62, 0x7A));
+
+    // ---- zone scoping ---------------------------------------------------------
+    // A respawn clock is WORLD state — the mob keeps cooking while you bank —
+    // so zoning never deletes anything: rows for mobs whose entry names another
+    // zone just collapse, and re-entering their zone shows them again, clocks
+    // intact. Your own death needs no special case: dying lands you at bind,
+    // which prints its own "You have entered" line.
+
+    private string _zone = "";
+
+    public void SetZone(string zone)
+    {
+        _zone = zone.Trim();
+        if (_modeName is not null
+            && RespawnLookup?.Invoke(_modeName)?.Zone?.Trim() is { Length: > 0 } mz
+            && !string.Equals(mz, _zone, StringComparison.OrdinalIgnoreCase))
+        {
+            // The pie's mob lives elsewhere now — park it (still counting).
+            DemoteBig(spawnFired: false, seenAt: null);
+            SetMode(null);
+            _running = false;
+            _remaining = 0;
+        }
+        RefreshWatching();
+        PromoteSoonest();
+        UpdateVisual();
+    }
+
+    private bool RowVisible(RepopEntry e)
+    {
+        string entryZone = RespawnLookup?.Invoke(e.Name)?.Zone?.Trim() ?? "";
+        if (entryZone.Length == 0) return true;
+        // Zone unknown yet (fresh launch): clocks show, quiet watchers wait.
+        if (_zone.Length == 0) return !e.Watching;
+        return string.Equals(entryZone, _zone, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Sync the quiet "watching" rows with the respawn list: every
+    /// enabled entry without a clock gets one, entries that vanished lose
+    /// theirs. Call after the Manager saves or the list changes.</summary>
+    public void RefreshWatching()
+    {
+        var entries = RespawnsProvider?.Invoke() ?? Array.Empty<RespawnEntry>();
+        for (int i = _repops.Count - 1; i >= 0; i--)
+        {
+            var e = _repops[i];
+            if (!e.Watching || e.SeenAt is not null) continue;
+            if (!entries.Any(r => r.Enabled && r.Name.Equals(e.Name, StringComparison.OrdinalIgnoreCase)))
+                DropRow(i);
+        }
+        foreach (var r in entries)
+        {
+            if (!r.Enabled) continue;
+            if (_modeName is not null
+                && string.Equals(_modeName, r.Name, StringComparison.OrdinalIgnoreCase)) continue;
+            if (_repops.Any(x => string.Equals(x.Name, r.Name, StringComparison.OrdinalIgnoreCase)))
+                continue;
+            var now = DateTime.Now;
+            AddRow(new RepopEntry
+            {
+                Name = r.Name,
+                Total = 0,
+                StartTime = now,
+                EndTime = now,
+                Vm = new SecondaryTimerViewModel(r.Name),
+                Watching = true,
+            });
+        }
+        SortSecondaries();
+        UpdateSecondaries();
+    }
 
     public TimerWindow(ConfigService config, AlertService alerts,
         double initialSeconds, double opacity, Action<double>? onDurationSet)
@@ -138,7 +226,7 @@ public partial class TimerWindow : Window
 
     public void PromptSet()
     {
-        string? input = PromptDialog.Show(this, "Repop timer", "Duration — m:ss, 90s, 6m or 9m12s:", _lastText);
+        string? input = PromptDialog.Show(this, "Spawn timer", "Duration — m:ss, 90s, 6m or 9m12s:", _lastText);
         if (input is null) return;
         double? sec = ParseDuration(input);
         if (sec is not > 0) return;
@@ -219,8 +307,11 @@ public partial class TimerWindow : Window
         var e = _repops.FirstOrDefault(x =>
             string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase));
         if (e is null) return;
-        e.SeenAt = now; // repeats refresh the UP linger, never re-alert
-        if (!e.SpawnFired)
+        e.SeenAt = now;        // repeats refresh the UP linger, never re-alert
+        e.FirstSeenAt ??= now; // ...and never reset the UP counter
+        // A WATCHING row flips UP quietly: the mob is standing there, but no
+        // cycle ran — "X respawn" would claim a spawn nobody measured.
+        if (!e.SpawnFired && !e.Watching)
         {
             e.SpawnFired = true;
             FireSpawnAlert(e.Name);
@@ -244,6 +335,7 @@ public partial class TimerWindow : Window
             Warned = _bigWarned,
             SpawnFired = spawnFired,
             SeenAt = seenAt,
+            FirstSeenAt = seenAt,
         });
     }
 
@@ -255,7 +347,8 @@ public partial class TimerWindow : Window
         if (_manualMode) return;
         var now = DateTime.Now;
         var next = _repops
-            .Where(e => e.SeenAt is null && !e.SpawnFired && e.Total > 0 && e.EndTime > now)
+            .Where(e => e.SeenAt is null && !e.SpawnFired && !e.Watching
+                        && e.Total > 0 && e.EndTime > now && RowVisible(e))
             .MinBy(e => e.EndTime);
         if (next is null)
         {
@@ -285,9 +378,13 @@ public partial class TimerWindow : Window
     }
 
     /// <summary>Row order: UP first (go get it), then countdowns soonest-first,
-    /// then due (freshest first), then learning (newest kill first).</summary>
+    /// then due (freshest first), then learning (newest kill first), then the
+    /// quiet watchers (alphabetical).</summary>
     private static int RankOf(RepopEntry e) =>
-        e.SeenAt is not null ? 0 : e.Total <= 0 ? 3 : e.SpawnFired || e.EndTime <= DateTime.Now ? 2 : 1;
+        e.SeenAt is not null ? 0
+        : e.Watching ? 4
+        : e.Total <= 0 ? 3
+        : e.SpawnFired || e.EndTime <= DateTime.Now ? 2 : 1;
 
     private void SortSecondaries()
     {
@@ -300,6 +397,7 @@ public partial class TimerWindow : Window
                 0 => Nullable.Compare(b.SeenAt, a.SeenAt),
                 2 => b.EndTime.CompareTo(a.EndTime),
                 3 => b.StartTime.CompareTo(a.StartTime),
+                4 => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase),
                 _ => a.EndTime.CompareTo(b.EndTime),
             };
         });
@@ -361,7 +459,7 @@ public partial class TimerWindow : Window
     private void SetMode(string? name)
     {
         _modeName = name;
-        ModeLabel.Text = name ?? "Timer";
+        ModeLabel.Text = name ?? "Spawn Timer";
     }
 
     // ---- ➕ quick-add respawn -------------------------------------------------
@@ -525,14 +623,24 @@ public partial class TimerWindow : Window
         for (int i = _repops.Count - 1; i >= 0; i--)
         {
             var e = _repops[i];
+            e.Vm.RowVis = RowVisible(e) ? Visibility.Visible : Visibility.Collapsed;
 
-            // UP: the log named it. Reads green until sightings stop coming.
+            // UP: the log named it. The counter runs from the FIRST sighting;
+            // the linger runs from the last (repeats keep the row alive).
             if (e.SeenAt is { } seen)
             {
-                double ago = (now - seen).TotalSeconds;
-                if (ago > UpLingerSec) { DropRow(i); continue; }
-                e.Vm.RemainingText = $"UP {Format(ago)}";
+                if ((now - seen).TotalSeconds > UpLingerSec) { resort |= RetireRow(i); continue; }
+                double up = (now - (e.FirstSeenAt ?? seen)).TotalSeconds;
+                e.Vm.RemainingText = $"UP {Format(up)}";
                 e.Vm.Foreground = UpGreen;
+                continue;
+            }
+
+            // A quiet watcher: no clock yet, just "I'm listed here".
+            if (e.Watching)
+            {
+                e.Vm.RemainingText = "watching";
+                e.Vm.Foreground = WatchDim;
                 continue;
             }
 
@@ -540,7 +648,7 @@ public partial class TimerWindow : Window
             if (e.Total <= 0)
             {
                 double up = (now - e.StartTime).TotalSeconds;
-                if (up > LearnLingerSec) { DropRow(i); continue; }
+                if (up > LearnLingerSec) { resort |= RetireRow(i); continue; }
                 e.Vm.RemainingText = $"{Format(up)}↑";
                 e.Vm.Foreground = LearnDim;
                 continue;
@@ -558,7 +666,7 @@ public partial class TimerWindow : Window
                     FireSpawnAlert(e.Name);
                     resort = true;
                 }
-                if (-rem > DueLingerSec) { DropRow(i); continue; }
+                if (-rem > DueLingerSec) { resort |= RetireRow(i); continue; }
                 e.Vm.RemainingText = $"due {Format(-rem)}";
                 e.Vm.Foreground = WarnRed;
                 continue;
@@ -576,6 +684,26 @@ public partial class TimerWindow : Window
         if (resort) SortSecondaries();
     }
 
+    /// <summary>An expired row (UP linger over, long due, stale learning)
+    /// retires to a quiet WATCHING row while the mob is still on the respawn
+    /// list — never off the panel entirely — and drops only when unwatched.</summary>
+    private bool RetireRow(int index)
+    {
+        var e = _repops[index];
+        if (RespawnLookup?.Invoke(e.Name) is not { Enabled: true })
+        {
+            DropRow(index);
+            return false;
+        }
+        e.Watching = true;
+        e.Total = 0;
+        e.SeenAt = null;
+        e.FirstSeenAt = null;
+        e.SpawnFired = false;
+        e.Warned = false;
+        return true; // rank changed — resort
+    }
+
     private void DropRow(int index)
     {
         _secondaries.Remove(_repops[index].Vm);
@@ -585,8 +713,8 @@ public partial class TimerWindow : Window
     private void UpdateVisual()
     {
         double frac = _total > 0 ? Math.Clamp(_remaining / _total, 0, 1) : 0;
-        BuildWedge(frac);
-        Wedge.Fill = new SolidColorBrush(ColorFor(frac)); // green -> amber -> red as it runs down
+        BuildSegments(frac);
+        SegmentsLit.Fill = new SolidColorBrush(ColorFor(frac)); // green -> amber -> red as it runs down
         TimeText.Text = Format(_remaining);
 
         // Toggle button reflects state: ▶ when stopped, ⏸ when running.
@@ -597,13 +725,13 @@ public partial class TimerWindow : Window
         if (warn)
         {
             bool on = (DateTime.Now.Millisecond / 300) % 2 == 0; // ~3 blinks/sec
-            TimeText.Foreground = on ? Brushes.White : WarnRed;
-            Wedge.Opacity = on ? 1.0 : 0.5;
+            TimeText.Foreground = on ? GoldText : WarnRed;
+            SegmentsLit.Opacity = on ? 1.0 : 0.5;
         }
         else
         {
-            TimeText.Foreground = Brushes.White;
-            Wedge.Opacity = _running ? 1.0 : 0.82; // dim while paused/idle
+            TimeText.Foreground = GoldText;
+            SegmentsLit.Opacity = _running ? 1.0 : 0.82; // dim while paused/idle
         }
     }
 
@@ -627,24 +755,36 @@ public partial class TimerWindow : Window
             (byte)(a.B + (b.B - a.B) * t));
     }
 
-    private void BuildWedge(double frac)
+    /// <summary>The segment ring: 24 annular blocks from 12 o'clock clockwise;
+    /// lit blocks cover the remaining fraction, the rest sit dark in the track.</summary>
+    private void BuildSegments(double frac)
     {
-        const double cx = 66, cy = 66, r = 63;
-        if (frac <= 0) { Wedge.Data = null; return; }
-        if (frac >= 0.9999) { Wedge.Data = new EllipseGeometry(new Point(cx, cy), r, r); return; }
+        const int n = 24;
+        const double cx = 70, cy = 70, rOut = 62, rIn = 47, gapDeg = 4, step = 360.0 / n;
+        var lit = new PathGeometry();
+        var dim = new PathGeometry();
+        for (int i = 0; i < n; i++)
+        {
+            double a0 = -90 + i * step + gapDeg / 2;
+            var fig = SegmentFigure(cx, cy, rOut, rIn, a0, a0 + step - gapDeg);
+            ((i + 0.5) / n <= frac ? lit : dim).Figures.Add(fig);
+        }
+        SegmentsLit.Data = lit;
+        SegmentsDim.Data = dim;
+    }
 
-        double sweepDeg = 360 * frac;
-        double a = sweepDeg * Math.PI / 180.0;
-        var start = new Point(cx, cy - r);                        // 12 o'clock
-        var end = new Point(cx + r * Math.Sin(a), cy - r * Math.Cos(a)); // clockwise
-
-        var fig = new PathFigure { StartPoint = new Point(cx, cy), IsClosed = true };
-        fig.Segments.Add(new LineSegment(start, true));
-        fig.Segments.Add(new ArcSegment(end, new Size(r, r), 0, sweepDeg > 180,
+    private static PathFigure SegmentFigure(double cx, double cy, double rOut, double rIn,
+        double a0Deg, double a1Deg)
+    {
+        double a0 = a0Deg * Math.PI / 180, a1 = a1Deg * Math.PI / 180;
+        Point P(double r, double a) => new(cx + r * Math.Cos(a), cy + r * Math.Sin(a));
+        var fig = new PathFigure { StartPoint = P(rOut, a0), IsClosed = true };
+        fig.Segments.Add(new ArcSegment(P(rOut, a1), new Size(rOut, rOut), 0, false,
             SweepDirection.Clockwise, true));
-        var geo = new PathGeometry();
-        geo.Figures.Add(fig);
-        Wedge.Data = geo;
+        fig.Segments.Add(new LineSegment(P(rIn, a1), true));
+        fig.Segments.Add(new ArcSegment(P(rIn, a0), new Size(rIn, rIn), 0, false,
+            SweepDirection.Counterclockwise, true));
+        return fig;
     }
 
     // ---- helpers ------------------------------------------------------------
