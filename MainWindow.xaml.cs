@@ -1386,6 +1386,7 @@ public partial class MainWindow : Window
             LockRequested = ToggleLock,
             MuteRequested = ToggleMute,
             ManageRequested = () => OpenManager(),
+            TriggerRequested = () => OpenManager("Triggers"),
             MenuRequested = el => ShowMainMenu(el as UIElement),
             RaidRequested = OpenRaidKills,
             QuestsRequested = OpenSkyQuests,
@@ -1451,10 +1452,11 @@ public partial class MainWindow : Window
     {
         var menu = new ContextMenu();
 
-        // The most common play-time task sits on top.
-        var create = new MenuItem { Header = "Create trigger…" };
-        create.Click += (_, _) => OpenManager("Triggers");
-        menu.Items.Add(create);
+        // Create-trigger moved to its own toolbar button; the cog's menu
+        // leads with the Manager itself.
+        var settings = new MenuItem { Header = "Settings…" };
+        settings.Click += (_, _) => OpenManager();
+        menu.Items.Add(settings);
         menu.Items.Add(new Separator());
 
         var panels = new MenuItem { Header = "Panels" };

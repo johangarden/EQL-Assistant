@@ -20,6 +20,7 @@ public partial class ToolbarWindow : Window
     public Action? LockRequested { get; set; }
     public Action? MuteRequested { get; set; }
     public Action? ManageRequested { get; set; }
+    public Action? TriggerRequested { get; set; }
     public Action<object>? MenuRequested { get; set; }
     public Action? RaidRequested { get; set; }
     public Action? QuestsRequested { get; set; }
@@ -48,7 +49,7 @@ public partial class ToolbarWindow : Window
     private void OnQuit(object sender, RoutedEventArgs e) => QuitRequested?.Invoke();
     private void OnLock(object sender, RoutedEventArgs e) => LockRequested?.Invoke();
     private void OnMute(object sender, RoutedEventArgs e) => MuteRequested?.Invoke();
-    private void OnManage(object sender, RoutedEventArgs e) => ManageRequested?.Invoke();
+    private void OnCreateTrigger(object sender, RoutedEventArgs e) => TriggerRequested?.Invoke();
     private void OnMenu(object sender, RoutedEventArgs e) => MenuRequested?.Invoke(sender);
     private void OnRaid(object sender, RoutedEventArgs e) => RaidRequested?.Invoke();
     private void OnQuests(object sender, RoutedEventArgs e) => QuestsRequested?.Invoke();
