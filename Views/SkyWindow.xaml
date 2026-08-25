@@ -129,10 +129,22 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border CornerRadius="4" Background="{Binding Bg}" Padding="7,2"
-                                                    Margin="0,2,6,2" ToolTip="{Binding Tip}">
-                                                <TextBlock Text="{Binding Text}" Foreground="{Binding Fg}"
-                                                           FontSize="11" FontWeight="SemiBold"/>
+                                            <!-- item + count up top (the name links to the wiki),
+                                                 dropper mob · island beneath -->
+                                            <Border CornerRadius="4" Background="{Binding Bg}" Padding="7,3"
+                                                    Margin="0,2,6,2" ToolTip="{Binding Tip}" Cursor="Hand"
+                                                    MouseLeftButtonUp="Chip_Click">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Name}" Foreground="{Binding Fg}"
+                                                                   FontSize="11" FontWeight="SemiBold"
+                                                                   TextDecorations="Underline"/>
+                                                        <TextBlock Text="{Binding CountText}" Foreground="{Binding Fg}"
+                                                                   FontSize="11" FontWeight="SemiBold" Margin="6,0,0,0"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Sub}" Foreground="{Binding Fg}"
+                                                               Opacity="0.72" FontSize="9.5" Margin="0,1,0,0"/>
+                                                </StackPanel>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>

@@ -25,7 +25,26 @@ public partial class SkyWindow : Window
     private static readonly Brush DoneFg = Freeze(Color.FromRgb(0x81, 0xC7, 0x84));
     private static readonly Brush OpenFg = Freeze(Color.FromRgb(0xDC, 0xE6, 0xF5));
 
-    public sealed record ChipVm(string Text, Brush Bg, Brush Fg, string Tip);
+    public sealed record ChipVm(string Name, string CountText, string Sub, Brush Bg, Brush Fg,
+        string Tip, string Url);
+
+    /// <summary>A chip is a door to the item's wiki page.</summary>
+    private void Chip_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ChipVm { Url.Length: > 0 } vm) return;
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(vm.Url) { UseShellExecute = true });
+        }
+        catch { /* no browser is not our problem to solve */ }
+        e.Handled = true;
+    }
+
+    /// <summary>The eqlwiki page for a name — pages live at the site ROOT,
+    /// spaces spelled as underscores.</summary>
+    private static string WikiUrl(string name) =>
+        "https://eqlwiki.com/" + Uri.EscapeDataString(name.Trim().Replace(' ', '_'));
 
     /// <summary>One class badge: glyph (or ALL-text) ring + completion arc.</summary>
     public sealed record BadgeVm(string ClassName, string Abbr, string CountText, string Tip,
@@ -225,9 +244,16 @@ public partial class SkyWindow : Window
             var (bg, fg) = held >= it.Count ? (HaveBg, HaveFg)
                 : held > 0 ? (PartBg, PartFg)
                 : (NeedBg, NeedFg);
-            return new ChipVm($"{it.Name}  {held}/{it.Count}", bg, fg,
-                $"{it.Name} — drops from {it.Who} ({it.Where})"
-                + (it.Stats is null ? "" : "\n\n" + it.Stats));
+            // The dropper rides ON the chip (full log names when the library
+            // has them, the wiki shorthand otherwise); wind runes say their
+            // "random drop" piece and skip the redundant zone.
+            string sub = it.Mobs.Count > 0
+                ? string.Join(" / ", it.Mobs) + (it.Where.Length > 0 ? $" · {it.Where}" : "")
+                : it.Who;
+            return new ChipVm(it.Name, $"{held}/{it.Count}", sub, bg, fg,
+                $"{it.Name} — drops from {it.Who} ({it.Where}). Click for the wiki page."
+                + (it.Stats is null ? "" : "\n\n" + it.Stats),
+                WikiUrl(it.Name));
         }).ToList();
 
         return new QuestVm(q,
