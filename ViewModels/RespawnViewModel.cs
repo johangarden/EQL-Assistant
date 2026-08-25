@@ -52,9 +52,6 @@ public sealed class RespawnViewModel : ViewModelBase
 
     // ---- the learner's evidence (death → next-appearance gaps) ----
 
-    private bool _learnOn = true;
-    public bool LearnOn { get => _learnOn; set => SetField(ref _learnOn, value); }
-
     /// <summary>Observed gaps, newest first — carried through so a Manager
     /// save never throws away what the learner measured.</summary>
     public List<RespawnGap> Gaps { get; set; } = new();
@@ -101,7 +98,6 @@ public sealed class RespawnViewModel : ViewModelBase
         Seconds = e.Seconds,
         Pattern = e.Pattern,
         Enabled = e.Enabled,
-        LearnOn = e.Learn,
         Gaps = e.Gaps.Select(g => new RespawnGap { Seconds = g.Seconds, When = g.When }).ToList(),
     };
 
@@ -112,7 +108,6 @@ public sealed class RespawnViewModel : ViewModelBase
         Seconds = Seconds,
         Pattern = Pattern.Trim(),
         Enabled = Enabled,
-        Learn = LearnOn,
         Gaps = Gaps.Select(g => new RespawnGap { Seconds = g.Seconds, When = g.When }).ToList(),
     };
 }

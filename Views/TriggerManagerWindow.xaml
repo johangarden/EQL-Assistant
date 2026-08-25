@@ -800,10 +800,7 @@
                                      the true respawn as you camp. -->
                                 <Border Style="{StaticResource PageSep}"/>
                                 <TextBlock Text="Learning" Style="{StaticResource SectionTitle}"/>
-                                <CheckBox IsChecked="{Binding LearnOn}" Content="Learn the respawn time from my kills"
-                                          FontWeight="SemiBold" Margin="0,4,0,0"
-                                          AutomationProperties.AutomationId="RespawnLearnCheck"/>
-                                <TextBlock Style="{StaticResource Hint}"
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
                                            Text="Measures death → the mob's next appearance in the log (a swing, a cast, a resist…), counted only while you stay in the zone. Every gap is an upper bound; the shortest is the estimate. Camp it and attack on pop to nail the exact time."/>
                                 <StackPanel Margin="0,6,0,0">
                                     <StackPanel.Style>

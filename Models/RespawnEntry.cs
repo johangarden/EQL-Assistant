@@ -26,10 +26,6 @@ public sealed class RespawnEntry
     /// so old files migrate (see <see cref="MigrateTypedTime"/>).</summary>
     public double Seconds { get; set; }
 
-    /// <summary>Collect death→next-appearance gaps for this mob (the
-    /// RespawnLearner). Evidence accrues even while a typed number wins.</summary>
-    public bool Learn { get; set; } = true;
-
     /// <summary>Observed gaps, newest first, capped at <see cref="MaxGaps"/>.</summary>
     public List<RespawnGap> Gaps { get; set; } = new();
 
