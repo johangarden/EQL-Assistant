@@ -1483,7 +1483,7 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs", () => !_meterHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter · skills section", ToggleSkills, "DPS + Skills, Procs", () => !_skillsHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter · proc watcher", ToggleProcs, "DPS + Skills, Procs", () => _config.Overlay.ProcWatcherVisible));
-        panels.Items.Add(BurgerPanelRow("Combat text", ToggleSct, "Combat text", () => !_sctHidden));
+        panels.Items.Add(BurgerPanelRow("Scrolling combat text", ToggleSct, "Scrolling combat text", () => !_sctHidden));
         panels.Items.Add(BurgerPanelRow("Flash alerts", ToggleFlash, "Flash alerts", () => !_flashHidden));
         panels.SubmenuOpened += (_, _) =>
         {
@@ -1822,7 +1822,7 @@ public partial class MainWindow : Window
         var panelMeter = new System.Windows.Forms.ToolStripMenuItem("DPS meter", null, (_, _) => ToggleMeter());
         var panelSkills = new System.Windows.Forms.ToolStripMenuItem("DPS meter · skills section", null, (_, _) => ToggleSkills());
         var panelProcs = new System.Windows.Forms.ToolStripMenuItem("DPS meter · proc watcher", null, (_, _) => ToggleProcs());
-        var panelSct = new System.Windows.Forms.ToolStripMenuItem("Combat text", null, (_, _) => ToggleSct());
+        var panelSct = new System.Windows.Forms.ToolStripMenuItem("Scrolling combat text", null, (_, _) => ToggleSct());
         var panelFlash = new System.Windows.Forms.ToolStripMenuItem("Flash alerts", null, (_, _) => ToggleFlash());
         var panelToolbar = new System.Windows.Forms.ToolStripMenuItem("Toolbar", null, (_, _) => ToggleToolbar());
         var panelBars = new System.Windows.Forms.ToolStripMenuItem("Buff bars", null, (_, _) => ToggleBars());

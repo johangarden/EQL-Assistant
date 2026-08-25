@@ -114,7 +114,7 @@
                     <ListBoxItem Content="Bars &amp; matrices"/>
                     <ListBoxItem Content="Spawn timer"/>
                     <ListBoxItem Content="DPS + Skills, Procs"/>
-                    <ListBoxItem Content="Combat text"/>
+                    <ListBoxItem Content="Scrolling combat text"/>
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
                     <ListBoxItem Content="Condition badges"/>

@@ -885,7 +885,7 @@ public partial class TriggerManagerWindow : Window
             ["Bars & matrices"] = BarsPage,
             ["Spawn timer"] = RespawnsPage,
             ["DPS + Skills, Procs"] = MeterPage,
-            ["Combat text"] = SctPage,
+            ["Scrolling combat text"] = SctPage,
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
