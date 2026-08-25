@@ -481,6 +481,41 @@
                             <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows (this exe)" Margin="0,10,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Interrupt &amp; resist notices" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Your own broken or bounced casts flash a badge on the Conditions panel — these add a notice. Sound is the default: a short ding cuts through without adding voice clutter; switch to Phrase to hear 'Interrupted!' / 'Resisted!' spoken instead."/>
+
+                            <CheckBox x:Name="InterruptOnCheck" Content="When your cast is interrupted"
+                                      FontWeight="SemiBold" Margin="0,8,0,0"
+                                      Checked="MomentNotice_Changed" Unchecked="MomentNotice_Changed"/>
+                            <StackPanel x:Name="InterruptRow" Orientation="Horizontal" Margin="24,6,0,0">
+                                <ComboBox x:Name="InterruptModeBox" Width="90" SelectedValuePath="Tag"
+                                          SelectionChanged="MomentNotice_Changed">
+                                    <ComboBoxItem Content="Sound" Tag="sound"/>
+                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                </ComboBox>
+                                <ComboBox x:Name="InterruptSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
+                                <TextBox x:Name="InterruptSpeakBox" Width="200" Margin="8,0,0,0"
+                                         ToolTip="Spoken via text-to-speech — empty speaks 'Interrupted!'"/>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="InterruptTest_Click"/>
+                            </StackPanel>
+
+                            <CheckBox x:Name="ResistOnCheck" Content="When your spell is resisted"
+                                      FontWeight="SemiBold" Margin="0,10,0,0"
+                                      Checked="MomentNotice_Changed" Unchecked="MomentNotice_Changed"/>
+                            <StackPanel x:Name="ResistRow" Orientation="Horizontal" Margin="24,6,0,0">
+                                <ComboBox x:Name="ResistModeBox" Width="90" SelectedValuePath="Tag"
+                                          SelectionChanged="MomentNotice_Changed">
+                                    <ComboBoxItem Content="Sound" Tag="sound"/>
+                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                </ComboBox>
+                                <ComboBox x:Name="ResistSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
+                                <TextBox x:Name="ResistSpeakBox" Width="200" Margin="8,0,0,0"
+                                         ToolTip="Spoken via text-to-speech — empty speaks 'Resisted!'"/>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="ResistTest_Click"/>
+                            </StackPanel>
+
+                            <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Log source" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="The newest eqlog_*.txt in the folder is followed — log into another character and the app hops to their file automatically. Your character name is read from that filename."/>

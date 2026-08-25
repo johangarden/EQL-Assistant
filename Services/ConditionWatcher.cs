@@ -28,7 +28,10 @@ public sealed class ConditionWatcher
     /// moment badges, which spell (shown where the elapsed time would sit).</summary>
     public sealed record View(string Kind, double ElapsedSeconds, string Detail = "");
 
-    private const double MomentSeconds = 2.5;
+    private const double MomentSeconds = 1.5; // a flash, not a lecture (owner tuning)
+
+    /// <summary>A moment just fired: (kind, spell) — the audible notice's cue.</summary>
+    public event Action<string, string>? Moment;
     private readonly Dictionary<string, (DateTime Since, DateTime Deadline, string Detail)> _moments
         = new(StringComparer.Ordinal);
 
@@ -135,12 +138,14 @@ public sealed class ConditionWatcher
         if (OwnInterruptRx.Match(body) is { Success: true } im)
         {
             _moments[Interrupted] = (time, time.AddSeconds(MomentSeconds), im.Groups["s"].Value);
+            Moment?.Invoke(Interrupted, im.Groups["s"].Value);
             return;
         }
         if (OwnResistRx.Match(body) is { Success: true } rm)
         {
             string spell = rm.Groups["s1"].Success ? rm.Groups["s1"].Value : rm.Groups["s2"].Value;
             _moments[Resisted] = (time, time.AddSeconds(MomentSeconds), spell);
+            Moment?.Invoke(Resisted, spell);
             return;
         }
 

@@ -123,6 +123,7 @@ public partial class MainWindow : Window
         if (retyped > 0) Log.Info($"Retyped {retyped} library trigger(s) (HoTs/DoTs split).");
         _durations = new SpellDurations(_configService, _spellLib);
         _conditions = new ConditionWatcher(_spellLib);
+        _conditions.Moment += (kind, _) => OnConditionMoment(kind);
         WireRespawnLearner();
         // Enemy-DoT countdowns: learned first, library figure as the fallback.
         _combat.DotDurationLookup = spell =>
@@ -1567,6 +1568,35 @@ public partial class MainWindow : Window
         _timer?.StartWith(seconds, name);
         _vm.Flash($"{name} down — repop timer started.");
         Log.Info($"Auto-started repop timer ({seconds:0}s) from trigger '{name}'.");
+    }
+
+    // ---- interrupt / resist notices ------------------------------------------
+
+    private DateTime _lastInterruptAlert, _lastResistAlert;
+
+    /// <summary>The audible half of a moment badge. A short per-kind cooldown
+    /// keeps a chain-bashed cast from stacking dings on dings.</summary>
+    private void OnConditionMoment(string kind)
+    {
+        bool interrupt = kind == ConditionWatcher.Interrupted;
+        var o = _config.Overlay;
+        if (!(interrupt ? o.InterruptNoticeEnabled : o.ResistNoticeEnabled)) return;
+
+        var now = DateTime.Now;
+        if ((now - (interrupt ? _lastInterruptAlert : _lastResistAlert)).TotalSeconds < 2.5) return;
+        if (interrupt) _lastInterruptAlert = now; else _lastResistAlert = now;
+
+        if ((interrupt ? o.InterruptNoticeMode : o.ResistNoticeMode) == "speak")
+        {
+            string phrase = interrupt ? o.InterruptNoticeSpeak : o.ResistNoticeSpeak;
+            _alerts.Fire(string.IsNullOrWhiteSpace(phrase)
+                ? (interrupt ? "Interrupted!" : "Resisted!") : phrase, null);
+        }
+        else
+        {
+            string sound = interrupt ? o.InterruptNoticeSound : o.ResistNoticeSound;
+            if (!string.IsNullOrWhiteSpace(sound)) _alerts.Fire(null, sound);
+        }
     }
 
     private void ToggleMute()
