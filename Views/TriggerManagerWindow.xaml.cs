@@ -977,11 +977,14 @@ public partial class TriggerManagerWindow : Window
         _soundUxLoading = true;
         InterruptOnCheck.IsChecked = _config.Overlay.InterruptNoticeEnabled;
         InterruptModeBox.SelectedValue = _config.Overlay.InterruptNoticeMode;
-        InterruptSpeakBox.Text = _config.Overlay.InterruptNoticeSpeak;
+        // The default phrase shows IN the box — an empty field reads as broken.
+        InterruptSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.InterruptNoticeSpeak)
+            ? "Interrupted!" : _config.Overlay.InterruptNoticeSpeak;
         SyncSoundCombo(InterruptSoundBox, _config.Overlay.InterruptNoticeSound);
         ResistOnCheck.IsChecked = _config.Overlay.ResistNoticeEnabled;
         ResistModeBox.SelectedValue = _config.Overlay.ResistNoticeMode;
-        ResistSpeakBox.Text = _config.Overlay.ResistNoticeSpeak;
+        ResistSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.ResistNoticeSpeak)
+            ? "Resisted!" : _config.Overlay.ResistNoticeSpeak;
         SyncSoundCombo(ResistSoundBox, _config.Overlay.ResistNoticeSound);
         _soundUxLoading = false;
         UpdateMomentNoticeUx();
