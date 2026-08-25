@@ -263,6 +263,10 @@
                                                  ToolTip="660, 11m, 9m12s or 9:12"/>
                                         <TextBlock x:Name="DurationEffectiveText" Style="{StaticResource Hint}"
                                                    Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        <Button x:Name="DurationForgetBtn" Content="Forget" Width="60"
+                                                Margin="10,0,0,0" Visibility="Collapsed"
+                                                Click="DurationForget_Click"
+                                                ToolTip="Clears the learned samples for this spell — the duration returns to the value in the box until the log teaches it again"/>
                                     </StackPanel>
                                     <CheckBox x:Name="DurationAutoCheck" IsChecked="{Binding DurationAuto}"
                                               Checked="DurationAuto_Changed" Unchecked="DurationAuto_Changed"

@@ -86,13 +86,44 @@ public sealed class SpellDurations
         RankSuffixRx.Replace(spellName.Trim(), "");
 
     /// <summary>The learner's contribution for a trigger/spell name: the max over
-    /// the most recent samples of its base key, or null when nothing observed.
-    /// The caller applies the floor (max with the configured duration).</summary>
+    /// the most recent samples of its base key, or null when nothing observed —
+    /// or when the observation sits BELOW the library's stated duration (owner
+    /// ruling, Chloroplast 21 Aug 2026: the regen family shares its landing and
+    /// wear-off sentences, so a lesser regen crossing a Chloroplast closes its
+    /// cycle short — 4m16s "learned" against the library's 16m. Everything that
+    /// pollutes a cycle reads SHORT; genuine AA/focus extensions read LONG. So
+    /// learning may only EXTEND a library duration, never shrink it). The
+    /// caller still applies its own floor (max with the configured duration).</summary>
     public double? LearnedMaxSeconds(string spellOrTriggerName)
+    {
+        if (ObservedMaxSeconds(spellOrTriggerName) is not { } learned) return null;
+        if (LibraryFloorSeconds(spellOrTriggerName) is { } floor && learned < floor) return null;
+        return learned;
+    }
+
+    /// <summary>The raw window max with no library floor (Manager diagnostics —
+    /// the UI says "ignored, below the library" rather than hiding the evidence).</summary>
+    public double? ObservedMaxSeconds(string spellOrTriggerName)
     {
         if (!_byKey.TryGetValue(BaseKey(spellOrTriggerName), out var rec) || rec.Samples.Count == 0)
             return null;
         return rec.Samples.TakeLast(RecentWindow).Max(s => s.Seconds);
+    }
+
+    /// <summary>The library's stated duration for this name (null = the library
+    /// doesn't know one — manual triggers, junk entries).</summary>
+    public double? LibraryFloorSeconds(string spellOrTriggerName) =>
+        _library.FindByBaseName(BaseName(spellOrTriggerName))?.DurationSec is > 0 and var d
+            ? d : null;
+
+    /// <summary>Forget everything learned for ONE spell (owner ruling: a polluted
+    /// number needs a way back). The next cast-anchored cycle starts fresh.</summary>
+    public void Forget(string spellOrTriggerName)
+    {
+        string key = BaseKey(spellOrTriggerName);
+        bool had = _byKey.Remove(key);
+        _open.Remove(key);
+        if (had) Save();
     }
 
     /// <summary>Sample count for a name (diagnostics/UI).</summary>

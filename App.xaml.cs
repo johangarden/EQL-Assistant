@@ -817,6 +817,29 @@ public partial class App : Application
             dur.ProcessLine($"[{T(12403)}] The spirit of wolf leaves you.");
             Check("durations: an external re-land contaminates the cycle",
                 dur.SampleCount("Spirit of Wolf") == 2);
+            // The library floor (owner ruling, Chloroplast): the regen family
+            // shares its landing/wear-off sentences, so cycles can close SHORT
+            // — a learned figure below the library's stated duration is
+            // pollution and stays silent. The evidence remains visible.
+            dur.ProcessLine($"[{T(20000)}] You begin casting Chloroplast.");
+            dur.ProcessLine($"[{T(20005)}] You begin to regenerate.");
+            dur.ProcessLine($"[{T(20261)}] You have stopped regenerating.");
+            Check("durations: a sample below the library's duration is ignored",
+                dur.LearnedMaxSeconds("Chloroplast") is null
+                && dur.ObservedMaxSeconds("Chloroplast") is double chloroRaw
+                && Math.Abs(chloroRaw - 256) < 0.01
+                && dur.LibraryFloorSeconds("Chloroplast") == 960);
+            dur.ProcessLine($"[{T(30000)}] You begin casting Chloroplast.");
+            dur.ProcessLine($"[{T(30005)}] You begin to regenerate.");
+            dur.ProcessLine($"[{T(31085)}] You have stopped regenerating.");
+            Check("durations: a genuine extension past the library still teaches",
+                dur.LearnedMaxSeconds("Chloroplast") is double chloroSec
+                && Math.Abs(chloroSec - 1080) < 0.01);
+            dur.Forget("Chloroplast");
+            Check("durations: Forget wipes one spell and only that spell",
+                dur.ObservedMaxSeconds("Chloroplast") is null
+                && dur.SampleCount("Spirit of Wolf") == 2);
+
             var dur2 = new SpellDurations(new ConfigService(), lib2, durPath);
             Check("durations: samples persist across restarts",
                 dur2.LearnedMaxSeconds("Spirit of Wolf") is double d3 && Math.Abs(d3 - 2400) < 0.01);

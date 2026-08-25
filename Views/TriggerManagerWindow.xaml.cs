@@ -707,11 +707,30 @@ public partial class TriggerManagerWindow : Window
         if (!auto || Selected is null)
         {
             DurationEffectiveText.Text = "";
+            DurationForgetBtn.Visibility = Visibility.Collapsed;
             return;
         }
-        DurationEffectiveText.Text = _durations?.LearnedMaxSeconds(Selected.Name) is double sec
-            ? $"learning → currently {DurationText.Compact(sec)} ({_durations!.SampleCount(Selected.Name)} samples)"
-            : "learning → nothing observed yet, starts from this value";
+        double? eff = _durations?.LearnedMaxSeconds(Selected.Name);
+        double? raw = _durations?.ObservedMaxSeconds(Selected.Name);
+        int n = _durations?.SampleCount(Selected.Name) ?? 0;
+        DurationForgetBtn.Visibility = raw is not null ? Visibility.Visible : Visibility.Collapsed;
+        DurationEffectiveText.Text = eff is { } sec
+            ? $"learning → currently {DurationText.Compact(sec)} ({n} samples)"
+            : raw is { } r && _durations?.LibraryFloorSeconds(Selected.Name) is { } floor
+                // Shared landing/wear-off sentences read short (a lesser regen
+                // crossing a Chloroplast) — the evidence shows, but never rules.
+                ? $"observed {DurationText.Compact(r)} ignored — below the library's {DurationText.Compact(floor)} ({n} samples)"
+                : "learning → nothing observed yet, starts from this value";
+    }
+
+    /// <summary>Owner ruling: a polluted learned number needs a way back —
+    /// wipe this spell's samples and let the log teach it again.</summary>
+    private void DurationForget_Click(object sender, RoutedEventArgs e)
+    {
+        if (Selected is null) return;
+        _durations?.Forget(Selected.Name);
+        UpdateDurationUx();
+        Status($"Forgot learned duration for '{Selected.Name}'.");
     }
 
     // ---- trigger list buttons ----------------------------------------------
