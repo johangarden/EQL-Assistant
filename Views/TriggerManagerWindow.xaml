@@ -113,7 +113,6 @@
                     <ListBoxItem Content="PANELS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="Bars &amp; matrices"/>
                     <ListBoxItem Content="Spawn timer"/>
-                    <ListBoxItem Content="Respawns"/>
                     <ListBoxItem Content="DPS + Skills, Procs"/>
                     <ListBoxItem Content="Combat text"/>
                     <ListBoxItem Content="Flash alerts"/>
@@ -653,27 +652,6 @@
                     </ScrollViewer>
 
                     <!-- ============================ REPOP TIMER ============================ -->
-                    <ScrollViewer x:Name="TimerPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Spawn timer" Style="{StaticResource PageTitle}"/>
-                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="The circular spawn-clock panel. Toggle in game: ☰/tray → Panels, or Ctrl+Alt+R. The mobs it watches live on the Respawns page, right below in the sidebar."/>
-
-                            <CheckBox x:Name="TimerVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
-
-                            <TextBlock Text="Screen anchor" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox x:Name="TimerAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
-                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
-                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
-                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
-                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
-                            </ComboBox>
-                        </StackPanel>
-                    </ScrollViewer>
-
                     <!-- ============================ DEATH RECAP ============================ -->
                     <ScrollViewer x:Name="DeathPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
@@ -689,13 +667,28 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- ============================ RESPAWNS (KNOWLEDGE) ============================ -->
+                    <!-- ============================ SPAWN TIMER (panel + its respawns) ============================ -->
                     <ScrollViewer x:Name="RespawnsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Respawns" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="Spawn timer" Style="{StaticResource PageTitle}"/>
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="The circular spawn-clock panel and the mobs it watches. Toggle in game: cog/tray → Panels, or Ctrl+Alt+R."/>
+
+                            <CheckBox x:Name="TimerVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
+
+                            <TextBlock Text="Screen anchor" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox x:Name="TimerAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
+                                <ComboBoxItem Content="Top-left"     Tag="TopLeft"/>
+                                <ComboBoxItem Content="Top-right"    Tag="TopRight"/>
+                                <ComboBoxItem Content="Bottom-left"  Tag="BottomLeft"/>
+                                <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
+                            </ComboBox>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Respawns" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="World knowledge, independent of loadouts: when a mob's death line appears in the log, the Spawn timer auto-starts with its respawn time — typed, or learned from your own kills (leave the time on 'auto'). Quick-add in game: the Spawn timer's ➕ button."/>
 

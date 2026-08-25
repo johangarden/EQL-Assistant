@@ -674,7 +674,7 @@ public partial class MainWindow : Window
                 ? $"Respawn added: {name} ({Services.DurationText.Compact(seconds)})."
                 : $"Respawn added: {name} — learning its time from your kills.");
         };
-        _timer.ManageRespawnsRequested = () => OpenManager("Respawns");
+        _timer.ManageRespawnsRequested = () => OpenManager("Spawn timer");
         _timer.RespawnLookup = name => _respawnCache.FirstOrDefault(
             r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         _timer.RespawnsProvider = () => _respawnCache;
