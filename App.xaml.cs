@@ -2137,9 +2137,11 @@ public partial class App : Application
                 && rkd.KillsFor("Lady Vox").Select(k => k.D).OrderBy(x => x).SequenceEqual(new[] { 0, 1 }));
             File.Delete(rkdPath);
 
-            // Global respawns: the auto-generated death pattern matches both forms.
-            var resp = ConfigService.BuildRespawnTrigger(
-                new Models.RespawnEntry { Name = "Lady Vox", Seconds = 400 });
+            // Global respawns: the auto-generated death pattern matches both
+            // forms; the duration is the learned minimum (typed times retired).
+            var respEntry = new Models.RespawnEntry { Name = "Lady Vox" };
+            respEntry.AddGap(400, DateTime.Now);
+            var resp = ConfigService.BuildRespawnTrigger(respEntry);
             Check("respawn trigger compiles with derived pattern",
                 resp is { Panel: Models.Panels.TimerAuto, DurationSeconds: 400 }
                 && resp.StartRegex!.IsMatch("Lady Vox has been slain by Johan!")
