@@ -687,10 +687,57 @@
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
 
+                            <!-- Alerts are GLOBAL: one setting for every watched
+                                 mob (per-mob plumbing was manual clutter). -->
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Alerts" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="One setting for every watched mob. In a phrase, {mob} becomes the mob's name."/>
+
+                            <CheckBox x:Name="RespawnWarnOnCheck" Content="Notify before it spawns"
+                                      FontWeight="SemiBold" Margin="0,8,0,0"
+                                      Checked="RespawnNotice_Changed" Unchecked="RespawnNotice_Changed"
+                                      AutomationProperties.AutomationId="RespawnWarnOnCheck"/>
+                            <StackPanel x:Name="RespawnWarnRow" Orientation="Horizontal" Margin="24,6,0,0">
+                                <TextBox x:Name="RespawnWarnSecondsBox" Width="44"/>
+                                <TextBlock Text="s before, using" Style="{StaticResource Hint}"
+                                           Margin="8,0,8,0" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="RespawnWarnModeBox" Width="90" SelectedValuePath="Tag"
+                                          SelectionChanged="RespawnNotice_Changed"
+                                          AutomationProperties.AutomationId="RespawnWarnModeBox">
+                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                    <ComboBoxItem Content="Sound" Tag="sound"/>
+                                </ComboBox>
+                                <TextBox x:Name="RespawnWarnSpeakBox" Width="190" Margin="8,0,0,0"
+                                         ToolTip="Spoken via text-to-speech — {mob} becomes the mob's name"/>
+                                <ComboBox x:Name="RespawnWarnSoundBox" Width="190" MinHeight="30" Margin="8,0,0,0"/>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="RespawnWarnTest_Click"/>
+                            </StackPanel>
+
+                            <CheckBox x:Name="RespawnSpawnOnCheck" Content="Notify when it spawns"
+                                      FontWeight="SemiBold" Margin="0,10,0,0"
+                                      ToolTip="Fires when the estimate runs out — or the moment the log names the mob, whichever comes first"
+                                      Checked="RespawnNotice_Changed" Unchecked="RespawnNotice_Changed"
+                                      AutomationProperties.AutomationId="RespawnSpawnOnCheck"/>
+                            <StackPanel x:Name="RespawnSpawnRow" Orientation="Horizontal" Margin="24,6,0,0">
+                                <TextBlock Text="Using" Style="{StaticResource Hint}"
+                                           Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="RespawnSpawnModeBox" Width="90" SelectedValuePath="Tag"
+                                          SelectionChanged="RespawnNotice_Changed"
+                                          AutomationProperties.AutomationId="RespawnSpawnModeBox">
+                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                    <ComboBoxItem Content="Sound" Tag="sound"/>
+                                </ComboBox>
+                                <TextBox x:Name="RespawnSpawnSpeakBox" Width="190" Margin="8,0,0,0"
+                                         ToolTip="Spoken via text-to-speech — {mob} becomes the mob's name"/>
+                                <ComboBox x:Name="RespawnSpawnSoundBox" Width="190" MinHeight="30" Margin="8,0,0,0"/>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="RespawnSpawnTest_Click"/>
+                            </StackPanel>
+
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Respawns" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="World knowledge, independent of loadouts: when a mob's death line appears in the log, the Spawn timer auto-starts with its respawn time — typed, or learned from your own kills (leave the time on 'auto'). Quick-add in game: the Spawn timer's ➕ button."/>
+                                       Text="A mob's death line auto-starts its clock; the time is learned from your own kills. Add mobs from Recent kills here, or the Spawn timer's ➕ in game (which can also take a typed time)."/>
 
                             <Grid Margin="0,10,0,0">
                                 <Grid.ColumnDefinitions>
@@ -701,8 +748,6 @@
 
                                 <StackPanel Grid.Column="0">
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                        <Button Content="Add" Click="RespawnAdd_Click" Width="52" Margin="0,0,4,0"
-                                                AutomationProperties.AutomationId="RespawnAddBtn"/>
                                         <Button Content="Delete" Click="RespawnDelete_Click" Width="60"/>
                                     </StackPanel>
                                     <ListBox x:Name="RespawnList" Height="190"
@@ -742,26 +787,12 @@
                                 </StackPanel>
                             </Grid>
 
+                            <!-- The selected mob: enable yes/no + where its time
+                                 comes from — the manual boxes are gone (owner
+                                 sketch: adds come from Recent kills or ➕). -->
                             <StackPanel x:Name="RespawnEditor" IsEnabled="False">
                                 <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" FontWeight="Bold" Margin="0,10,0,0"/>
-
-                                <TextBlock Text="Mob name" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Width="260" HorizontalAlignment="Left"/>
-
-                                <TextBlock Text="Zone (groups the list — filled in automatically)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding Zone, UpdateSourceTrigger=PropertyChanged}" Width="260" HorizontalAlignment="Left"/>
-
-                                <TextBlock Text="Respawn time" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding SecondsText}" Width="120" HorizontalAlignment="Left"
-                                         ToolTip="400, 15m, 6m40s or 6:40 — or 'auto' to use the learned time"/>
-                                <TextBlock Style="{StaticResource Hint}"
-                                           Text="'auto' = learned from your kills (below). A typed time overrides the learner — and is the guard when two mobs share a name."/>
-
-                                <TextBlock Text="Death line (regex — optional)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}"
-                                         FontFamily="Consolas" TextWrapping="Wrap"/>
-                                <TextBlock Style="{StaticResource Hint}"
-                                           Text="Leave empty to match '&lt;Mob name&gt; has been slain by …' and 'You have slain &lt;Mob name&gt;' automatically."/>
+                                <TextBlock Text="{Binding EffectiveText}" Style="{StaticResource Hint}" Margin="0,4,0,0"/>
 
                                 <!-- The learner: death → next-appearance gaps, minimum wins.
                                      Every gap is an upper bound (you can't meet a mob before
@@ -790,103 +821,6 @@
                                     <Button Content="Forget learned times" Click="RespawnForgetGaps_Click"
                                             Width="150" HorizontalAlignment="Left" Margin="0,6,0,0"
                                             ToolTip="Clears the gap evidence — the next kill cycle starts measuring fresh"/>
-                                </StackPanel>
-
-                                <!-- Alerts: the trigger editor's two-notice model,
-                                     respawn-flavored (before it spawns / when it spawns). -->
-                                <Border Style="{StaticResource PageSep}"/>
-                                <TextBlock Text="Alerts" Style="{StaticResource SectionTitle}"/>
-
-                                <CheckBox IsChecked="{Binding WarnOn}" Content="Notify before it spawns"
-                                          FontWeight="SemiBold" Margin="0,4,0,0"
-                                          AutomationProperties.AutomationId="RespawnWarnOnCheck"/>
-                                <StackPanel Margin="24,6,0,0" IsEnabled="{Binding WarnOn}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBox Text="{Binding WarnSeconds}" Width="50"/>
-                                        <TextBlock Text="seconds before it spawns, using" Style="{StaticResource Hint}"
-                                                   Margin="8,0,8,0" VerticalAlignment="Center"/>
-                                        <ComboBox Width="90" SelectedValuePath="Tag" SelectedValue="{Binding WarnMode}"
-                                                  AutomationProperties.AutomationId="RespawnWarnModeBox">
-                                            <ComboBoxItem Content="Phrase" Tag="speak"/>
-                                            <ComboBoxItem Content="Sound" Tag="sound"/>
-                                        </ComboBox>
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding WarnMode}" Value="sound">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <TextBox Text="{Binding WarnSpeak, UpdateSourceTrigger=PropertyChanged}" Width="300"
-                                                 ToolTip="Spoken via Windows text-to-speech — empty speaks '&lt;Mob name&gt; spawning soon'"/>
-                                        <Button Content="Speak" Click="RespawnWarnSpeak_Click" Width="60" Margin="8,0,0,0"/>
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding WarnMode}" Value="sound">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <ComboBox x:Name="RespawnWarnSoundBox" Width="220" MinHeight="30"
-                                                  SelectionChanged="RespawnWarnSound_Changed"
-                                                  ToolTip="Windows' built-in notification sounds — present on every machine, nothing to copy around"/>
-                                        <Button Content="Play" Click="RespawnWarnPlay_Click" Width="50" Margin="8,0,0,0"/>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <CheckBox IsChecked="{Binding SpawnOn}" Content="Notify when it spawns"
-                                          FontWeight="SemiBold" Margin="0,14,0,0"
-                                          ToolTip="Fires when the estimate runs out — or the moment the log names the mob, whichever comes first"
-                                          AutomationProperties.AutomationId="RespawnSpawnOnCheck"/>
-                                <StackPanel Margin="24,6,0,0" IsEnabled="{Binding SpawnOn}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="Using" Style="{StaticResource Hint}"
-                                                   Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                        <ComboBox Width="90" SelectedValuePath="Tag" SelectedValue="{Binding SpawnMode}"
-                                                  AutomationProperties.AutomationId="RespawnSpawnModeBox">
-                                            <ComboBoxItem Content="Phrase" Tag="speak"/>
-                                            <ComboBoxItem Content="Sound" Tag="sound"/>
-                                        </ComboBox>
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SpawnMode}" Value="sound">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <TextBox Text="{Binding SpawnSpeak, UpdateSourceTrigger=PropertyChanged}" Width="300"
-                                                 ToolTip="Spoken via Windows text-to-speech — empty speaks '&lt;Mob name&gt; respawn'"/>
-                                        <Button Content="Speak" Click="RespawnSpawnSpeak_Click" Width="60" Margin="8,0,0,0"/>
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                        <StackPanel.Style>
-                                            <Style TargetType="StackPanel">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SpawnMode}" Value="sound">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Style>
-                                        <ComboBox x:Name="RespawnSpawnSoundBox" Width="220" MinHeight="30"
-                                                  SelectionChanged="RespawnSpawnSound_Changed"
-                                                  ToolTip="Windows' built-in notification sounds — present on every machine, nothing to copy around"/>
-                                        <Button Content="Play" Click="RespawnSpawnPlay_Click" Width="50" Margin="8,0,0,0"/>
-                                    </StackPanel>
                                 </StackPanel>
                             </StackPanel>
                         </StackPanel>

@@ -678,6 +678,18 @@ public partial class MainWindow : Window
         _timer.RespawnLookup = name => _respawnCache.FirstOrDefault(
             r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         _timer.RespawnsProvider = () => _respawnCache;
+        // The GLOBAL notices, resolved per mob ("{mob}" in a phrase becomes
+        // the name) — read live so Manager saves apply to running timers.
+        _timer.AlertPayloads = name =>
+        {
+            var o = _config.Overlay;
+            return new Views.TimerWindow.RespawnAlerts(
+                Models.RespawnNotice.Payload(o.RespawnWarnEnabled, o.RespawnWarnMode,
+                    o.RespawnWarnPhrase, o.RespawnWarnSound, name, Models.RespawnNotice.DefaultWarnPhrase),
+                o.RespawnWarnSeconds,
+                Models.RespawnNotice.Payload(o.RespawnSpawnEnabled, o.RespawnSpawnMode,
+                    o.RespawnSpawnPhrase, o.RespawnSpawnSound, name, Models.RespawnNotice.DefaultSpawnPhrase));
+        };
         _timer.Show();
         _timer.RefreshWatching(); // quiet rows for the current zone's watched mobs
         UpdateTimerVisibility();

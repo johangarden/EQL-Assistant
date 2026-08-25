@@ -298,22 +298,6 @@ public partial class TriggerManagerWindow : Window
     {
         RespawnEditor.DataContext = RespawnList.SelectedItem;
         RespawnEditor.IsEnabled = RespawnList.SelectedItem is not null;
-        _soundUxLoading = true;
-        SyncSoundCombo(RespawnWarnSoundBox, SelectedRespawn?.WarnSound);
-        SyncSoundCombo(RespawnSpawnSoundBox, SelectedRespawn?.SpawnSound);
-        _soundUxLoading = false;
-    }
-
-    private void RespawnAdd_Click(object sender, RoutedEventArgs e)
-    {
-        var vm = new RespawnViewModel
-        {
-            Name = "New respawn",
-            Seconds = 0, // auto: the learner measures it from your kills
-            Zone = _combat.CurrentZone, // where you are is the best guess
-        };
-        _respawns.Add(vm);
-        RespawnList.SelectedItem = vm;
     }
 
     // ---- recent-kills picker --------------------------------------------------
@@ -828,43 +812,53 @@ public partial class TriggerManagerWindow : Window
         _alerts.Fire(speak, sound);
     }
 
-    // ---- respawn alert previews (empty phrase previews the default) ----------
+    // ---- the GLOBAL spawn-timer notices (one setting for every watched mob) ---
 
-    private void RespawnWarnSpeak_Click(object sender, RoutedEventArgs e) =>
-        PreviewRespawn(SelectedRespawn is { } r
-            ? (string.IsNullOrWhiteSpace(r.WarnSpeak)
-                ? Models.RespawnEntry.DefaultWarnPhrase(r.Name) : r.WarnSpeak)
-            : null, null);
+    private void RespawnNotice_Changed(object sender, RoutedEventArgs e) => UpdateRespawnNoticeUx();
 
-    private void RespawnSpawnSpeak_Click(object sender, RoutedEventArgs e) =>
-        PreviewRespawn(SelectedRespawn is { } r
-            ? (string.IsNullOrWhiteSpace(r.SpawnSpeak)
-                ? Models.RespawnEntry.DefaultSpawnPhrase(r.Name) : r.SpawnSpeak)
-            : null, null);
-
-    private void RespawnWarnPlay_Click(object sender, RoutedEventArgs e) =>
-        PreviewRespawn(null, SelectedRespawn?.WarnSound);
-
-    private void RespawnSpawnPlay_Click(object sender, RoutedEventArgs e) =>
-        PreviewRespawn(null, SelectedRespawn?.SpawnSound);
-
-    private void PreviewRespawn(string? speak, string? sound)
+    /// <summary>Rows follow their checkbox; the mode picks which input shows
+    /// (phrase OR sound preset — one channel, never both).</summary>
+    private void UpdateRespawnNoticeUx()
     {
-        if (SelectedRespawn is null) return;
+        if (RespawnWarnRow is null || RespawnSpawnRow is null) return;
+        RespawnWarnRow.IsEnabled = RespawnWarnOnCheck.IsChecked == true;
+        RespawnSpawnRow.IsEnabled = RespawnSpawnOnCheck.IsChecked == true;
+        bool wSound = RespawnWarnModeBox.SelectedValue as string == "sound";
+        RespawnWarnSpeakBox.Visibility = wSound ? Visibility.Collapsed : Visibility.Visible;
+        RespawnWarnSoundBox.Visibility = wSound ? Visibility.Visible : Visibility.Collapsed;
+        bool sSound = RespawnSpawnModeBox.SelectedValue as string == "sound";
+        RespawnSpawnSpeakBox.Visibility = sSound ? Visibility.Collapsed : Visibility.Visible;
+        RespawnSpawnSoundBox.Visibility = sSound ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void RespawnWarnTest_Click(object sender, RoutedEventArgs e) =>
+        TestRespawnNotice(RespawnWarnModeBox, RespawnWarnSpeakBox, RespawnWarnSoundBox,
+            Models.RespawnNotice.DefaultWarnPhrase);
+
+    private void RespawnSpawnTest_Click(object sender, RoutedEventArgs e) =>
+        TestRespawnNotice(RespawnSpawnModeBox, RespawnSpawnSpeakBox, RespawnSpawnSoundBox,
+            Models.RespawnNotice.DefaultSpawnPhrase);
+
+    /// <summary>Previews with the selected mob's name in {mob} (or a stand-in).</summary>
+    private void TestRespawnNotice(System.Windows.Controls.ComboBox mode,
+        System.Windows.Controls.TextBox speak, System.Windows.Controls.ComboBox sound,
+        Func<string, string> defaultPhrase)
+    {
         if (_alerts.Muted) { Status("Unmute to preview."); return; }
-        _alerts.Fire(speak, sound);
-    }
-
-    private void RespawnWarnSound_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (_soundUxLoading || SelectedRespawn is null) return;
-        if (RespawnWarnSoundBox.SelectedItem is SoundPreset p) SelectedRespawn.WarnSound = p.Path;
-    }
-
-    private void RespawnSpawnSound_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        if (_soundUxLoading || SelectedRespawn is null) return;
-        if (RespawnSpawnSoundBox.SelectedItem is SoundPreset p) SelectedRespawn.SpawnSound = p.Path;
+        string mob = SelectedRespawn?.Name is { Length: > 0 } n ? n : "Princess Cherista";
+        if (mode.SelectedValue as string != "sound")
+        {
+            var p = Models.RespawnNotice.Payload(true, "speak", speak.Text.Trim(), "", mob, defaultPhrase);
+            _alerts.Fire(p?.Speak, null);
+        }
+        else if (sound.SelectedItem is SoundPreset p && p.Path.Length > 0)
+        {
+            _alerts.Fire(null, p.Path);
+        }
+        else
+        {
+            Status("Pick a sound first.");
+        }
     }
 
     /// <summary>Jump to a sidebar page by its title ("Repop timer", "General", …).</summary>
@@ -987,6 +981,21 @@ public partial class TriggerManagerWindow : Window
         SyncSoundCombo(ResistSoundBox, _config.Overlay.ResistNoticeSound);
         _soundUxLoading = false;
         UpdateMomentNoticeUx();
+
+        // The global spawn-timer notices — phrase boxes show their {mob}
+        // templates instead of standing empty.
+        RespawnWarnOnCheck.IsChecked = _config.Overlay.RespawnWarnEnabled;
+        RespawnWarnSecondsBox.Text = _config.Overlay.RespawnWarnSeconds.ToString(CultureInfo.InvariantCulture);
+        RespawnWarnModeBox.SelectedValue = _config.Overlay.RespawnWarnMode;
+        RespawnWarnSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.RespawnWarnPhrase)
+            ? "{mob} spawning soon" : _config.Overlay.RespawnWarnPhrase;
+        SyncSoundCombo(RespawnWarnSoundBox, _config.Overlay.RespawnWarnSound);
+        RespawnSpawnOnCheck.IsChecked = _config.Overlay.RespawnSpawnEnabled;
+        RespawnSpawnModeBox.SelectedValue = _config.Overlay.RespawnSpawnMode;
+        RespawnSpawnSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.RespawnSpawnPhrase)
+            ? "{mob} respawn" : _config.Overlay.RespawnSpawnPhrase;
+        SyncSoundCombo(RespawnSpawnSoundBox, _config.Overlay.RespawnSpawnSound);
+        UpdateRespawnNoticeUx();
 
         LogDirBox.Text = _config.Log.Directory;
         FilePatternBox.Text = _config.Log.FilePattern;
@@ -1165,6 +1174,18 @@ public partial class TriggerManagerWindow : Window
                 ResistNoticeSpeak = ResistSpeakBox.Text.Trim(),
                 ResistNoticeSound = (ResistSoundBox.SelectedItem as SoundPreset)?.Path
                     ?? _config.Overlay.ResistNoticeSound,
+                RespawnWarnEnabled = RespawnWarnOnCheck.IsChecked == true,
+                RespawnWarnSeconds = double.TryParse(RespawnWarnSecondsBox.Text,
+                    NumberStyles.Float, CultureInfo.InvariantCulture, out double rws) && rws > 0 ? rws : 15,
+                RespawnWarnMode = RespawnWarnModeBox.SelectedValue as string ?? "speak",
+                RespawnWarnPhrase = RespawnWarnSpeakBox.Text.Trim(),
+                RespawnWarnSound = (RespawnWarnSoundBox.SelectedItem as SoundPreset)?.Path
+                    ?? _config.Overlay.RespawnWarnSound,
+                RespawnSpawnEnabled = RespawnSpawnOnCheck.IsChecked == true,
+                RespawnSpawnMode = RespawnSpawnModeBox.SelectedValue as string ?? "speak",
+                RespawnSpawnPhrase = RespawnSpawnSpeakBox.Text.Trim(),
+                RespawnSpawnSound = (RespawnSpawnSoundBox.SelectedItem as SoundPreset)?.Path
+                    ?? _config.Overlay.RespawnSpawnSound,
                 MeterSoloMode = _config.Overlay.MeterSoloMode,           // meter-toggled
                 SessionStatsVisible = _config.Overlay.SessionStatsVisible,       // tray-toggled
                 SessionStatsSlice = _config.Overlay.SessionStatsSlice,           // panel-toggled

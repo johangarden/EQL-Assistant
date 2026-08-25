@@ -41,9 +41,16 @@ public partial class TimerWindow : Window
     /// <summary>"Manage respawns…" picked from the ➕ menu.</summary>
     public Action? ManageRespawnsRequested { get; set; }
 
-    /// <summary>Resolves a repop name to its RespawnEntry (alert config) —
-    /// live edits in the Manager apply to already-running timers.</summary>
+    /// <summary>Resolves a repop name to its RespawnEntry (zone, enabled,
+    /// learning) — live edits in the Manager apply to running timers.</summary>
     public Func<string, RespawnEntry?>? RespawnLookup { get; set; }
+
+    /// <summary>The GLOBAL notices resolved for one mob: the before-notice
+    /// payload (+ its lead time) and the spawn payload — null halves are off.</summary>
+    public sealed record RespawnAlerts((string? Speak, string? Sound)? Warn, double WarnSeconds,
+        (string? Speak, string? Sound)? Spawn);
+
+    public Func<string, RespawnAlerts>? AlertPayloads { get; set; }
 
     /// <summary>All respawn entries — feeds the quiet "watching" rows, so an
     /// added mob shows on the panel before its first death line.</summary>
@@ -576,11 +583,11 @@ public partial class TimerWindow : Window
             _remaining = (_endTime - DateTime.Now).TotalSeconds;
             // The configurable before-notice for the repop on the pie.
             if (_modeName is not null && !_bigWarned && _remaining > 0
-                && RespawnLookup?.Invoke(_modeName) is { WarnEnabled: true } we
-                && _remaining <= we.WarnSeconds)
+                && AlertPayloads?.Invoke(_modeName) is { Warn: { } wp } aw
+                && _remaining <= aw.WarnSeconds)
             {
                 _bigWarned = true;
-                if (we.WarnPayload() is { } wp) _alerts.Fire(wp.Speak, wp.Sound);
+                _alerts.Fire(wp.Speak, wp.Sound);
             }
             if (_remaining <= 0)
             {
@@ -602,18 +609,17 @@ public partial class TimerWindow : Window
         UpdateSecondaries();
     }
 
-    /// <summary>The spawn notice: the entry's configured phrase/sound (or the
-    /// spoken default when the mob has no config — the manual timer too).</summary>
+    /// <summary>The spawn notice: the GLOBAL config resolved for this mob (or
+    /// the spoken default when unwired — the manual timer too).</summary>
     private void FireSpawnAlert(string? name)
     {
-        var entry = name is null ? null : RespawnLookup?.Invoke(name);
-        if (entry is null)
+        if (name is not null && AlertPayloads?.Invoke(name) is { } ap)
         {
-            // Spoken, not the Windows pling — a named mob announces itself.
-            _alerts.Speak(name is null ? "Respawn" : $"{name} respawn");
-            return;
+            if (ap.Spawn is { } p) _alerts.Fire(p.Speak, p.Sound);
+            return; // notice off = silence, honestly configured
         }
-        if (entry.SpawnPayload() is { } p) _alerts.Fire(p.Speak, p.Sound);
+        // Spoken, not the Windows pling — a named mob announces itself.
+        _alerts.Speak(name is null ? "Respawn" : $"{name} respawn");
     }
 
     private void UpdateSecondaries()
@@ -672,11 +678,11 @@ public partial class TimerWindow : Window
                 continue;
             }
 
-            if (!e.Warned && RespawnLookup?.Invoke(e.Name) is { WarnEnabled: true } we
-                && rem <= we.WarnSeconds)
+            if (!e.Warned && AlertPayloads?.Invoke(e.Name) is { Warn: { } wp } aw
+                && rem <= aw.WarnSeconds)
             {
                 e.Warned = true;
-                if (we.WarnPayload() is { } wp) _alerts.Fire(wp.Speak, wp.Sound);
+                _alerts.Fire(wp.Speak, wp.Sound);
             }
             e.Vm.RemainingText = Format(rem);
             e.Vm.Foreground = new SolidColorBrush(ColorFor(e.Total > 0 ? rem / e.Total : 0));

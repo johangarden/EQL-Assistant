@@ -2770,28 +2770,24 @@ public partial class App : Application
 
             tw.Close();
 
-            // ---- alert payloads: toggle + Phrase OR Sound per notice,
-            // empty phrase = the default (which follows renames for free).
-            var re = new Models.RespawnEntry { Name = "Vox" };
-            Check("alerts: spawn notice defaults on, spoken '<name> respawn'",
-                re.SpawnPayload() is { Speak: "Vox respawn", Sound: null }
-                && re.WarnPayload() is null); // before-notice defaults OFF
-            re.WarnEnabled = true;
-            Check("alerts: warn notice speaks its default when enabled",
-                re.WarnPayload() is { Speak: "Vox spawning soon", Sound: null });
-            re.WarnMode = "sound";
-            Check("alerts: a sound notice with no file stays silent",
-                re.WarnPayload() is null);
-            re.WarnSound = @"C:\Windows\Media\tada.wav";
-            Check("alerts: sound mode carries the file, never a phrase",
-                re.WarnPayload() is { Speak: null, Sound: @"C:\Windows\Media\tada.wav" });
-            re.SpawnSpeak = "the dragon is up";
-            re.SpawnEnabled = false;
+            // ---- the GLOBAL notices: one config for every mob, {mob} in a
+            // phrase becomes the name, empty phrase = the default.
+            Check("alerts: empty phrase speaks the default with the mob's name",
+                Models.RespawnNotice.Payload(true, "speak", "", "", "Vox",
+                    Models.RespawnNotice.DefaultSpawnPhrase) is { Speak: "Vox respawn", Sound: null });
+            Check("alerts: {mob} substitutes into a custom phrase",
+                Models.RespawnNotice.Payload(true, "speak", "{mob} is up, move!", "", "Vox",
+                    Models.RespawnNotice.DefaultSpawnPhrase) is { Speak: "Vox is up, move!", Sound: null });
             Check("alerts: a disabled notice fires nothing",
-                re.SpawnPayload() is null);
-            re.SpawnEnabled = true;
-            Check("alerts: a hand-written phrase wins over the default",
-                re.SpawnPayload() is { Speak: "the dragon is up", Sound: null });
+                Models.RespawnNotice.Payload(false, "speak", "x", "", "Vox",
+                    Models.RespawnNotice.DefaultSpawnPhrase) is null);
+            Check("alerts: a sound notice with no file stays silent",
+                Models.RespawnNotice.Payload(true, "sound", "", "", "Vox",
+                    Models.RespawnNotice.DefaultWarnPhrase) is null);
+            Check("alerts: sound mode carries the file, never a phrase",
+                Models.RespawnNotice.Payload(true, "sound", "ignored", @"C:\Windows\Media\tada.wav",
+                    "Vox", Models.RespawnNotice.DefaultWarnPhrase)
+                    is { Speak: null, Sound: @"C:\Windows\Media\tada.wav" });
 
             // ---- the estimate ladder: typed number > learned minimum > nothing.
             var le = new Models.RespawnEntry { Name = "x", Seconds = 0 };

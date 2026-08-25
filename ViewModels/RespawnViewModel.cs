@@ -64,6 +64,14 @@ public sealed class RespawnViewModel : ViewModelBase
         ? Services.DurationText.Compact(Seconds)
         : LearnedSeconds is { } l ? $"≤ {Services.DurationText.Compact(l)} auto" : "auto");
 
+    /// <summary>The selected mob's one-line story: which time rules, and where
+    /// it came from (the editor's read-only header — the boxes are gone).</summary>
+    public string EffectiveText => Seconds > 0
+        ? $"{Services.DurationText.Compact(Seconds)} — typed when added (delete + re-add via ➕ to change, or let learning take over by clearing it there)"
+        : LearnedSeconds is { } l
+            ? $"auto — currently ≤ {Services.DurationText.Compact(l)}, the shortest observed gap"
+            : "auto — learning: the first kill cycle becomes the estimate";
+
     // ---- the learner's evidence (death → next-appearance gaps) ----
 
     private bool _learnOn = true;
@@ -77,10 +85,27 @@ public sealed class RespawnViewModel : ViewModelBase
 
     public bool HasGaps => Gaps.Count > 0;
 
-    /// <summary>The evidence list: every gap is an upper bound ("≤"), and the
-    /// minimum of them is the learned estimate.</summary>
-    public string GapsText => string.Join("\n", Gaps.Select(g =>
-        $"≤ {Services.DurationText.Compact(g.Seconds)}   ·   {g.When:d MMM HH:mm}"));
+    /// <summary>The evidence list: every gap is an upper bound ("≤"), the
+    /// MINIMUM is the estimate — and the line that holds it says so.</summary>
+    public string GapsText
+    {
+        get
+        {
+            if (Gaps.Count == 0) return "";
+            double min = Gaps.Min(g => g.Seconds);
+            bool marked = false;
+            return string.Join("\n", Gaps.Select(g =>
+            {
+                string line = $"≤ {Services.DurationText.Compact(g.Seconds)}   ·   {g.When:d MMM HH:mm}";
+                if (!marked && g.Seconds == min)
+                {
+                    marked = true;
+                    line += "   ◄ the estimate (shortest)";
+                }
+                return line;
+            }));
+        }
+    }
 
     public void ClearGaps()
     {
@@ -91,35 +116,6 @@ public sealed class RespawnViewModel : ViewModelBase
         OnPropertyChanged(nameof(SecondsText));
     }
 
-    // ---- the two alert notices (mirrors the trigger editor's model) ----
-
-    private bool _warnOn;
-    public bool WarnOn { get => _warnOn; set => SetField(ref _warnOn, value); }
-
-    private double _warnSeconds = 15;
-    public double WarnSeconds { get => _warnSeconds; set => SetField(ref _warnSeconds, value); }
-
-    private string _warnMode = "speak";
-    public string WarnMode { get => _warnMode; set => SetField(ref _warnMode, value); }
-
-    private string _warnSpeak = "";
-    public string WarnSpeak { get => _warnSpeak; set => SetField(ref _warnSpeak, value); }
-
-    private string _warnSound = "";
-    public string WarnSound { get => _warnSound; set => SetField(ref _warnSound, value); }
-
-    private bool _spawnOn = true;
-    public bool SpawnOn { get => _spawnOn; set => SetField(ref _spawnOn, value); }
-
-    private string _spawnMode = "speak";
-    public string SpawnMode { get => _spawnMode; set => SetField(ref _spawnMode, value); }
-
-    private string _spawnSpeak = "";
-    public string SpawnSpeak { get => _spawnSpeak; set => SetField(ref _spawnSpeak, value); }
-
-    private string _spawnSound = "";
-    public string SpawnSound { get => _spawnSound; set => SetField(ref _spawnSound, value); }
-
     public static RespawnViewModel FromEntry(RespawnEntry e) => new()
     {
         Name = e.Name,
@@ -129,15 +125,6 @@ public sealed class RespawnViewModel : ViewModelBase
         Enabled = e.Enabled,
         LearnOn = e.Learn,
         Gaps = e.Gaps.Select(g => new RespawnGap { Seconds = g.Seconds, When = g.When }).ToList(),
-        WarnOn = e.WarnEnabled,
-        WarnSeconds = e.WarnSeconds,
-        WarnMode = e.WarnMode,
-        WarnSpeak = e.WarnSpeak,
-        WarnSound = e.WarnSound,
-        SpawnOn = e.SpawnEnabled,
-        SpawnMode = e.SpawnMode,
-        SpawnSpeak = e.SpawnSpeak,
-        SpawnSound = e.SpawnSound,
     };
 
     public RespawnEntry ToEntry() => new()
@@ -149,14 +136,5 @@ public sealed class RespawnViewModel : ViewModelBase
         Enabled = Enabled,
         Learn = LearnOn,
         Gaps = Gaps.Select(g => new RespawnGap { Seconds = g.Seconds, When = g.When }).ToList(),
-        WarnEnabled = WarnOn,
-        WarnSeconds = WarnSeconds,
-        WarnMode = WarnMode,
-        WarnSpeak = WarnSpeak.Trim(),
-        WarnSound = WarnSound,
-        SpawnEnabled = SpawnOn,
-        SpawnMode = SpawnMode,
-        SpawnSpeak = SpawnSpeak.Trim(),
-        SpawnSound = SpawnSound,
     };
 }
