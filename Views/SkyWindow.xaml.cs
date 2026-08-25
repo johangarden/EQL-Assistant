@@ -26,7 +26,14 @@ public partial class SkyWindow : Window
     private static readonly Brush OpenFg = Freeze(Color.FromRgb(0xDC, 0xE6, 0xF5));
 
     public sealed record ChipVm(string Name, string CountText, string Sub, Brush Bg, Brush Fg,
-        string Tip, string Url);
+        string Tip, string Url, ImageSource? Icon)
+    {
+        public Visibility IconVis => Icon is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    // The wiki icons ride along (the same embedded set the Character window
+    // draws) — one shared stats instance, loaded on first Sky window.
+    private static readonly Lazy<ItemStats> SharedItemStats = new(() => new ItemStats());
 
     /// <summary>A chip is a door to the item's wiki page.</summary>
     private void Chip_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -77,9 +84,10 @@ public partial class SkyWindow : Window
 
     public sealed record QuestVm(SkyQuests.SkyQuest Quest, string Title, string Subtitle,
         string Reward, string RewardStats, string Slot, string ProgressText, Brush ProgressBrush,
-        bool Done, double CardOpacity, List<ChipVm> Chips, bool Tracked)
+        bool Done, double CardOpacity, List<ChipVm> Chips, bool Tracked, ImageSource? RewardIcon)
     {
         public Visibility SlotVisibility => Slot.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility RewardIconVis => RewardIcon is null ? Visibility.Collapsed : Visibility.Visible;
         public string TrackText => Tracked ? "★" : "☆";
         // Done cards keep a ghost star so titles stay aligned; it does nothing.
         public Brush TrackFg => Done ? TrackGhostFg : Tracked ? TrackOnFg : TrackOffFg;
@@ -253,7 +261,8 @@ public partial class SkyWindow : Window
             return new ChipVm(it.Name, $"{held}/{it.Count}", sub, bg, fg,
                 $"{it.Name} — drops from {it.Who} ({it.Where}). Click for the wiki page."
                 + (it.Stats is null ? "" : "\n\n" + it.Stats),
-                WikiUrl(it.Name));
+                WikiUrl(it.Name),
+                ItemIcons.Get(SharedItemStats.Value.Lookup(it.Name)?.Icon));
         }).ToList();
 
         return new QuestVm(q,
@@ -262,7 +271,8 @@ public partial class SkyWindow : Window
             q.Reward, q.RewardStats, q.Slot,
             done ? "✓ done" : $"{have}/{need}",
             done ? DoneFg : OpenFg,
-            done, done ? 0.55 : 1.0, chips, _sky.IsTracked(q));
+            done, done ? 0.55 : 1.0, chips, _sky.IsTracked(q),
+            ItemIcons.Get(SharedItemStats.Value.Lookup(q.Reward)?.Icon));
     }
 
     private static Brush Freeze(Color c)
