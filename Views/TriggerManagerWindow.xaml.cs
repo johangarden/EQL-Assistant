@@ -235,6 +235,53 @@ public partial class TriggerManagerWindow : Window
         LoadoutCombo.SelectedItem = _currentName; // triggers ShowLoadout via SelectionChanged
 
         Closed += (_, _) => _bus.LineReceived -= OnLine;
+
+        // Unsaved-changes guard: the clean state is what the UI would save
+        // RIGHT NOW; closing with a different answer asks first.
+        _cleanFingerprint = Fingerprint();
+        Closing += OnClosingConfirm;
+    }
+
+    // ---- discard-changes guard -----------------------------------------------
+
+    private string _cleanFingerprint = "";
+
+    /// <summary>Everything Save would write, serialized — comparing this at
+    /// close against the last-saved snapshot IS the dirty check (no per-field
+    /// tracking to forget).</summary>
+    private string Fingerprint()
+    {
+        try
+        {
+            var doc = new
+            {
+                Loadouts = BuildLoadouts(null),
+                Config = BuildConfigFromUi(),
+                Respawns = _respawns.Select(r => r.ToEntry()).ToList(),
+                Anchors = new[]
+                    {
+                        BarsAnchorBox, EnemyDotsAnchorBox, RemindersAnchorBox, SelfAnchorBox,
+                        TargetAnchorBox, TimerAnchorBox, MeterAnchorBox, FlashAnchorBox,
+                    }
+                    .Select(b => b.SelectedValue as string ?? "").ToList(),
+                AutoStart = StartWithWindowsCheck.IsChecked == true,
+            };
+            return System.Text.Json.JsonSerializer.Serialize(doc);
+        }
+        catch
+        {
+            return Guid.NewGuid().ToString(); // un-buildable UI state = dirty
+        }
+    }
+
+    private void OnClosingConfirm(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (Fingerprint() == _cleanFingerprint) return;
+        if (!ConfirmDialog.Show(this, "Discard changes?",
+                "You have unsaved changes in this window.\n\n"
+                + "Close and discard them? (Save & apply keeps them.)",
+                "Discard", "Keep editing"))
+            e.Cancel = true;
     }
 
     private ObservableCollection<TriggerEditViewModel> CurrentList => _byName[_currentName];
@@ -1129,23 +1176,34 @@ public partial class TriggerManagerWindow : Window
 
     // ---- save ---------------------------------------------------------------
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    /// <summary>Every loadout's triggers as definitions; with an error sink,
+    /// each pattern is also compile-checked (the save-time validation).</summary>
+    private List<Loadout> BuildLoadouts(List<string>? errors)
     {
-        // Validate every trigger in every loadout.
         var loadouts = new List<Loadout>();
-        var errors = new List<string>();
         foreach (var name in _order)
         {
             var defs = new List<TriggerDefinition>();
             foreach (var vm in _byName[name])
             {
                 var d = vm.ToDefinition();
-                try { ConfigService.CompileOne(d); }
-                catch (ArgumentException ex) { errors.Add($"  • [{name}] {d.Name}: {ex.Message}"); }
+                if (errors is not null)
+                {
+                    try { ConfigService.CompileOne(d); }
+                    catch (ArgumentException ex) { errors.Add($"  • [{name}] {d.Name}: {ex.Message}"); }
+                }
                 defs.Add(d);
             }
             loadouts.Add(new Loadout { Name = name, Triggers = defs });
         }
+        return loadouts;
+    }
+
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        // Validate every trigger in every loadout.
+        var errors = new List<string>();
+        var loadouts = BuildLoadouts(errors);
 
         if (errors.Count > 0)
         {
@@ -1155,7 +1213,46 @@ public partial class TriggerManagerWindow : Window
             return;
         }
 
-        var cfg = new AppConfig
+        var cfg = BuildConfigFromUi();
+
+        try
+        {
+            foreach (var lo in loadouts) _configService.SaveLoadout(lo);
+            _configService.SyncDeleteLoadouts(_order);
+            _configService.SaveSettings(cfg);
+            _configService.SaveRespawns(_respawns.Select(r => r.ToEntry())
+                .Where(r => !string.IsNullOrWhiteSpace(r.Name)).ToList());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Couldn't write files:\n" + ex.Message, "Save failed",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        ApplyAutoStart(StartWithWindowsCheck.IsChecked == true);
+
+        // Persist panel anchors (offsets are preserved) before the overlay re-applies.
+        ApplyAnchor("main", BarsAnchorBox);
+        ApplyAnchor("enemyDots", EnemyDotsAnchorBox);
+        ApplyAnchor("reminders", RemindersAnchorBox);
+        ApplyAnchor("selfMatrix", SelfAnchorBox);
+        ApplyAnchor("targetDebuffs", TargetAnchorBox);
+        ApplyAnchor("timer", TimerAnchorBox);
+        ApplyAnchor("meter", MeterAnchorBox);
+        ApplyAnchor("flash", FlashAnchorBox);
+
+        _config = cfg;
+        _onApplied(_currentName);
+        _cleanFingerprint = Fingerprint(); // this IS the saved state now
+        Status($"Saved {loadouts.Count} loadout(s). Active: {_currentName}.");
+    }
+
+    /// <summary>The AppConfig exactly as Save would write it, read from the UI
+    /// (shared by the save and the dirty-check fingerprint).</summary>
+    private AppConfig BuildConfigFromUi()
+    {
+        return new AppConfig
         {
             CharacterName = _config.CharacterName, // auto-detected; hand-editable in config.json only
             ActiveLoadout = _currentName,
@@ -1245,37 +1342,6 @@ public partial class TriggerManagerWindow : Window
                 SctXpLifetime = Math.Clamp(ParseOr(SctXpLifetimeBox.Text, _config.Overlay.SctXpLifetime), 1, 15),
             },
         };
-
-        try
-        {
-            foreach (var lo in loadouts) _configService.SaveLoadout(lo);
-            _configService.SyncDeleteLoadouts(_order);
-            _configService.SaveSettings(cfg);
-            _configService.SaveRespawns(_respawns.Select(r => r.ToEntry())
-                .Where(r => !string.IsNullOrWhiteSpace(r.Name)).ToList());
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Couldn't write files:\n" + ex.Message, "Save failed",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
-
-        ApplyAutoStart(StartWithWindowsCheck.IsChecked == true);
-
-        // Persist panel anchors (offsets are preserved) before the overlay re-applies.
-        ApplyAnchor("main", BarsAnchorBox);
-        ApplyAnchor("enemyDots", EnemyDotsAnchorBox);
-        ApplyAnchor("reminders", RemindersAnchorBox);
-        ApplyAnchor("selfMatrix", SelfAnchorBox);
-        ApplyAnchor("targetDebuffs", TargetAnchorBox);
-        ApplyAnchor("timer", TimerAnchorBox);
-        ApplyAnchor("meter", MeterAnchorBox);
-        ApplyAnchor("flash", FlashAnchorBox);
-
-        _config = cfg;
-        _onApplied(_currentName);
-        Status($"Saved {loadouts.Count} loadout(s). Active: {_currentName}.");
     }
 
     // ---- start with Windows (HKCU Run key) -----------------------------------
