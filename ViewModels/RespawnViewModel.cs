@@ -12,32 +12,13 @@ public sealed class RespawnViewModel : ViewModelBase
         set { if (SetField(ref _name, value)) OnPropertyChanged(nameof(Display)); }
     }
 
-    private double _seconds; // 0 = auto: the learner's estimate stands in
+    // Legacy passthrough only — typed times are retired; loading migrates
+    // them into the first gap sample, so this is 0 everywhere post-load.
+    private double _seconds;
     public double Seconds
     {
         get => _seconds;
-        set
-        {
-            if (!SetField(ref _seconds, value)) return;
-            OnPropertyChanged(nameof(Display));
-            OnPropertyChanged(nameof(SecondsText));
-        }
-    }
-
-    /// <summary>Friendly face of <see cref="Seconds"/>: shows "6m40s" (or
-    /// "auto" when unset), accepts "400", "15m", "6m40s", "6:40" — and
-    /// "auto" or empty to hand the number back to the learner.</summary>
-    public string SecondsText
-    {
-        get => Seconds > 0 ? Services.DurationText.Compact(Seconds) : "auto";
-        set
-        {
-            string t = value.Trim();
-            if (t.Length == 0 || t.Equals("auto", StringComparison.OrdinalIgnoreCase))
-                Seconds = 0;
-            else if (Services.DurationText.Parse(t) is double s) Seconds = s;
-            OnPropertyChanged(nameof(SecondsText)); // normalize ("400" -> "6m40s") or snap back
-        }
+        set { if (SetField(ref _seconds, value)) OnPropertyChanged(nameof(Display)); }
     }
 
     private string _zone = "";
@@ -60,17 +41,14 @@ public sealed class RespawnViewModel : ViewModelBase
         set { if (SetField(ref _enabled, value)) OnPropertyChanged(nameof(Display)); }
     }
 
-    public string Display => $"{(Enabled ? "" : "○ ")}{Name}  ·  " + (Seconds > 0
-        ? Services.DurationText.Compact(Seconds)
-        : LearnedSeconds is { } l ? $"≤ {Services.DurationText.Compact(l)} auto" : "auto");
+    public string Display => $"{(Enabled ? "" : "○ ")}{Name}  ·  "
+        + (LearnedSeconds is { } l ? $"≤ {Services.DurationText.Compact(l)}" : "learning");
 
-    /// <summary>The selected mob's one-line story: which time rules, and where
-    /// it came from (the editor's read-only header — the boxes are gone).</summary>
-    public string EffectiveText => Seconds > 0
-        ? $"{Services.DurationText.Compact(Seconds)} — typed when added (delete + re-add via ➕ to change, or let learning take over by clearing it there)"
-        : LearnedSeconds is { } l
-            ? $"auto — currently ≤ {Services.DurationText.Compact(l)}, the shortest observed gap"
-            : "auto — learning: the first kill cycle becomes the estimate";
+    /// <summary>The selected mob's one-line story: the estimate and where it
+    /// came from (the editor's read-only header).</summary>
+    public string EffectiveText => LearnedSeconds is { } l
+        ? $"estimate ≤ {Services.DurationText.Compact(l)} — the shortest observed gap"
+        : "learning — the first kill cycle becomes the estimate";
 
     // ---- the learner's evidence (death → next-appearance gaps) ----
 
@@ -113,7 +91,7 @@ public sealed class RespawnViewModel : ViewModelBase
         OnPropertyChanged(nameof(GapsText));
         OnPropertyChanged(nameof(HasGaps));
         OnPropertyChanged(nameof(Display));
-        OnPropertyChanged(nameof(SecondsText));
+        OnPropertyChanged(nameof(EffectiveText));
     }
 
     public static RespawnViewModel FromEntry(RespawnEntry e) => new()

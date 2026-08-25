@@ -661,18 +661,16 @@ public partial class MainWindow : Window
                     tracked.Any(r => r.Name.Equals(d.Name, StringComparison.OrdinalIgnoreCase))))
                 .ToList();
         };
-        _timer.AddRespawnRequested = (name, zone, seconds) =>
+        _timer.AddRespawnRequested = (name, zone) =>
         {
             var list = _configService.LoadRespawns();
             if (list.Any(r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return;
-            list.Add(new Models.RespawnEntry { Name = name, Zone = zone, Seconds = seconds });
+            list.Add(new Models.RespawnEntry { Name = name, Zone = zone });
             _configService.SaveRespawns(list);
             // The engine holds the same trigger list instance, so re-merging the
             // timerAuto triggers makes the new respawn live immediately.
             MergeGlobalRespawns(_config);
-            _vm.Flash(seconds > 0
-                ? $"Respawn added: {name} ({Services.DurationText.Compact(seconds)})."
-                : $"Respawn added: {name} — learning its time from your kills.");
+            _vm.Flash($"Respawn added: {name} — learning its time from your kills.");
         };
         _timer.ManageRespawnsRequested = () => OpenManager("Spawn timer");
         _timer.RespawnLookup = name => _respawnCache.FirstOrDefault(

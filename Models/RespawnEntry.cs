@@ -21,12 +21,10 @@ public sealed class RespawnEntry
     /// (Manager page + the watch's ☰ menu). Optional.</summary>
     public string Zone { get; set; } = "";
 
-    /// <summary>Respawn time in seconds, typed by the user. 0 = none set:
-    /// the learned estimate stands in (auto mode). A typed number outranks
-    /// everything the learner measured — nothing outranks a user who camped
-    /// the spot, and it's also the guard against duplicate-name mobs whose
-    /// twins shrink the learned minimum below the real cycle.</summary>
-    public double Seconds { get; set; } = 400;
+    /// <summary>LEGACY: the pre-learning typed time. Owner ruling (22 Aug
+    /// 2026): typed times are gone — every mob learns. This field exists only
+    /// so old files migrate (see <see cref="MigrateTypedTime"/>).</summary>
+    public double Seconds { get; set; }
 
     /// <summary>Collect death→next-appearance gaps for this mob (the
     /// RespawnLearner). Evidence accrues even while a typed number wins.</summary>
@@ -40,15 +38,25 @@ public sealed class RespawnEntry
     [System.Text.Json.Serialization.JsonIgnore]
     public double? LearnedSeconds => Gaps.Count > 0 ? Gaps.Min(g => g.Seconds) : null;
 
-    /// <summary>The estimate ladder: typed number > learned minimum > nothing
-    /// (null = no estimate yet — the timer counts UP, learning).</summary>
+    /// <summary>The estimate: the learned minimum, or nothing (null = no
+    /// evidence yet — the timer counts UP, learning).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public double? EffectiveSeconds => Seconds > 0 ? Seconds : LearnedSeconds;
+    public double? EffectiveSeconds => LearnedSeconds;
 
     public void AddGap(double seconds, DateTime when)
     {
         Gaps.Insert(0, new RespawnGap { Seconds = seconds, When = when });
         if (Gaps.Count > MaxGaps) Gaps.RemoveRange(MaxGaps, Gaps.Count - MaxGaps);
+    }
+
+    /// <summary>A legacy typed time becomes the FIRST gap sample — an upper
+    /// bound the learner can tighten — and clears. Idempotent; entries that
+    /// already learned keep their evidence and just drop the typed number.</summary>
+    public void MigrateTypedTime(DateTime now)
+    {
+        if (Seconds <= 0) return;
+        if (Gaps.Count == 0) AddGap(Seconds, now);
+        Seconds = 0;
     }
 
     /// <summary>

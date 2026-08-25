@@ -2789,18 +2789,30 @@ public partial class App : Application
                     "Vox", Models.RespawnNotice.DefaultWarnPhrase)
                     is { Speak: null, Sound: @"C:\Windows\Media\tada.wav" });
 
-            // ---- the estimate ladder: typed number > learned minimum > nothing.
-            var le = new Models.RespawnEntry { Name = "x", Seconds = 0 };
-            Check("ladder: no estimate before evidence", le.EffectiveSeconds is null);
+            // ---- the estimate: learned minimum only (typed times retired).
+            var le = new Models.RespawnEntry { Name = "x" };
+            Check("estimate: nothing before evidence", le.EffectiveSeconds is null);
             le.AddGap(400, DateTime.Now);
             le.AddGap(380, DateTime.Now);
-            Check("ladder: learned = the MINIMUM gap (upper bounds converge down)",
+            Check("estimate: the MINIMUM gap (upper bounds converge down)",
                 le.EffectiveSeconds == 380 && le.LearnedSeconds == 380);
-            le.Seconds = 500;
-            Check("ladder: a typed number outranks the learner", le.EffectiveSeconds == 500);
             for (int i = 0; i < 12; i++) le.AddGap(600 + i, DateTime.Now);
-            Check("ladder: gap list capped at 8, newest first",
+            Check("estimate: gap list capped at 8, newest first",
                 le.Gaps.Count == Models.RespawnEntry.MaxGaps && le.Gaps[0].Seconds == 611);
+
+            // A legacy typed time migrates into the FIRST gap sample and
+            // clears; entries that already learned keep their evidence.
+            var mig = new Models.RespawnEntry { Name = "y", Seconds = 600 };
+            mig.MigrateTypedTime(DateTime.Now);
+            Check("migration: a typed time becomes the seed gap",
+                mig is { Seconds: 0, EffectiveSeconds: 600, Gaps.Count: 1 });
+            mig.MigrateTypedTime(DateTime.Now);
+            Check("migration: idempotent", mig.Gaps.Count == 1);
+            var mig2 = new Models.RespawnEntry { Name = "z", Seconds = 900 };
+            mig2.AddGap(300, DateTime.Now);
+            mig2.MigrateTypedTime(DateTime.Now);
+            Check("migration: learned evidence outlives the typed number",
+                mig2 is { Seconds: 0, EffectiveSeconds: 300, Gaps.Count: 1 });
 
             Check("trigger: auto entry compiles with duration 0 (learning row)",
                 ConfigService.BuildRespawnTrigger(new Models.RespawnEntry { Name = "Ghoul", Seconds = 0 })

@@ -35,8 +35,9 @@ public partial class TimerWindow : Window
     /// <summary>Recent kills for the ➕ quick-add menu (Tracked = already a respawn).</summary>
     public Func<IReadOnlyList<(string Name, string Zone, DateTime When, bool Tracked)>>? RecentKillsProvider { get; set; }
 
-    /// <summary>Quick-add confirmed: (mobName, zone, respawnSeconds).</summary>
-    public Action<string, string, double>? AddRespawnRequested { get; set; }
+    /// <summary>Quick-add confirmed: (mobName, zone) — the time is always
+    /// learned, so there is nothing to ask.</summary>
+    public Action<string, string>? AddRespawnRequested { get; set; }
 
     /// <summary>"Manage respawns…" picked from the ➕ menu.</summary>
     public Action? ManageRespawnsRequested { get; set; }
@@ -497,7 +498,7 @@ public partial class TimerWindow : Window
                     : $"{name}  ·  {Ago(when)}{zoneText}",
                 IsEnabled = !tracked,
             };
-            mi.Click += (_, _) => PromptAddRespawn(cn, cz);
+            mi.Click += (_, _) => AddRespawnRequested?.Invoke(cn, cz);
             menu.Items.Add(mi);
         }
 
@@ -509,21 +510,6 @@ public partial class TimerWindow : Window
         menu.PlacementTarget = (UIElement)sender;
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
         menu.IsOpen = true;
-    }
-
-    private void PromptAddRespawn(string name, string zone)
-    {
-        string? input = PromptDialog.Show(this, "Add respawn",
-            $"Respawn time for '{name}' — 15m, 6m40s… or leave empty to learn it from your kills:");
-        if (input is null) return;
-        double sec = 0; // empty / "auto" = the learner's job
-        string t = input.Trim();
-        if (t.Length > 0 && !t.Equals("auto", StringComparison.OrdinalIgnoreCase))
-        {
-            if (ParseDuration(t) is not { } s || s <= 0) return;
-            sec = s;
-        }
-        AddRespawnRequested?.Invoke(name, zone, sec);
     }
 
     private static string Ago(DateTime when)

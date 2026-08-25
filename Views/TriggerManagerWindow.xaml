@@ -737,7 +737,7 @@
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Respawns" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="A mob's death line auto-starts its clock; the time is learned from your own kills. Add mobs from Recent kills here, or the Spawn timer's ➕ in game (which can also take a typed time)."/>
+                                       Text="A mob's death line auto-starts its clock; the time is always learned from your own kills — camp it and attack on pop to nail it. Add mobs from Recent kills here, or the Spawn timer's ➕ in game."/>
 
                             <Grid Margin="0,10,0,0">
                                 <Grid.ColumnDefinitions>
@@ -783,7 +783,7 @@
                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                              MouseDoubleClick="RespawnFromDeath_Click"/>
                                     <TextBlock Style="{StaticResource Hint}"
-                                               Text="The last 10 deaths seen in the log. Pick one, add it, set its respawn time — done."/>
+                                               Text="The last 10 deaths seen in the log. Pick one, add it — the learner does the rest."/>
                                 </StackPanel>
                             </Grid>
 
