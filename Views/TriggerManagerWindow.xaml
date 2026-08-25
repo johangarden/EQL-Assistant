@@ -677,7 +677,7 @@
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="The circular spawn-clock panel and the mobs it watches. Toggle in game: cog/tray → Panels, or Ctrl+Alt+R."/>
 
-                            <CheckBox x:Name="TimerVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
+                            <CheckBox x:Name="TimerVisibleCheck" Content="Show the panel" Margin="0,12,0,0"/>
 
                             <TextBlock Text="Screen anchor" Style="{StaticResource FieldLabel}"/>
                             <ComboBox x:Name="TimerAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
@@ -882,7 +882,7 @@
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="Live rankings with the incoming-damage footer. Fight history, comparisons and raid kills open from the meter's buttons. Character and pet names: General page. Toggle in game: ☰/tray → Panels, or Ctrl+Alt+D."/>
 
-                            <CheckBox x:Name="MeterVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
+                            <CheckBox x:Name="MeterVisibleCheck" Content="Show the panel" Margin="0,12,0,0"/>
 
                             <TextBlock Text="Screen anchor" Style="{StaticResource FieldLabel}"/>
                             <ComboBox x:Name="MeterAnchorBox" Width="200" HorizontalAlignment="Left" SelectedValuePath="Tag">
@@ -957,7 +957,7 @@
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="Floating numbers in fixed lanes — each lane is its own movable panel (unlock with Ctrl+Alt+L to drag them). Master toggle in game: ⚡ toolbar button, tray, or Ctrl+Alt+C. Pet lanes need a Pet name (General page)."/>
 
-                            <CheckBox x:Name="SctVisibleCheck" Content="Visible at startup" Margin="0,12,0,0"/>
+                            <CheckBox x:Name="SctVisibleCheck" Content="Show the panel" Margin="0,12,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Lanes" Style="{StaticResource SectionTitle}"/>
@@ -997,7 +997,7 @@
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="The screen-flash area. Flash triggers (and per-trigger flash text) are created under Triggers. Unlock the overlay (Ctrl+Alt+L) to see and drag the area."/>
 
-                            <CheckBox x:Name="FlashVisibleCheck" Content="Show flash alerts" Margin="0,12,0,0"/>
+                            <CheckBox x:Name="FlashVisibleCheck" Content="Show the panel" Margin="0,12,0,0"/>
 
                             <TextBlock Text="Flash text size" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="FlashFontBox" Width="120" HorizontalAlignment="Left"/>
