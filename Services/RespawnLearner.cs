@@ -64,6 +64,10 @@ public sealed class RespawnLearner
     /// <summary>A death→appearance gap was measured: (name, gapSeconds, when).</summary>
     public event Action<string, double, DateTime>? GapLearned;
 
+    /// <summary>The zone changed (the watch zone-scopes its rows on this —
+    /// clocks keep running, only the display follows the player).</summary>
+    public event Action<string>? ZoneChanged;
+
     public string Zone => _zone;
 
     /// <summary>Test hook: the pending death, if any, for a watched name.</summary>
@@ -131,6 +135,7 @@ public sealed class RespawnLearner
         {
             _stay++;
             _zone = body["You have entered ".Length..].TrimEnd('.');
+            ZoneChanged?.Invoke(_zone);
             return;
         }
         if (_watches.Count == 0) return;

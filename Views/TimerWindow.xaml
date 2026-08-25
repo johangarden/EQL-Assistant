@@ -112,7 +112,7 @@
             <ItemsControl x:Name="SecondariesControl" Margin="0,8,0,0" MaxWidth="150">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <DockPanel Margin="2,1">
+                        <DockPanel Margin="2,1" Visibility="{Binding RowVis}">
                             <TextBlock DockPanel.Dock="Right" Text="{Binding RemainingText}"
                                        Foreground="{Binding Foreground}" FontWeight="Bold" FontSize="12"
                                        Margin="8,0,0,0"/>

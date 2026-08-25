@@ -676,7 +676,9 @@ public partial class MainWindow : Window
         _timer.ManageRespawnsRequested = () => OpenManager("Respawns");
         _timer.RespawnLookup = name => _respawnCache.FirstOrDefault(
             r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        _timer.RespawnsProvider = () => _respawnCache;
         _timer.Show();
+        _timer.RefreshWatching(); // quiet rows for the current zone's watched mobs
         UpdateTimerVisibility();
     }
 
@@ -1242,6 +1244,7 @@ public partial class MainWindow : Window
         cfg.Triggers.RemoveAll(t => t.Panel == Panels.TimerAuto);
         cfg.Triggers.AddRange(_configService.BuildRespawnTriggers());
         _respawnLearner.UpdateEntries(_respawnCache);
+        _timer?.RefreshWatching(); // the watching rows mirror the list
     }
 
     // ---- respawn learner (death → next-appearance gaps + UP sightings) --------
@@ -1251,6 +1254,7 @@ public partial class MainWindow : Window
     private void WireRespawnLearner()
     {
         _respawnLearner.Sighted += name => _timer?.NotifySighted(name);
+        _respawnLearner.ZoneChanged += zone => _timer?.SetZone(zone);
         _respawnLearner.GapLearned += (name, gap, when) =>
         {
             var entry = _respawnCache.FirstOrDefault(r =>

@@ -2860,6 +2860,42 @@ public partial class App : Application
             Check("auto again: the soonest respawn claims the pie back",
                 tw3.BigState.Mode == "Vox" && tw3.SecondaryNames is ["Kurven"]);
             tw3.Close();
+
+            // ---- watching rows + zone scoping: an added mob shows before its
+            // first death, and zoning HIDES other zones' clocks (world state —
+            // the mob keeps cooking while you bank; nothing is deleted).
+            var zEntries = new List<Models.RespawnEntry>
+            {
+                new() { Name = "Kurven", Zone = "Befallen 3 (Fused)", Seconds = 200 },
+                new() { Name = "Vox", Zone = "Permafrost", Seconds = 400 },
+                new() { Name = "Wanderer", Seconds = 100 }, // zoneless: shows everywhere
+            };
+            var tw4 = new TimerWindow(new ConfigService(), mutedAlerts, 300, 1.0, null)
+            {
+                RespawnsProvider = () => zEntries,
+                RespawnLookup = n => zEntries.FirstOrDefault(
+                    r => r.Name.Equals(n, StringComparison.OrdinalIgnoreCase)),
+            };
+            tw4.RefreshWatching();
+            Check("watching: every enabled respawn takes a quiet row",
+                tw4.BigState.Mode is null
+                && tw4.RowStates.Count(r => r.State == "watching") == 3);
+            tw4.SetZone("Befallen 3 (Fused)");
+            Check("watching: rows follow the zone (zoneless shows everywhere)",
+                tw4.HiddenNames is ["Vox"]);
+            tw4.StartWith(200, "Kurven");
+            Check("watching: a death turns the watcher into the clock",
+                tw4.BigState.Mode == "Kurven"
+                && tw4.RowStates.Count(r => r.State == "watching") == 2);
+            tw4.SetZone("Permafrost");
+            Check("zoning parks the other zone's clock, still counting",
+                tw4.BigState.Mode is null
+                && tw4.RowStates.Any(r => r is { Name: "Kurven", State: "countdown" })
+                && tw4.HiddenNames.Contains("Kurven") && !tw4.HiddenNames.Contains("Vox"));
+            tw4.SetZone("Befallen 3 (Fused)");
+            Check("zoning back promotes the intact clock to the pie",
+                tw4.BigState is { Mode: "Kurven", Remaining: > 150 and <= 200 });
+            tw4.Close();
         }
         catch (Exception ex)
         {
