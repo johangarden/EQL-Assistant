@@ -854,9 +854,15 @@
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Nicer voices, free" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="Windows 11 ships beautiful neural 'natural' voices, but apps like this one can't see them by default. The open-source NaturalVoiceSAPIAdapter (MIT) registers them system-wide — install it, restart EQL Assistant, and they appear in the picker above. No download inside this app, no size cost."/>
-                            <Button Content="Open the NaturalVoiceSAPIAdapter page" Width="250"
-                                    HorizontalAlignment="Left" Margin="0,8,0,0" Click="VoiceAdapter_Click"/>
+                                       Text="Windows 11 ships beautiful neural 'natural' voices, but apps like this one can't see them by default. The open-source NaturalVoiceSAPIAdapter (MIT) registers them system-wide. The button fetches its latest official release and opens its installer — click Install there (Windows asks for admin once), restart EQL Assistant, and the voices appear in the picker above."/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Download &amp; set up natural voices" Width="230"
+                                        Style="{StaticResource PrimaryBtn}" Click="VoiceAdapterSetup_Click"/>
+                                <Button Content="Open project page" Width="130" Margin="8,0,0,0"
+                                        Click="VoiceAdapter_Click"/>
+                            </StackPanel>
+                            <TextBlock x:Name="VoiceAdapterStatus" Style="{StaticResource Hint}"
+                                       Margin="0,6,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </ScrollViewer>
 

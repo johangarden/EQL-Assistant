@@ -1207,6 +1207,81 @@ public partial class TriggerManagerWindow : Window
         _alerts.Speak("Kurven the Cruel respawn");
     }
 
+    /// <summary>One-click natural-voice setup: fetch the adapter's LATEST
+    /// official release (we bundle nothing — no stale copy, no COM DLLs in
+    /// our download), unpack it into a PERMANENT home (its DLLs must stay
+    /// where registered — the project's own rule, which also rules out temp)
+    /// and open its installer. The admin prompt and the Install click stay
+    /// with the user — a system-wide change should never be silent.</summary>
+    private async void VoiceAdapterSetup_Click(object sender, RoutedEventArgs e)
+    {
+        var btn = (System.Windows.Controls.Button)sender;
+        btn.IsEnabled = false;
+        try
+        {
+            VoiceAdapterStatus.Text = "Fetching the latest release…";
+            using var http = new System.Net.Http.HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("EQL-Assistant");
+            string json = await http.GetStringAsync(
+                "https://api.github.com/repos/gexgd0419/NaturalVoiceSAPIAdapter/releases/latest");
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            string tag = doc.RootElement.GetProperty("tag_name").GetString() ?? "latest";
+            string wanted = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture
+                == System.Runtime.InteropServices.Architecture.Arm64 ? "ARM64" : "x86_x64";
+            string? url = null, assetName = null;
+            foreach (var a in doc.RootElement.GetProperty("assets").EnumerateArray())
+            {
+                string n = a.GetProperty("name").GetString() ?? "";
+                if (n.Contains(wanted, StringComparison.OrdinalIgnoreCase)
+                    && n.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                {
+                    url = a.GetProperty("browser_download_url").GetString();
+                    assetName = n;
+                    break;
+                }
+            }
+            if (url is null || assetName is null)
+            {
+                VoiceAdapterStatus.Text = "No matching download in the latest release — use the project page instead.";
+                return;
+            }
+
+            string home = System.IO.Path.Combine(_configService.ConfigDirectory, "voice-adapter", tag);
+            VoiceAdapterStatus.Text = $"Downloading {assetName}…";
+            byte[] zip = await http.GetByteArrayAsync(url);
+            System.IO.Directory.CreateDirectory(home);
+            string zipPath = System.IO.Path.Combine(home, assetName);
+            await System.IO.File.WriteAllBytesAsync(zipPath, zip);
+            VoiceAdapterStatus.Text = "Unpacking…";
+            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, home, overwriteFiles: true);
+            try { System.IO.File.Delete(zipPath); } catch { /* tidy-up only */ }
+
+            string? installer = System.IO.Directory
+                .GetFiles(home, "Installer.exe", System.IO.SearchOption.AllDirectories)
+                .FirstOrDefault();
+            if (installer is null)
+            {
+                VoiceAdapterStatus.Text = "Installer.exe not found in the download — use the project page instead.";
+                return;
+            }
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(installer) { UseShellExecute = true });
+            VoiceAdapterStatus.Text = $"Installer opened ({tag}). Click Install there — Windows asks for admin — "
+                + "then restart EQL Assistant and the natural voices appear in the picker above. "
+                + "The files live in the app's config folder; leave them in place.";
+            Log.Info($"Voice adapter {tag} downloaded to '{home}', installer launched.");
+        }
+        catch (Exception ex)
+        {
+            VoiceAdapterStatus.Text = "Setup failed: " + ex.Message + " — the project page button still works.";
+            Log.Error("Voice adapter setup failed", ex);
+        }
+        finally
+        {
+            btn.IsEnabled = true;
+        }
+    }
+
     private void VoiceAdapter_Click(object sender, RoutedEventArgs e)
     {
         try
