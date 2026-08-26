@@ -209,6 +209,14 @@ public partial class App : Application
             if (helperWin.LineTexts.Count == 0)
                 throw new Exception("Sky helper panel rendered no lines for a tracked quest");
             helperWin.Close();
+
+            // Fight History embeds the timeline view — constructing it proves
+            // the UserControl resolves its theme resources on its own (a
+            // parse-time StaticResource crash once hid exactly here).
+            var histWin = new Views.HistoryWindow(cp, cs, new LootTracker(cs));
+            histWin.Show();
+            histWin.UpdateLayout();
+            histWin.Close();
             try { File.Delete(helperProg); } catch { /* temp */ }
 
             // The Sheet tab renders the doll + detail pane from a real-format
@@ -282,6 +290,126 @@ public partial class App : Application
 
             engine.ProcessLine($"[{now}] Your Spirit of Wolf spell has worn off.");
             Check("SoW worn off -> 0 bars", engine.Bars.Count == 0);
+
+            // ---- fight details capture: damage schools from the log's own
+            // words, debuff landings as timeline spans, and the analysis rules.
+            var fd = new CombatParser { SelfName = "Johan" };
+            fd.OtherLandingLookup = s => s.StartsWith("Drowsy", StringComparison.OrdinalIgnoreCase)
+                ? (" looks drowsy.", true) : null;
+            fd.DotDurationLookup = s => s == "Drowsy" ? 48 : null;
+            fd.LoadoutLookup = () => "Raid SHD";
+            fd.ActiveBuffsLookup = () => new[] { "Spirit of Wolf", "Vampiric Embrace" };
+            fd.CurrentStance = "defensive"; // the persisted seed
+            var fb = new DateTime(2026, 8, 20, 21, 0, 0);
+            string FT(int s) => fb.AddSeconds(s).ToString("ddd MMM dd HH:mm:ss yyyy",
+                System.Globalization.CultureInfo.InvariantCulture);
+            fd.Replay($"[{FT(-30)}] Lady Vox scowls at you, ready to attack -- looks like it would wipe the floor with you! (Lvl: 55)");
+            fd.Replay($"[{FT(0)}] Lady Vox hit Johan for 250 points of cold damage by Frost Breath.");
+            fd.NoteCondition("STUNNED", true, fb.AddSeconds(2));
+            fd.Replay($"[{FT(3)}] You begin casting Drowsy.");
+            fd.Replay($"[{FT(5)}] A dragon looks drowsy.");
+            fd.Replay($"[{FT(6)}] You assume an offensive stance.");
+            fd.NoteCondition("STUNNED", false, fb.AddSeconds(7));
+            fd.Replay($"[{FT(7)}] Your Siphon Life spell is interrupted.");
+            fd.Replay($"[{FT(8)}] You resist Lady Vox's Frost Breath!");
+            fd.Replay($"[{FT(10)}] Lady Vox hit Johan for 250 points of cold damage by Frost Breath.");
+            fd.Tick(fb.AddSeconds(60)); // idle -> archive
+            var fdRec = fd.History[0];
+            Check("fight: character, loadout, stance and buffs frozen at the pull",
+                fdRec.Character == "Johan" && fdRec.Loadout == "Raid SHD"
+                && fdRec.StanceAtStart == "defensive"
+                && fdRec.BuffsAtStart.Contains("Spirit of Wolf"));
+            Check("fight: the earlier /con stamps the enemy's level",
+                fdRec.EnemyLevels.TryGetValue("Lady Vox", out int lvVox) && lvVox == 55);
+            Check("fight: stance change, cast and interrupt ride the timeline",
+                fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Stance, Ability: "offensive" })
+                && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Ability: "Drowsy", Miss: false })
+                && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Miss: true }));
+            Check("fight: the stun becomes a condition span (landing -> release)",
+                fdRec.Events.Any(e => e.Stream == CombatParser.FightStream.Condition
+                    && e.Ability == "Stunned" && Math.Abs(e.Amount - 5) < 0.01));
+            Check("fight: the DD line's school is kept, verbatim from the log",
+                fdRec.Schools.TryGetValue("Frost Breath", out string? fs) && fs == "cold");
+            Check("fight: a debuff landing becomes a timeline span with its duration",
+                fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Debuff, Ability: "Drowsy", Amount: 48 }));
+            Check("fight: the incoming resist rides the timeline",
+                fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.SelfIn, Resist: true }));
+            string fdTxt = Views.TimelineView.BuildAnalysis(fdRec);
+            Check("analysis: names the dominant school and the resist advice",
+                fdTxt.Contains("COLD") && fdTxt.Contains("More Cold resist")
+                && fdTxt.Contains("resisted 1 of 3"));
+            Check("analysis: reports the debuff coverage",
+                fdTxt.Contains("Drowsy was up"));
+            Check("analysis: CC, interrupted cast and stance each get a line",
+                fdTxt.Contains("CC held you for 0:05")
+                && fdTxt.Contains("Siphon Life was interrupted")
+                && fdTxt.Contains("Mostly defensive stance") && fdTxt.Contains("switched 1×"));
+            Check("analysis: coverage math merges overlaps and clips",
+                Math.Abs(Views.TimelineView.CoverageSeconds(
+                    new[] { (0.0, 10.0), (5.0, 10.0) }, 30) - 15) < 0.01
+                && Math.Abs(Views.TimelineView.CoverageSeconds(
+                    new[] { (25.0, 10.0) }, 30) - 5) < 0.01);
+
+            // ---- permanent buffs (Vampiric Embrace): ∞ until death, a
+            // wear-off line, or a loadout switch — never a countdown.
+            var permCfg = new Models.AppConfig();
+            permCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "ve", Name = "Vampiric Embrace", Category = "Buffs",
+                StartPattern = @"Your hand begins to glow\.",
+                Permanent = true, RemindWhenMissing = true, DurationSeconds = 0,
+            });
+            foreach (var t in permCfg.Triggers) ConfigService.CompileOne(t);
+            var perm = new TriggerEngine(permCfg, new AlertService { Muted = true });
+            perm.ProcessLine($"[{now}] Your hand begins to glow.");
+            Check("permanent: the bar lands as ∞, never expiring",
+                perm.Bars.Count == 1
+                && perm.Bars[0] is { IsPermanent: true, RemainingText: "∞", IsExpired: false });
+            perm.CheckMissing(DateTime.Now.AddHours(6));
+            Check("permanent: hours later it is still not 'missing'",
+                perm.Reminders.Count == 0 && perm.Bars.Count == 1);
+            perm.ProcessLine($"[{now}] You have been slain by a gnoll reaver!");
+            perm.CheckMissing(DateTime.Now.AddSeconds(1));
+            Check("permanent: death strips it and the rebuff reminder takes over",
+                perm.Bars.Count == 0 && perm.Reminders.Count == 1);
+
+            // ---- rebuff reminders: repeat at the interval; after 5 spoken
+            // warnings the interval DOUBLES (ignored nagging earns quieter
+            // nagging), snapping back when the buff is reapplied.
+            var remCfg = new Models.AppConfig { Overlay = { RemindIntervalSeconds = 10 } };
+            remCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "sow", Name = "Spirit of Wolf", Category = "Buffs",
+                StartPattern = @"You feel the spirit of wolf enter you\.",
+                EndPattern = @"Your Spirit of Wolf spell has worn off\.",
+                DurationSeconds = 1800, RemindWhenMissing = true,
+            });
+            foreach (var t in remCfg.Triggers) ConfigService.CompileOne(t);
+            var rem = new TriggerEngine(remCfg, new AlertService { Muted = true });
+            var t0 = DateTime.Now;
+            string RT(double s) => t0.AddSeconds(s).ToString("ddd MMM dd HH:mm:ss yyyy",
+                System.Globalization.CultureInfo.InvariantCulture);
+            rem.ProcessLine($"[{RT(0)}] You feel the spirit of wolf enter you.");
+            rem.ProcessLine($"[{RT(5)}] Your Spirit of Wolf spell has worn off.");
+            rem.CheckMissing(t0.AddSeconds(6)); // missing appears: warning #1
+            for (int i = 1; i <= 4; i++) rem.CheckMissing(t0.AddSeconds(6 + i * 10));
+            Check("reminders: five warnings at the configured cadence",
+                rem.RemindCountFor("sow") == 5 && rem.Reminders.Count == 1);
+            rem.CheckMissing(t0.AddSeconds(6 + 5 * 10)); // +10s: inside the doubled interval
+            Check("reminders: after five, the interval doubles",
+                rem.RemindCountFor("sow") == 5);
+            rem.CheckMissing(t0.AddSeconds(6 + 6 * 10)); // +20s since #5: speaks
+            Check("reminders: the doubled cadence still speaks",
+                rem.RemindCountFor("sow") == 6);
+            rem.ProcessLine($"[{RT(70)}] You feel the spirit of wolf enter you.");
+            rem.CheckMissing(t0.AddSeconds(71));
+            Check("reminders: rebuffing clears the bar and resets the backoff",
+                rem.RemindCountFor("sow") == 0 && rem.Reminders.Count == 0);
+            rem.ProcessLine($"[{RT(80)}] Your Spirit of Wolf spell has worn off.");
+            rem.CheckMissing(t0.AddSeconds(81));
+            rem.CheckMissing(t0.AddSeconds(91)); // 10s again — the configured interval rules
+            Check("reminders: the next outage starts at the configured interval",
+                rem.RemindCountFor("sow") == 2);
 
             engine.ProcessLine($"[{now}] Bob begins to regenerate.");
             Check("HoT target capture -> 1 bar", engine.Bars.Count == 1);
@@ -2771,6 +2899,17 @@ public partial class App : Application
                 tw.BigState.Mode == "Kurven" && tw.SecondaryNames is ["Vox", "Baron"]);
 
             tw.Close();
+
+            // ---- voices: enumeration + switching never throw, and a real
+            // Windows box always carries at least one SAPI voice.
+            var voiceSvc = new AlertService { Muted = true };
+            var voices = voiceSvc.InstalledVoices();
+            Check("voices: at least one installed SAPI voice enumerates",
+                voices.Count >= 1);
+            voiceSvc.ApplyVoice(voices[0], 2);
+            voiceSvc.ApplyVoice("No Such Voice", 0); // unknown name keeps default
+            voiceSvc.ApplyVoice("", 0);
+            Check("voices: switching (and an unknown name) never throws", true);
 
             // ---- the GLOBAL notices: one config for every mob, {mob} in a
             // phrase becomes the name, empty phrase = the default.

@@ -742,11 +742,35 @@ public partial class TriggerManagerWindow : Window
                 : $"Off — any matching line starts the bar, including someone else's cast landing on you.{sharedNote}";
     }
 
+    private void Permanent_Changed(object sender, RoutedEventArgs e) => UpdateDurationUx();
+
     /// <summary>Auto-learn owns the duration: the field is disabled and the
-    /// currently-learned value shows beside it. Manual re-enables the field.</summary>
+    /// currently-learned value shows beside it. Manual re-enables the field.
+    /// A PERMANENT buff owns it harder: no duration at all, the bar shows ∞.</summary>
     private void UpdateDurationUx()
     {
         if (DurationBox is null || DurationEffectiveText is null) return;
+
+        bool permanent = PermanentCheck.IsChecked == true
+                         && PermanentCheck.Visibility == Visibility.Visible;
+        DurationAutoCheck.IsEnabled = !permanent;
+        DurationForgetBtn.IsEnabled = !permanent;
+
+        // The nudge: the library states NO duration for this spell — the one
+        // moment the Permanent flag is worth considering (282 of 757 buffs sit
+        // at 0, mostly just unstated, so this must stay a hint, never a guess).
+        bool zeroDuration = Selected is { } s
+            && PermanentCheck.Visibility == Visibility.Visible
+            && _spellLibrary.FindByBaseName(SpellDurations.BaseName(s.Name)) is { DurationSec: <= 0 };
+        PermanentHint.Visibility = zeroDuration && !permanent
+            ? Visibility.Visible : Visibility.Collapsed;
+        if (permanent)
+        {
+            DurationBox.IsEnabled = false;
+            DurationEffectiveText.Text = "permanent — the bar shows ∞ until death";
+            DurationForgetBtn.Visibility = Visibility.Collapsed;
+            return;
+        }
 
         bool auto = DurationAutoCheck.IsChecked == true
                     && DurationAutoCheck.Visibility == Visibility.Visible;
@@ -978,6 +1002,7 @@ public partial class TriggerManagerWindow : Window
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
             ["General"] = GeneralPage,
+            ["Sounds & voices"] = SoundsPage,
             ["Data"] = DataPage,
             ["Shortcuts"] = ShortcutsPage,
         };
@@ -1026,6 +1051,7 @@ public partial class TriggerManagerWindow : Window
         // Auto-learn is a spell-duration concept — respawn timers don't learn.
         DurationAutoCheck.Visibility = V(bars || matrix);
         DurationAutoHint.Visibility = V(bars || matrix);
+        PermanentCheck.Visibility = V(bars || matrix);
 
         // Cast-anchoring is likewise a spell concept: repop death lines and
         // flash patterns fire on any match.
@@ -1069,6 +1095,17 @@ public partial class TriggerManagerWindow : Window
         SyncSoundCombo(ResistSoundBox, _config.Overlay.ResistNoticeSound);
         _soundUxLoading = false;
         UpdateMomentNoticeUx();
+
+        // Sounds & voices: the one speaking voice for every spoken alert.
+        VoiceBox.ItemsSource = new[] { "(system default)" }
+            .Concat(_alerts.InstalledVoices()).ToList();
+        VoiceBox.SelectedItem = string.IsNullOrWhiteSpace(_config.Overlay.VoiceName)
+            ? "(system default)"
+            : ((List<string>)VoiceBox.ItemsSource).FirstOrDefault(v =>
+                  v.Equals(_config.Overlay.VoiceName, StringComparison.OrdinalIgnoreCase))
+              ?? "(system default)";
+        VoiceRateBox.SelectedValue = _config.Overlay.VoiceRate.ToString(CultureInfo.InvariantCulture);
+        if (VoiceRateBox.SelectedValue is null) VoiceRateBox.SelectedValue = "0";
 
         // The global spawn-timer notices — phrase boxes show their {mob}
         // templates instead of standing empty.
@@ -1179,6 +1216,105 @@ public partial class TriggerManagerWindow : Window
             _alerts.Fire(null, p.Path);
         else
             Status("Pick a sound first.");
+    }
+
+    // ---- sounds & voices ------------------------------------------------------
+
+    /// <summary>Applies the pick right away and says a line in it — hearing
+    /// the actual voice beats reading its name. Save persists the choice.</summary>
+    private void VoiceTest_Click(object sender, RoutedEventArgs e)
+    {
+        if (_alerts.Muted) { Status("Unmute to preview."); return; }
+        string name = VoiceBox.SelectedItem as string is "(system default)" or null
+            ? "" : (string)VoiceBox.SelectedItem;
+        int rate = int.TryParse(VoiceRateBox.SelectedValue as string, out int r) ? r : 0;
+        _alerts.ApplyVoice(name, rate);
+        _alerts.Speak("Kurven the Cruel respawn");
+    }
+
+    /// <summary>One-click natural-voice setup: fetch the adapter's LATEST
+    /// official release (we bundle nothing — no stale copy, no COM DLLs in
+    /// our download), unpack it into a PERMANENT home (its DLLs must stay
+    /// where registered — the project's own rule, which also rules out temp)
+    /// and open its installer. The admin prompt and the Install click stay
+    /// with the user — a system-wide change should never be silent.</summary>
+    private async void VoiceAdapterSetup_Click(object sender, RoutedEventArgs e)
+    {
+        var btn = (System.Windows.Controls.Button)sender;
+        btn.IsEnabled = false;
+        try
+        {
+            VoiceAdapterStatus.Text = "Fetching the latest release…";
+            using var http = new System.Net.Http.HttpClient();
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("EQL-Assistant");
+            string json = await http.GetStringAsync(
+                "https://api.github.com/repos/gexgd0419/NaturalVoiceSAPIAdapter/releases/latest");
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            string tag = doc.RootElement.GetProperty("tag_name").GetString() ?? "latest";
+            string wanted = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture
+                == System.Runtime.InteropServices.Architecture.Arm64 ? "ARM64" : "x86_x64";
+            string? url = null, assetName = null;
+            foreach (var a in doc.RootElement.GetProperty("assets").EnumerateArray())
+            {
+                string n = a.GetProperty("name").GetString() ?? "";
+                if (n.Contains(wanted, StringComparison.OrdinalIgnoreCase)
+                    && n.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                {
+                    url = a.GetProperty("browser_download_url").GetString();
+                    assetName = n;
+                    break;
+                }
+            }
+            if (url is null || assetName is null)
+            {
+                VoiceAdapterStatus.Text = "No matching download in the latest release — use the project page instead.";
+                return;
+            }
+
+            string home = System.IO.Path.Combine(_configService.ConfigDirectory, "voice-adapter", tag);
+            VoiceAdapterStatus.Text = $"Downloading {assetName}…";
+            byte[] zip = await http.GetByteArrayAsync(url);
+            System.IO.Directory.CreateDirectory(home);
+            string zipPath = System.IO.Path.Combine(home, assetName);
+            await System.IO.File.WriteAllBytesAsync(zipPath, zip);
+            VoiceAdapterStatus.Text = "Unpacking…";
+            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, home, overwriteFiles: true);
+            try { System.IO.File.Delete(zipPath); } catch { /* tidy-up only */ }
+
+            string? installer = System.IO.Directory
+                .GetFiles(home, "Installer.exe", System.IO.SearchOption.AllDirectories)
+                .FirstOrDefault();
+            if (installer is null)
+            {
+                VoiceAdapterStatus.Text = "Installer.exe not found in the download — use the project page instead.";
+                return;
+            }
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(installer) { UseShellExecute = true });
+            VoiceAdapterStatus.Text = $"Installer opened ({tag}). Click Install there — Windows asks for admin — "
+                + "then restart EQL Assistant and the natural voices appear in the picker above. "
+                + "The files live in the app's config folder; leave them in place.";
+            Log.Info($"Voice adapter {tag} downloaded to '{home}', installer launched.");
+        }
+        catch (Exception ex)
+        {
+            VoiceAdapterStatus.Text = "Setup failed: " + ex.Message + " — the project page button still works.";
+            Log.Error("Voice adapter setup failed", ex);
+        }
+        finally
+        {
+            btn.IsEnabled = true;
+        }
+    }
+
+    private void VoiceAdapter_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                "https://github.com/gexgd0419/NaturalVoiceSAPIAdapter") { UseShellExecute = true });
+        }
+        catch { /* no browser is not our problem to solve */ }
     }
 
     private void BrowseLogDir_Click(object sender, RoutedEventArgs e)
@@ -1292,6 +1428,9 @@ public partial class TriggerManagerWindow : Window
                 ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
                 StartLocked = StartLockedCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
+                VoiceName = VoiceBox.SelectedItem as string is "(system default)" or null
+                    ? "" : (string)VoiceBox.SelectedItem,
+                VoiceRate = int.TryParse(VoiceRateBox.SelectedValue as string, out int vr) ? vr : 0,
                 DeathRecapAuto = DeathRecapCheck.IsChecked == true,
                 ToolbarVisible = _config.Overlay.ToolbarVisible, // tray-toggled — carried through
                 BarsVisible = _config.Overlay.BarsVisible,       // tray-toggled — carried through

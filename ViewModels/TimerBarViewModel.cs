@@ -33,7 +33,7 @@ public sealed class TimerBarViewModel : ViewModelBase
         DateTime endTimeLocal, Brush fill,
         double alertAtSeconds, bool alertOnExpire, string? alertSpeak, string? alertSound,
         string? alertFadedSpeak = null, string? alertFadedSound = null,
-        bool waitsForFade = false, bool learnsDuration = false)
+        bool waitsForFade = false, bool learnsDuration = false, bool permanent = false)
     {
         var vm = new TimerBarViewModel(key, name, category, fill)
         {
@@ -47,6 +47,7 @@ public sealed class TimerBarViewModel : ViewModelBase
             AlertFadedSound = alertFadedSound,
             WaitsForFade = waitsForFade,
             LearnsDuration = learnsDuration,
+            IsPermanent = permanent,
         };
         vm.Refresh(DateTime.Now, double.MaxValue);
         return vm;
@@ -71,6 +72,10 @@ public sealed class TimerBarViewModel : ViewModelBase
     public Brush Fill { get; }
 
     public bool IsMissing { get; private init; }
+
+    /// <summary>A permanent buff: full bar, ∞, never expires — only death,
+    /// a wear-off line or a loadout switch removes it.</summary>
+    public bool IsPermanent { get; private init; }
 
     public double TotalSeconds { get; private set; }
     public DateTime EndTimeLocal { get; private set; }
@@ -135,7 +140,7 @@ public sealed class TimerBarViewModel : ViewModelBase
         private set => SetField(ref _isWarning, value);
     }
 
-    public bool IsExpired => !IsMissing && !IsOverrun && RemainingSeconds <= 0;
+    public bool IsExpired => !IsMissing && !IsPermanent && !IsOverrun && RemainingSeconds <= 0;
 
     public void Restart(double totalSeconds, DateTime endTimeLocal)
     {
@@ -162,6 +167,15 @@ public sealed class TimerBarViewModel : ViewModelBase
             RemainingText = "REBUFF";
             IsWarning = true; // pulse
             RemainingSeconds = 1;
+            return;
+        }
+
+        if (IsPermanent)
+        {
+            Fraction = 1;
+            RemainingText = "∞";
+            IsWarning = false;
+            RemainingSeconds = double.MaxValue;
             return;
         }
 

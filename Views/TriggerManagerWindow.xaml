@@ -121,6 +121,7 @@
                     <ListBoxItem Content="Condition badges"/>
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
+                    <ListBoxItem Content="Sounds &amp; voices"/>
                     <ListBoxItem Content="Data"/>
                     <ListBoxItem Content="Shortcuts"/>
                     </ListBox>
@@ -257,6 +258,13 @@
                                 </StackPanel>
 
                                 <StackPanel x:Name="DurationGroup">
+                                    <CheckBox x:Name="PermanentCheck" IsChecked="{Binding Permanent}"
+                                              Checked="Permanent_Changed" Unchecked="Permanent_Changed"
+                                              Content="Permanent — lasts until death (no duration)" Margin="0,8,0,0"
+                                              ToolTip="Buffs like Vampiric Embrace: once up the bar shows ∞ and never runs out — only death, a wear-off line or a loadout switch clears it. Pairs well with the rebuff reminder."/>
+                                    <TextBlock x:Name="PermanentHint" Style="{StaticResource Hint}"
+                                               Visibility="Collapsed" Margin="0,3,0,0"
+                                               Text="The library knows no duration for this spell. If it truly never expires (like Vampiric Embrace), tick Permanent — otherwise leave it: auto-learn will measure the real time from the log."/>
                                     <TextBlock x:Name="DurationLabel" Text="Duration" Style="{StaticResource FieldLabel}"/>
                                     <StackPanel Orientation="Horizontal">
                                         <TextBox x:Name="DurationBox" Text="{Binding DurationText}" Width="120"
@@ -502,7 +510,6 @@
                             <TextBox x:Name="OpacityBox" Width="120" HorizontalAlignment="Left"/>
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
-                            <CheckBox x:Name="MuteCheck" Content="Mute all alerts" Margin="0,6,0,0"/>
 
                         </StackPanel>
                     </ScrollViewer>
@@ -821,6 +828,48 @@
                                             ToolTip="Clears the gap evidence — the next kill cycle starts measuring fresh"/>
                                 </StackPanel>
                             </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ============================ SOUNDS & VOICES ============================ -->
+                    <ScrollViewer x:Name="SoundsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Sounds &amp; voices" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Every spoken alert uses the one voice picked here. The per-alert sounds and phrases live with their features (triggers, Spawn timer, Condition badges)."/>
+
+                            <CheckBox x:Name="MuteCheck" Content="Mute all alerts" Margin="0,12,0,0"/>
+
+                            <TextBlock Text="Voice" Style="{StaticResource FieldLabel}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <ComboBox x:Name="VoiceBox" Width="300" MinHeight="30"/>
+                                <ComboBox x:Name="VoiceRateBox" Width="100" Margin="8,0,0,0" SelectedValuePath="Tag">
+                                    <ComboBoxItem Content="Slow" Tag="-3"/>
+                                    <ComboBoxItem Content="Relaxed" Tag="-1"/>
+                                    <ComboBoxItem Content="Normal" Tag="0"/>
+                                    <ComboBoxItem Content="Brisk" Tag="2"/>
+                                    <ComboBoxItem Content="Fast" Tag="4"/>
+                                </ComboBox>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="VoiceTest_Click"/>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="The voices Windows has installed (Settings → Time &amp; language → Speech adds more languages). Test applies the pick right away; Save keeps it."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Nicer voices, free" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Windows 11 ships beautiful neural 'natural' voices, but apps like this one can't see them by default. The open-source NaturalVoiceSAPIAdapter (MIT) registers them system-wide. The button fetches its latest official release and opens its installer — click Install there (Windows asks for admin once), restart EQL Assistant, and the voices appear in the picker above."/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Download &amp; set up natural voices" Width="230"
+                                        Style="{StaticResource PrimaryBtn}" Click="VoiceAdapterSetup_Click"/>
+                                <Button Content="Open project page" Width="130" Margin="8,0,0,0"
+                                        Click="VoiceAdapter_Click"/>
+                            </StackPanel>
+                            <TextBlock x:Name="VoiceAdapterStatus" Style="{StaticResource Hint}"
+                                       Margin="0,6,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </ScrollViewer>
 

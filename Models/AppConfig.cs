@@ -152,6 +152,11 @@ public sealed class OverlayConfig
     public string RespawnSpawnPhrase { get; set; } = "";
     public string RespawnSpawnSound { get; set; } = "";
 
+    /// <summary>The speaking voice by SAPI description; empty = system default.</summary>
+    public string VoiceName { get; set; } = "";
+    /// <summary>SAPI rate, -10 slow … 10 fast (0 = normal).</summary>
+    public int VoiceRate { get; set; }
+
     /// <summary>Whether the Session stats panel (XP/AA/motes per hour) is shown.</summary>
     public bool SessionStatsVisible { get; set; } = false;
 

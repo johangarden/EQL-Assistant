@@ -32,6 +32,11 @@ public sealed class ConditionWatcher
 
     /// <summary>A moment just fired: (kind, spell) — the audible notice's cue.</summary>
     public event Action<string, string>? Moment;
+
+    /// <summary>A CC state changed on YOU: (kind, started, when). Landings fire
+    /// true (re-lands included), wear-offs/censors/hygiene expiry fire false —
+    /// the fight recorder turns the pairs into timeline spans.</summary>
+    public event Action<string, bool, DateTime>? StateChanged;
     private readonly Dictionary<string, (DateTime Since, DateTime Deadline, string Detail)> _moments
         = new(StringComparer.Ordinal);
 
@@ -125,12 +130,16 @@ public sealed class ConditionWatcher
             // matching this against the game log's same instant.
             Log.Info($"[conditions] {onKind} ON at {time:HH:mm:ss} — matched line: \"{body}\" (cap {CapFor(onKind):0}s{(_active.ContainsKey(onKind) ? ", re-land" : "")})");
             _active[onKind] = (time, time.AddSeconds(CapFor(onKind)));
+            StateChanged?.Invoke(onKind, true, time);
             return;
         }
         if (OffLines.TryGetValue(body, out string? offKind))
         {
             if (_active.Remove(offKind))
+            {
                 Log.Info($"[conditions] {offKind} OFF at {time:HH:mm:ss} — wear-off line: \"{body}\"");
+                StateChanged?.Invoke(offKind, false, time);
+            }
             return;
         }
 
@@ -155,7 +164,11 @@ public sealed class ConditionWatcher
             || body.StartsWith("You have entered ", StringComparison.Ordinal))
         {
             if (_active.Count > 0)
+            {
                 Log.Info($"[conditions] cleared ({string.Join(", ", _active.Keys)}) at {time:HH:mm:ss} — censor line: \"{body}\"");
+                foreach (string kind in _active.Keys.ToList())
+                    StateChanged?.Invoke(kind, false, time);
+            }
             _active.Clear();
             _moments.Clear();
         }
@@ -170,6 +183,7 @@ public sealed class ConditionWatcher
         {
             Log.Info($"[conditions] {kind} expired by hygiene cap (no wear-off line seen)");
             _active.Remove(kind);
+            StateChanged?.Invoke(kind, false, now);
         }
 
         foreach (var kind in _moments.Where(kv => now > kv.Value.Deadline)

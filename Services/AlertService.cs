@@ -10,6 +10,7 @@ namespace EQLOverlay.Services;
 public sealed class AlertService
 {
     private readonly dynamic? _voice;
+    private readonly dynamic? _defaultToken; // the system voice, for "(default)"
 
     public bool Muted { get; set; }
 
@@ -19,12 +20,63 @@ public sealed class AlertService
         {
             var t = Type.GetTypeFromProgID("SAPI.SpVoice");
             _voice = t is null ? null : Activator.CreateInstance(t);
+            if (_voice is not null) _defaultToken = _voice.Voice;
         }
         catch
         {
             _voice = null; // no TTS available; sound-only still works
         }
         if (_voice is null) Log.Warn("TTS unavailable: SAPI.SpVoice could not be created.");
+    }
+
+    /// <summary>Installed SAPI voice descriptions ("Microsoft Zira Desktop…").
+    /// Voices from bridges like NaturalVoiceSAPIAdapter appear here too.</summary>
+    public List<string> InstalledVoices()
+    {
+        var names = new List<string>();
+        if (_voice is null) return names;
+        try
+        {
+            var tokens = _voice.GetVoices();
+            for (int i = 0; i < (int)tokens.Count; i++)
+                names.Add((string)tokens.Item(i).GetDescription());
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Voice enumeration failed: " + ex.Message);
+        }
+        return names;
+    }
+
+    /// <summary>Pick the speaking voice by its description (empty = the system
+    /// default) and the SAPI rate (-10 slow … 10 fast; 0 = normal).</summary>
+    public void ApplyVoice(string? name, int rate)
+    {
+        if (_voice is null) return;
+        try
+        {
+            _voice.Rate = Math.Clamp(rate, -10, 10);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                if (_defaultToken is not null) _voice.Voice = _defaultToken;
+                return;
+            }
+            var tokens = _voice.GetVoices();
+            for (int i = 0; i < (int)tokens.Count; i++)
+            {
+                if (string.Equals((string)tokens.Item(i).GetDescription(), name,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    _voice.Voice = tokens.Item(i);
+                    return;
+                }
+            }
+            // An uninstalled name (other machine's config) keeps the default.
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("ApplyVoice failed: " + ex.Message);
+        }
     }
 
     /// <summary>Fire an alert: play the sound (if any) and speak the phrase (if any).</summary>

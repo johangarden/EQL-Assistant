@@ -194,6 +194,10 @@ public sealed class TriggerEditViewModel : ViewModelBase
     private bool _remindWhenMissing;
     public bool RemindWhenMissing { get => _remindWhenMissing; set => SetField(ref _remindWhenMissing, value); }
 
+    private bool _permanent;
+    /// <summary>A permanent buff (Vampiric Embrace): ∞ until death.</summary>
+    public bool Permanent { get => _permanent; set => SetField(ref _permanent, value); }
+
     // Cooldown reducer (bars only).
     private string _reducePattern = "";
     public string ReducePattern { get => _reducePattern; set => SetField(ref _reducePattern, value); }
@@ -256,6 +260,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
             FadedSound = d.Alert?.FadedSound ?? "",
             FlashText = d.Alert?.FlashText ?? "",
             RemindWhenMissing = d.RemindWhenMissing,
+            Permanent = d.Permanent,
             ReducePattern = d.ReducePattern ?? "",
             ReduceSeconds = d.ReduceSeconds,
         };
@@ -280,6 +285,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
             Color = Color,
             RefreshOnRetrigger = RefreshOnRetrigger,
             RemindWhenMissing = RemindWhenMissing,
+            Permanent = Permanent,
             ReducePattern = string.IsNullOrWhiteSpace(ReducePattern) ? null : ReducePattern,
             ReduceSeconds = ReduceSeconds,
             Alert = hasAlert ? new AlertConfig

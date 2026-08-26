@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
 using EQLOverlay.Interop;
@@ -19,17 +20,12 @@ public partial class HistoryWindow : Window
 
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
-    private readonly RaidKills _raids;
     private readonly LootTracker _loot;
-    private readonly SkyQuests _sky;
-    private RaidKillsWindow? _raidsWindow;
-    private LootWindow? _lootWindow;
-    private SkyWindow? _skyWindow;
     private readonly DispatcherTimer _tick;
     private readonly List<CombatParser.FightRecord> _saved;
     private List<Entry> _shown = new();
 
-    private sealed record Entry(CombatParser.FightRecord Rec, bool Saved);
+    public sealed record Entry(CombatParser.FightRecord Rec, bool Saved);
 
     private static readonly Brush NameFg = Freeze(Color.FromRgb(0xC9, 0xD4, 0xE3));
     private static readonly Brush SelfFg = Freeze(Color.FromRgb(0xFF, 0xC1, 0x2E));
@@ -42,32 +38,33 @@ public partial class HistoryWindow : Window
             Detail.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>List item wrapper — reference-unique even when two fights render identically.</summary>
-    private sealed record FightItem(Entry Entry, string Text)
+    /// <summary>List item wrapper — reference-unique even when two fights render
+    /// identically. Public: the grouped view reflects over Day/Text/Tip.</summary>
+    public sealed record FightItem(Entry Entry, string Text, string Day, string Tip)
     {
         public override string ToString() => Text;
     }
 
     public sealed record FightColumn(string Title, string Subtitle,
         List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> TakenRows,
-        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows)
+        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows,
+        List<StatRow> InfoRows, List<StatRow> DropRows)
     {
         public Visibility SelfSectionVisibility => SelfAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility PetSectionVisibility => PetAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility InfoSectionVisibility => InfoRows.Count > 0 || DropRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility DropsVisibility => DropRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids, LootTracker loot,
-        SkyQuests sky)
+    public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot)
     {
         InitializeComponent();
         DialogPlacement.Persist(this, "history");
         WindowTheme.ApplyDark(this);
-        _loot = loot;
-        _sky = sky;
         _parser = parser;
         _config = config;
-        _raids = raids;
+        _loot = loot;
         _saved = config.SavedFights; // the SHARED list — raid auto-keep writes here too
 
         FightsList.SelectionChanged += (_, _) => BuildColumns();
@@ -103,7 +100,10 @@ public partial class HistoryWindow : Window
         var selected = FightsList.SelectedItems.Cast<FightItem>().Select(x => x.Entry.Rec).ToHashSet();
 
         _shown = entries;
-        FightsList.ItemsSource = entries.Select(e => new FightItem(e, Display(e))).ToList();
+        var view = new ListCollectionView(
+            entries.Select(e => new FightItem(e, RowText(e), DayText(e.Rec.EndedAt), TipText(e))).ToList());
+        view.GroupDescriptions!.Add(new PropertyGroupDescription(nameof(FightItem.Day)));
+        FightsList.ItemsSource = view;
 
         foreach (FightItem item in FightsList.Items)
             if (selected.Contains(item.Entry.Rec))
@@ -127,73 +127,37 @@ public partial class HistoryWindow : Window
         }
     }
 
-    private static string Display(Entry e)
+    /// <summary>Row = time + mob only; the day lives in the group header and
+    /// duration/dps/zone in the tooltip (and the details card).</summary>
+    private static string RowText(Entry e) =>
+        $"{(e.Saved ? "★ " : "")}{e.Rec.EndedAt:HH:mm}  {e.Rec.Label}";
+
+    private static string DayText(DateTime d) =>
+        d.Date == DateTime.Today ? "Today"
+        : d.Date == DateTime.Today.AddDays(-1) ? "Yesterday"
+        : d.Year == DateTime.Today.Year ? d.ToString("dd MMM")
+        : d.ToString("dd MMM yyyy");
+
+    private static string TipText(Entry e)
     {
         var r = e.Rec;
-        string star = e.Saved ? "★ " : "";
-        string when = r.EndedAt.Date == DateTime.Today
-            ? r.EndedAt.ToString("HH:mm")
-            : r.EndedAt.ToString("dd MMM HH:mm");
-        string zone = r.Zone.Length > 0 ? $"  ·  {r.Zone}" : "";
-        return $"{star}{when}  {r.Label}   ·   {FormatDuration(r.DurationSeconds)}   ·   {FormatDps(r.TotalDps)} dps{zone}";
+        string zone = r.Zone.Length > 0 ? $" · {r.Zone}" : "";
+        return $"{r.EndedAt:dd MMM HH:mm} · {r.Label} · {FormatDuration(r.DurationSeconds)} · {FormatDps(r.TotalDps)} dps{zone}";
     }
 
     private void BuildColumns()
     {
-        var records = FightsList.SelectedItems.Cast<FightItem>()
+        var entries = FightsList.SelectedItems.Cast<FightItem>()
             .Select(x => x.Entry)
             .OrderBy(e => _shown.IndexOf(e))
             .Take(MaxCompare)
-            .Select(e => e.Rec);
-        ColumnsControl.ItemsSource = records.Select(BuildColumn).ToList();
-    }
+            .ToList();
+        ColumnsControl.ItemsSource = entries.Select(e => BuildColumn(e.Rec)).ToList();
 
-    private void Raids_Click(object sender, RoutedEventArgs e)
-    {
-        if (_raidsWindow is null)
-        {
-            _raidsWindow = new RaidKillsWindow(_raids)
-            {
-                // A raids window WE opened jumps back to us for fight links.
-                OpenFightRequested = (t, l) => { SelectFight(t, l); Activate(); },
-            };
-            _raidsWindow.Closed += (_, _) => _raidsWindow = null;
-            _raidsWindow.Show();
-        }
-        _raidsWindow.Activate();
-        _raidsWindow.Focus();
-    }
-
-    private void Timeline_Click(object sender, RoutedEventArgs e)
-    {
-        // One timeline window per click — open two fights side by side to compare.
-        var item = FightsList.SelectedItems.Cast<FightItem>().FirstOrDefault();
-        if (item is null) return;
-        new TimelineWindow(item.Entry.Rec).Show();
-    }
-
-    private void Loot_Click(object sender, RoutedEventArgs e)
-    {
-        if (_lootWindow is null)
-        {
-            _lootWindow = new LootWindow(_loot);
-            _lootWindow.Closed += (_, _) => _lootWindow = null;
-            _lootWindow.Show();
-        }
-        _lootWindow.Activate();
-        _lootWindow.Focus();
-    }
-
-    private void Sky_Click(object sender, RoutedEventArgs e)
-    {
-        if (_skyWindow is null)
-        {
-            _skyWindow = new SkyWindow(_sky);
-            _skyWindow.Closed += (_, _) => _skyWindow = null;
-            _skyWindow.Show();
-        }
-        _skyWindow.Activate();
-        _skyWindow.Focus();
+        // The timeline is part of the details — always shown for the first
+        // selected fight (comparisons still get their cards side by side).
+        if (entries.Count > 0) TimelinePane.ShowFight(entries[0].Rec);
+        else TimelinePane.Clear();
     }
 
     // ---- keep / remove --------------------------------------------------------
@@ -266,7 +230,42 @@ public partial class HistoryWindow : Window
             damage, healing, taken,
             AbilityRows(r.SelfAbilities, NameFg, dur, Swings(r.SelfAbilities)),
             AbilityRows(r.PetAbilities, NameFg, dur, Swings(r.PetAbilities)),
-            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0));
+            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0),
+            InfoRows(r), DropRows(r));
+    }
+
+    /// <summary>Fight context — recorded from the current build onward; older
+    /// fights simply have no rows here and the section stays collapsed.</summary>
+    private List<StatRow> InfoRows(CombatParser.FightRecord r)
+    {
+        var rows = new List<StatRow>();
+        if (r.Character.Length > 0)
+            rows.Add(new StatRow("Character",
+                r.Loadout.Length > 0 ? $"{r.Character} · {r.Loadout}" : r.Character, NameFg));
+        if (r.StanceAtStart.Length > 0)
+            rows.Add(new StatRow("Stance at pull", r.StanceAtStart, NameFg));
+        if (r.BuffsAtStart.Count > 0)
+            rows.Add(new StatRow("Buffs up", r.BuffsAtStart.Count.ToString(), NameFg,
+                string.Join(" · ", r.BuffsAtStart)));
+        foreach (var (mob, lvl) in r.EnemyLevels)
+            rows.Add(new StatRow(mob, $"Lvl {lvl}", EnemyFg));
+        return rows;
+    }
+
+    /// <summary>What the corpse gave — the loot log joined on the fight's own
+    /// enemies within a window after the kill (looting takes a while).</summary>
+    private List<StatRow> DropRows(CombatParser.FightRecord r)
+    {
+        var enemies = r.Damage.Where(x => x.Enemy).Select(x => x.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (enemies.Count == 0) return new();
+        var from = r.EndedAt.AddSeconds(-Math.Max(60, r.DurationSeconds));
+        var to = r.EndedAt.AddMinutes(10);
+        return _loot.Entries
+            .Where(l => l.When >= from && l.When <= to && enemies.Contains(l.Mob))
+            .OrderBy(l => l.When)
+            .Select(l => new StatRow(l.Item, l.Count > 1 ? $"×{l.Count}" : "", NameFg))
+            .ToList();
     }
 
     /// <summary>Format ability drill-down rows ("backstab  12,3 (1.100, 46%)")
