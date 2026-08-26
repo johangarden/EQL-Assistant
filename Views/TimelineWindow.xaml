@@ -20,8 +20,21 @@
 
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top">
-            <TextBlock x:Name="TitleText" Style="{StaticResource PageTitle}"/>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="⚡ Analyse fight" Width="120"
+                        Style="{StaticResource PrimaryBtn}" Click="Analyse_Click"
+                        VerticalAlignment="Top"/>
+                <TextBlock x:Name="TitleText" Style="{StaticResource PageTitle}"/>
+            </DockPanel>
             <TextBlock x:Name="SubtitleText" Style="{StaticResource Hint}" Margin="0,2,0,8"/>
+
+            <!-- On-demand analysis: rules over this fight's own numbers. -->
+            <Border x:Name="AnalysisPanel" Visibility="Collapsed" Background="#10182A"
+                    BorderBrush="#2A3A5C" BorderThickness="1" CornerRadius="6"
+                    Padding="10,8" Margin="0,0,0,8">
+                <TextBlock x:Name="AnalysisText" Foreground="{StaticResource Brush.TextDim}"
+                           FontSize="12" TextWrapping="Wrap"/>
+            </Border>
             <!-- Time axis; left margin matches the lane label column, right the scrollbar. -->
             <Canvas x:Name="AxisCanvas" Height="18" Margin="150,0,11,3" ClipToBounds="True"/>
 

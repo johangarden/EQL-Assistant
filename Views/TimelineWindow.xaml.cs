@@ -26,8 +26,10 @@ public partial class TimelineWindow : Window
     private static readonly Brush AxisFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
     private static readonly Brush MissFg = Freeze(Color.FromArgb(0x77, 0x8F, 0xA6, 0xC4));
     private static readonly Brush ResistFg = Freeze(Color.FromRgb(0xB3, 0x9D, 0xDB));
+    private static readonly Brush SpanFill = Freeze(Color.FromArgb(0x55, 0xB3, 0x9D, 0xDB));
 
-    private sealed record Group(string Title, Brush Header, Brush Mark, Brush CritMark, List<Lane> Lanes);
+    private sealed record Group(string Title, Brush Header, Brush Mark, Brush CritMark,
+        List<Lane> Lanes, bool Spans = false);
     private sealed record Lane(string Ability, List<FightEvent> Events, double Total);
 
     private readonly List<Group> _groups;
@@ -60,6 +62,24 @@ public partial class TimelineWindow : Window
         Add("Pet damage taken", FightStream.PetIn, Rgb(0xFF, 0xB7, 0x4D), Rgb(0xFF, 0xE0, 0xB2));
         Add("Your healing", FightStream.HealOut, Rgb(0x81, 0xC7, 0x84), Rgb(0xC8, 0xE6, 0xC9));
         Add("Heals on you", FightStream.HealIn, Rgb(0x4D, 0xB6, 0xAC), Rgb(0xB2, 0xDF, 0xDB));
+
+        // Debuffs on the enemy render as SPANS — landing to landing+duration —
+        // because the GAPS are the story (the naked stretches where your slow
+        // was down are when the melee hurt).
+        var debuffLanes = new Dictionary<string, List<FightEvent>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var e in rec.Events)
+        {
+            if (e.Stream != FightStream.Debuff) continue;
+            if (!debuffLanes.TryGetValue(e.Ability, out var list))
+                debuffLanes[e.Ability] = list = new List<FightEvent>();
+            list.Add(e);
+        }
+        if (debuffLanes.Count > 0)
+            groups.Add(new Group("Debuffs on the enemy",
+                Rgb(0xB3, 0x9D, 0xDB), Rgb(0xB3, 0x9D, 0xDB), Rgb(0xD1, 0xC4, 0xE9),
+                debuffLanes.Select(kv => new Lane(kv.Key, kv.Value, kv.Value.Count))
+                    .OrderBy(l => l.Events[0].T).ToList(),
+                Spans: true));
         return groups;
 
         void Add(string title, FightStream stream, Brush mark, Brush crit)
@@ -163,6 +183,34 @@ public partial class TimelineWindow : Window
         };
         Grid.SetColumn(canvas, 1);
         row.Children.Add(canvas);
+
+        if (g.Spans)
+        {
+            label.ToolTip = $"{lane.Ability} — landed {lane.Events.Count}×";
+            foreach (var e in lane.Events)
+            {
+                double x = Math.Min(width - 3, e.T * scale);
+                double w = e.Amount > 0 ? Math.Max(3, Math.Min(width - x, e.Amount * scale)) : 3;
+                var span = new Rectangle
+                {
+                    Width = w,
+                    Height = LaneHeight - 6,
+                    RadiusX = 2,
+                    RadiusY = 2,
+                    Fill = SpanFill,
+                    Stroke = g.Mark,
+                    StrokeThickness = 1,
+                    ToolTip = e.Amount > 0
+                        ? $"{FormatDuration(e.T)} · {lane.Ability} landed — runs ~{e.Amount:0}s"
+                        : $"{FormatDuration(e.T)} · {lane.Ability} landed (duration unknown)",
+                };
+                ToolTipService.SetInitialShowDelay(span, 150);
+                Canvas.SetLeft(span, x);
+                Canvas.SetBottom(span, 3);
+                canvas.Children.Add(span);
+            }
+            return row;
+        }
 
         foreach (var e in lane.Events)
         {
@@ -304,6 +352,107 @@ public partial class TimelineWindow : Window
             Canvas.SetTop(lbl, 0);
             AxisCanvas.Children.Add(lbl);
         }
+    }
+
+    // ---- analysis (on demand — a button, never a background job) ---------------
+
+    private void Analyse_Click(object sender, RoutedEventArgs e)
+    {
+        AnalysisText.Text = BuildAnalysis(_rec);
+        AnalysisPanel.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Rules over ONE fight's own numbers — every claim cites them,
+    /// and what the fight didn't record is said, not guessed.</summary>
+    internal static string BuildAnalysis(FightRecord rec)
+    {
+        var lines = new List<string>();
+        double dur = Math.Max(1, rec.DurationSeconds);
+        double takenTotal = rec.IncomingSelfTotal;
+
+        // 1 · The dominant incoming ability, its school, and your resist rate
+        //     against it — the "you need more Cold resist" rule.
+        var tops = rec.IncomingSelfAbilities
+            .Where(a => a.Total > 0)
+            .OrderByDescending(a => a.Total)
+            .ToList();
+        if (tops.Count > 0 && takenTotal > 0)
+        {
+            var top = tops[0];
+            double share = 100.0 * top.Total / takenTotal;
+            rec.Schools.TryGetValue(top.Name, out string? school);
+            string line = school is not null
+                ? $"• {share:0}% of the damage you took was {school.ToUpperInvariant()} — {top.Name} ({FormatNum(top.Total)} of {FormatNum(takenTotal)})."
+                : $"• {share:0}% of the damage you took was {top.Name} ({FormatNum(top.Total)} of {FormatNum(takenTotal)}).";
+            int casts = top.Hits + top.Resists;
+            if (casts > 0 && top.Resists > 0)
+                line += $" You resisted {top.Resists} of {casts} casts ({100.0 * top.Resists / casts:0}%).";
+            if (school is not null && share >= 25 && !school.Equals("unresistable", StringComparison.OrdinalIgnoreCase))
+                line += $" More {char.ToUpperInvariant(school[0]) + school[1..]} resist bites directly into their biggest tool.";
+            if (school is null && rec.Schools.Count == 0 && top.Name != "hit")
+                line += " (School unknown — recorded before school capture; new fights carry it.)";
+            lines.Add(line);
+        }
+
+        // 2 · Your spells that kept bouncing — stick rates worth acting on.
+        foreach (var a in rec.SelfAbilities
+                     .Where(a => a.Resists > 0 && a.Hits + a.Resists >= 3)
+                     .OrderByDescending(a => (double)a.Resists / (a.Hits + a.Resists)))
+        {
+            int casts = a.Hits + a.Resists;
+            double rr = 100.0 * a.Resists / casts;
+            if (rr >= 30)
+                lines.Add($"• {a.Name} stuck only {100 - rr:0}% ({a.Resists} of {casts} resisted) — malo/tash territory, or a bad school matchup on this mob.");
+        }
+
+        // 3 · Debuff coverage — the gaps are the story.
+        foreach (var g in rec.Events.Where(e => e.Stream == FightStream.Debuff)
+                     .GroupBy(e => e.Ability, StringComparer.OrdinalIgnoreCase))
+        {
+            double covered = CoverageSeconds(g.Select(e => (e.T, e.Amount)), dur);
+            lines.Add(covered > 0
+                ? $"• {g.Key} was up ~{100.0 * covered / dur:0}% of the fight ({FormatDuration(covered)} of {FormatDuration(dur)})."
+                : $"• {g.Key} landed {g.Count()}× (duration unknown — coverage not computable).");
+        }
+
+        // 4 · Who kept you alive, and the hit that nearly didn't let them.
+        var healers = rec.Healing.Where(h => !h.Enemy && h.Total > 0)
+            .OrderByDescending(h => h.Total).ToList();
+        if (healers.Count > 0)
+            lines.Add($"• {healers[0].Name} carried {healers[0].Percent:0}% of the healing ({FormatNum(healers[0].Total)}).");
+        var big = rec.Events.Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0)
+            .OrderByDescending(e => e.Amount).FirstOrDefault();
+        if (big is not null)
+            lines.Add($"• Biggest hit on you: {big.Ability} {FormatNum(big.Amount)} at {FormatDuration(big.T)}.");
+
+        return lines.Count > 0
+            ? string.Join("\n", lines)
+            : "Nothing to analyse — this fight recorded no incoming data.";
+    }
+
+    /// <summary>Union length of [T, T+Dur] spans clipped to the fight.</summary>
+    internal static double CoverageSeconds(IEnumerable<(double T, double Dur)> spans, double fightDur)
+    {
+        var list = spans.Where(s => s.Dur > 0)
+            .Select(s => (Start: Math.Max(0, s.T), End: Math.Min(fightDur, s.T + s.Dur)))
+            .Where(s => s.End > s.Start)
+            .OrderBy(s => s.Start)
+            .ToList();
+        double total = 0, curS = 0, curE = -1;
+        foreach (var s in list)
+        {
+            if (s.Start > curE)
+            {
+                if (curE > curS) total += curE - curS;
+                (curS, curE) = (s.Start, s.End);
+            }
+            else
+            {
+                curE = Math.Max(curE, s.End);
+            }
+        }
+        if (curE > curS) total += curE - curS;
+        return total;
     }
 
     // ---- helpers ---------------------------------------------------------------

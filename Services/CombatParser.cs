@@ -99,7 +99,14 @@ public sealed class CombatParser
     }
 
     /// <summary>Which side of the fight a timeline event belongs to.</summary>
-    public enum FightStream { SelfOut = 0, PetOut = 1, SelfIn = 2, PetIn = 3, HealOut = 4, HealIn = 5 }
+    public enum FightStream
+    {
+        SelfOut = 0, PetOut = 1, SelfIn = 2, PetIn = 3, HealOut = 4, HealIn = 5,
+        /// <summary>A debuff LANDED on a mob (your cast's third-person landing
+        /// — the Enemy DoTs panel's own signal). Amount carries the known
+        /// duration in seconds (0 = unknown) so the timeline can draw a span.</summary>
+        Debuff = 6,
+    }
 
     /// <summary>
     /// One timeline event: offset seconds from the fight start, the ability, the
@@ -138,6 +145,11 @@ public sealed class CombatParser
         // Timeline (added later — older kept fights just have this empty).
         public List<FightEvent> Events { get; init; } = new();
         public bool EventsTruncated { get; init; }
+
+        /// <summary>Ability → damage school, from the log's own DD lines
+        /// ("points of cold damage"). Empty on fights kept before capture.</summary>
+        public Dictionary<string, string> Schools { get; init; } =
+            new(StringComparer.OrdinalIgnoreCase);
     }
 
     private readonly List<FightRecord> _history = new();
@@ -536,6 +548,10 @@ public sealed class CombatParser
     private readonly List<PendingEvent> _events = new();
     private bool _eventsTruncated;
 
+    /// <summary>Ability → damage school, straight from the DD lines' own words
+    /// ("points of cold damage"). Fight-scoped like the event buffer.</summary>
+    private readonly Dictionary<string, string> _spellSchools = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Record a timeline event for the current fight (drops past the cap).</summary>
     private void Note(DateTime time, string ability, double amount, FightStream stream,
         bool crit = false, bool miss = false, bool resist = false)
@@ -644,7 +660,7 @@ public sealed class CombatParser
     // The first number is the effective amount; "0 (65)" means fully mitigated.
 
     private static readonly Regex NonMeleeRx = new(
-        @"^(?<att>.+?) hit (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of \w+ damage by (?<spell>.+?)\.",
+        @"^(?<att>.+?) hit (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of (?<school>\w+) damage by (?<spell>.+?)\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex DotRx = new(
@@ -885,6 +901,11 @@ public sealed class CombatParser
                      && body.EndsWith(pe.Suffix, StringComparison.Ordinal))
             {
                 NoteDotLanding(pe.Spell, body[..^pe.Suffix.Length].Trim(), time);
+                // The fight timeline keeps the landing too: amount = the known
+                // duration, so the drill-down can draw "the slow was UP here".
+                Note(time, SpellDurations.BaseName(pe.Spell),
+                    DotDurationLookup?.Invoke(SpellDurations.BaseName(pe.Spell)) ?? 0,
+                    FightStream.Debuff);
                 _pendingEnemyLanding = null;
             }
         }
@@ -897,7 +918,16 @@ public sealed class CombatParser
         // PoolSpell also remembers the highest rank seen, which becomes the
         // lane's display label.
         Match m = NonMeleeRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true); return; }
+        if (m.Success)
+        {
+            string pooled = PoolSpell(m.Groups["spell"].Value);
+            // The log names the SCHOOL on every DD line ("points of cold
+            // damage") — kept per ability so fight analysis can say "42% of
+            // what you took was cold" from the fight's own words, no guessing.
+            _spellSchools[pooled] = m.Groups["school"].Value.ToLowerInvariant();
+            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, pooled, Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true);
+            return;
+        }
 
         m = DotRx.Match(body);
         if (m.Success)
@@ -1074,6 +1104,7 @@ public sealed class CombatParser
                     e.Ability, e.Amount, e.Stream, e.Crit, e.Miss, e.Resist))
                 .ToList(),
             EventsTruncated = _eventsTruncated,
+            Schools = new Dictionary<string, string>(_spellSchools, StringComparer.OrdinalIgnoreCase),
         };
         _history.Insert(0, rec);
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
@@ -1096,6 +1127,7 @@ public sealed class CombatParser
         _active = false;
         _events.Clear();
         _eventsTruncated = false;
+        _spellSchools.Clear();
     }
 
     /// <summary>

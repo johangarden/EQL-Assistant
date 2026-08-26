@@ -283,6 +283,40 @@ public partial class App : Application
             engine.ProcessLine($"[{now}] Your Spirit of Wolf spell has worn off.");
             Check("SoW worn off -> 0 bars", engine.Bars.Count == 0);
 
+            // ---- fight details capture: damage schools from the log's own
+            // words, debuff landings as timeline spans, and the analysis rules.
+            var fd = new CombatParser { SelfName = "Johan" };
+            fd.OtherLandingLookup = s => s.StartsWith("Drowsy", StringComparison.OrdinalIgnoreCase)
+                ? (" looks drowsy.", true) : null;
+            fd.DotDurationLookup = s => s == "Drowsy" ? 48 : null;
+            var fb = new DateTime(2026, 8, 20, 21, 0, 0);
+            string FT(int s) => fb.AddSeconds(s).ToString("ddd MMM dd HH:mm:ss yyyy",
+                System.Globalization.CultureInfo.InvariantCulture);
+            fd.Replay($"[{FT(0)}] Lady Vox hit Johan for 250 points of cold damage by Frost Breath.");
+            fd.Replay($"[{FT(3)}] You begin casting Drowsy.");
+            fd.Replay($"[{FT(5)}] A dragon looks drowsy.");
+            fd.Replay($"[{FT(8)}] You resist Lady Vox's Frost Breath!");
+            fd.Replay($"[{FT(10)}] Lady Vox hit Johan for 250 points of cold damage by Frost Breath.");
+            fd.Tick(fb.AddSeconds(60)); // idle -> archive
+            var fdRec = fd.History[0];
+            Check("fight: the DD line's school is kept, verbatim from the log",
+                fdRec.Schools.TryGetValue("Frost Breath", out string? fs) && fs == "cold");
+            Check("fight: a debuff landing becomes a timeline span with its duration",
+                fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Debuff, Ability: "Drowsy", Amount: 48 }));
+            Check("fight: the incoming resist rides the timeline",
+                fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.SelfIn, Resist: true }));
+            string fdTxt = Views.TimelineWindow.BuildAnalysis(fdRec);
+            Check("analysis: names the dominant school and the resist advice",
+                fdTxt.Contains("COLD") && fdTxt.Contains("More Cold resist")
+                && fdTxt.Contains("resisted 1 of 3"));
+            Check("analysis: reports the debuff coverage",
+                fdTxt.Contains("Drowsy was up"));
+            Check("analysis: coverage math merges overlaps and clips",
+                Math.Abs(Views.TimelineWindow.CoverageSeconds(
+                    new[] { (0.0, 10.0), (5.0, 10.0) }, 30) - 15) < 0.01
+                && Math.Abs(Views.TimelineWindow.CoverageSeconds(
+                    new[] { (25.0, 10.0) }, 30) - 5) < 0.01);
+
             // ---- permanent buffs (Vampiric Embrace): ∞ until death, a
             // wear-off line, or a loadout switch — never a countdown.
             var permCfg = new Models.AppConfig();
