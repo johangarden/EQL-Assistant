@@ -209,6 +209,14 @@ public partial class App : Application
             if (helperWin.LineTexts.Count == 0)
                 throw new Exception("Sky helper panel rendered no lines for a tracked quest");
             helperWin.Close();
+
+            // Fight History embeds the timeline view — constructing it proves
+            // the UserControl resolves its theme resources on its own (a
+            // parse-time StaticResource crash once hid exactly here).
+            var histWin = new Views.HistoryWindow(cp, cs);
+            histWin.Show();
+            histWin.UpdateLayout();
+            histWin.Close();
             try { File.Delete(helperProg); } catch { /* temp */ }
 
             // The Sheet tab renders the doll + detail pane from a real-format

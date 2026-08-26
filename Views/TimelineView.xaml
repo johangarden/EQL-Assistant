@@ -4,6 +4,16 @@
              UseLayoutRounding="True"
              TextOptions.TextFormattingMode="Display">
 
+    <!-- StaticResource resolves at parse time, BEFORE this control joins its
+         window's tree — the theme must be merged here, not inherited. -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
     <StackPanel>
         <DockPanel Margin="0,0,0,2">
             <Button DockPanel.Dock="Right" Content="⚡ Analyse fight" Width="120"
