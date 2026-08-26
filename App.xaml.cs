@@ -305,16 +305,16 @@ public partial class App : Application
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Debuff, Ability: "Drowsy", Amount: 48 }));
             Check("fight: the incoming resist rides the timeline",
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.SelfIn, Resist: true }));
-            string fdTxt = Views.TimelineWindow.BuildAnalysis(fdRec);
+            string fdTxt = Views.TimelineView.BuildAnalysis(fdRec);
             Check("analysis: names the dominant school and the resist advice",
                 fdTxt.Contains("COLD") && fdTxt.Contains("More Cold resist")
                 && fdTxt.Contains("resisted 1 of 3"));
             Check("analysis: reports the debuff coverage",
                 fdTxt.Contains("Drowsy was up"));
             Check("analysis: coverage math merges overlaps and clips",
-                Math.Abs(Views.TimelineWindow.CoverageSeconds(
+                Math.Abs(Views.TimelineView.CoverageSeconds(
                     new[] { (0.0, 10.0), (5.0, 10.0) }, 30) - 15) < 0.01
-                && Math.Abs(Views.TimelineWindow.CoverageSeconds(
+                && Math.Abs(Views.TimelineView.CoverageSeconds(
                     new[] { (25.0, 10.0) }, 30) - 5) < 0.01);
 
             // ---- permanent buffs (Vampiric Embrace): ∞ until death, a

@@ -19,12 +19,6 @@ public partial class HistoryWindow : Window
 
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
-    private readonly RaidKills _raids;
-    private readonly LootTracker _loot;
-    private readonly SkyQuests _sky;
-    private RaidKillsWindow? _raidsWindow;
-    private LootWindow? _lootWindow;
-    private SkyWindow? _skyWindow;
     private readonly DispatcherTimer _tick;
     private readonly List<CombatParser.FightRecord> _saved;
     private List<Entry> _shown = new();
@@ -57,17 +51,13 @@ public partial class HistoryWindow : Window
         public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public HistoryWindow(CombatParser parser, ConfigService config, RaidKills raids, LootTracker loot,
-        SkyQuests sky)
+    public HistoryWindow(CombatParser parser, ConfigService config)
     {
         InitializeComponent();
         DialogPlacement.Persist(this, "history");
         WindowTheme.ApplyDark(this);
-        _loot = loot;
-        _sky = sky;
         _parser = parser;
         _config = config;
-        _raids = raids;
         _saved = config.SavedFights; // the SHARED list — raid auto-keep writes here too
 
         FightsList.SelectionChanged += (_, _) => BuildColumns();
@@ -140,60 +130,17 @@ public partial class HistoryWindow : Window
 
     private void BuildColumns()
     {
-        var records = FightsList.SelectedItems.Cast<FightItem>()
+        var entries = FightsList.SelectedItems.Cast<FightItem>()
             .Select(x => x.Entry)
             .OrderBy(e => _shown.IndexOf(e))
             .Take(MaxCompare)
-            .Select(e => e.Rec);
-        ColumnsControl.ItemsSource = records.Select(BuildColumn).ToList();
-    }
+            .ToList();
+        ColumnsControl.ItemsSource = entries.Select(e => BuildColumn(e.Rec)).ToList();
 
-    private void Raids_Click(object sender, RoutedEventArgs e)
-    {
-        if (_raidsWindow is null)
-        {
-            _raidsWindow = new RaidKillsWindow(_raids)
-            {
-                // A raids window WE opened jumps back to us for fight links.
-                OpenFightRequested = (t, l) => { SelectFight(t, l); Activate(); },
-            };
-            _raidsWindow.Closed += (_, _) => _raidsWindow = null;
-            _raidsWindow.Show();
-        }
-        _raidsWindow.Activate();
-        _raidsWindow.Focus();
-    }
-
-    private void Timeline_Click(object sender, RoutedEventArgs e)
-    {
-        // One timeline window per click — open two fights side by side to compare.
-        var item = FightsList.SelectedItems.Cast<FightItem>().FirstOrDefault();
-        if (item is null) return;
-        new TimelineWindow(item.Entry.Rec).Show();
-    }
-
-    private void Loot_Click(object sender, RoutedEventArgs e)
-    {
-        if (_lootWindow is null)
-        {
-            _lootWindow = new LootWindow(_loot);
-            _lootWindow.Closed += (_, _) => _lootWindow = null;
-            _lootWindow.Show();
-        }
-        _lootWindow.Activate();
-        _lootWindow.Focus();
-    }
-
-    private void Sky_Click(object sender, RoutedEventArgs e)
-    {
-        if (_skyWindow is null)
-        {
-            _skyWindow = new SkyWindow(_sky);
-            _skyWindow.Closed += (_, _) => _skyWindow = null;
-            _skyWindow.Show();
-        }
-        _skyWindow.Activate();
-        _skyWindow.Focus();
+        // The timeline is part of the details — always shown for the first
+        // selected fight (comparisons still get their cards side by side).
+        if (entries.Count > 0) TimelinePane.ShowFight(entries[0].Rec);
+        else TimelinePane.Clear();
     }
 
     // ---- keep / remove --------------------------------------------------------

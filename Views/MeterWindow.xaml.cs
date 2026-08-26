@@ -22,9 +22,6 @@ public partial class MeterWindow : Window
 
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
-    private readonly RaidKills _raids;
-    private readonly LootTracker _loot;
-    private readonly SkyQuests _sky;
     private readonly PanelPlacement _placement;
     private readonly DispatcherTimer _tick;
     private readonly ObservableCollection<MeterRowViewModel> _rows = new();
@@ -72,8 +69,8 @@ public partial class MeterWindow : Window
         Freeze(Color.FromRgb(0xA1, 0x88, 0x7F)),
     };
 
-    public MeterWindow(ConfigService config, CombatParser parser, RaidKills raids, LootTracker loot,
-        SkyQuests sky, double opacity, IEnumerable<string> skills, bool skillsVisible,
+    public MeterWindow(ConfigService config, CombatParser parser,
+        double opacity, IEnumerable<string> skills, bool skillsVisible,
         bool procsVisible = false, bool soloMode = true)
     {
         InitializeComponent();
@@ -81,9 +78,6 @@ public partial class MeterWindow : Window
 
         _parser = parser;
         _config = config;
-        _raids = raids;
-        _loot = loot;
-        _sky = sky;
         _skillNames = CleanSkills(skills);
         _skillsVisible = skillsVisible;
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
@@ -220,7 +214,7 @@ public partial class MeterWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_parser, _config, _raids, _loot, _sky);
+            _historyWindow = new HistoryWindow(_parser, _config);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

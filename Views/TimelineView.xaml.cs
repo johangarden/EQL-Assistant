@@ -2,25 +2,26 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using EQLOverlay.Interop;
 using EQLOverlay.Services;
 using static EQLOverlay.Services.CombatParser;
 
 namespace EQLOverlay.Views;
 
 /// <summary>
-/// Visual timeline of one fight: a lane per ability, grouped by stream
-/// (your damage, pet, damage taken, healing), with a mark per event —
-/// height scales with the amount, crits are wider, misses and resists get
-/// their own colors. Hover any mark for the exact numbers.
+/// Visual timeline of one fight, embedded in the Fight History details pane:
+/// a lane per ability, grouped by stream (your damage, pet, damage taken,
+/// healing), with a mark per event — height scales with the amount, crits
+/// are wider, misses and resists get their own colors. Debuffs on the enemy
+/// render as spans, and ⚡ Analyse reads the fight's own numbers on demand.
 /// </summary>
-public partial class TimelineWindow : Window
+public partial class TimelineView : UserControl
 {
     private const double LabelWidth = 150;
     private const double LaneHeight = 22;
     private const int MaxLanesPerGroup = 8;
 
-    private readonly FightRecord _rec;
+    private FightRecord? _rec;
+    private List<Group> _groups = new();
 
     private static readonly Brush LaneBg = Freeze(Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
     private static readonly Brush AxisFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
@@ -32,13 +33,16 @@ public partial class TimelineWindow : Window
         List<Lane> Lanes, bool Spans = false);
     private sealed record Lane(string Ability, List<FightEvent> Events, double Total);
 
-    private readonly List<Group> _groups;
-
-    public TimelineWindow(FightRecord rec)
+    public TimelineView()
     {
         InitializeComponent();
-        DialogPlacement.Persist(this, "timeline");
-        WindowTheme.ApplyDark(this);
+        SizeChanged += (_, _) => Rebuild();
+    }
+
+    /// <summary>Point the timeline at one fight (no-op when already showing it).</summary>
+    public void ShowFight(FightRecord rec)
+    {
+        if (ReferenceEquals(_rec, rec)) return;
         _rec = rec;
         _groups = BuildGroups(rec);
 
@@ -49,8 +53,17 @@ public partial class TimelineWindow : Window
             $"{rec.EndedAt:dd MMM HH:mm:ss} · {FormatDuration(rec.DurationSeconds)}{zone} · " +
             $"{rec.Events.Count} events{truncated} — hover a mark for details.";
 
-        // Fires after the first layout pass too, so this is also the initial draw.
-        LanesHost.SizeChanged += (_, _) => Rebuild();
+        AnalysisPanel.Visibility = Visibility.Collapsed;
+        Visibility = Visibility.Visible;
+        Rebuild();
+    }
+
+    /// <summary>Nothing selected — hide the whole section.</summary>
+    public void Clear()
+    {
+        _rec = null;
+        _groups = new List<Group>();
+        Visibility = Visibility.Collapsed;
     }
 
     private static List<Group> BuildGroups(FightRecord rec)
@@ -114,6 +127,8 @@ public partial class TimelineWindow : Window
 
     private void Rebuild()
     {
+        if (_rec is null) return;
+
         LanesHost.Children.Clear();
         AxisCanvas.Children.Clear();
 
@@ -255,7 +270,7 @@ public partial class TimelineWindow : Window
         GraphCanvas.Children.Clear();
         LegendPanel.Children.Clear();
 
-        if (_rec.Events.Count == 0)
+        if (_rec is null || _rec.Events.Count == 0)
         {
             GraphHost.Visibility = Visibility.Collapsed;
             return;
@@ -358,6 +373,7 @@ public partial class TimelineWindow : Window
 
     private void Analyse_Click(object sender, RoutedEventArgs e)
     {
+        if (_rec is null) return;
         AnalysisText.Text = BuildAnalysis(_rec);
         AnalysisPanel.Visibility = Visibility.Visible;
     }

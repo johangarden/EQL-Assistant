@@ -716,7 +716,7 @@ public partial class MainWindow : Window
     private void RebuildMeterWindow()
     {
         if (_meter is not null) { try { _meter.Close(); } catch { /* ignore */ } }
-        _meter = new MeterWindow(_configService, _combat, _raids, _loot, _skyQuests,
+        _meter = new MeterWindow(_configService, _combat,
             _config.Overlay.Opacity,
             _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible,
             _config.Overlay.ProcWatcherVisible, _config.Overlay.MeterSoloMode);
@@ -1648,7 +1648,7 @@ public partial class MainWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_combat, _configService, _raids, _loot, _skyQuests);
+            _historyWindow = new HistoryWindow(_combat, _configService);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

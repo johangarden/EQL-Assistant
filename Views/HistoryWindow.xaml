@@ -1,8 +1,9 @@
 <Window x:Class="EQLOverlay.Views.HistoryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="clr-namespace:EQLOverlay.Views"
         Title="EQL Assistant — Fight History"
-        Width="820" Height="520"
+        Width="940" Height="620"
         MinWidth="560" MinHeight="360"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Brush.Window}"
@@ -35,7 +36,7 @@
 
     <DockPanel Margin="12">
         <TextBlock DockPanel.Dock="Top" Foreground="#7F93AD" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"
-                   Text="A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 50). Select one for details — Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's."/>
+                   Text="A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 50). Select one for details — the breakdown, the timeline and ⚡ Analyse. Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's."/>
 
         <Grid>
             <Grid.ColumnDefinitions>
@@ -45,37 +46,27 @@
             </Grid.ColumnDefinitions>
 
             <DockPanel Grid.Column="0">
-                <!-- A WrapPanel, not a StackPanel: the sixth button used to
-                     clip to a one-pixel sliver against the column edge. The
-                     fight-scoped actions lead; the other windows follow. -->
-                <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-                    <Button Content="★ Keep" Click="Keep_Click" Style="{StaticResource ToolBtn}"
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                    <Button Content="★ Keep fight" Click="Keep_Click" Style="{StaticResource ToolBtn}"
                             AutomationProperties.AutomationId="HistoryKeepBtn"
                             ToolTip="Save the selected fight(s) permanently (survives restarts)"/>
-                    <Button Content="Remove kept" Click="Remove_Click" Style="{StaticResource ToolBtn}"
+                    <Button Content="Remove fight" Click="Remove_Click" Style="{StaticResource ToolBtn}"
                             ToolTip="Stop keeping the selected saved fight(s)"/>
-                    <Button Content="Timeline" Click="Timeline_Click" Style="{StaticResource ToolBtn}"
-                            AutomationProperties.AutomationId="HistoryTimelineBtn"
-                            ToolTip="Second-by-second timeline of the selected fight — graph, ability lanes, debuff spans and ⚡ Analyse"/>
-                    <Button Content="Raid kills" Click="Raids_Click" Style="{StaticResource ToolBtn}"
-                            AutomationProperties.AutomationId="HistoryRaidsBtn"
-                            ToolTip="Raid target progression — kill counts per zone"/>
-                    <Button Content="Loot" Click="Loot_Click" Style="{StaticResource ToolBtn}"
-                            AutomationProperties.AutomationId="HistoryLootBtn"
-                            ToolTip="Loot history — upgrades, kept items and vendored drops"/>
-                    <Button Content="Sky" Click="Sky_Click" Style="{StaticResource ToolBtn}"
-                            AutomationProperties.AutomationId="HistorySkyBtn"
-                            ToolTip="Plane of Sky quest tracker — have/need per Test quest"/>
-                </WrapPanel>
+                </StackPanel>
                 <ListBox x:Name="FightsList"
                          SelectionMode="Extended" FontSize="12"
                          HorizontalContentAlignment="Stretch"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
             </DockPanel>
 
-            <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Auto"
+            <!-- Details = breakdown cards up top, the fight's full timeline
+                 (graph, lanes, debuff spans, ⚡ Analyse) always below. -->
+            <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
-                <ItemsControl x:Name="ColumnsControl">
+                <StackPanel>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="ColumnsControl">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="Horizontal"/>
@@ -142,8 +133,13 @@
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <v:TimelineView x:Name="TimelinePane" Margin="0,10,0,0"
+                                    Visibility="Collapsed"/>
+                </StackPanel>
             </ScrollViewer>
         </Grid>
     </DockPanel>
