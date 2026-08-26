@@ -139,6 +139,11 @@ public partial class MainWindow : Window
             name.StartsWith("Demo ", StringComparison.Ordinal) ? name.Contains("Slow")
             : _spellLib.FindByBaseName(name) is { } sp && SpellLibrary.TriggerCategory(sp) == "Debuffs";
         _combat.OtherLandingLookup = _spellLib.OtherLanding;
+        // Fight context: CC spans, the buff snapshot, loadout and stance —
+        // the recorder freezes them at fight start / rides them as events.
+        _conditions.StateChanged += (kind, started, when) => _combat.NoteCondition(kind, started, when);
+        _combat.LoadoutLookup = () => _config.ActiveLoadout;
+        _combat.StanceChanged += s => _configService.SaveLastStance(_combat.SelfName, s);
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
@@ -165,6 +170,11 @@ public partial class MainWindow : Window
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
         _engine.BarReduced += OnBarReduced;
+        // The fight recorder's "went in buffed?" snapshot: running bars + lit cells.
+        _combat.ActiveBuffsLookup = () =>
+            _engine.Bars.Select(b => b.Name)
+                .Concat(_engine.SelfCells.Where(c => c.IsActive).Select(c => c.Name))
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         _vm = new OverlayViewModel(_engine, _config) { LoadoutName = _config.ActiveLoadout };
         DataContext = _vm;
 
@@ -716,7 +726,7 @@ public partial class MainWindow : Window
     private void RebuildMeterWindow()
     {
         if (_meter is not null) { try { _meter.Close(); } catch { /* ignore */ } }
-        _meter = new MeterWindow(_configService, _combat,
+        _meter = new MeterWindow(_configService, _combat, _loot,
             _config.Overlay.Opacity,
             _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible,
             _config.Overlay.ProcWatcherVisible, _config.Overlay.MeterSoloMode);
@@ -1008,6 +1018,9 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(name) || _combat.SelfName == name) return;
         _combat.SelfName = name;
         _session.SelfName = name; // the /who level row must be YOUR row
+        // The log only prints stances on CHANGE — seed this character's last
+        // remembered one so the first fight of the session isn't "unknown".
+        _combat.CurrentStance = _configService.LoadLastStances().GetValueOrDefault(name, "");
         Log.Info($"Combat parser character name: '{name}'" +
                  (string.IsNullOrWhiteSpace(_config.CharacterName) ? " (auto-detected from log filename)" : ""));
     }
@@ -1648,7 +1661,7 @@ public partial class MainWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_combat, _configService);
+            _historyWindow = new HistoryWindow(_combat, _configService, _loot);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

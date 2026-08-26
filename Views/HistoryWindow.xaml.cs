@@ -20,6 +20,7 @@ public partial class HistoryWindow : Window
 
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
+    private readonly LootTracker _loot;
     private readonly DispatcherTimer _tick;
     private readonly List<CombatParser.FightRecord> _saved;
     private List<Entry> _shown = new();
@@ -46,20 +47,24 @@ public partial class HistoryWindow : Window
 
     public sealed record FightColumn(string Title, string Subtitle,
         List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> TakenRows,
-        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows)
+        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows,
+        List<StatRow> InfoRows, List<StatRow> DropRows)
     {
         public Visibility SelfSectionVisibility => SelfAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility PetSectionVisibility => PetAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility InfoSectionVisibility => InfoRows.Count > 0 || DropRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility DropsVisibility => DropRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public HistoryWindow(CombatParser parser, ConfigService config)
+    public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot)
     {
         InitializeComponent();
         DialogPlacement.Persist(this, "history");
         WindowTheme.ApplyDark(this);
         _parser = parser;
         _config = config;
+        _loot = loot;
         _saved = config.SavedFights; // the SHARED list — raid auto-keep writes here too
 
         FightsList.SelectionChanged += (_, _) => BuildColumns();
@@ -225,7 +230,42 @@ public partial class HistoryWindow : Window
             damage, healing, taken,
             AbilityRows(r.SelfAbilities, NameFg, dur, Swings(r.SelfAbilities)),
             AbilityRows(r.PetAbilities, NameFg, dur, Swings(r.PetAbilities)),
-            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0));
+            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0),
+            InfoRows(r), DropRows(r));
+    }
+
+    /// <summary>Fight context — recorded from the current build onward; older
+    /// fights simply have no rows here and the section stays collapsed.</summary>
+    private List<StatRow> InfoRows(CombatParser.FightRecord r)
+    {
+        var rows = new List<StatRow>();
+        if (r.Character.Length > 0)
+            rows.Add(new StatRow("Character",
+                r.Loadout.Length > 0 ? $"{r.Character} · {r.Loadout}" : r.Character, NameFg));
+        if (r.StanceAtStart.Length > 0)
+            rows.Add(new StatRow("Stance at pull", r.StanceAtStart, NameFg));
+        if (r.BuffsAtStart.Count > 0)
+            rows.Add(new StatRow("Buffs up", r.BuffsAtStart.Count.ToString(), NameFg,
+                string.Join(" · ", r.BuffsAtStart)));
+        foreach (var (mob, lvl) in r.EnemyLevels)
+            rows.Add(new StatRow(mob, $"Lvl {lvl}", EnemyFg));
+        return rows;
+    }
+
+    /// <summary>What the corpse gave — the loot log joined on the fight's own
+    /// enemies within a window after the kill (looting takes a while).</summary>
+    private List<StatRow> DropRows(CombatParser.FightRecord r)
+    {
+        var enemies = r.Damage.Where(x => x.Enemy).Select(x => x.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (enemies.Count == 0) return new();
+        var from = r.EndedAt.AddSeconds(-Math.Max(60, r.DurationSeconds));
+        var to = r.EndedAt.AddMinutes(10);
+        return _loot.Entries
+            .Where(l => l.When >= from && l.When <= to && enemies.Contains(l.Mob))
+            .OrderBy(l => l.When)
+            .Select(l => new StatRow(l.Item, l.Count > 1 ? $"×{l.Count}" : "", NameFg))
+            .ToList();
     }
 
     /// <summary>Format ability drill-down rows ("backstab  12,3 (1.100, 46%)")

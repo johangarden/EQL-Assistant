@@ -491,6 +491,35 @@ public sealed class ConfigService
         public bool? Locked { get; set; }
     }
 
+    // ---- per-character world state (last confirmed stance) --------------------
+    // The log only prints a stance on CHANGE, so a restart would forget it —
+    // this remembers the last "You assume a ... stance." per character.
+
+    public string CharStatePath => Path.Combine(ConfigDirectory, "char-state.json");
+
+    public Dictionary<string, string> LoadLastStances()
+    {
+        if (!File.Exists(CharStatePath)) return new(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            var d = JsonSerializer.Deserialize<Dictionary<string, string>>(
+                File.ReadAllText(CharStatePath), ReadOptions);
+            return d is null ? new(StringComparer.OrdinalIgnoreCase)
+                : new(d, StringComparer.OrdinalIgnoreCase);
+        }
+        catch { return new(StringComparer.OrdinalIgnoreCase); }
+    }
+
+    public void SaveLastStance(string character, string stance)
+    {
+        if (string.IsNullOrWhiteSpace(character)
+            || character.Equals("You", StringComparison.OrdinalIgnoreCase)) return;
+        var d = LoadLastStances();
+        d[character] = stance;
+        try { File.WriteAllText(CharStatePath, JsonSerializer.Serialize(d, WriteOptions)); }
+        catch { /* best-effort */ }
+    }
+
     // ---- global named respawns (repop timer) ---------------------------------
 
     public string RespawnsPath => Path.Combine(ConfigDirectory, "respawns.json");

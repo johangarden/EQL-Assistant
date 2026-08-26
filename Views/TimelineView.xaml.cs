@@ -30,7 +30,8 @@ public partial class TimelineView : UserControl
     private static readonly Brush SpanFill = Freeze(Color.FromArgb(0x55, 0xB3, 0x9D, 0xDB));
 
     private sealed record Group(string Title, Brush Header, Brush Mark, Brush CritMark,
-        List<Lane> Lanes, bool Spans = false);
+        List<Lane> Lanes, bool Spans = false, bool Casts = false,
+        string SpanText = "landed — runs");
     private sealed record Lane(string Ability, List<FightEvent> Events, double Total);
 
     public TimelineView()
@@ -94,7 +95,51 @@ public partial class TimelineView : UserControl
                 debuffLanes.Select(kv => new Lane(kv.Key, kv.Value, kv.Value.Count))
                     .OrderBy(l => l.Events[0].T).ToList(),
                 Spans: true));
+
+        // Your casting activity — a mark per begin-cast, interrupted casts dim.
+        var castLanes = ByAbility(FightStream.Cast);
+        if (castLanes.Count > 0)
+            groups.Add(new Group("Your casts",
+                Rgb(0x4F, 0xC3, 0xF7), Rgb(0x4F, 0xC3, 0xF7), Rgb(0xB3, 0xE5, 0xFC),
+                castLanes.Select(kv => new Lane(kv.Key, kv.Value, kv.Value.Count))
+                    .OrderBy(l => l.Events[0].T).ToList(),
+                Casts: true));
+
+        // CC on you — spans (T = landing, Amount = how long it held).
+        var ccLanes = ByAbility(FightStream.Condition);
+        if (ccLanes.Count > 0)
+            groups.Add(new Group("Crowd control on you",
+                Rgb(0xFF, 0x70, 0x43), Rgb(0xFF, 0x70, 0x43), Rgb(0xFF, 0xAB, 0x91),
+                ccLanes.Select(kv => new Lane(kv.Key, kv.Value, kv.Value.Count))
+                    .OrderBy(l => l.Events[0].T).ToList(),
+                Spans: true, SpanText: "held you for"));
+
+        // Stance — spans synthesized from the stance at pull + each change.
+        var stanceSegs = StanceSegments(rec);
+        if (stanceSegs.Count > 0)
+            groups.Add(new Group("Stance",
+                Rgb(0x90, 0xA4, 0xAE), Rgb(0x90, 0xA4, 0xAE), Rgb(0xCF, 0xD8, 0xDC),
+                stanceSegs.GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => new Lane(g.Key,
+                        g.Select(s => new FightEvent(s.T0, g.Key, s.T1 - s.T0, FightStream.Stance))
+                            .ToList(),
+                        g.Count()))
+                    .OrderBy(l => l.Events[0].T).ToList(),
+                Spans: true, SpanText: "active for"));
         return groups;
+
+        Dictionary<string, List<FightEvent>> ByAbility(FightStream stream)
+        {
+            var lanes = new Dictionary<string, List<FightEvent>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var e in rec.Events)
+            {
+                if (e.Stream != stream) continue;
+                if (!lanes.TryGetValue(e.Ability, out var list))
+                    lanes[e.Ability] = list = new List<FightEvent>();
+                list.Add(e);
+            }
+            return lanes;
+        }
 
         void Add(string title, FightStream stream, Brush mark, Brush crit)
         {
@@ -202,7 +247,7 @@ public partial class TimelineView : UserControl
 
         if (g.Spans)
         {
-            label.ToolTip = $"{lane.Ability} — landed {lane.Events.Count}×";
+            label.ToolTip = $"{lane.Ability} — {lane.Events.Count}×";
             foreach (var e in lane.Events)
             {
                 double x = Math.Min(width - 3, e.T * scale);
@@ -217,7 +262,7 @@ public partial class TimelineView : UserControl
                     Stroke = g.Mark,
                     StrokeThickness = 1,
                     ToolTip = e.Amount > 0
-                        ? $"{FormatDuration(e.T)} · {lane.Ability} landed — runs ~{e.Amount:0}s"
+                        ? $"{FormatDuration(e.T)} · {lane.Ability} {g.SpanText} ~{e.Amount:0}s"
                         : $"{FormatDuration(e.T)} · {lane.Ability} landed (duration unknown)",
                 };
                 ToolTipService.SetInitialShowDelay(span, 150);
@@ -237,7 +282,9 @@ public partial class TimelineView : UserControl
             if (e.Miss)
             {
                 mark = new Rectangle { Width = 2, Height = 7, Fill = MissFg };
-                mark.ToolTip = $"{when} · {lane.Ability} missed";
+                mark.ToolTip = g.Casts
+                    ? $"{when} · {lane.Ability} INTERRUPTED"
+                    : $"{when} · {lane.Ability} missed";
             }
             else if (e.Resist)
             {
@@ -253,7 +300,9 @@ public partial class TimelineView : UserControl
                     Height = Math.Min(LaneHeight - 2, h),
                     Fill = e.Crit ? g.CritMark : g.Mark,
                 };
-                mark.ToolTip = $"{when} · {lane.Ability} {e.Amount:N0}{(e.Crit ? " (Critical)" : "")}";
+                mark.ToolTip = g.Casts
+                    ? $"{when} · cast {lane.Ability}"
+                    : $"{when} · {lane.Ability} {e.Amount:N0}{(e.Crit ? " (Critical)" : "")}";
             }
 
             ToolTipService.SetInitialShowDelay(mark, 150);
@@ -415,14 +464,76 @@ public partial class TimelineView : UserControl
                 lines.Add($"• {a.Name} stuck only {100 - rr:0}% ({a.Resists} of {casts} resisted) — malo/tash territory, or a bad school matchup on this mob.");
         }
 
-        // 3 · Debuff coverage — the gaps are the story.
+        // 3 · Debuff coverage — the gaps are the story. When a debuff had real
+        //     downtime, say what the naked stretches actually cost you.
+        double takenEvented = rec.Events
+            .Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0).Sum(e => e.Amount);
         foreach (var g in rec.Events.Where(e => e.Stream == FightStream.Debuff)
                      .GroupBy(e => e.Ability, StringComparer.OrdinalIgnoreCase))
         {
             double covered = CoverageSeconds(g.Select(e => (e.T, e.Amount)), dur);
-            lines.Add(covered > 0
-                ? $"• {g.Key} was up ~{100.0 * covered / dur:0}% of the fight ({FormatDuration(covered)} of {FormatDuration(dur)})."
-                : $"• {g.Key} landed {g.Count()}× (duration unknown — coverage not computable).");
+            if (covered <= 0)
+            {
+                lines.Add($"• {g.Key} landed {g.Count()}× (duration unknown — coverage not computable).");
+                continue;
+            }
+            string line = $"• {g.Key} was up ~{100.0 * covered / dur:0}% of the fight ({FormatDuration(covered)} of {FormatDuration(dur)}).";
+            double gapSec = dur - covered;
+            if (takenEvented > 0 && gapSec >= 3)
+            {
+                var spans = MergedSpans(g.Select(e => (e.T, e.Amount)), dur);
+                double inGaps = rec.Events
+                    .Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0
+                                && !spans.Any(s => e.T >= s.Start && e.T <= s.End))
+                    .Sum(e => e.Amount);
+                double share = 100.0 * inGaps / takenEvented;
+                double gapShare = 100.0 * gapSec / dur;
+                if (inGaps > 0 && share > gapShare + 10)
+                    line += $" The gaps bit: {share:0}% of the damage you took landed in that {FormatDuration(gapSec)} without it.";
+            }
+            lines.Add(line);
+        }
+
+        // 3b · CC on you — how long you were a passenger, and what it cost.
+        var cc = rec.Events.Where(e => e.Stream == FightStream.Condition && e.Amount > 0).ToList();
+        if (cc.Count > 0)
+        {
+            double held = CoverageSeconds(cc.Select(e => (e.T, e.Amount)), dur);
+            string kinds = string.Join(", ", cc.GroupBy(e => e.Ability, StringComparer.OrdinalIgnoreCase)
+                .Select(k => $"{k.Key.ToLowerInvariant()} {k.Count()}×"));
+            string line = $"• CC held you for {FormatDuration(held)} ({100.0 * held / dur:0}% of the fight) — {kinds}.";
+            if (takenEvented > 0)
+            {
+                var spans = MergedSpans(cc.Select(e => (e.T, e.Amount)), dur);
+                double whileHeld = rec.Events
+                    .Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0
+                                && spans.Any(s => e.T >= s.Start && e.T <= s.End))
+                    .Sum(e => e.Amount);
+                if (whileHeld > 0)
+                    line += $" {100.0 * whileHeld / takenEvented:0}% of the damage you took landed while you were held.";
+            }
+            lines.Add(line);
+        }
+
+        // 3c · Casts that broke.
+        var broken = rec.Events.Where(e => e.Stream == FightStream.Cast && e.Miss)
+            .OrderBy(e => e.T).ToList();
+        if (broken.Count > 0)
+            lines.Add(broken.Count == 1
+                ? $"• Your {broken[0].Ability} was interrupted at {FormatDuration(broken[0].T)}."
+                : $"• {broken.Count} of your casts were interrupted (first: {broken[0].Ability} at {FormatDuration(broken[0].T)}).");
+
+        // 3d · Stance — where the fight was actually spent.
+        var stanceSegs = StanceSegments(rec);
+        if (stanceSegs.Count > 0)
+        {
+            var byStance = stanceSegs.GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(k => (Name: k.Key, Sec: k.Sum(s => s.T1 - s.T0)))
+                .OrderByDescending(x => x.Sec).ToList();
+            int switches = rec.Events.Count(e => e.Stream == FightStream.Stance);
+            lines.Add(switches == 0
+                ? $"• Entire fight in {byStance[0].Name} stance."
+                : $"• Mostly {byStance[0].Name} stance ({100.0 * byStance[0].Sec / dur:0}%) — switched {switches}× mid-fight.");
         }
 
         // 4 · Who kept you alive, and the hit that nearly didn't let them.
@@ -440,29 +551,47 @@ public partial class TimelineView : UserControl
             : "Nothing to analyse — this fight recorded no incoming data.";
     }
 
+    /// <summary>The fight cut into stance stretches: the stance at pull runs
+    /// until the first change, each change until the next, the last to the end.
+    /// Stretches before any known stance are simply absent — never guessed.</summary>
+    internal static List<(string Name, double T0, double T1)> StanceSegments(FightRecord rec)
+    {
+        double dur = Math.Max(1, rec.DurationSeconds);
+        var segs = new List<(string, double, double)>();
+        string cur = rec.StanceAtStart;
+        double t0 = 0;
+        foreach (var c in rec.Events.Where(e => e.Stream == FightStream.Stance).OrderBy(e => e.T))
+        {
+            if (cur.Length > 0 && c.T > t0) segs.Add((cur, t0, c.T));
+            cur = c.Ability;
+            t0 = c.T;
+        }
+        if (cur.Length > 0 && dur > t0) segs.Add((cur, t0, dur));
+        return segs;
+    }
+
     /// <summary>Union length of [T, T+Dur] spans clipped to the fight.</summary>
-    internal static double CoverageSeconds(IEnumerable<(double T, double Dur)> spans, double fightDur)
+    internal static double CoverageSeconds(IEnumerable<(double T, double Dur)> spans, double fightDur) =>
+        MergedSpans(spans, fightDur).Sum(s => s.End - s.Start);
+
+    /// <summary>[T, T+Dur] spans clipped to the fight, merged where they overlap.</summary>
+    internal static List<(double Start, double End)> MergedSpans(
+        IEnumerable<(double T, double Dur)> spans, double fightDur)
     {
         var list = spans.Where(s => s.Dur > 0)
             .Select(s => (Start: Math.Max(0, s.T), End: Math.Min(fightDur, s.T + s.Dur)))
             .Where(s => s.End > s.Start)
             .OrderBy(s => s.Start)
             .ToList();
-        double total = 0, curS = 0, curE = -1;
+        var merged = new List<(double Start, double End)>();
         foreach (var s in list)
         {
-            if (s.Start > curE)
-            {
-                if (curE > curS) total += curE - curS;
-                (curS, curE) = (s.Start, s.End);
-            }
+            if (merged.Count > 0 && s.Start <= merged[^1].End)
+                merged[^1] = (merged[^1].Start, Math.Max(merged[^1].End, s.End));
             else
-            {
-                curE = Math.Max(curE, s.End);
-            }
+                merged.Add(s);
         }
-        if (curE > curS) total += curE - curS;
-        return total;
+        return merged;
     }
 
     // ---- helpers ---------------------------------------------------------------

@@ -213,7 +213,7 @@ public partial class App : Application
             // Fight History embeds the timeline view — constructing it proves
             // the UserControl resolves its theme resources on its own (a
             // parse-time StaticResource crash once hid exactly here).
-            var histWin = new Views.HistoryWindow(cp, cs);
+            var histWin = new Views.HistoryWindow(cp, cs, new LootTracker(cs));
             histWin.Show();
             histWin.UpdateLayout();
             histWin.Close();
@@ -297,16 +297,37 @@ public partial class App : Application
             fd.OtherLandingLookup = s => s.StartsWith("Drowsy", StringComparison.OrdinalIgnoreCase)
                 ? (" looks drowsy.", true) : null;
             fd.DotDurationLookup = s => s == "Drowsy" ? 48 : null;
+            fd.LoadoutLookup = () => "Raid SHD";
+            fd.ActiveBuffsLookup = () => new[] { "Spirit of Wolf", "Vampiric Embrace" };
+            fd.CurrentStance = "defensive"; // the persisted seed
             var fb = new DateTime(2026, 8, 20, 21, 0, 0);
             string FT(int s) => fb.AddSeconds(s).ToString("ddd MMM dd HH:mm:ss yyyy",
                 System.Globalization.CultureInfo.InvariantCulture);
+            fd.Replay($"[{FT(-30)}] Lady Vox scowls at you, ready to attack -- looks like it would wipe the floor with you! (Lvl: 55)");
             fd.Replay($"[{FT(0)}] Lady Vox hit Johan for 250 points of cold damage by Frost Breath.");
+            fd.NoteCondition("STUNNED", true, fb.AddSeconds(2));
             fd.Replay($"[{FT(3)}] You begin casting Drowsy.");
             fd.Replay($"[{FT(5)}] A dragon looks drowsy.");
+            fd.Replay($"[{FT(6)}] You assume an offensive stance.");
+            fd.NoteCondition("STUNNED", false, fb.AddSeconds(7));
+            fd.Replay($"[{FT(7)}] Your Siphon Life spell is interrupted.");
             fd.Replay($"[{FT(8)}] You resist Lady Vox's Frost Breath!");
             fd.Replay($"[{FT(10)}] Lady Vox hit Johan for 250 points of cold damage by Frost Breath.");
             fd.Tick(fb.AddSeconds(60)); // idle -> archive
             var fdRec = fd.History[0];
+            Check("fight: character, loadout, stance and buffs frozen at the pull",
+                fdRec.Character == "Johan" && fdRec.Loadout == "Raid SHD"
+                && fdRec.StanceAtStart == "defensive"
+                && fdRec.BuffsAtStart.Contains("Spirit of Wolf"));
+            Check("fight: the earlier /con stamps the enemy's level",
+                fdRec.EnemyLevels.TryGetValue("Lady Vox", out int lvVox) && lvVox == 55);
+            Check("fight: stance change, cast and interrupt ride the timeline",
+                fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Stance, Ability: "offensive" })
+                && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Ability: "Drowsy", Miss: false })
+                && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Miss: true }));
+            Check("fight: the stun becomes a condition span (landing -> release)",
+                fdRec.Events.Any(e => e.Stream == CombatParser.FightStream.Condition
+                    && e.Ability == "Stunned" && Math.Abs(e.Amount - 5) < 0.01));
             Check("fight: the DD line's school is kept, verbatim from the log",
                 fdRec.Schools.TryGetValue("Frost Breath", out string? fs) && fs == "cold");
             Check("fight: a debuff landing becomes a timeline span with its duration",
@@ -319,6 +340,10 @@ public partial class App : Application
                 && fdTxt.Contains("resisted 1 of 3"));
             Check("analysis: reports the debuff coverage",
                 fdTxt.Contains("Drowsy was up"));
+            Check("analysis: CC, interrupted cast and stance each get a line",
+                fdTxt.Contains("CC held you for 0:05")
+                && fdTxt.Contains("Siphon Life was interrupted")
+                && fdTxt.Contains("Mostly defensive stance") && fdTxt.Contains("switched 1×"));
             Check("analysis: coverage math merges overlaps and clips",
                 Math.Abs(Views.TimelineView.CoverageSeconds(
                     new[] { (0.0, 10.0), (5.0, 10.0) }, 30) - 15) < 0.01

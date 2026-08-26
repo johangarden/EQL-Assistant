@@ -106,6 +106,22 @@
                                     <TextBlock Text="{Binding Subtitle}" Foreground="#7F93AD" FontSize="11"
                                                Margin="0,1,0,0" TextWrapping="Wrap"/>
 
+                                    <!-- ============ FIGHT CONTEXT ============ -->
+                                    <Border Style="{StaticResource SectionCard}"
+                                            Visibility="{Binding InfoSectionVisibility}">
+                                        <StackPanel>
+                                            <TextBlock Text="Fight" Foreground="#8FA6C4"
+                                                       Style="{StaticResource SectionHeader}"/>
+                                            <ItemsControl ItemsSource="{Binding InfoRows}"
+                                                          ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                            <StackPanel Visibility="{Binding DropsVisibility}">
+                                                <TextBlock Text="Dropped" Style="{StaticResource SubLabel}"/>
+                                                <ItemsControl ItemsSource="{Binding DropRows}" Margin="8,0,0,0"
+                                                              ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
                                     <!-- ============ DAMAGE DEALT ============ -->
                                     <Border Style="{StaticResource SectionCard}">
                                         <StackPanel>

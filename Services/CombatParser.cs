@@ -106,6 +106,15 @@ public sealed class CombatParser
         /// — the Enemy DoTs panel's own signal). Amount carries the known
         /// duration in seconds (0 = unknown) so the timeline can draw a span.</summary>
         Debuff = 6,
+        /// <summary>Crowd control ON YOU (stun/fear/charm/mez), recorded when it
+        /// ENDS: T = when it landed, Amount = how long it held — a span.</summary>
+        Condition = 7,
+        /// <summary>Your own begin-cast (Amount 0). Miss = the cast was
+        /// interrupted ("Your X spell is interrupted.").</summary>
+        Cast = 8,
+        /// <summary>You changed stance mid-fight ("You assume a defensive
+        /// stance."). Ability = the stance; pair with StanceAtStart for spans.</summary>
+        Stance = 9,
     }
 
     /// <summary>
@@ -149,6 +158,26 @@ public sealed class CombatParser
         /// <summary>Ability → damage school, from the log's own DD lines
         /// ("points of cold damage"). Empty on fights kept before capture.</summary>
         public Dictionary<string, string> Schools { get; init; } =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        // Fight context (added later — empty on fights kept before capture).
+
+        /// <summary>Who fought (the log character), for multi-char histories.</summary>
+        public string Character { get; init; } = "";
+
+        /// <summary>The loadout active when the fight began.</summary>
+        public string Loadout { get; init; } = "";
+
+        /// <summary>The stance held when the fight began ("" = never observed).
+        /// Stance CHANGES during the fight ride Events as <see cref="FightStream.Stance"/>.</summary>
+        public string StanceAtStart { get; init; } = "";
+
+        /// <summary>Names of the trigger bars/cells running when the fight began
+        /// — the "did I go in buffed" comparison across kills.</summary>
+        public List<string> BuffsAtStart { get; init; } = new();
+
+        /// <summary>Enemy → level, from /con lines seen this session ("(Lvl: N)").</summary>
+        public Dictionary<string, int> EnemyLevels { get; init; } =
             new(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -560,6 +589,101 @@ public sealed class CombatParser
         _events.Add(new PendingEvent(time, ability, amount, stream, crit, miss, resist));
     }
 
+    // ---- fight context ---------------------------------------------------------
+    // World state that outlives any one fight (stance, con levels, open CC) plus
+    // per-fight snapshots taken the moment combat starts. All of it is data the
+    // log gives away for free — record now, build rules on it later.
+
+    /// <summary>Trigger-bar names running right now (wired to the TriggerEngine).</summary>
+    public Func<IReadOnlyList<string>>? ActiveBuffsLookup { get; set; }
+
+    /// <summary>The active loadout's name (wired to the config).</summary>
+    public Func<string>? LoadoutLookup { get; set; }
+
+    /// <summary>Last stance the log confirmed ("You assume a defensive stance."
+    /// only prints on SUCCESS — the "begin to change" line also fires on
+    /// failures and is ignored). Seed from persistence at startup; "" = never
+    /// observed for this character.</summary>
+    public string CurrentStance { get; set; } = "";
+
+    /// <summary>Raised when the log confirms a stance change (persist it).</summary>
+    public event Action<string>? StanceChanged;
+
+    private static readonly Regex StanceRx = new(
+        @"^You assume an? (?<s>.+?) stance\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // Own-cast interruption — same confirmed form the condition badges use
+    // (a pet's cast says "Xarer's ..." and never matches "Your ").
+    private static readonly Regex InterruptRx = new(
+        @"^Your (?<s>.+?) spell is interrupted\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // The /con line, confirmed in real logs: "A zol ghoul knight scowls at
+    // you, ready to attack -- ... (Lvl: 40)" — mob first, a small set of
+    // regard verbs, "(Lvl: N)" anchoring the tail.
+    private static readonly Regex ConRx = new(
+        @"^(?<mob>.+?) (?:scowls at you|glowers at you|glares at you|regards you"
+        + @"|looks upon you|judges you|kindly considers you)\b.*\(Lvl: (?<lvl>\d+)\)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>Mob → level from /con lines, session-wide (a con outlives fights).</summary>
+    private readonly Dictionary<string, int> _conLevels = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>CC currently holding YOU (kind → since). World state — fed by the
+    /// ConditionWatcher's derived landing/wear-off lines, survives fight resets.</summary>
+    private readonly Dictionary<string, DateTime> _openConditions = new(StringComparer.Ordinal);
+
+    // Snapshots frozen at fight start.
+    private string _charAtStart = "";
+    private string _loadoutAtStart = "";
+    private string _stanceAtStart = "";
+    private List<string> _buffsAtStart = new();
+
+    /// <summary>CC state change on YOU (from the ConditionWatcher — its landing
+    /// lines are library-derived, so this parser never guesses them). The span
+    /// is recorded when the condition ENDS; open ones close at archive.</summary>
+    public void NoteCondition(string kind, bool started, DateTime time)
+    {
+        string title = ConditionTitle(kind);
+        if (started)
+        {
+            // A re-land while held: close the running span first.
+            if (_openConditions.TryGetValue(title, out var prev) && _active)
+                NoteConditionSpan(title, prev, time);
+            _openConditions[title] = time;
+            return;
+        }
+        if (!_openConditions.Remove(title, out var since)) return;
+        if (_active) NoteConditionSpan(title, since, time);
+    }
+
+    private void NoteConditionSpan(string title, DateTime since, DateTime until)
+    {
+        var start = since > _start ? since : _start; // clamp CC that predates the pull
+        double dur = (until - start).TotalSeconds;
+        if (dur > 0) Note(start, title, dur, FightStream.Condition);
+    }
+
+    private static string ConditionTitle(string kind) => kind.ToUpperInvariant() switch
+    {
+        "STUNNED" => "Stunned",
+        "FEARED" => "Feared",
+        "CHARMED" => "Charmed",
+        "MEZZED" => "Mezzed",
+        _ => kind.Length > 1 ? char.ToUpperInvariant(kind[0]) + kind[1..].ToLowerInvariant() : kind,
+    };
+
+    /// <summary>Con levels for the enemies this fight actually recorded.</summary>
+    private Dictionary<string, int> MatchConLevels(List<Row> damage)
+    {
+        var levels = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in damage.Where(r => r.Enemy))
+            if (_conLevels.TryGetValue(row.Name, out int lvl))
+                levels[row.Name] = lvl;
+        return levels;
+    }
+
     // ---- death recap ------------------------------------------------------------
     // Rolling window of the last hits/heals on YOU, snapshotted when a death
     // line appears so the recap window can show what killed you.
@@ -864,6 +988,42 @@ public sealed class CombatParser
             // per-mob bar even when the spell never ticks.
             if (OtherLandingLookup?.Invoke(castName) is { Detrimental: true } ol)
                 _pendingEnemyLanding = (castName, ol.Suffix, time);
+            // Mid-fight, the cast itself rides the timeline (casting activity
+            // lane; a cast never STARTS a fight — buffing isn't combat).
+            if (_active) Note(time, PoolSpell(castName), 0, FightStream.Cast);
+            return;
+        }
+
+        // Stance changes — "You assume a defensive stance." only prints on
+        // SUCCESS ("You begin to change your stance." also fires on failed
+        // attempts, so only the assume line is trusted).
+        if (body.StartsWith("You assume ", StringComparison.Ordinal)
+            && StanceRx.Match(body) is { Success: true } st)
+        {
+            string stance = st.Groups["s"].Value;
+            CurrentStance = stance;
+            StanceChanged?.Invoke(stance);
+            if (_active) Note(time, stance, 0, FightStream.Stance);
+            return;
+        }
+
+        // Your cast broke — the interrupted cast rides the casting lane.
+        if (body.StartsWith("Your ", StringComparison.Ordinal)
+            && body.EndsWith("interrupted.", StringComparison.Ordinal)
+            && InterruptRx.Match(body) is { Success: true } intr)
+        {
+            if (_active) Note(time, PoolSpell(intr.Groups["s"].Value), 0,
+                FightStream.Cast, miss: true);
+            return;
+        }
+
+        // /con lines carry the mob's level — remembered session-wide so the
+        // fight can stamp "Lady Vox (Lvl 55)" even when the con came earlier.
+        if (body.Contains("(Lvl: ", StringComparison.Ordinal)
+            && ConRx.Match(body) is { Success: true } con)
+        {
+            _conLevels[con.Groups["mob"].Value.Trim()] =
+                int.Parse(con.Groups["lvl"].Value);
             return;
         }
 
@@ -1083,6 +1243,10 @@ public sealed class CombatParser
     private void Archive()
     {
         if (!HasData) return;
+        // CC still holding at the freeze closes at the fight's last event —
+        // its wear-off line belongs to the world, not this record.
+        foreach (var (kind, since) in _openConditions)
+            NoteConditionSpan(kind, since, _last);
         var rec = new FightRecord
         {
             Label = string.IsNullOrEmpty(TargetLabel) ? "fight" : TargetLabel,
@@ -1105,7 +1269,12 @@ public sealed class CombatParser
                 .ToList(),
             EventsTruncated = _eventsTruncated,
             Schools = new Dictionary<string, string>(_spellSchools, StringComparer.OrdinalIgnoreCase),
+            Character = _charAtStart,
+            Loadout = _loadoutAtStart,
+            StanceAtStart = _stanceAtStart,
+            BuffsAtStart = new List<string>(_buffsAtStart),
         };
+        foreach (var (mob, lvl) in MatchConLevels(rec.Damage)) rec.EnemyLevels[mob] = lvl;
         _history.Insert(0, rec);
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
         _archivedActiveSec += rec.DurationSeconds; // session PPM denominator
@@ -1360,6 +1529,12 @@ public sealed class CombatParser
             _start = time;
             _active = true;
             _fightZone = CurrentZone; // the zone where the fight began
+            // Freeze the fight's context NOW — a mid-fight loadout swap or
+            // stance dance must not rewrite what you went in with.
+            _charAtStart = Self();
+            _loadoutAtStart = LoadoutLookup?.Invoke() ?? "";
+            _stanceAtStart = CurrentStance;
+            _buffsAtStart = ActiveBuffsLookup?.Invoke()?.ToList() ?? new List<string>();
         }
         if (time > _last) _last = time;
         if (time < _start) _start = time;
