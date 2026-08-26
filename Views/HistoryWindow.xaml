@@ -56,7 +56,16 @@
                 <ListBox x:Name="FightsList"
                          SelectionMode="Extended" FontSize="12"
                          HorizontalContentAlignment="Stretch"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <!-- Ellipsis, not a hard clip: a row cut mid-glyph leaves a
+                         one-pixel sliver that reads like a hidden control. -->
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding}"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
             </DockPanel>
 
             <!-- Details = breakdown cards up top, the fight's full timeline
