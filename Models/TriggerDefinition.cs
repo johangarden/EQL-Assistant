@@ -75,6 +75,11 @@ public sealed class TriggerDefinition
     /// </summary>
     public bool RemindWhenMissing { get; set; }
 
+    /// <summary>A PERMANENT buff (Vampiric Embrace): once up it never expires
+    /// — the bar shows ∞ until death, a wear-off line, or a loadout switch.
+    /// Duration and auto-learn don't apply. Pairs well with RemindWhenMissing.</summary>
+    public bool Permanent { get; set; }
+
     /// <summary>
     /// Optional cooldown-reducer regex: while this bar is running, every line
     /// that matches cuts <see cref="ReduceSeconds"/> off the remaining time

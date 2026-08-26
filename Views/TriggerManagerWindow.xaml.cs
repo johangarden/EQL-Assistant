@@ -742,11 +742,26 @@ public partial class TriggerManagerWindow : Window
                 : $"Off — any matching line starts the bar, including someone else's cast landing on you.{sharedNote}";
     }
 
+    private void Permanent_Changed(object sender, RoutedEventArgs e) => UpdateDurationUx();
+
     /// <summary>Auto-learn owns the duration: the field is disabled and the
-    /// currently-learned value shows beside it. Manual re-enables the field.</summary>
+    /// currently-learned value shows beside it. Manual re-enables the field.
+    /// A PERMANENT buff owns it harder: no duration at all, the bar shows ∞.</summary>
     private void UpdateDurationUx()
     {
         if (DurationBox is null || DurationEffectiveText is null) return;
+
+        bool permanent = PermanentCheck.IsChecked == true
+                         && PermanentCheck.Visibility == Visibility.Visible;
+        DurationAutoCheck.IsEnabled = !permanent;
+        DurationForgetBtn.IsEnabled = !permanent;
+        if (permanent)
+        {
+            DurationBox.IsEnabled = false;
+            DurationEffectiveText.Text = "permanent — the bar shows ∞ until death";
+            DurationForgetBtn.Visibility = Visibility.Collapsed;
+            return;
+        }
 
         bool auto = DurationAutoCheck.IsChecked == true
                     && DurationAutoCheck.Visibility == Visibility.Visible;
@@ -1027,6 +1042,7 @@ public partial class TriggerManagerWindow : Window
         // Auto-learn is a spell-duration concept — respawn timers don't learn.
         DurationAutoCheck.Visibility = V(bars || matrix);
         DurationAutoHint.Visibility = V(bars || matrix);
+        PermanentCheck.Visibility = V(bars || matrix);
 
         // Cast-anchoring is likewise a spell concept: repop death lines and
         // flash patterns fire on any match.

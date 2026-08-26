@@ -90,6 +90,14 @@ public sealed class MatrixCellViewModel : ViewModelBase
         if (!IsActive) return false;
 
         double remaining = (_endTimeLocal - now).TotalSeconds;
+        // A permanent buff's cell (deadline = MaxValue): lit, ∞, no warning.
+        if (remaining > 31_000_000)
+        {
+            RemainingSeconds = remaining;
+            RemainingText = "∞";
+            IsWarning = false;
+            return false;
+        }
         if (remaining <= 0)
         {
             Deactivate();

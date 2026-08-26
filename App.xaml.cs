@@ -283,6 +283,29 @@ public partial class App : Application
             engine.ProcessLine($"[{now}] Your Spirit of Wolf spell has worn off.");
             Check("SoW worn off -> 0 bars", engine.Bars.Count == 0);
 
+            // ---- permanent buffs (Vampiric Embrace): ∞ until death, a
+            // wear-off line, or a loadout switch — never a countdown.
+            var permCfg = new Models.AppConfig();
+            permCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "ve", Name = "Vampiric Embrace", Category = "Buffs",
+                StartPattern = @"Your hand begins to glow\.",
+                Permanent = true, RemindWhenMissing = true, DurationSeconds = 0,
+            });
+            foreach (var t in permCfg.Triggers) ConfigService.CompileOne(t);
+            var perm = new TriggerEngine(permCfg, new AlertService { Muted = true });
+            perm.ProcessLine($"[{now}] Your hand begins to glow.");
+            Check("permanent: the bar lands as ∞, never expiring",
+                perm.Bars.Count == 1
+                && perm.Bars[0] is { IsPermanent: true, RemainingText: "∞", IsExpired: false });
+            perm.CheckMissing(DateTime.Now.AddHours(6));
+            Check("permanent: hours later it is still not 'missing'",
+                perm.Reminders.Count == 0 && perm.Bars.Count == 1);
+            perm.ProcessLine($"[{now}] You have been slain by a gnoll reaver!");
+            perm.CheckMissing(DateTime.Now.AddSeconds(1));
+            Check("permanent: death strips it and the rebuff reminder takes over",
+                perm.Bars.Count == 0 && perm.Reminders.Count == 1);
+
             // ---- rebuff reminders: repeat at the interval; after 5 spoken
             // warnings the interval DOUBLES (ignored nagging earns quieter
             // nagging), snapping back when the buff is reapplied.

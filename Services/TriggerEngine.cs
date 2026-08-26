@@ -380,7 +380,9 @@ public sealed class TriggerEngine
 
         if (trigger.StartRegex is { } startRx && startRx.IsMatch(body)
             && AnchorAllows(trigger, eventTime))
-            cell.Activate(eventTime.AddSeconds(EffectiveDuration(trigger)));
+            cell.Activate(trigger.Permanent
+                ? DateTime.MaxValue
+                : eventTime.AddSeconds(EffectiveDuration(trigger)));
     }
 
     private void StartOrRefresh(TriggerDefinition trigger, Match match, DateTime eventTime)
@@ -389,7 +391,7 @@ public sealed class TriggerEngine
 
         string key = BuildKey(trigger, match);
         double duration = EffectiveDuration(trigger);
-        DateTime end = eventTime.AddSeconds(duration);
+        DateTime end = trigger.Permanent ? DateTime.MaxValue : eventTime.AddSeconds(duration);
 
         if (_active.TryGetValue(key, out var existing))
         {
@@ -408,7 +410,8 @@ public sealed class TriggerEngine
             al.WarnAt, al.OnFaded, al.WarnSpeak, al.WarnSound,
             al.FadedSpeak, al.FadedSound,
             waitsForFade: trigger.EndRegex is not null,
-            learnsDuration: trigger.DurationAuto);
+            learnsDuration: trigger.DurationAuto && !trigger.Permanent,
+            permanent: trigger.Permanent);
 
         _active[key] = vm;
         InsertSorted(vm);
