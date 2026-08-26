@@ -53,7 +53,8 @@ public partial class TimelineView : UserControl
             $"{rec.EndedAt:dd MMM HH:mm:ss} · {FormatDuration(rec.DurationSeconds)}{zone} · " +
             $"{rec.Events.Count} events{truncated} — hover a mark for details.";
 
-        AnalysisPanel.Visibility = Visibility.Collapsed;
+        AnalysisText.Text = BuildAnalysis(rec);
+        AnalysisPanel.Visibility = Visibility.Visible;
         Visibility = Visibility.Visible;
         Rebuild();
     }
@@ -369,14 +370,7 @@ public partial class TimelineView : UserControl
         }
     }
 
-    // ---- analysis (on demand — a button, never a background job) ---------------
-
-    private void Analyse_Click(object sender, RoutedEventArgs e)
-    {
-        if (_rec is null) return;
-        AnalysisText.Text = BuildAnalysis(_rec);
-        AnalysisPanel.Visibility = Visibility.Visible;
-    }
+    // ---- analysis (runs once per visited fight — ShowFight no-ops on repeats) --
 
     /// <summary>Rules over ONE fight's own numbers — every claim cites them,
     /// and what the fight didn't record is said, not guessed.</summary>

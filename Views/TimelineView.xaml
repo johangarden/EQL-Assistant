@@ -15,19 +15,13 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <DockPanel Margin="0,0,0,2">
-            <Button DockPanel.Dock="Right" Content="⚡ Analyse fight" Width="120"
-                    Style="{StaticResource PrimaryBtn}" Click="Analyse_Click"
-                    VerticalAlignment="Top"/>
-            <StackPanel>
-                <TextBlock x:Name="TitleText" Foreground="#C9D4E3" FontWeight="Bold" FontSize="13"
-                           TextTrimming="CharacterEllipsis"/>
-                <TextBlock x:Name="SubtitleText" Style="{StaticResource Hint}" Margin="0,1,0,0"
-                           TextWrapping="Wrap"/>
-            </StackPanel>
-        </DockPanel>
+        <TextBlock x:Name="TitleText" Foreground="#C9D4E3" FontWeight="Bold" FontSize="13"
+                   TextTrimming="CharacterEllipsis"/>
+        <TextBlock x:Name="SubtitleText" Style="{StaticResource Hint}" Margin="0,1,0,0"
+                   TextWrapping="Wrap"/>
 
-        <!-- On-demand analysis: rules over this fight's own numbers. -->
+        <!-- ⚡ analysis: rules over this fight's own numbers, run on visit —
+             a few LINQ passes over ≤4000 events, cheaper than the lanes. -->
         <Border x:Name="AnalysisPanel" Visibility="Collapsed" Background="#10182A"
                 BorderBrush="#2A3A5C" BorderThickness="1" CornerRadius="6"
                 Padding="10,8" Margin="0,6,0,2">
