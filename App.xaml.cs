@@ -283,6 +283,44 @@ public partial class App : Application
             engine.ProcessLine($"[{now}] Your Spirit of Wolf spell has worn off.");
             Check("SoW worn off -> 0 bars", engine.Bars.Count == 0);
 
+            // ---- rebuff reminders: repeat at the interval; after 5 spoken
+            // warnings the interval DOUBLES (ignored nagging earns quieter
+            // nagging), snapping back when the buff is reapplied.
+            var remCfg = new Models.AppConfig { Overlay = { RemindIntervalSeconds = 10 } };
+            remCfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "sow", Name = "Spirit of Wolf", Category = "Buffs",
+                StartPattern = @"You feel the spirit of wolf enter you\.",
+                EndPattern = @"Your Spirit of Wolf spell has worn off\.",
+                DurationSeconds = 1800, RemindWhenMissing = true,
+            });
+            foreach (var t in remCfg.Triggers) ConfigService.CompileOne(t);
+            var rem = new TriggerEngine(remCfg, new AlertService { Muted = true });
+            var t0 = DateTime.Now;
+            string RT(double s) => t0.AddSeconds(s).ToString("ddd MMM dd HH:mm:ss yyyy",
+                System.Globalization.CultureInfo.InvariantCulture);
+            rem.ProcessLine($"[{RT(0)}] You feel the spirit of wolf enter you.");
+            rem.ProcessLine($"[{RT(5)}] Your Spirit of Wolf spell has worn off.");
+            rem.CheckMissing(t0.AddSeconds(6)); // missing appears: warning #1
+            for (int i = 1; i <= 4; i++) rem.CheckMissing(t0.AddSeconds(6 + i * 10));
+            Check("reminders: five warnings at the configured cadence",
+                rem.RemindCountFor("sow") == 5 && rem.Reminders.Count == 1);
+            rem.CheckMissing(t0.AddSeconds(6 + 5 * 10)); // +10s: inside the doubled interval
+            Check("reminders: after five, the interval doubles",
+                rem.RemindCountFor("sow") == 5);
+            rem.CheckMissing(t0.AddSeconds(6 + 6 * 10)); // +20s since #5: speaks
+            Check("reminders: the doubled cadence still speaks",
+                rem.RemindCountFor("sow") == 6);
+            rem.ProcessLine($"[{RT(70)}] You feel the spirit of wolf enter you.");
+            rem.CheckMissing(t0.AddSeconds(71));
+            Check("reminders: rebuffing clears the bar and resets the backoff",
+                rem.RemindCountFor("sow") == 0 && rem.Reminders.Count == 0);
+            rem.ProcessLine($"[{RT(80)}] Your Spirit of Wolf spell has worn off.");
+            rem.CheckMissing(t0.AddSeconds(81));
+            rem.CheckMissing(t0.AddSeconds(91)); // 10s again — the configured interval rules
+            Check("reminders: the next outage starts at the configured interval",
+                rem.RemindCountFor("sow") == 2);
+
             engine.ProcessLine($"[{now}] Bob begins to regenerate.");
             Check("HoT target capture -> 1 bar", engine.Bars.Count == 1);
             Check("HoT bar labelled with target", engine.Bars.Count == 1 && engine.Bars[0].Name == "HoT — Bob");

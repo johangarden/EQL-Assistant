@@ -22,6 +22,7 @@ public sealed class TriggerEngine
     private readonly Dictionary<string, TimerBarViewModel> _active = new();
     private readonly Dictionary<string, TimerBarViewModel> _missing = new(); // keyed by trigger id
     private readonly Dictionary<string, DateTime> _lastRemind = new();
+    private readonly Dictionary<string, int> _remindCount = new();
     private readonly HashSet<string> _seen = new();
 
     private List<TriggerDefinition> _triggers;
@@ -209,6 +210,7 @@ public sealed class TriggerEngine
             {
                 if (_missing.Remove(id, out var mb)) Reminders.Remove(mb);
                 _lastRemind.Remove(id);
+                _remindCount.Remove(id);
             }
         }
     }
@@ -235,6 +237,7 @@ public sealed class TriggerEngine
         _active.Clear();
         _missing.Clear();
         _lastRemind.Clear();
+        _remindCount.Clear();
         _seen.Clear();
         Bars.Clear();
         Reminders.Clear();
@@ -558,7 +561,10 @@ public sealed class TriggerEngine
         }
     }
 
-    private void CheckMissing(DateTime now)
+    /// <summary>Test hook: spoken-reminder count for one trigger this outage.</summary>
+    internal int RemindCountFor(string triggerId) => _remindCount.GetValueOrDefault(triggerId);
+
+    internal void CheckMissing(DateTime now)
     {
         foreach (var t in _triggers)
         {
@@ -572,8 +578,16 @@ public sealed class TriggerEngine
             {
                 if (_missing.Remove(t.Id, out var mb)) Reminders.Remove(mb);
                 _lastRemind.Remove(t.Id);
+                _remindCount.Remove(t.Id); // rebuffed: the backoff resets
                 continue;
             }
+
+            // Ignored nagging earns quieter nagging (owner ruling): after 5
+            // spoken warnings the interval DOUBLES, and snaps back to the
+            // configured value the moment the buff is reapplied. The red bar
+            // stays regardless — only the voice backs off.
+            double interval = _remindInterval
+                * (_remindCount.GetValueOrDefault(t.Id) >= 5 ? 2 : 1);
 
             if (!_missing.ContainsKey(t.Id))
             {
@@ -583,12 +597,14 @@ public sealed class TriggerEngine
                 Reminders.Add(mb);
                 _alerts.Speak($"{t.Name} missing");
                 _lastRemind[t.Id] = now;
+                _remindCount[t.Id] = 1;
             }
             else if (!_lastRemind.TryGetValue(t.Id, out var last) ||
-                     (now - last).TotalSeconds >= _remindInterval)
+                     (now - last).TotalSeconds >= interval)
             {
                 _alerts.Speak($"{t.Name} missing");
                 _lastRemind[t.Id] = now;
+                _remindCount[t.Id] = _remindCount.GetValueOrDefault(t.Id) + 1;
             }
         }
     }
