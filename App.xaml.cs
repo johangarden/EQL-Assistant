@@ -334,6 +334,20 @@ public partial class App : Application
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Debuff, Ability: "Drowsy", Amount: 48 }));
             Check("fight: the incoming resist rides the timeline",
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.SelfIn, Resist: true }));
+            // Bystander filter: history is YOUR story, the meter shows the rest.
+            var by = new CombatParser { SelfName = "Johan" };
+            by.Replay($"[{FT(100)}] A fire giant warrior hits Vana for 468 points of damage.");
+            by.Tick(fb.AddSeconds(160));
+            Check("fight: a mob beating on a passer-by never archives", by.History.Count == 0);
+            by.Replay($"[{FT(200)}] Johan healed Johan for 300 hit points by Chloroplast.");
+            by.Tick(fb.AddSeconds(260));
+            Check("fight: your regen ticking between pulls never archives", by.History.Count == 0);
+            by.Replay($"[{FT(300)}] A fire giant warrior hits Bruvos for 100 points of damage.");
+            by.Replay($"[{FT(301)}] Johan healed Bruvos for 300 hit points by Superior Heal.");
+            by.Tick(fb.AddSeconds(400));
+            Check("fight: pure healing with a real enemy present still archives",
+                by.History.Count == 1);
+
             string fdTxt = Views.TimelineView.BuildAnalysis(fdRec);
             Check("analysis: names the dominant school and the resist advice",
                 fdTxt.Contains("COLD") && fdTxt.Contains("More Cold resist")

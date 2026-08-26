@@ -1243,6 +1243,17 @@ public sealed class CombatParser
     private void Archive()
     {
         if (!HasData) return;
+        // Bystander filter: the live meter deliberately shows nearby combat,
+        // but HISTORY is your story. Archive only when you (or your pet)
+        // dealt or took damage — or you healed while an actual enemy was in
+        // the fight (a pure-healer raid counts; your regen ticking between
+        // pulls, or a mob beating on a passer-by, never does).
+        string pet = PetName.Trim();
+        bool selfDamage = _incomingSelf > 0 || _incomingPet > 0
+            || _damage.ContainsKey(Self())
+            || (pet.Length > 0 && _damage.ContainsKey(pet));
+        bool enemySeen = _taken.Keys.Any(IsEnemyName) || _damage.Keys.Any(IsEnemyName);
+        if (!selfDamage && !(_healing.ContainsKey(Self()) && enemySeen)) return;
         // CC still holding at the freeze closes at the fight's last event —
         // its wear-off line belongs to the world, not this record.
         foreach (var (kind, since) in _openConditions)
