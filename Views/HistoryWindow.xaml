@@ -45,12 +45,18 @@
             </Grid.ColumnDefinitions>
 
             <DockPanel Grid.Column="0">
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                <!-- A WrapPanel, not a StackPanel: the sixth button used to
+                     clip to a one-pixel sliver against the column edge. The
+                     fight-scoped actions lead; the other windows follow. -->
+                <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
                     <Button Content="★ Keep" Click="Keep_Click" Style="{StaticResource ToolBtn}"
                             AutomationProperties.AutomationId="HistoryKeepBtn"
                             ToolTip="Save the selected fight(s) permanently (survives restarts)"/>
                     <Button Content="Remove kept" Click="Remove_Click" Style="{StaticResource ToolBtn}"
                             ToolTip="Stop keeping the selected saved fight(s)"/>
+                    <Button Content="Timeline" Click="Timeline_Click" Style="{StaticResource ToolBtn}"
+                            AutomationProperties.AutomationId="HistoryTimelineBtn"
+                            ToolTip="Second-by-second timeline of the selected fight — graph, ability lanes, debuff spans and ⚡ Analyse"/>
                     <Button Content="Raid kills" Click="Raids_Click" Style="{StaticResource ToolBtn}"
                             AutomationProperties.AutomationId="HistoryRaidsBtn"
                             ToolTip="Raid target progression — kill counts per zone"/>
@@ -60,10 +66,7 @@
                     <Button Content="Sky" Click="Sky_Click" Style="{StaticResource ToolBtn}"
                             AutomationProperties.AutomationId="HistorySkyBtn"
                             ToolTip="Plane of Sky quest tracker — have/need per Test quest"/>
-                    <Button Content="Timeline" Click="Timeline_Click" Style="{StaticResource ToolBtn}"
-                            AutomationProperties.AutomationId="HistoryTimelineBtn"
-                            ToolTip="Second-by-second timeline of the selected fight — a lane per ability with every hit, miss, crit and resist"/>
-                </StackPanel>
+                </WrapPanel>
                 <ListBox x:Name="FightsList"
                          SelectionMode="Extended" FontSize="12"
                          HorizontalContentAlignment="Stretch"
