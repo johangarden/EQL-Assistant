@@ -262,6 +262,9 @@
                                               Checked="Permanent_Changed" Unchecked="Permanent_Changed"
                                               Content="Permanent — lasts until death (no duration)" Margin="0,8,0,0"
                                               ToolTip="Buffs like Vampiric Embrace: once up the bar shows ∞ and never runs out — only death, a wear-off line or a loadout switch clears it. Pairs well with the rebuff reminder."/>
+                                    <TextBlock x:Name="PermanentHint" Style="{StaticResource Hint}"
+                                               Visibility="Collapsed" Margin="0,3,0,0"
+                                               Text="The library knows no duration for this spell. If it truly never expires (like Vampiric Embrace), tick Permanent — otherwise leave it: auto-learn will measure the real time from the log."/>
                                     <TextBlock x:Name="DurationLabel" Text="Duration" Style="{StaticResource FieldLabel}"/>
                                     <StackPanel Orientation="Horizontal">
                                         <TextBox x:Name="DurationBox" Text="{Binding DurationText}" Width="120"

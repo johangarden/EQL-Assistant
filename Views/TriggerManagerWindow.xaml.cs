@@ -755,6 +755,15 @@ public partial class TriggerManagerWindow : Window
                          && PermanentCheck.Visibility == Visibility.Visible;
         DurationAutoCheck.IsEnabled = !permanent;
         DurationForgetBtn.IsEnabled = !permanent;
+
+        // The nudge: the library states NO duration for this spell — the one
+        // moment the Permanent flag is worth considering (282 of 757 buffs sit
+        // at 0, mostly just unstated, so this must stay a hint, never a guess).
+        bool zeroDuration = Selected is { } s
+            && PermanentCheck.Visibility == Visibility.Visible
+            && _spellLibrary.FindByBaseName(SpellDurations.BaseName(s.Name)) is { DurationSec: <= 0 };
+        PermanentHint.Visibility = zeroDuration && !permanent
+            ? Visibility.Visible : Visibility.Collapsed;
         if (permanent)
         {
             DurationBox.IsEnabled = false;
