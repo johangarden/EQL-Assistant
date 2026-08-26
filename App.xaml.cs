@@ -2772,6 +2772,17 @@ public partial class App : Application
 
             tw.Close();
 
+            // ---- voices: enumeration + switching never throw, and a real
+            // Windows box always carries at least one SAPI voice.
+            var voiceSvc = new AlertService { Muted = true };
+            var voices = voiceSvc.InstalledVoices();
+            Check("voices: at least one installed SAPI voice enumerates",
+                voices.Count >= 1);
+            voiceSvc.ApplyVoice(voices[0], 2);
+            voiceSvc.ApplyVoice("No Such Voice", 0); // unknown name keeps default
+            voiceSvc.ApplyVoice("", 0);
+            Check("voices: switching (and an unknown name) never throws", true);
+
             // ---- the GLOBAL notices: one config for every mob, {mob} in a
             // phrase becomes the name, empty phrase = the default.
             Check("alerts: empty phrase speaks the default with the mob's name",

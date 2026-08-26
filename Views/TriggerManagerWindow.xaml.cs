@@ -978,6 +978,7 @@ public partial class TriggerManagerWindow : Window
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
             ["General"] = GeneralPage,
+            ["Sounds & voices"] = SoundsPage,
             ["Data"] = DataPage,
             ["Shortcuts"] = ShortcutsPage,
         };
@@ -1069,6 +1070,17 @@ public partial class TriggerManagerWindow : Window
         SyncSoundCombo(ResistSoundBox, _config.Overlay.ResistNoticeSound);
         _soundUxLoading = false;
         UpdateMomentNoticeUx();
+
+        // Sounds & voices: the one speaking voice for every spoken alert.
+        VoiceBox.ItemsSource = new[] { "(system default)" }
+            .Concat(_alerts.InstalledVoices()).ToList();
+        VoiceBox.SelectedItem = string.IsNullOrWhiteSpace(_config.Overlay.VoiceName)
+            ? "(system default)"
+            : ((List<string>)VoiceBox.ItemsSource).FirstOrDefault(v =>
+                  v.Equals(_config.Overlay.VoiceName, StringComparison.OrdinalIgnoreCase))
+              ?? "(system default)";
+        VoiceRateBox.SelectedValue = _config.Overlay.VoiceRate.ToString(CultureInfo.InvariantCulture);
+        if (VoiceRateBox.SelectedValue is null) VoiceRateBox.SelectedValue = "0";
 
         // The global spawn-timer notices — phrase boxes show their {mob}
         // templates instead of standing empty.
@@ -1179,6 +1191,30 @@ public partial class TriggerManagerWindow : Window
             _alerts.Fire(null, p.Path);
         else
             Status("Pick a sound first.");
+    }
+
+    // ---- sounds & voices ------------------------------------------------------
+
+    /// <summary>Applies the pick right away and says a line in it — hearing
+    /// the actual voice beats reading its name. Save persists the choice.</summary>
+    private void VoiceTest_Click(object sender, RoutedEventArgs e)
+    {
+        if (_alerts.Muted) { Status("Unmute to preview."); return; }
+        string name = VoiceBox.SelectedItem as string is "(system default)" or null
+            ? "" : (string)VoiceBox.SelectedItem;
+        int rate = int.TryParse(VoiceRateBox.SelectedValue as string, out int r) ? r : 0;
+        _alerts.ApplyVoice(name, rate);
+        _alerts.Speak("Kurven the Cruel respawn");
+    }
+
+    private void VoiceAdapter_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                "https://github.com/gexgd0419/NaturalVoiceSAPIAdapter") { UseShellExecute = true });
+        }
+        catch { /* no browser is not our problem to solve */ }
     }
 
     private void BrowseLogDir_Click(object sender, RoutedEventArgs e)
@@ -1292,6 +1328,9 @@ public partial class TriggerManagerWindow : Window
                 ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
                 StartLocked = StartLockedCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
+                VoiceName = VoiceBox.SelectedItem as string is "(system default)" or null
+                    ? "" : (string)VoiceBox.SelectedItem,
+                VoiceRate = int.TryParse(VoiceRateBox.SelectedValue as string, out int vr) ? vr : 0,
                 DeathRecapAuto = DeathRecapCheck.IsChecked == true,
                 ToolbarVisible = _config.Overlay.ToolbarVisible, // tray-toggled — carried through
                 BarsVisible = _config.Overlay.BarsVisible,       // tray-toggled — carried through

@@ -101,6 +101,7 @@ public partial class MainWindow : Window
         }
 
         _alerts.Muted = _config.Overlay.Muted;
+        _alerts.ApplyVoice(_config.Overlay.VoiceName, _config.Overlay.VoiceRate);
         _raids = new RaidKills(_configService);
         _loot = new LootTracker(_configService);
         _loot.Added += e => _raids.AttributeLoot(e);   // pin drops to raid kills
@@ -1302,6 +1303,7 @@ public partial class MainWindow : Window
 
         _config = cfg;
         _alerts.Muted = cfg.Overlay.Muted;
+        _alerts.ApplyVoice(cfg.Overlay.VoiceName, cfg.Overlay.VoiceRate);
         _timerHidden = !cfg.Overlay.TimerVisible;
         _meterHidden = !cfg.Overlay.MeterVisible;
         _skillsHidden = !cfg.Overlay.SkillTrackerVisible;
