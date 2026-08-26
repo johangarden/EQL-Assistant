@@ -87,94 +87,106 @@
             <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                  VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl x:Name="ColumnsControl">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Width="240" Margin="0,0,10,0" Padding="10" CornerRadius="8"
-                                    Background="#1B2130" BorderBrush="#3A4560" BorderThickness="1"
-                                    VerticalAlignment="Top">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Title}" Foreground="#C9D4E3" FontWeight="Bold"
-                                               FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding Subtitle}" Foreground="#7F93AD" FontSize="11"
-                                               Margin="0,1,0,0" TextWrapping="Wrap"/>
+                    <!-- One full-width row per selected fight: the sections flow
+                         side by side across the window instead of stacking in a
+                         240px tower next to dead space. Comparisons stack rows. -->
+                    <ItemsControl x:Name="ColumnsControl">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,10" Padding="10" CornerRadius="8"
+                                        Background="#1B2130" BorderBrush="#3A4560" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Margin="0,0,0,2">
+                                            <Run Text="{Binding Title, Mode=OneWay}" Foreground="#C9D4E3"
+                                                 FontWeight="Bold" FontSize="13"/>
+                                            <Run Text="   "/>
+                                            <Run Text="{Binding Subtitle, Mode=OneWay}" Foreground="#7F93AD"
+                                                 FontSize="11"/>
+                                        </TextBlock>
 
-                                    <!-- ============ FIGHT CONTEXT ============ -->
-                                    <Border Style="{StaticResource SectionCard}"
-                                            Visibility="{Binding InfoSectionVisibility}">
-                                        <StackPanel>
-                                            <TextBlock Text="Fight" Foreground="#8FA6C4"
-                                                       Style="{StaticResource SectionHeader}"/>
-                                            <ItemsControl ItemsSource="{Binding InfoRows}"
-                                                          ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                            <StackPanel Visibility="{Binding DropsVisibility}">
-                                                <TextBlock Text="Dropped" Style="{StaticResource SubLabel}"/>
-                                                <ItemsControl ItemsSource="{Binding DropRows}" Margin="8,0,0,0"
-                                                              ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Border>
+                                        <WrapPanel>
+                                            <!-- ==== FIGHT CONTEXT ==== -->
+                                            <Border Style="{StaticResource SectionCard}" Width="230"
+                                                    Margin="0,4,10,0" VerticalAlignment="Top"
+                                                    Visibility="{Binding InfoSectionVisibility}">
+                                                <StackPanel>
+                                                    <TextBlock Text="Fight" Foreground="#8FA6C4"
+                                                               Style="{StaticResource SectionHeader}"/>
+                                                    <ItemsControl ItemsSource="{Binding InfoRows}"
+                                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                                    <StackPanel Visibility="{Binding DropsVisibility}">
+                                                        <TextBlock Text="Dropped" Style="{StaticResource SubLabel}"/>
+                                                        <ItemsControl ItemsSource="{Binding DropRows}" Margin="8,0,0,0"
+                                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
 
-                                    <!-- ============ DAMAGE DEALT ============ -->
-                                    <Border Style="{StaticResource SectionCard}">
-                                        <StackPanel>
-                                            <TextBlock Text="Damage dealt" Foreground="#FFD54F"
-                                                       Style="{StaticResource SectionHeader}"/>
-                                            <ItemsControl ItemsSource="{Binding DamageRows}"
-                                                          ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                            <!-- ==== DAMAGE DEALT ==== -->
+                                            <Border Style="{StaticResource SectionCard}" Width="230"
+                                                    Margin="0,4,10,0" VerticalAlignment="Top">
+                                                <StackPanel>
+                                                    <TextBlock Text="Damage dealt" Foreground="#FFD54F"
+                                                               Style="{StaticResource SectionHeader}"/>
+                                                    <ItemsControl ItemsSource="{Binding DamageRows}"
+                                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                                </StackPanel>
+                                            </Border>
 
-                                            <StackPanel Visibility="{Binding SelfSectionVisibility}">
-                                                <TextBlock Text="Your abilities" Style="{StaticResource SubLabel}"/>
-                                                <ItemsControl ItemsSource="{Binding SelfAbilityRows}" Margin="8,0,0,0"
-                                                              ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                            </StackPanel>
+                                            <!-- ==== YOUR / PET ABILITIES ==== -->
+                                            <Border Style="{StaticResource SectionCard}" Width="230"
+                                                    Margin="0,4,10,0" VerticalAlignment="Top"
+                                                    Visibility="{Binding SelfSectionVisibility}">
+                                                <StackPanel>
+                                                    <TextBlock Text="Your abilities" Foreground="#FFD54F"
+                                                               Style="{StaticResource SectionHeader}"/>
+                                                    <ItemsControl ItemsSource="{Binding SelfAbilityRows}"
+                                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Style="{StaticResource SectionCard}" Width="230"
+                                                    Margin="0,4,10,0" VerticalAlignment="Top"
+                                                    Visibility="{Binding PetSectionVisibility}">
+                                                <StackPanel>
+                                                    <TextBlock Text="Pet abilities" Foreground="#D7CCC8"
+                                                               Style="{StaticResource SectionHeader}"/>
+                                                    <ItemsControl ItemsSource="{Binding PetAbilityRows}"
+                                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                                </StackPanel>
+                                            </Border>
 
-                                            <StackPanel Visibility="{Binding PetSectionVisibility}">
-                                                <TextBlock Text="Pet abilities" Style="{StaticResource SubLabel}"/>
-                                                <ItemsControl ItemsSource="{Binding PetAbilityRows}" Margin="8,0,0,0"
-                                                              ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Border>
+                                            <!-- ==== DAMAGE TAKEN ==== -->
+                                            <Border Style="{StaticResource SectionCard}" Width="230"
+                                                    Margin="0,4,10,0" VerticalAlignment="Top">
+                                                <StackPanel>
+                                                    <TextBlock Text="Damage taken" Foreground="#FF8A80"
+                                                               Style="{StaticResource SectionHeader}"/>
+                                                    <ItemsControl ItemsSource="{Binding TakenRows}"
+                                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                                    <StackPanel Visibility="{Binding TakenSectionVisibility}">
+                                                        <TextBlock Text="What hit you" Style="{StaticResource SubLabel}"/>
+                                                        <ItemsControl ItemsSource="{Binding TakenAbilityRows}" Margin="8,0,0,0"
+                                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
 
-                                    <!-- ============ DAMAGE TAKEN ============ -->
-                                    <Border Style="{StaticResource SectionCard}">
-                                        <StackPanel>
-                                            <TextBlock Text="Damage taken" Foreground="#FF8A80"
-                                                       Style="{StaticResource SectionHeader}"/>
-                                            <ItemsControl ItemsSource="{Binding TakenRows}"
-                                                          ItemTemplate="{StaticResource StatRowTemplate}"/>
-
-                                            <StackPanel Visibility="{Binding TakenSectionVisibility}">
-                                                <TextBlock Text="What hit you" Style="{StaticResource SubLabel}"/>
-                                                <ItemsControl ItemsSource="{Binding TakenAbilityRows}" Margin="8,0,0,0"
-                                                              ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Border>
-
-                                    <!-- ============ HEALING ============ -->
-                                    <Border Style="{StaticResource SectionCard}">
-                                        <StackPanel>
-                                            <TextBlock Text="Healing" Foreground="#81C784"
-                                                       Style="{StaticResource SectionHeader}"/>
-                                            <ItemsControl ItemsSource="{Binding HealingRows}"
-                                                          ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                        </StackPanel>
-                                    </Border>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                                            <!-- ==== HEALING ==== -->
+                                            <Border Style="{StaticResource SectionCard}" Width="230"
+                                                    Margin="0,4,10,0" VerticalAlignment="Top">
+                                                <StackPanel>
+                                                    <TextBlock Text="Healing" Foreground="#81C784"
+                                                               Style="{StaticResource SectionHeader}"/>
+                                                    <ItemsControl ItemsSource="{Binding HealingRows}"
+                                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
                     <v:TimelineView x:Name="TimelinePane" Margin="0,10,0,0"
                                     Visibility="Collapsed"/>
