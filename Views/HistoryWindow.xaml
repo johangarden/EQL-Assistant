@@ -53,16 +53,30 @@
                     <Button Content="Remove fight" Click="Remove_Click" Style="{StaticResource ToolBtn}"
                             ToolTip="Stop keeping the selected saved fight(s)"/>
                 </StackPanel>
+                <!-- Grouped by day — Standard virtualization, NEVER Recycling:
+                     recycling silently skips rows in grouped lists. -->
                 <ListBox x:Name="FightsList"
                          SelectionMode="Extended" FontSize="12"
                          HorizontalContentAlignment="Stretch"
+                         VirtualizingPanel.VirtualizationMode="Standard"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" Foreground="#7F93AD"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Margin="2,8,0,2"/>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListBox.GroupStyle>
                     <!-- Ellipsis, not a hard clip: a row cut mid-glyph leaves a
                          one-pixel sliver that reads like a hidden control. -->
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis"
-                                       ToolTip="{Binding}"/>
+                            <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding Tip}"/>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>

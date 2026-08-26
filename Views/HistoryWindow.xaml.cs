@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
 using EQLOverlay.Interop;
@@ -23,7 +24,7 @@ public partial class HistoryWindow : Window
     private readonly List<CombatParser.FightRecord> _saved;
     private List<Entry> _shown = new();
 
-    private sealed record Entry(CombatParser.FightRecord Rec, bool Saved);
+    public sealed record Entry(CombatParser.FightRecord Rec, bool Saved);
 
     private static readonly Brush NameFg = Freeze(Color.FromRgb(0xC9, 0xD4, 0xE3));
     private static readonly Brush SelfFg = Freeze(Color.FromRgb(0xFF, 0xC1, 0x2E));
@@ -36,8 +37,9 @@ public partial class HistoryWindow : Window
             Detail.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    /// <summary>List item wrapper — reference-unique even when two fights render identically.</summary>
-    private sealed record FightItem(Entry Entry, string Text)
+    /// <summary>List item wrapper — reference-unique even when two fights render
+    /// identically. Public: the grouped view reflects over Day/Text/Tip.</summary>
+    public sealed record FightItem(Entry Entry, string Text, string Day, string Tip)
     {
         public override string ToString() => Text;
     }
@@ -93,7 +95,10 @@ public partial class HistoryWindow : Window
         var selected = FightsList.SelectedItems.Cast<FightItem>().Select(x => x.Entry.Rec).ToHashSet();
 
         _shown = entries;
-        FightsList.ItemsSource = entries.Select(e => new FightItem(e, Display(e))).ToList();
+        var view = new ListCollectionView(
+            entries.Select(e => new FightItem(e, RowText(e), DayText(e.Rec.EndedAt), TipText(e))).ToList());
+        view.GroupDescriptions!.Add(new PropertyGroupDescription(nameof(FightItem.Day)));
+        FightsList.ItemsSource = view;
 
         foreach (FightItem item in FightsList.Items)
             if (selected.Contains(item.Entry.Rec))
@@ -117,15 +122,22 @@ public partial class HistoryWindow : Window
         }
     }
 
-    private static string Display(Entry e)
+    /// <summary>Row = time + mob only; the day lives in the group header and
+    /// duration/dps/zone in the tooltip (and the details card).</summary>
+    private static string RowText(Entry e) =>
+        $"{(e.Saved ? "★ " : "")}{e.Rec.EndedAt:HH:mm}  {e.Rec.Label}";
+
+    private static string DayText(DateTime d) =>
+        d.Date == DateTime.Today ? "Today"
+        : d.Date == DateTime.Today.AddDays(-1) ? "Yesterday"
+        : d.Year == DateTime.Today.Year ? d.ToString("dd MMM")
+        : d.ToString("dd MMM yyyy");
+
+    private static string TipText(Entry e)
     {
         var r = e.Rec;
-        string star = e.Saved ? "★ " : "";
-        string when = r.EndedAt.Date == DateTime.Today
-            ? r.EndedAt.ToString("HH:mm")
-            : r.EndedAt.ToString("dd MMM HH:mm");
-        string zone = r.Zone.Length > 0 ? $"  ·  {r.Zone}" : "";
-        return $"{star}{when}  {r.Label}   ·   {FormatDuration(r.DurationSeconds)}   ·   {FormatDps(r.TotalDps)} dps{zone}";
+        string zone = r.Zone.Length > 0 ? $" · {r.Zone}" : "";
+        return $"{r.EndedAt:dd MMM HH:mm} · {r.Label} · {FormatDuration(r.DurationSeconds)} · {FormatDps(r.TotalDps)} dps{zone}";
     }
 
     private void BuildColumns()
