@@ -119,6 +119,7 @@
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
                     <ListBoxItem Content="Condition badges"/>
+                    <ListBoxItem Content="Sky quest helper"/>
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
                     <ListBoxItem Content="Sounds &amp; voices"/>
@@ -921,6 +922,26 @@
                                          ToolTip="Spoken via text-to-speech — empty speaks 'Resisted!'"/>
                                 <Button Content="Test" Width="50" Margin="8,0,0,0" Click="ResistTest_Click"/>
                             </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ============================ SKY QUEST HELPER ============================ -->
+                    <ScrollViewer x:Name="SkyHelperPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Sky quest helper" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Con or hit a known Plane of Sky quest dropper and its quest items appear — needed first, fading shortly after the last mention. ★-tracked quests (Quests window) keep a standing hunt list. The panel materializes only when it has something to say, or while unlocked so it can be placed."/>
+
+                            <CheckBox x:Name="SkyHelperVisibleCheck" Content="Show the panel" Margin="0,12,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Content" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="By default a mob only lights up for quests you still NEED — completed quests stay quiet. Tick this to also see what a mob drops for quests you've already finished (farming for guildmates)."/>
+                            <CheckBox x:Name="SkyHelperCompletedCheck" Content="Also show items from completed quests" Margin="0,8,0,0"/>
                         </StackPanel>
                     </ScrollViewer>
 
