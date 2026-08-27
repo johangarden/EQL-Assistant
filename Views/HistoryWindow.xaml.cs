@@ -154,9 +154,11 @@ public partial class HistoryWindow : Window
             .ToList();
         ColumnsControl.ItemsSource = entries.Select(e => BuildColumn(e.Rec)).ToList();
 
-        // The timeline is part of the details — always shown for the first
-        // selected fight (comparisons still get their cards side by side).
-        if (entries.Count > 0) TimelinePane.ShowFight(entries[0].Rec);
+        // The report (highlights + timelines) always shows the first selected
+        // fight; comparisons stack their table rows below it.
+        if (entries.Count > 0)
+            TimelinePane.ShowFight(entries[0].Rec,
+                DropRows(entries[0].Rec).Select(r => r.Name).ToList());
         else TimelinePane.Clear();
     }
 

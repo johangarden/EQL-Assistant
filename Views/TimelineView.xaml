@@ -14,36 +14,25 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
+    <!-- The fight report, Johan's three bands: highlights up top, the offence
+         and defence timelines in the middle (built in code into BoardsHost),
+         and the per-ability tables live below in the History window itself. -->
     <StackPanel>
-        <TextBlock x:Name="TitleText" Foreground="#C9D4E3" FontWeight="Bold" FontSize="13"
+        <TextBlock x:Name="TitleText" Foreground="#E8EEF7" FontWeight="Bold" FontSize="16"
                    TextTrimming="CharacterEllipsis"/>
         <TextBlock x:Name="SubtitleText" Style="{StaticResource Hint}" Margin="0,1,0,0"
                    TextWrapping="Wrap"/>
+        <WrapPanel x:Name="ChipsPanel" Margin="0,6,0,0"/>
+        <WrapPanel x:Name="TilesPanel" Margin="0,8,0,0"/>
 
-        <!-- ⚡ analysis: rules over this fight's own numbers, run on visit —
-             a few LINQ passes over ≤4000 events, cheaper than the lanes. -->
+        <!-- ⚡ analysis: rules over this fight's own numbers, run on visit. -->
         <Border x:Name="AnalysisPanel" Visibility="Collapsed" Background="#10182A"
                 BorderBrush="#2A3A5C" BorderThickness="1" CornerRadius="6"
-                Padding="10,8" Margin="0,6,0,2">
+                Padding="10,8" Margin="0,8,0,0">
             <TextBlock x:Name="AnalysisText" Foreground="{StaticResource Brush.TextDim}"
                        FontSize="12" TextWrapping="Wrap"/>
         </Border>
 
-        <!-- Time axis; left margin matches the lane label column. -->
-        <Canvas x:Name="AxisCanvas" Height="18" Margin="150,6,0,3" ClipToBounds="True"/>
-
-        <!-- Rolling-DPS graph, sharing the lanes' time axis. -->
-        <StackPanel x:Name="GraphHost" Visibility="Collapsed">
-            <DockPanel Margin="150,2,0,2">
-                <TextBlock x:Name="PeakText" DockPanel.Dock="Right" Foreground="#5C6B82" FontSize="10"/>
-                <StackPanel x:Name="LegendPanel" Orientation="Horizontal"/>
-            </DockPanel>
-            <Border Margin="150,0,0,8" Background="#10FFFFFF" CornerRadius="4"
-                    HorizontalAlignment="Left">
-                <Canvas x:Name="GraphCanvas" Height="120" ClipToBounds="True"/>
-            </Border>
-        </StackPanel>
-
-        <StackPanel x:Name="LanesHost"/>
+        <StackPanel x:Name="BoardsHost" Margin="0,10,0,0"/>
     </StackPanel>
 </UserControl>

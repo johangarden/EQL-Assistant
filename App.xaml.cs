@@ -293,7 +293,7 @@ public partial class App : Application
 
             // ---- fight details capture: damage schools from the log's own
             // words, debuff landings as timeline spans, and the analysis rules.
-            var fd = new CombatParser { SelfName = "Johan" };
+            var fd = new CombatParser { SelfName = "Johan", PetName = "Gobber" };
             fd.OtherLandingLookup = s => s.StartsWith("Drowsy", StringComparison.OrdinalIgnoreCase)
                 ? (" looks drowsy.", true) : null;
             fd.DotDurationLookup = s => s == "Drowsy" ? 48 : null;
@@ -310,6 +310,8 @@ public partial class App : Application
             fd.Replay($"[{FT(5)}] A dragon looks drowsy.");
             fd.Replay($"[{FT(6)}] You assume an offensive stance.");
             fd.NoteCondition("STUNNED", false, fb.AddSeconds(7));
+            fd.Replay($"[{FT(4)}] Gobber hits Lady Vox for 50 points of damage.");
+            fd.Replay($"[{FT(9)}] Gobber has been slain by Lady Vox!");
             fd.Replay($"[{FT(7)}] Your Siphon Life spell is interrupted.");
             fd.Replay($"[{FT(8)}] You resist Lady Vox's Frost Breath!");
             fd.Replay($"[{FT(10)}] Lady Vox hit Johan for 250 points of cold damage by Frost Breath.");
@@ -328,6 +330,9 @@ public partial class App : Application
             Check("fight: the stun becomes a condition span (landing -> release)",
                 fdRec.Events.Any(e => e.Stream == CombatParser.FightStream.Condition
                     && e.Ability == "Stunned" && Math.Abs(e.Amount - 5) < 0.01));
+            Check("fight: the pet's name and its death ride the record",
+                fdRec.Pet == "Gobber"
+                && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.PetDeath, Ability: "Gobber died" }));
             Check("fight: the DD line's school is kept, verbatim from the log",
                 fdRec.Schools.TryGetValue("Frost Breath", out string? fs) && fs == "cold");
             Check("fight: a debuff landing becomes a timeline span with its duration",
@@ -358,6 +363,8 @@ public partial class App : Application
                 fdTxt.Contains("CC held you for 0:05")
                 && fdTxt.Contains("Siphon Life was interrupted")
                 && fdTxt.Contains("Mostly defensive stance") && fdTxt.Contains("switched 1×"));
+            Check("analysis: the pet's share and its death get lines",
+                fdTxt.Contains("Gobber dealt") && fdTxt.Contains("Gobber died at 0:09"));
             Check("analysis: coverage math merges overlaps and clips",
                 Math.Abs(Views.TimelineView.CoverageSeconds(
                     new[] { (0.0, 10.0), (5.0, 10.0) }, 30) - 15) < 0.01
