@@ -374,6 +374,39 @@ public partial class App : Application
                 && fdTxt.Contains("Mostly defensive stance") && fdTxt.Contains("switched 1×"));
             Check("analysis: the pet's share and its death get lines",
                 fdTxt.Contains("Gobber dealt") && fdTxt.Contains("Gobber died at 0:09"));
+
+            // The playbook rules (eql-fight-analyst): clipping, refresh nudge,
+            // melee hit rate vs con level, and the danger window — on a
+            // synthetic record built to trip each threshold.
+            var ar = new CombatParser.FightRecord
+            {
+                Label = "audit fight",
+                DurationSeconds = 100,
+                IncomingSelfTotal = 1000,
+                Damage = { new CombatParser.Row("A test mob", 1000, 10, 100, true) },
+                SelfAbilities =
+                {
+                    new CombatParser.Row("slash", 500, 5, 50, false, Hits: 8, Misses: 12),
+                    new CombatParser.Row("kick", 100, 1, 10, false, Hits: 2, Misses: 3),
+                },
+                EnemyLevels = { ["A test mob"] = 56 },
+            };
+            ar.Events.AddRange(new[]
+            {
+                new CombatParser.FightEvent(0, "Venom", 40, CombatParser.FightStream.Debuff),
+                new CombatParser.FightEvent(20, "Venom", 40, CombatParser.FightStream.Debuff),
+                new CombatParser.FightEvent(5, "Venom", 30, CombatParser.FightStream.SelfOut, Dot: true),
+                new CombatParser.FightEvent(50, "smash", 400, CombatParser.FightStream.SelfIn),
+                new CombatParser.FightEvent(55, "smash", 350, CombatParser.FightStream.SelfIn),
+                new CombatParser.FightEvent(10, "Heal", 200, CombatParser.FightStream.HealOut),
+            });
+            string aud = Views.TimelineView.BuildAnalysis(ar);
+            Check("analysis: clipping, melee hit rate and the danger window fire",
+                aud.Contains("clipped Venom 1×") && aud.Contains("~20s")
+                && aud.Contains("melee landed only 40%") && aud.Contains("Lvl 56")
+                && aud.Contains("Danger window"));
+            Check("analysis: a sloppy DoT gets the refresh nudge",
+                aud.Contains("Refresh sooner"));
             Check("analysis: coverage math merges overlaps and clips",
                 Math.Abs(Views.TimelineView.CoverageSeconds(
                     new[] { (0.0, 10.0), (5.0, 10.0) }, 30) - 15) < 0.01
