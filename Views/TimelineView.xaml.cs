@@ -228,7 +228,8 @@ public partial class TimelineView : UserControl
         if (_rec is null) return;
         BoardsHost.Children.Clear();
 
-        double width = Math.Max(60, BoardsHost.ActualWidth - LabelWidth - 26);
+        // Boards live in padded cards now — the tracks get what's left.
+        double width = Math.Max(60, BoardsHost.ActualWidth - LabelWidth - 48);
         double dur = Math.Max(1, _rec.DurationSeconds);
         double scale = width / dur;
 
@@ -395,12 +396,13 @@ public partial class TimelineView : UserControl
     private static bool _offenceOpen = true;
     private static bool _defenceOpen = true;
 
-    /// <summary>A foldable board: clickable ▾/▸ header, content below. Custom,
-    /// never a stock Expander — every control themed from day one.</summary>
-    private static StackPanel NewBoard(string title, Brush accent, string key,
+    /// <summary>A foldable board in a section card: clickable ▾/▸ header,
+    /// content below. Custom, never a stock Expander — every control themed
+    /// from day one.</summary>
+    private static Border NewBoard(string title, Brush accent, string key,
         Func<bool> isOpen, Action<bool> setOpen, out Panel content)
     {
-        var board = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
+        var board = new StackPanel();
         var head = new DockPanel
         {
             Margin = new Thickness(0, 0, 0, 4),
@@ -447,7 +449,16 @@ public partial class TimelineView : UserControl
             inner.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
             arrow.Text = open ? "▾" : "▸";
         };
-        return board;
+        return new Border
+        {
+            Background = CardBg,
+            BorderBrush = CardLine,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(10, 8, 12, 10),
+            Margin = new Thickness(0, 0, 0, 12),
+            Child = board,
+        };
     }
 
     private static void AddGroupLabel(Panel board, string text)
