@@ -228,7 +228,8 @@ public partial class TimelineView : UserControl
         if (_rec is null) return;
         BoardsHost.Children.Clear();
 
-        double width = Math.Max(60, BoardsHost.ActualWidth - LabelWidth - 26);
+        // Boards live in padded cards now — the tracks get what's left.
+        double width = Math.Max(60, BoardsHost.ActualWidth - LabelWidth - 48);
         double dur = Math.Max(1, _rec.DurationSeconds);
         double scale = width / dur;
 
@@ -258,18 +259,25 @@ public partial class TimelineView : UserControl
         var debuffs = ByAbility(rec, FightStream.Debuff);
         var claimedCasts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // DoTs: a debuff that also dealt YOUR damage gets ONE lane — cast
-        // chevron, uptime span, its own ticks inside it.
-        foreach (var (name, spanEvents) in debuffs.OrderBy(kv => kv.Value[0].T))
+        // DoTs get ONE lane — cast chevron, uptime span, ticks inside it. A
+        // spell is a DoT when the log said so: a recorded landing span, OR
+        // tick-shaped damage lines ("has taken X damage from Odium") — the
+        // latter catches DoTs whose landing sentence was never observed.
+        var dotNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in debuffs.Keys)
+            if (selfOut.ContainsKey(name)) dotNames.Add(name); // pure debuff → defence
+        foreach (var (name, ticks) in selfOut)
+            if (ticks.Any(e => e.Dot)) dotNames.Add(name);
+        foreach (var name in dotNames.OrderBy(n =>
+                     Math.Min(debuffs.GetValueOrDefault(n)?[0].T ?? double.MaxValue,
+                         selfOut[n][0].T)))
         {
-            if (!selfOut.TryGetValue(name, out var ticks)) continue; // pure debuff → defence
             claimedCasts.Add(name);
             lanes.Add(("DoTs — cast · uptime · ticks", new LaneSpec(name, "DoT", DmgFg, DmgCrit,
-                ticks, spanEvents, castsBy.GetValueOrDefault(name) ?? new(),
+                selfOut[name], debuffs.GetValueOrDefault(name) ?? new(),
+                castsBy.GetValueOrDefault(name) ?? new(),
                 SpanFill, SpanStroke, "running")));
         }
-        var dotNames = new HashSet<string>(
-            lanes.Select(l => l.Spec.Label), StringComparer.OrdinalIgnoreCase);
 
         // Direct damage, biggest first; each lane carries its own cast chevrons.
         var direct = selfOut.Where(kv => !dotNames.Contains(kv.Key))
@@ -388,12 +396,13 @@ public partial class TimelineView : UserControl
     private static bool _offenceOpen = true;
     private static bool _defenceOpen = true;
 
-    /// <summary>A foldable board: clickable ▾/▸ header, content below. Custom,
-    /// never a stock Expander — every control themed from day one.</summary>
-    private static StackPanel NewBoard(string title, Brush accent, string key,
+    /// <summary>A foldable board in a section card: clickable ▾/▸ header,
+    /// content below. Custom, never a stock Expander — every control themed
+    /// from day one.</summary>
+    private static Border NewBoard(string title, Brush accent, string key,
         Func<bool> isOpen, Action<bool> setOpen, out Panel content)
     {
-        var board = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
+        var board = new StackPanel();
         var head = new DockPanel
         {
             Margin = new Thickness(0, 0, 0, 4),
@@ -419,11 +428,18 @@ public partial class TimelineView : UserControl
         head.Children.Add(keyTb);
         board.Children.Add(head);
 
-        var inner = new StackPanel
+        // Content sits in a grid with a hit-test-transparent overlay on top —
+        // the hover time-cursor draws there, across graph and lanes alike.
+        var inner = new StackPanel();
+        var overlay = new Canvas { IsHitTestVisible = false, ClipToBounds = true };
+        var wrap = new Grid
         {
+            Background = Brushes.Transparent,
             Visibility = isOpen() ? Visibility.Visible : Visibility.Collapsed,
         };
-        board.Children.Add(inner);
+        wrap.Children.Add(inner);
+        wrap.Children.Add(overlay);
+        board.Children.Add(wrap);
         content = inner;
 
         head.MouseLeftButtonDown += (_, _) =>
@@ -433,7 +449,16 @@ public partial class TimelineView : UserControl
             inner.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
             arrow.Text = open ? "▾" : "▸";
         };
-        return board;
+        return new Border
+        {
+            Background = CardBg,
+            BorderBrush = CardLine,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(10, 8, 12, 10),
+            Margin = new Thickness(0, 0, 0, 12),
+            Child = board,
+        };
     }
 
     private static void AddGroupLabel(Panel board, string text)
@@ -783,10 +808,25 @@ public partial class TimelineView : UserControl
                 lines.Add($"• {a.Name} stuck only {100 - rr:0}% ({a.Resists} of {casts} resisted) — malo/tash territory, or a bad school matchup on this mob.");
         }
 
+        // 2b · Melee landing under ~60% over a real sample: a weapon-skill or
+        //      level gap — pair it with the /con level when known.
+        var meleeRows = rec.SelfAbilities.Where(a => IsMeleeAbility(a.Name)).ToList();
+        int swings = meleeRows.Sum(a => a.Hits + a.Misses);
+        int landed = meleeRows.Sum(a => a.Hits);
+        if (swings >= 20 && 100.0 * landed / swings < 60)
+        {
+            string vs = rec.EnemyLevels.Count > 0
+                ? $" vs a Lvl {rec.EnemyLevels.Values.Max()} target" : "";
+            lines.Add($"• Your melee landed only {100.0 * landed / swings:0}% ({landed} of {swings} swings){vs} — weapon skill or level gap.");
+        }
+
         // 3 · Debuff coverage — the gaps are the story. When a debuff had real
-        //     downtime, say what the naked stretches actually cost you.
+        //     downtime, say what the naked stretches actually cost you; a
+        //     damage DoT running sloppy gets the refresh nudge, and re-casts
+        //     into a running span are clipping (paid-for ticks thrown away).
         double takenEvented = rec.Events
             .Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0).Sum(e => e.Amount);
+        int enemyCount = rec.Damage.Count(r => r.Enemy);
         foreach (var g in rec.Events.Where(e => e.Stream == FightStream.Debuff)
                      .GroupBy(e => e.Ability, StringComparer.OrdinalIgnoreCase))
         {
@@ -796,6 +836,11 @@ public partial class TimelineView : UserControl
                 lines.Add($"• {g.Key} landed {g.Count()}× (duration unknown — coverage not computable).");
                 continue;
             }
+            bool isDot = rec.Events.Any(e => e.Stream == FightStream.SelfOut && e.Dot
+                && e.Ability.Equals(g.Key, StringComparison.OrdinalIgnoreCase));
+            var timed = g.Where(e => e.Amount > 0).OrderBy(e => e.T).ToList();
+            double avgDur = timed.Average(e => e.Amount);
+
             string line = $"• {g.Key} was up ~{100.0 * covered / dur:0}% of the fight ({FormatDuration(covered)} of {FormatDuration(dur)}).";
             double gapSec = dur - covered;
             if (takenEvented > 0 && gapSec >= 3)
@@ -810,7 +855,24 @@ public partial class TimelineView : UserControl
                 if (inGaps > 0 && share > gapShare + 10)
                     line += $" The gaps bit: {share:0}% of the damage you took landed in that {FormatDuration(gapSec)} without it.";
             }
+            if (isDot && covered < 0.85 * dur && dur >= 2 * avgDur)
+                line += " Refresh sooner — every gap second is unpaid ticks.";
             lines.Add(line);
+
+            // Clipping only reads cleanly on single-enemy fights: with adds,
+            // a re-land is usually a SECOND mob, not a wasted refresh.
+            if (isDot && enemyCount == 1)
+            {
+                double clipped = 0;
+                int clips = 0;
+                for (int i = 1; i < timed.Count; i++)
+                {
+                    double over = timed[i - 1].T + timed[i - 1].Amount - timed[i].T;
+                    if (over > 1) { clipped += over; clips++; }
+                }
+                if (clips > 0 && clipped >= 5)
+                    lines.Add($"• You clipped {g.Key} {clips}× — ~{clipped:0}s of paid-for ticks thrown away (re-cast before it faded).");
+            }
         }
 
         // 3b · CC on you — how long you were a passenger, and what it cost.
@@ -884,7 +946,30 @@ public partial class TimelineView : UserControl
             lines.Add(line + (line.EndsWith(".") ? "" : "."));
         }
 
-        // 4 · Who kept you alive, and the hit that nearly didn't let them.
+        // 4 · The danger window: the 10s stretch where incoming outran healing
+        //     the hardest — that's where deaths live. Needs healing events to
+        //     compare against (a fight with none is covered by biggest-hit).
+        var healEvents = rec.Events
+            .Where(e => e.Stream is FightStream.HealOut or FightStream.HealIn && e.Amount > 0)
+            .ToList();
+        if (healEvents.Count > 0 && takenEvented > 0 && dur >= 20)
+        {
+            const double W = 10;
+            double bestDef = 0, bestT = 0, bestTaken = 0, bestHeal = 0;
+            for (double t = 0; t <= dur - W; t += 1)
+            {
+                double tk = rec.Events
+                    .Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0
+                                && e.T >= t && e.T < t + W)
+                    .Sum(e => e.Amount);
+                double hl = healEvents.Where(e => e.T >= t && e.T < t + W).Sum(e => e.Amount);
+                if (tk - hl > bestDef) { bestDef = tk - hl; bestT = t; bestTaken = tk; bestHeal = hl; }
+            }
+            if (bestDef >= 0.3 * takenEvented)
+                lines.Add($"• Danger window {FormatDuration(bestT)}–{FormatDuration(bestT + W)}: you took {FormatNum(bestTaken)} while healing covered {FormatNum(bestHeal)} — that's where deaths live.");
+        }
+
+        // 4b · Who kept you alive, and the hit that nearly didn't let them.
         var healers = rec.Healing.Where(h => !h.Enemy && h.Total > 0)
             .OrderByDescending(h => h.Total).ToList();
         if (healers.Count > 0)

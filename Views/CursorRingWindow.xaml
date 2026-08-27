@@ -1,0 +1,16 @@
+<Window x:Class="EQLOverlay.Views.CursorRingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="56" Height="56"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ShowActivated="False"
+        IsHitTestVisible="False" Focusable="False"
+        UseLayoutRounding="True">
+
+    <!-- A ring around the mouse so it's findable in the heat of battle:
+         a faint halo, a gold ring, and an open center for the cursor itself. -->
+    <Grid>
+        <Ellipse Width="44" Height="44" Stroke="#33E8C15A" StrokeThickness="7"/>
+        <Ellipse Width="36" Height="36" Stroke="#CCE8C15A" StrokeThickness="2.5"/>
+    </Grid>
+</Window>

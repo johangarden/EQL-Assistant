@@ -792,7 +792,26 @@ public partial class MainWindow : Window
         RebuildSkyHelperWindow();
         RebuildSessionStatsWindow();
         RebuildRemindersWindow();
+        ApplyCursorRing();
         UpdateMatrixVisibility();
+    }
+
+    private CursorRingWindow? _cursorRing;
+
+    /// <summary>The cursor ring exists exactly when its toggle says so and the
+    /// overlay isn't hidden — cheap enough to create/close on every apply.</summary>
+    private void ApplyCursorRing()
+    {
+        bool want = _config.Overlay.CursorRingVisible && !_hidden;
+        if (!want)
+        {
+            if (_cursorRing is not null) { try { _cursorRing.Close(); } catch { /* ignore */ } _cursorRing = null; }
+            return;
+        }
+        if (_cursorRing is not null) return;
+        _cursorRing = new CursorRingWindow();
+        _cursorRing.Closed += (_, _) => _cursorRing = null;
+        _cursorRing.Show();
     }
 
     private void RebuildRemindersWindow()
@@ -1122,6 +1141,7 @@ public partial class MainWindow : Window
     private void ToggleHide()
     {
         _hidden = !_hidden;
+        ApplyCursorRing(); // the ring hides with everything else
         _enemyDotsWin?.SetHidden(_hidden);
         _conditionsWin?.SetHidden(_hidden);
         _skyHelperWin?.SetHidden(_hidden);
@@ -1363,6 +1383,7 @@ public partial class MainWindow : Window
         RebuildFlashWindow();
         RebuildSctLanes();
         RebuildConditionsWindow(); // its page owns visibility now
+        ApplyCursorRing();
         if (_toolbarWin is not null)
         {
             _toolbarWin.DataContext = _vm; // rebound: the VM was rebuilt above

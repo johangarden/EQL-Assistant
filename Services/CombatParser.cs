@@ -132,7 +132,8 @@ public sealed class CombatParser
         [property: JsonPropertyName("s")] FightStream Stream,
         [property: JsonPropertyName("c")] bool Crit = false,
         [property: JsonPropertyName("m")] bool Miss = false,
-        [property: JsonPropertyName("r")] bool Resist = false);
+        [property: JsonPropertyName("r")] bool Resist = false,
+        [property: JsonPropertyName("d")] bool Dot = false);
 
     /// <summary>A finished fight, frozen for the history/compare window.</summary>
     public sealed class FightRecord
@@ -579,7 +580,7 @@ public sealed class CombatParser
     public const int MaxFightEvents = 4000;
 
     private readonly record struct PendingEvent(DateTime When, string Ability, double Amount,
-        FightStream Stream, bool Crit, bool Miss, bool Resist);
+        FightStream Stream, bool Crit, bool Miss, bool Resist, bool Dot);
     private readonly List<PendingEvent> _events = new();
     private bool _eventsTruncated;
 
@@ -589,10 +590,10 @@ public sealed class CombatParser
 
     /// <summary>Record a timeline event for the current fight (drops past the cap).</summary>
     private void Note(DateTime time, string ability, double amount, FightStream stream,
-        bool crit = false, bool miss = false, bool resist = false)
+        bool crit = false, bool miss = false, bool resist = false, bool dot = false)
     {
         if (_events.Count >= MaxFightEvents) { _eventsTruncated = true; return; }
-        _events.Add(new PendingEvent(time, ability, amount, stream, crit, miss, resist));
+        _events.Add(new PendingEvent(time, ability, amount, stream, crit, miss, resist, dot));
     }
 
     // ---- fight context ---------------------------------------------------------
@@ -1106,7 +1107,7 @@ public sealed class CombatParser
         {
             if (IsSelf(Normalize(m.Groups["att"].Value)))
                 NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
-            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit, dot: true);
             return;
         }
 
@@ -1114,14 +1115,14 @@ public sealed class CombatParser
         if (m.Success)
         {
             NoteDotTick(m.Groups["spell"].Value, m.Groups["tgt"].Value, time);
-            AddDamage(Self(), m.Groups["tgt"].Value, PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            AddDamage(Self(), m.Groups["tgt"].Value, PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit, dot: true);
             return;
         }
 
         m = DotYouRx.Match(body);
         if (m.Success)
         {
-            AddDamage(m.Groups["att"].Value, Self(), PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit);
+            AddDamage(m.Groups["att"].Value, Self(), PoolSpell(m.Groups["spell"].Value), Amount(m, "dmg"), time, SctFlavor.Spell, crit, dot: true);
             return;
         }
 
@@ -1288,7 +1289,7 @@ public sealed class CombatParser
             IncomingPetAbilities = GetIncomingAbilityRows(pet: true),
             Events = _events
                 .Select(e => new FightEvent(Math.Max(0, (e.When - _start).TotalSeconds),
-                    e.Ability, e.Amount, e.Stream, e.Crit, e.Miss, e.Resist))
+                    e.Ability, e.Amount, e.Stream, e.Crit, e.Miss, e.Resist, e.Dot))
                 .ToList(),
             EventsTruncated = _eventsTruncated,
             Schools = new Dictionary<string, string>(_spellSchools, StringComparer.OrdinalIgnoreCase),
@@ -1403,7 +1404,8 @@ public sealed class CombatParser
     // ---- accumulation ---------------------------------------------------------
 
     private void AddDamage(string attacker, string target, string ability, double amount, DateTime time,
-        SctFlavor flavor = SctFlavor.Melee, bool crit = false, bool procCandidate = false)
+        SctFlavor flavor = SctFlavor.Melee, bool crit = false, bool procCandidate = false,
+        bool dot = false)
     {
         attacker = Normalize(attacker);
         target = Normalize(target);
@@ -1418,7 +1420,7 @@ public sealed class CombatParser
         {
             _incomingSelf += amount;
             StatIn(_incomingSelfAbility, ability).Land(amount, crit);
-            Note(time, ability, amount, FightStream.SelfIn, crit);
+            Note(time, ability, amount, FightStream.SelfIn, crit, dot: dot);
             RecapNote(time, attacker, ability, amount, heal: false, crit);
             SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, flavor, crit));
         }
@@ -1426,7 +1428,7 @@ public sealed class CombatParser
         {
             _incomingPet += amount;
             StatIn(_incomingPetAbility, ability).Land(amount, crit);
-            Note(time, ability, amount, FightStream.PetIn, crit);
+            Note(time, ability, amount, FightStream.PetIn, crit, dot: dot);
             SctEvent?.Invoke(new SctHit(SctKind.IncomingPet, ability, amount, flavor, crit));
         }
 
@@ -1438,12 +1440,12 @@ public sealed class CombatParser
             if (crit) skill.Crits++;
             if (amount > skill.Max) skill.Max = amount;
             if (procCandidate) NoteProc(ability, amount, heal: false, time, crit);
-            Note(time, ability, amount, FightStream.SelfOut, crit);
+            Note(time, ability, amount, FightStream.SelfOut, crit, dot: dot);
             SctEvent?.Invoke(new SctHit(SctKind.OutgoingSelf, ability, amount, flavor, crit));
         }
         else if (IsPet(attacker))
         {
-            Note(time, ability, amount, FightStream.PetOut, crit);
+            Note(time, ability, amount, FightStream.PetOut, crit, dot: dot);
             SctEvent?.Invoke(new SctHit(SctKind.OutgoingPet, ability, amount, flavor, crit));
         }
     }

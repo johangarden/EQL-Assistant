@@ -217,6 +217,12 @@ public partial class App : Application
             histWin.Show();
             histWin.UpdateLayout();
             histWin.Close();
+
+            // The cursor ring follows the mouse — construction + one frame.
+            var ring = new Views.CursorRingWindow();
+            ring.Show();
+            ring.UpdateLayout();
+            ring.Close();
             try { File.Delete(helperProg); } catch { /* temp */ }
 
             // The Sheet tab renders the doll + detail pane from a real-format
@@ -311,6 +317,7 @@ public partial class App : Application
             fd.Replay($"[{FT(6)}] You assume an offensive stance.");
             fd.NoteCondition("STUNNED", false, fb.AddSeconds(7));
             fd.Replay($"[{FT(4)}] Gobber hits Lady Vox for 50 points of damage.");
+            fd.Replay($"[{FT(6)}] Lady Vox has taken 30 damage from Envenomed Bolt by Johan.");
             fd.Replay($"[{FT(9)}] Gobber has been slain by Lady Vox!");
             fd.Replay($"[{FT(7)}] Your Siphon Life spell is interrupted.");
             fd.Replay($"[{FT(8)}] You resist Lady Vox's Frost Breath!");
@@ -330,6 +337,8 @@ public partial class App : Application
             Check("fight: the stun becomes a condition span (landing -> release)",
                 fdRec.Events.Any(e => e.Stream == CombatParser.FightStream.Condition
                     && e.Ability == "Stunned" && Math.Abs(e.Amount - 5) < 0.01));
+            Check("fight: a tick-shaped damage line flags its spell as a DoT",
+                fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.SelfOut, Ability: "Envenomed Bolt", Dot: true }));
             Check("fight: the pet's name and its death ride the record",
                 fdRec.Pet == "Gobber"
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.PetDeath, Ability: "Gobber died" }));
@@ -365,6 +374,39 @@ public partial class App : Application
                 && fdTxt.Contains("Mostly defensive stance") && fdTxt.Contains("switched 1×"));
             Check("analysis: the pet's share and its death get lines",
                 fdTxt.Contains("Gobber dealt") && fdTxt.Contains("Gobber died at 0:09"));
+
+            // The playbook rules (eql-fight-analyst): clipping, refresh nudge,
+            // melee hit rate vs con level, and the danger window — on a
+            // synthetic record built to trip each threshold.
+            var ar = new CombatParser.FightRecord
+            {
+                Label = "audit fight",
+                DurationSeconds = 100,
+                IncomingSelfTotal = 1000,
+                Damage = { new CombatParser.Row("A test mob", 1000, 10, 100, true) },
+                SelfAbilities =
+                {
+                    new CombatParser.Row("slash", 500, 5, 50, false, Hits: 8, Misses: 12),
+                    new CombatParser.Row("kick", 100, 1, 10, false, Hits: 2, Misses: 3),
+                },
+                EnemyLevels = { ["A test mob"] = 56 },
+            };
+            ar.Events.AddRange(new[]
+            {
+                new CombatParser.FightEvent(0, "Venom", 40, CombatParser.FightStream.Debuff),
+                new CombatParser.FightEvent(20, "Venom", 40, CombatParser.FightStream.Debuff),
+                new CombatParser.FightEvent(5, "Venom", 30, CombatParser.FightStream.SelfOut, Dot: true),
+                new CombatParser.FightEvent(50, "smash", 400, CombatParser.FightStream.SelfIn),
+                new CombatParser.FightEvent(55, "smash", 350, CombatParser.FightStream.SelfIn),
+                new CombatParser.FightEvent(10, "Heal", 200, CombatParser.FightStream.HealOut),
+            });
+            string aud = Views.TimelineView.BuildAnalysis(ar);
+            Check("analysis: clipping, melee hit rate and the danger window fire",
+                aud.Contains("clipped Venom 1×") && aud.Contains("~20s")
+                && aud.Contains("melee landed only 40%") && aud.Contains("Lvl 56")
+                && aud.Contains("Danger window"));
+            Check("analysis: a sloppy DoT gets the refresh nudge",
+                aud.Contains("Refresh sooner"));
             Check("analysis: coverage math merges overlaps and clips",
                 Math.Abs(Views.TimelineView.CoverageSeconds(
                     new[] { (0.0, 10.0), (5.0, 10.0) }, 30) - 15) < 0.01
