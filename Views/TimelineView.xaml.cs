@@ -8,31 +8,54 @@ using static EQLOverlay.Services.CombatParser;
 namespace EQLOverlay.Views;
 
 /// <summary>
-/// Visual timeline of one fight, embedded in the Fight History details pane:
-/// a lane per ability, grouped by stream (your damage, pet, damage taken,
-/// healing), with a mark per event — height scales with the amount, crits
-/// are wider, misses and resists get their own colors. Debuffs on the enemy
-/// render as spans, and ⚡ Analyse reads the fight's own numbers on demand.
+/// The fight report (embedded in Fight History): highlight tiles and context
+/// chips up top, the ⚡ analysis, then TWO timelines — offence (your and your
+/// pet's output: DoTs as one lane each with cast chevron + uptime span + own
+/// ticks, direct damage, pet lanes) and defence (your debuffs on the enemy,
+/// what hit you, healing, CC on you, pet death, the stance strip). The
+/// per-ability tables live below in the History window itself.
 /// </summary>
 public partial class TimelineView : UserControl
 {
     private const double LabelWidth = 150;
-    private const double LaneHeight = 22;
+    private const double LaneHeight = 20;
+    private const double SlimHeight = 13;
     private const int MaxLanesPerGroup = 8;
 
     private FightRecord? _rec;
-    private List<Group> _groups = new();
+    private IReadOnlyList<string> _drops = Array.Empty<string>();
 
     private static readonly Brush LaneBg = Freeze(Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
     private static readonly Brush AxisFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
     private static readonly Brush MissFg = Freeze(Color.FromArgb(0x77, 0x8F, 0xA6, 0xC4));
-    private static readonly Brush ResistFg = Freeze(Color.FromRgb(0xB3, 0x9D, 0xDB));
-    private static readonly Brush SpanFill = Freeze(Color.FromArgb(0x55, 0xB3, 0x9D, 0xDB));
+    private static readonly Brush SpanFill = Freeze(Color.FromArgb(0x2E, 0xB3, 0x9D, 0xDB));
+    private static readonly Brush SpanStroke = Freeze(Color.FromRgb(0xB3, 0x9D, 0xDB));
+    private static readonly Brush CcFill = Freeze(Color.FromArgb(0x2E, 0xFF, 0x70, 0x43));
+    private static readonly Brush CcStroke = Freeze(Color.FromRgb(0xFF, 0x70, 0x43));
+    private static readonly Brush CastFg = Freeze(Color.FromRgb(0x4F, 0xC3, 0xF7));
+    private static readonly Brush DmgFg = Freeze(Color.FromRgb(0xFF, 0xC1, 0x2E));
+    private static readonly Brush DmgCrit = Freeze(Color.FromRgb(0xFF, 0xE0, 0x82));
+    private static readonly Brush PetFg = Freeze(Color.FromRgb(0xA1, 0x88, 0x7F));
+    private static readonly Brush PetCrit = Freeze(Color.FromRgb(0xD7, 0xCC, 0xC8));
+    private static readonly Brush TakenFg = Freeze(Color.FromRgb(0xFF, 0x8A, 0x80));
+    private static readonly Brush TakenCrit = Freeze(Color.FromRgb(0xFF, 0xCD, 0xD2));
+    private static readonly Brush HealFg = Freeze(Color.FromRgb(0x81, 0xC7, 0x84));
+    private static readonly Brush HealCrit = Freeze(Color.FromRgb(0xC8, 0xE6, 0xC9));
+    private static readonly Brush HealInFg = Freeze(Color.FromRgb(0x4D, 0xB6, 0xAC));
+    private static readonly Brush StanceFill = Freeze(Color.FromArgb(0x26, 0x90, 0xA4, 0xAE));
+    private static readonly Brush StanceFg = Freeze(Color.FromRgb(0xB8, 0xC6, 0xD4));
+    private static readonly Brush NeutralFg = Freeze(Color.FromRgb(0xAE, 0xB8, 0xC4));
+    private static readonly Brush ChipFg = Freeze(Color.FromRgb(0x7F, 0x93, 0xAD));
+    private static readonly Brush ChipBold = Freeze(Color.FromRgb(0xC9, 0xD4, 0xE3));
+    private static readonly Brush CardBg = Freeze(Color.FromRgb(0x1B, 0x21, 0x30));
+    private static readonly Brush CardLine = Freeze(Color.FromRgb(0x3A, 0x45, 0x60));
 
-    private sealed record Group(string Title, Brush Header, Brush Mark, Brush CritMark,
-        List<Lane> Lanes, bool Spans = false, bool Casts = false,
-        string SpanText = "landed — runs");
-    private sealed record Lane(string Ability, List<FightEvent> Events, double Total);
+    /// <summary>One drawn lane: ticks are marks, spans are uptime bars, casts
+    /// are chevrons at the top edge (interrupted ones dim).</summary>
+    private sealed record LaneSpec(string Label, string Sub, Brush Mark, Brush Crit,
+        List<FightEvent> Ticks, List<FightEvent> Spans, List<FightEvent> Casts,
+        Brush SpanFillBrush, Brush SpanStrokeBrush, string SpanText,
+        bool Slim = false, bool Death = false);
 
     public TimelineView()
     {
@@ -40,20 +63,21 @@ public partial class TimelineView : UserControl
         SizeChanged += (_, _) => Rebuild();
     }
 
-    /// <summary>Point the timeline at one fight (no-op when already showing it).</summary>
-    public void ShowFight(FightRecord rec)
+    /// <summary>Point the report at one fight (no-op when already showing it).</summary>
+    public void ShowFight(FightRecord rec, IReadOnlyList<string>? drops = null)
     {
         if (ReferenceEquals(_rec, rec)) return;
         _rec = rec;
-        _groups = BuildGroups(rec);
+        _drops = drops ?? Array.Empty<string>();
 
-        TitleText.Text = $"Timeline — {rec.Label}";
-        string zone = rec.Zone.Length > 0 ? $" · {rec.Zone}" : "";
+        TitleText.Text = rec.Label;
         string truncated = rec.EventsTruncated ? $" · first {MaxFightEvents} events shown" : "";
         SubtitleText.Text =
-            $"{rec.EndedAt:dd MMM HH:mm:ss} · {FormatDuration(rec.DurationSeconds)}{zone} · " +
+            $"{rec.EndedAt:dd MMM HH:mm:ss} · {FormatDuration(rec.DurationSeconds)} · " +
             $"{rec.Events.Count} events{truncated} — hover a mark for details.";
 
+        BuildChips(rec);
+        BuildTiles(rec);
         AnalysisText.Text = BuildAnalysis(rec);
         AnalysisPanel.Visibility = Visibility.Visible;
         Visibility = Visibility.Visible;
@@ -64,290 +88,560 @@ public partial class TimelineView : UserControl
     public void Clear()
     {
         _rec = null;
-        _groups = new List<Group>();
         Visibility = Visibility.Collapsed;
     }
 
-    private static List<Group> BuildGroups(FightRecord rec)
+    // ---- header: chips + highlight tiles ---------------------------------------
+
+    private void BuildChips(FightRecord rec)
     {
-        var groups = new List<Group>();
-        Add("Your damage", FightStream.SelfOut, Rgb(0xFF, 0xC1, 0x2E), Rgb(0xFF, 0xE0, 0x82));
-        Add("Pet damage", FightStream.PetOut, Rgb(0xA1, 0x88, 0x7F), Rgb(0xD7, 0xCC, 0xC8));
-        Add("Damage taken", FightStream.SelfIn, Rgb(0xFF, 0x8A, 0x80), Rgb(0xFF, 0xCD, 0xD2));
-        Add("Pet damage taken", FightStream.PetIn, Rgb(0xFF, 0xB7, 0x4D), Rgb(0xFF, 0xE0, 0xB2));
-        Add("Your healing", FightStream.HealOut, Rgb(0x81, 0xC7, 0x84), Rgb(0xC8, 0xE6, 0xC9));
-        Add("Heals on you", FightStream.HealIn, Rgb(0x4D, 0xB6, 0xAC), Rgb(0xB2, 0xDF, 0xDB));
-
-        // Debuffs on the enemy render as SPANS — landing to landing+duration —
-        // because the GAPS are the story (the naked stretches where your slow
-        // was down are when the melee hurt).
-        var debuffLanes = new Dictionary<string, List<FightEvent>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var e in rec.Events)
-        {
-            if (e.Stream != FightStream.Debuff) continue;
-            if (!debuffLanes.TryGetValue(e.Ability, out var list))
-                debuffLanes[e.Ability] = list = new List<FightEvent>();
-            list.Add(e);
-        }
-        if (debuffLanes.Count > 0)
-            groups.Add(new Group("Debuffs on the enemy",
-                Rgb(0xB3, 0x9D, 0xDB), Rgb(0xB3, 0x9D, 0xDB), Rgb(0xD1, 0xC4, 0xE9),
-                debuffLanes.Select(kv => new Lane(kv.Key, kv.Value, kv.Value.Count))
-                    .OrderBy(l => l.Events[0].T).ToList(),
-                Spans: true));
-
-        // Your casting activity — a mark per begin-cast, interrupted casts dim.
-        var castLanes = ByAbility(FightStream.Cast);
-        if (castLanes.Count > 0)
-            groups.Add(new Group("Your casts",
-                Rgb(0x4F, 0xC3, 0xF7), Rgb(0x4F, 0xC3, 0xF7), Rgb(0xB3, 0xE5, 0xFC),
-                castLanes.Select(kv => new Lane(kv.Key, kv.Value, kv.Value.Count))
-                    .OrderBy(l => l.Events[0].T).ToList(),
-                Casts: true));
-
-        // CC on you — spans (T = landing, Amount = how long it held).
-        var ccLanes = ByAbility(FightStream.Condition);
-        if (ccLanes.Count > 0)
-            groups.Add(new Group("Crowd control on you",
-                Rgb(0xFF, 0x70, 0x43), Rgb(0xFF, 0x70, 0x43), Rgb(0xFF, 0xAB, 0x91),
-                ccLanes.Select(kv => new Lane(kv.Key, kv.Value, kv.Value.Count))
-                    .OrderBy(l => l.Events[0].T).ToList(),
-                Spans: true, SpanText: "held you for"));
-
-        // Stance — spans synthesized from the stance at pull + each change.
-        var stanceSegs = StanceSegments(rec);
-        if (stanceSegs.Count > 0)
-            groups.Add(new Group("Stance",
-                Rgb(0x90, 0xA4, 0xAE), Rgb(0x90, 0xA4, 0xAE), Rgb(0xCF, 0xD8, 0xDC),
-                stanceSegs.GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(g => new Lane(g.Key,
-                        g.Select(s => new FightEvent(s.T0, g.Key, s.T1 - s.T0, FightStream.Stance))
-                            .ToList(),
-                        g.Count()))
-                    .OrderBy(l => l.Events[0].T).ToList(),
-                Spans: true, SpanText: "active for"));
-        return groups;
-
-        Dictionary<string, List<FightEvent>> ByAbility(FightStream stream)
-        {
-            var lanes = new Dictionary<string, List<FightEvent>>(StringComparer.OrdinalIgnoreCase);
-            foreach (var e in rec.Events)
-            {
-                if (e.Stream != stream) continue;
-                if (!lanes.TryGetValue(e.Ability, out var list))
-                    lanes[e.Ability] = list = new List<FightEvent>();
-                list.Add(e);
-            }
-            return lanes;
-        }
-
-        void Add(string title, FightStream stream, Brush mark, Brush crit)
-        {
-            var byAbility = new Dictionary<string, List<FightEvent>>(StringComparer.OrdinalIgnoreCase);
-            foreach (var e in rec.Events)
-            {
-                if (e.Stream != stream) continue;
-                if (!byAbility.TryGetValue(e.Ability, out var list))
-                    byAbility[e.Ability] = list = new List<FightEvent>();
-                list.Add(e);
-            }
-            if (byAbility.Count == 0) return;
-
-            var lanes = byAbility
-                .Select(kv => new Lane(kv.Key, kv.Value, kv.Value.Sum(e => e.Amount)))
-                .OrderByDescending(l => l.Total)
-                .ToList();
-            if (lanes.Count > MaxLanesPerGroup)
-            {
-                var rest = lanes.Skip(MaxLanesPerGroup - 1).ToList();
-                lanes = lanes.Take(MaxLanesPerGroup - 1).ToList();
-                lanes.Add(new Lane($"(+{rest.Count} more)",
-                    rest.SelectMany(l => l.Events).OrderBy(e => e.T).ToList(),
-                    rest.Sum(l => l.Total)));
-            }
-            groups.Add(new Group(title, mark, mark, crit, lanes));
-        }
+        ChipsPanel.Children.Clear();
+        if (rec.Character.Length > 0)
+            AddChip(rec.Loadout.Length > 0 ? $"{rec.Character} · {rec.Loadout}" : rec.Character);
+        if (rec.StanceAtStart.Length > 0)
+            AddChip($"{rec.StanceAtStart} stance");
+        if (rec.BuffsAtStart.Count > 0)
+            AddChip($"Buffs up {rec.BuffsAtStart.Count}", string.Join(" · ", rec.BuffsAtStart));
+        foreach (var (mob, lvl) in rec.EnemyLevels)
+            AddChip($"{mob} · Lvl {lvl}");
+        if (rec.Zone.Length > 0) AddChip(rec.Zone);
+        if (_drops.Count > 0)
+            AddChip($"Dropped: {string.Join(" · ", _drops)}");
     }
 
-    // ---- drawing ---------------------------------------------------------------
+    private void AddChip(string text, string? tip = null)
+    {
+        var b = new Border
+        {
+            Background = CardBg,
+            BorderBrush = CardLine,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(9, 2, 9, 3),
+            Margin = new Thickness(0, 0, 6, 4),
+            Child = new TextBlock { Text = text, FontSize = 11, Foreground = ChipFg },
+        };
+        if (tip is not null) b.ToolTip = tip;
+        ChipsPanel.Children.Add(b);
+    }
+
+    private void BuildTiles(FightRecord rec)
+    {
+        TilesPanel.Children.Clear();
+        double dur = Math.Max(1, rec.DurationSeconds);
+
+        double selfTotal = rec.SelfAbilities.Sum(r => r.Total);
+        if (selfTotal <= 0) // pre-drill-down record: fall back to the damage rows
+            selfTotal = rec.Damage.Where(r => !r.Enemy).Sum(r => r.Total);
+        double petTotal = rec.PetAbilities.Sum(r => r.Total);
+        double healTotal = rec.Healing.Where(r => !r.Enemy).Sum(r => r.Total);
+
+        double peak = RollingPeak(rec.Events.Where(e =>
+            e.Stream is FightStream.SelfOut or FightStream.PetOut && e.Amount > 0), dur);
+        string peakTxt = peak > 0 ? $" · peak {peak:N0}/s" : "";
+        AddTile("DAMAGE DEALT", FormatDps(selfTotal / dur), "dps",
+            $"{FormatNum(selfTotal)} total{peakTxt}", DmgFg);
+
+        if (petTotal > 0)
+        {
+            double share = 100.0 * petTotal / Math.Max(1, selfTotal + petTotal);
+            AddTile((rec.Pet.Length > 0 ? rec.Pet.ToUpperInvariant() : "PET") + " (PET)",
+                FormatDps(petTotal / dur), "dps",
+                $"{FormatNum(petTotal)} · {share:0}% of the team", PetFg);
+        }
+
+        string takenSub = rec.IncomingPetTotal > 0
+            ? $"{FormatNum(rec.IncomingSelfTotal)} you · {FormatNum(rec.IncomingPetTotal)} pet"
+            : $"{FormatNum(rec.IncomingSelfTotal)} total";
+        AddTile("DAMAGE TAKEN", FormatDps(rec.IncomingSelfTotal / dur), "dps", takenSub, TakenFg);
+
+        if (healTotal > 0)
+            AddTile("HEALING", FormatDps(healTotal / dur), "/s", $"{FormatNum(healTotal)} total", HealFg);
+
+        AddTile("DURATION", FormatDuration(rec.DurationSeconds), "",
+            $"{rec.EndedAt:dd MMM HH:mm}", NeutralFg);
+
+        var bigIn = rec.Events.Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0)
+            .OrderByDescending(e => e.Amount).FirstOrDefault();
+        if (bigIn is not null)
+            AddTile("BIGGEST HIT ON YOU", FormatNum(bigIn.Amount), "",
+                $"{bigIn.Ability} at {FormatDuration(bigIn.T)}", TakenFg);
+
+        var bigOut = rec.Events.Where(e => e.Stream == FightStream.SelfOut && e.Amount > 0)
+            .OrderByDescending(e => e.Amount).FirstOrDefault();
+        if (bigOut is not null)
+            AddTile("BIGGEST HIT BY YOU", FormatNum(bigOut.Amount), "",
+                $"{bigOut.Ability}{(bigOut.Crit ? " (crit)" : "")} at {FormatDuration(bigOut.T)}", DmgFg);
+    }
+
+    private void AddTile(string label, string big, string unit, string sub, Brush accent)
+    {
+        var stack = new StackPanel();
+        stack.Children.Add(new TextBlock
+        {
+            Text = label, FontSize = 9, Foreground = AxisFg,
+            // uppercase labels read as labels; a touch of tracking helps
+            FontWeight = FontWeights.SemiBold,
+        });
+        var bigLine = new TextBlock { Margin = new Thickness(0, 1, 0, 0) };
+        bigLine.Inlines.Add(new System.Windows.Documents.Run(big)
+        { FontSize = 22, FontWeight = FontWeights.Bold, Foreground = accent });
+        if (unit.Length > 0)
+            bigLine.Inlines.Add(new System.Windows.Documents.Run(" " + unit)
+            { FontSize = 12, Foreground = ChipFg });
+        stack.Children.Add(bigLine);
+        stack.Children.Add(new TextBlock { Text = sub, FontSize = 11, Foreground = ChipFg });
+
+        TilesPanel.Children.Add(new Border
+        {
+            Background = CardBg,
+            BorderBrush = CardLine,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(12, 7, 14, 7),
+            Margin = new Thickness(0, 0, 8, 8),
+            MinWidth = 150,
+            Child = stack,
+        });
+    }
+
+    /// <summary>Max 5s-rolling rate over the given events (the tiles' "peak").</summary>
+    private static double RollingPeak(IEnumerable<FightEvent> events, double dur)
+    {
+        var evs = events.OrderBy(e => e.T).ToList();
+        if (evs.Count == 0) return 0;
+        double win = Math.Min(5, dur), max = 0, sum = 0;
+        int drop = 0;
+        for (int i = 0; i < evs.Count; i++)
+        {
+            sum += evs[i].Amount;
+            while (evs[drop].T <= evs[i].T - win) sum -= evs[drop++].Amount;
+            max = Math.Max(max, sum / win);
+        }
+        return max;
+    }
+
+    // ---- the two boards --------------------------------------------------------
 
     private void Rebuild()
     {
         if (_rec is null) return;
+        BoardsHost.Children.Clear();
 
-        LanesHost.Children.Clear();
-        AxisCanvas.Children.Clear();
-
-        double width = Math.Max(60, LanesHost.ActualWidth - LabelWidth);
+        double width = Math.Max(60, BoardsHost.ActualWidth - LabelWidth - 26);
         double dur = Math.Max(1, _rec.DurationSeconds);
         double scale = width / dur;
 
-        DrawAxis(width, dur, scale);
-        DrawGraph(width, dur, scale);
-
         if (_rec.Events.Count == 0)
         {
-            LanesHost.Children.Add(new TextBlock
+            BoardsHost.Children.Add(new TextBlock
             {
                 Text = "No timeline data for this fight — it was recorded (or ★-kept) before fight timelines existed. New fights record automatically.",
                 Foreground = MissFg,
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(4, 12, 4, 0),
+                Margin = new Thickness(4, 4, 4, 0),
             });
             return;
         }
 
-        foreach (var g in _groups)
+        BuildOffence(width, dur, scale);
+        BuildDefence(width, dur, scale);
+    }
+
+    private void BuildOffence(double width, double dur, double scale)
+    {
+        var rec = _rec!;
+        var lanes = new List<(string Group, LaneSpec Spec)>();
+
+        var selfOut = ByAbility(rec, FightStream.SelfOut);
+        var castsBy = ByAbility(rec, FightStream.Cast);
+        var debuffs = ByAbility(rec, FightStream.Debuff);
+        var claimedCasts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // DoTs: a debuff that also dealt YOUR damage gets ONE lane — cast
+        // chevron, uptime span, its own ticks inside it.
+        foreach (var (name, spanEvents) in debuffs.OrderBy(kv => kv.Value[0].T))
         {
-            LanesHost.Children.Add(new TextBlock
+            if (!selfOut.TryGetValue(name, out var ticks)) continue; // pure debuff → defence
+            claimedCasts.Add(name);
+            lanes.Add(("DoTs — cast · uptime · ticks", new LaneSpec(name, "DoT", DmgFg, DmgCrit,
+                ticks, spanEvents, castsBy.GetValueOrDefault(name) ?? new(),
+                SpanFill, SpanStroke, "running")));
+        }
+        var dotNames = new HashSet<string>(
+            lanes.Select(l => l.Spec.Label), StringComparer.OrdinalIgnoreCase);
+
+        // Direct damage, biggest first; each lane carries its own cast chevrons.
+        var direct = selfOut.Where(kv => !dotNames.Contains(kv.Key))
+            .OrderByDescending(kv => kv.Value.Sum(e => e.Amount))
+            .ToList();
+        foreach (var (name, ticks) in Capped(direct))
+        {
+            claimedCasts.Add(name);
+            lanes.Add(("Direct damage", new LaneSpec(name, "", DmgFg, DmgCrit,
+                ticks, new(), castsBy.GetValueOrDefault(name) ?? new(),
+                SpanFill, SpanStroke, "", Slim: ticks.Count > 45)));
+        }
+
+        // Pet lanes, its own group in its own color.
+        var pet = ByAbility(rec, FightStream.PetOut)
+            .OrderByDescending(kv => kv.Value.Sum(e => e.Amount)).ToList();
+        string petGroup = rec.Pet.Length > 0 ? $"{rec.Pet} — pet" : "Pet";
+        foreach (var (name, ticks) in Capped(pet))
+            lanes.Add((petGroup, new LaneSpec(name, "", PetFg, PetCrit,
+                ticks, new(), new(), SpanFill, SpanStroke, "", Slim: ticks.Count > 45)));
+
+        // Casts that never matched a lane here or in defence (buffs etc.).
+        var healNames = new HashSet<string>(
+            ByAbility(rec, FightStream.HealOut).Keys, StringComparer.OrdinalIgnoreCase);
+        var other = castsBy.Where(kv => !claimedCasts.Contains(kv.Key) && !healNames.Contains(kv.Key)
+                                        && !debuffs.ContainsKey(kv.Key))
+            .SelectMany(kv => kv.Value).OrderBy(e => e.T).ToList();
+        if (other.Count > 0)
+            lanes.Add(("Direct damage", new LaneSpec("other casts", "buffs etc.", CastFg, CastFg,
+                new(), new(), other, SpanFill, SpanStroke, "", Slim: true)));
+
+        if (lanes.Count == 0 && rec.Events.All(e => e.Stream != FightStream.SelfOut)) return;
+
+        var board = NewBoard("OFFENCE", DmgFg,
+            "▾ cast · ▬ DoT running · | hit (taller = harder), dim = miss/resist");
+        AddAxis(board, width, dur, scale);
+        DrawGraph(board, width, dur, scale, new[]
+        {
+            ("You", DmgFg, (Func<FightEvent, bool>)(e => e.Stream == FightStream.SelfOut)),
+            (rec.Pet.Length > 0 ? rec.Pet : "Pet", PetFg, e => e.Stream == FightStream.PetOut),
+        });
+        AddLanes(board, lanes, width, scale);
+        BoardsHost.Children.Add(board);
+    }
+
+    private void BuildDefence(double width, double dur, double scale)
+    {
+        var rec = _rec!;
+        var lanes = new List<(string Group, LaneSpec Spec)>();
+
+        var selfOut = ByAbility(rec, FightStream.SelfOut);
+        var castsBy = ByAbility(rec, FightStream.Cast);
+
+        // Your PURE debuffs (no damage ticks of yours): a slow and a malo
+        // shape the incoming side — their gaps sit above the curve they explain.
+        foreach (var (name, spanEvents) in ByAbility(rec, FightStream.Debuff)
+                     .Where(kv => !selfOut.ContainsKey(kv.Key)).OrderBy(kv => kv.Value[0].T))
+            lanes.Add(("Your debuffs on the enemy", new LaneSpec(name, "", SpanStroke, SpanStroke,
+                new(), spanEvents, castsBy.GetValueOrDefault(name) ?? new(),
+                SpanFill, SpanStroke, "running")));
+
+        foreach (var (name, ticks) in Capped(ByAbility(rec, FightStream.SelfIn)
+                     .OrderByDescending(kv => kv.Value.Sum(e => e.Amount)).ToList()))
+            lanes.Add(("What hit you", new LaneSpec(name, "", TakenFg, TakenCrit,
+                ticks, new(), new(), SpanFill, SpanStroke, "", Slim: ticks.Count > 45)));
+
+        var petIn = rec.Events.Where(e => e.Stream == FightStream.PetIn).OrderBy(e => e.T).ToList();
+        if (petIn.Count > 0)
+            lanes.Add(("What hit you", new LaneSpec(
+                rec.Pet.Length > 0 ? $"{rec.Pet} took" : "Pet took", "pet", PetFg, PetCrit,
+                petIn, new(), new(), SpanFill, SpanStroke, "", Slim: true)));
+
+        foreach (var (name, ticks) in Capped(ByAbility(rec, FightStream.HealOut)
+                     .OrderByDescending(kv => kv.Value.Sum(e => e.Amount)).ToList(), 5))
+            lanes.Add(("Healing & control", new LaneSpec(name, "", HealFg, HealCrit,
+                ticks, new(), castsBy.GetValueOrDefault(name) ?? new(),
+                SpanFill, SpanStroke, "", Slim: ticks.Count > 45)));
+
+        foreach (var (name, ticks) in Capped(ByAbility(rec, FightStream.HealIn)
+                     .OrderByDescending(kv => kv.Value.Sum(e => e.Amount)).ToList(), 3))
+            lanes.Add(("Healing & control", new LaneSpec(name, "on you", HealInFg, HealInFg,
+                ticks, new(), new(), SpanFill, SpanStroke, "")));
+
+        foreach (var (name, spans) in ByAbility(rec, FightStream.Condition))
+            lanes.Add(("Healing & control", new LaneSpec(name, "held you", CcStroke, CcStroke,
+                new(), spans, new(), CcFill, CcStroke, "held you for")));
+
+        var deaths = rec.Events.Where(e => e.Stream == FightStream.PetDeath).ToList();
+        if (deaths.Count > 0)
+            lanes.Add(("Healing & control", new LaneSpec(deaths[0].Ability, "", TakenFg, TakenFg,
+                deaths, new(), new(), SpanFill, SpanStroke, "", Death: true)));
+
+        var stanceSegs = StanceSegments(rec);
+        if (lanes.Count == 0 && stanceSegs.Count == 0) return;
+
+        var board = NewBoard("DEFENCE", TakenFg,
+            "▬ your debuff / CC · | hit on you · | heal · ✕ pet died");
+        AddAxis(board, width, dur, scale);
+        DrawGraph(board, width, dur, scale, new[]
+        {
+            ("Taken", TakenFg, (Func<FightEvent, bool>)(e => e.Stream is FightStream.SelfIn or FightStream.PetIn)),
+            ("Healing", HealFg, e => e.Stream is FightStream.HealOut or FightStream.HealIn),
+        });
+        AddLanes(board, lanes, width, scale);
+
+        if (stanceSegs.Count > 0)
+            AddStanceStrip(board, stanceSegs, width, scale);
+        BoardsHost.Children.Add(board);
+    }
+
+    // ---- board plumbing --------------------------------------------------------
+
+    private static StackPanel NewBoard(string title, Brush accent, string key)
+    {
+        var board = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
+        var head = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
+        head.Children.Add(new TextBlock
+        {
+            Text = title, Foreground = accent, FontWeight = FontWeights.Bold, FontSize = 12,
+        });
+        var keyTb = new TextBlock
+        {
+            Text = key, Foreground = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82)), FontSize = 11,
+            Margin = new Thickness(12, 1, 0, 0), VerticalAlignment = VerticalAlignment.Bottom,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        };
+        head.Children.Add(keyTb);
+        board.Children.Add(head);
+        return board;
+    }
+
+    private static void AddGroupLabel(Panel board, string text)
+    {
+        board.Children.Add(new TextBlock
+        {
+            Text = text,
+            Foreground = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82)),
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 10,
+            Margin = new Thickness(0, 7, 0, 2),
+        });
+    }
+
+    private void AddLanes(Panel board, List<(string Group, LaneSpec Spec)> lanes,
+        double width, double scale)
+    {
+        string current = "";
+        foreach (var (group, spec) in lanes)
+        {
+            if (group != current)
             {
-                Text = g.Title,
-                Foreground = g.Header,
-                FontWeight = FontWeights.Bold,
-                FontSize = 11,
-                Margin = new Thickness(0, 9, 0, 3),
-            });
-
-            double max = g.Lanes.SelectMany(l => l.Events).Max(e => e.Amount);
-            if (max <= 0) max = 1;
-
-            foreach (var lane in g.Lanes)
-                LanesHost.Children.Add(BuildLane(lane, g, max, width, scale));
+                AddGroupLabel(board, group);
+                current = group;
+            }
+            board.Children.Add(BuildLane(spec, width, scale));
         }
     }
 
-    private FrameworkElement BuildLane(Lane lane, Group g, double groupMax, double width, double scale)
+    private FrameworkElement BuildLane(LaneSpec s, double width, double scale)
     {
         var row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelWidth) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        int hits = lane.Events.Count(e => !e.Miss && !e.Resist);
+        double laneH = s.Slim ? SlimHeight : LaneHeight;
+        int hits = s.Ticks.Count(e => !e.Miss && !e.Resist);
         var label = new TextBlock
         {
-            Text = lane.Ability,
             Foreground = (Brush)FindResource("Brush.TextDim"),
             FontSize = 11,
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
             Margin = new Thickness(2, 0, 8, 0),
-            ToolTip = $"{lane.Ability} — {hits} landed, {FormatNum(lane.Total)} total",
         };
+        label.Inlines.Add(new System.Windows.Documents.Run(s.Label));
+        if (s.Sub.Length > 0)
+            label.Inlines.Add(new System.Windows.Documents.Run("  " + s.Sub)
+            { FontSize = 10, Foreground = AxisFg });
+        label.ToolTip = s.Spans.Count > 0 && s.Ticks.Count == 0
+            ? $"{s.Label} — {s.Spans.Count}×"
+            : $"{s.Label} — {hits} landed, {FormatNum(s.Ticks.Where(e => !e.Miss && !e.Resist).Sum(e => e.Amount))} total";
         Grid.SetColumn(label, 0);
         row.Children.Add(label);
 
-        var canvas = new Canvas
-        {
-            Height = LaneHeight,
-            ClipToBounds = true,
-            Background = LaneBg,
-        };
+        var canvas = new Canvas { Height = laneH, ClipToBounds = true, Background = LaneBg };
         Grid.SetColumn(canvas, 1);
         row.Children.Add(canvas);
 
-        if (g.Spans)
+        foreach (var e in s.Spans)
         {
-            label.ToolTip = $"{lane.Ability} — {lane.Events.Count}×";
-            foreach (var e in lane.Events)
+            double x = Math.Min(width - 3, e.T * scale);
+            double w = e.Amount > 0 ? Math.Max(3, Math.Min(width - x, e.Amount * scale)) : 3;
+            var span = new Rectangle
             {
-                double x = Math.Min(width - 3, e.T * scale);
-                double w = e.Amount > 0 ? Math.Max(3, Math.Min(width - x, e.Amount * scale)) : 3;
-                var span = new Rectangle
-                {
-                    Width = w,
-                    Height = LaneHeight - 6,
-                    RadiusX = 2,
-                    RadiusY = 2,
-                    Fill = SpanFill,
-                    Stroke = g.Mark,
-                    StrokeThickness = 1,
-                    ToolTip = e.Amount > 0
-                        ? $"{FormatDuration(e.T)} · {lane.Ability} {g.SpanText} ~{e.Amount:0}s"
-                        : $"{FormatDuration(e.T)} · {lane.Ability} landed (duration unknown)",
-                };
-                ToolTipService.SetInitialShowDelay(span, 150);
-                Canvas.SetLeft(span, x);
-                Canvas.SetBottom(span, 3);
-                canvas.Children.Add(span);
-            }
-            return row;
+                Width = w, Height = laneH - 6, RadiusX = 2, RadiusY = 2,
+                Fill = s.SpanFillBrush, Stroke = s.SpanStrokeBrush, StrokeThickness = 1,
+                ToolTip = e.Amount > 0
+                    ? $"{FormatDuration(e.T)} · {s.Label} {s.SpanText} ~{e.Amount:0}s"
+                    : $"{FormatDuration(e.T)} · {s.Label} landed (duration unknown)",
+            };
+            ToolTipService.SetInitialShowDelay(span, 150);
+            Canvas.SetLeft(span, x);
+            Canvas.SetBottom(span, 3);
+            canvas.Children.Add(span);
         }
 
-        foreach (var e in lane.Events)
+        double max = Math.Max(1, s.Ticks.Count > 0 ? s.Ticks.Max(e => e.Amount) : 1);
+        foreach (var e in s.Ticks)
         {
             double x = Math.Min(width - 2, e.T * scale);
-            Rectangle mark;
+            FrameworkElement mark;
             string when = FormatDuration(e.T);
 
-            if (e.Miss)
+            if (s.Death)
+            {
+                mark = new TextBlock
+                {
+                    Text = "✕", Foreground = TakenFg, FontSize = 11, FontWeight = FontWeights.Bold,
+                    ToolTip = $"{when} · {s.Label}",
+                };
+                Canvas.SetTop(mark, 0);
+            }
+            else if (e.Miss || e.Resist)
             {
                 mark = new Rectangle { Width = 2, Height = 7, Fill = MissFg };
-                mark.ToolTip = g.Casts
-                    ? $"{when} · {lane.Ability} INTERRUPTED"
-                    : $"{when} · {lane.Ability} missed";
-            }
-            else if (e.Resist)
-            {
-                mark = new Rectangle { Width = 2, Height = 7, Fill = ResistFg };
-                mark.ToolTip = $"{when} · {lane.Ability} resisted";
+                mark.ToolTip = $"{when} · {s.Label} {(e.Resist ? "resisted" : "missed")}";
             }
             else
             {
-                double h = 4 + 15 * Math.Sqrt(e.Amount / groupMax);
+                double h = 4 + (laneH - 8) * Math.Sqrt(e.Amount / max);
                 mark = new Rectangle
                 {
                     Width = e.Crit ? 3 : 2,
-                    Height = Math.Min(LaneHeight - 2, h),
-                    Fill = e.Crit ? g.CritMark : g.Mark,
+                    Height = Math.Min(laneH - 2, h),
+                    Fill = e.Crit ? s.Crit : s.Mark,
                 };
-                mark.ToolTip = g.Casts
-                    ? $"{when} · cast {lane.Ability}"
-                    : $"{when} · {lane.Ability} {e.Amount:N0}{(e.Crit ? " (Critical)" : "")}";
+                mark.ToolTip = $"{when} · {s.Label} {e.Amount:N0}{(e.Crit ? " (Critical)" : "")}";
             }
 
             ToolTipService.SetInitialShowDelay(mark, 150);
             Canvas.SetLeft(mark, x);
-            Canvas.SetBottom(mark, 1);
+            if (!s.Death) Canvas.SetBottom(mark, 1);
             canvas.Children.Add(mark);
+        }
+
+        foreach (var e in s.Casts)
+        {
+            var chev = new Polygon
+            {
+                Points = new PointCollection { new Point(0, 0), new Point(7, 0), new Point(3.5, 5) },
+                Fill = e.Miss ? MissFg : CastFg,
+                ToolTip = e.Miss
+                    ? $"{FormatDuration(e.T)} · {e.Ability} INTERRUPTED"
+                    : $"{FormatDuration(e.T)} · cast {e.Ability}",
+            };
+            ToolTipService.SetInitialShowDelay(chev, 150);
+            Canvas.SetLeft(chev, Math.Min(width - 7, Math.Max(0, e.T * scale - 3.5)));
+            Canvas.SetTop(chev, 0);
+            canvas.Children.Add(chev);
         }
 
         return row;
     }
 
-    /// <summary>Rolling-DPS curves (5s window) for each side of the fight.</summary>
-    private void DrawGraph(double width, double dur, double scale)
+    private void AddStanceStrip(Panel board, List<(string Name, double T0, double T1)> segs,
+        double width, double scale)
     {
-        GraphCanvas.Children.Clear();
-        LegendPanel.Children.Clear();
-
-        if (_rec is null || _rec.Events.Count == 0)
+        var row = new Grid { Margin = new Thickness(0, 6, 0, 0) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelWidth) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var lb = new TextBlock
         {
-            GraphHost.Visibility = Visibility.Collapsed;
-            return;
-        }
-        GraphHost.Visibility = Visibility.Visible;
-        GraphCanvas.Width = width;
-
-        double h = GraphCanvas.Height;
-        double win = Math.Min(5, dur);              // rolling window (short fights shrink it)
-        double step = Math.Max(0.25, dur / 400);    // sample spacing
-
-        var series = new (string Label, Brush Brush, Func<FightEvent, bool> Pick)[]
-        {
-            ("You", Rgb(0xFF, 0xC1, 0x2E), e => e.Stream == FightStream.SelfOut),
-            ("Pet", Rgb(0xA1, 0x88, 0x7F), e => e.Stream == FightStream.PetOut),
-            ("Taken", Rgb(0xFF, 0x8A, 0x80), e => e.Stream is FightStream.SelfIn or FightStream.PetIn),
-            ("Healing", Rgb(0x81, 0xC7, 0x84), e => e.Stream is FightStream.HealOut or FightStream.HealIn),
+            Text = "Stance", Foreground = (Brush)FindResource("Brush.TextDim"), FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 8, 0),
         };
+        Grid.SetColumn(lb, 0);
+        row.Children.Add(lb);
 
-        // Pass 1: sample every series so they share one vertical scale.
+        var canvas = new Canvas { Height = 15, ClipToBounds = true, Background = LaneBg };
+        Grid.SetColumn(canvas, 1);
+        row.Children.Add(canvas);
+
+        foreach (var (name, t0, t1) in segs)
+        {
+            double x = t0 * scale;
+            double w = Math.Max(2, (t1 - t0) * scale);
+            var seg = new Border
+            {
+                Width = Math.Min(width - x, w), Height = 15,
+                Background = StanceFill,
+                BorderBrush = Freeze(Color.FromRgb(0x13, 0x17, 0x21)),
+                BorderThickness = new Thickness(0, 0, 1, 0),
+                ToolTip = $"{name} · {FormatDuration(t0)} → {FormatDuration(t1)}",
+                Child = new TextBlock
+                {
+                    Text = w > 46 ? name : "",
+                    Foreground = StanceFg, FontSize = 10,
+                    Margin = new Thickness(5, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            };
+            ToolTipService.SetInitialShowDelay(seg, 150);
+            Canvas.SetLeft(seg, x);
+            canvas.Children.Add(seg);
+        }
+        board.Children.Add(row);
+    }
+
+    private static Dictionary<string, List<FightEvent>> ByAbility(FightRecord rec, FightStream stream)
+    {
+        var lanes = new Dictionary<string, List<FightEvent>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var e in rec.Events)
+        {
+            if (e.Stream != stream) continue;
+            if (!lanes.TryGetValue(e.Ability, out var list))
+                lanes[e.Ability] = list = new List<FightEvent>();
+            list.Add(e);
+        }
+        return lanes;
+    }
+
+    /// <summary>Cap a lane list, folding the tail into "(+N more)".</summary>
+    private static List<(string Name, List<FightEvent> Events)> Capped(
+        List<KeyValuePair<string, List<FightEvent>>> ordered, int cap = MaxLanesPerGroup)
+    {
+        var outp = ordered.Select(kv => (kv.Key, kv.Value)).ToList();
+        if (outp.Count <= cap) return outp;
+        var rest = outp.Skip(cap - 1).ToList();
+        outp = outp.Take(cap - 1).ToList();
+        outp.Add(($"(+{rest.Count} more)",
+            rest.SelectMany(l => l.Item2).OrderBy(e => e.T).ToList()));
+        return outp;
+    }
+
+    private void AddAxis(Panel board, double width, double dur, double scale)
+    {
+        var canvas = new Canvas
+        {
+            Height = 18, ClipToBounds = true,
+            Margin = new Thickness(LabelWidth, 0, 0, 3),
+        };
+        double step = new[] { 1.0, 2, 5, 10, 15, 30, 60, 120, 300, 600 }
+            .FirstOrDefault(s => dur / s <= 10, 600);
+        for (double t = 0; t <= dur; t += step)
+        {
+            double x = t * scale;
+            var tick = new Rectangle { Width = 1, Height = 5, Fill = AxisFg };
+            Canvas.SetLeft(tick, x);
+            Canvas.SetBottom(tick, 0);
+            canvas.Children.Add(tick);
+            var lbl = new TextBlock { Text = FormatDuration(t), Foreground = AxisFg, FontSize = 10 };
+            Canvas.SetLeft(lbl, Math.Max(0, x - 10));
+            Canvas.SetTop(lbl, 0);
+            canvas.Children.Add(lbl);
+        }
+        board.Children.Add(canvas);
+    }
+
+    /// <summary>Rolling-DPS curves (5s window) for the given series.</summary>
+    private void DrawGraph(Panel board, double width, double dur, double scale,
+        (string Label, Brush Brush, Func<FightEvent, bool> Pick)[] series)
+    {
+        var rec = _rec!;
+        double win = Math.Min(5, dur);
+        double step = Math.Max(0.25, dur / 400);
+
         var sampled = new List<(string Label, Brush Brush, List<(double T, double Dps)> Points)>();
         double maxDps = 0;
         foreach (var (label, brush, pick) in series)
         {
-            var evs = _rec.Events.Where(e => pick(e) && e.Amount > 0).OrderBy(e => e.T).ToList();
+            var evs = rec.Events.Where(e => pick(e) && e.Amount > 0).OrderBy(e => e.T).ToList();
             if (evs.Count == 0) continue;
-
             var pts = new List<(double, double)>();
             double sum = 0;
             int add = 0, drop = 0;
@@ -361,62 +655,52 @@ public partial class TimelineView : UserControl
             }
             sampled.Add((label, brush, pts));
         }
-        if (maxDps <= 0) { GraphHost.Visibility = Visibility.Collapsed; return; }
+        if (maxDps <= 0) return;
 
-        // Pass 2: draw, and build the legend for the series that exist.
+        var legend = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(LabelWidth, 2, 0, 2),
+        };
+        var canvas = new Canvas { Height = 96, Width = width, ClipToBounds = true };
+        double h = canvas.Height;
+
         foreach (var (label, brush, pts) in sampled)
         {
             var line = new Polyline
             {
-                Stroke = brush,
-                StrokeThickness = 1.6,
-                StrokeLineJoin = PenLineJoin.Round,
+                Stroke = brush, StrokeThickness = 1.6, StrokeLineJoin = PenLineJoin.Round,
             };
             foreach (var (t, dps) in pts)
                 line.Points.Add(new Point(t * scale, h - 4 - dps / maxDps * (h - 12)));
-            GraphCanvas.Children.Add(line);
+            canvas.Children.Add(line);
 
-            LegendPanel.Children.Add(new Border
+            legend.Children.Add(new Border
             {
-                Width = 8, Height = 8, CornerRadius = new CornerRadius(2),
-                Background = brush, Margin = new Thickness(0, 0, 4, 0),
-                VerticalAlignment = VerticalAlignment.Center,
+                Width = 8, Height = 8, CornerRadius = new CornerRadius(2), Background = brush,
+                Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center,
             });
-            LegendPanel.Children.Add(new TextBlock
+            legend.Children.Add(new TextBlock
             {
-                Text = label, FontSize = 10,
-                Foreground = (Brush)FindResource("Brush.TextHint"),
-                Margin = new Thickness(0, 0, 10, 0),
-                VerticalAlignment = VerticalAlignment.Center,
+                Text = label, FontSize = 10, Foreground = (Brush)FindResource("Brush.TextHint"),
+                Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center,
             });
         }
-
-        PeakText.Text = $"5s rolling · peak {maxDps:N0}/s";
-    }
-
-    private void DrawAxis(double width, double dur, double scale)
-    {
-        double step = new[] { 1.0, 2, 5, 10, 15, 30, 60, 120, 300, 600 }
-            .FirstOrDefault(s => dur / s <= 10, 600);
-
-        for (double t = 0; t <= dur; t += step)
+        legend.Children.Add(new TextBlock
         {
-            double x = t * scale;
-            var tick = new Rectangle { Width = 1, Height = 5, Fill = AxisFg };
-            Canvas.SetLeft(tick, x);
-            Canvas.SetBottom(tick, 0);
-            AxisCanvas.Children.Add(tick);
+            Text = $"5s rolling · peak {maxDps:N0}/s", FontSize = 10, Foreground = AxisFg,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        board.Children.Add(legend);
 
-            var lbl = new TextBlock
-            {
-                Text = FormatDuration(t),
-                Foreground = AxisFg,
-                FontSize = 10,
-            };
-            Canvas.SetLeft(lbl, Math.Max(0, x - 10));
-            Canvas.SetTop(lbl, 0);
-            AxisCanvas.Children.Add(lbl);
-        }
+        board.Children.Add(new Border
+        {
+            Margin = new Thickness(LabelWidth, 0, 0, 4),
+            Background = Freeze(Color.FromArgb(0x10, 0xFF, 0xFF, 0xFF)),
+            CornerRadius = new CornerRadius(4),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Child = canvas,
+        });
     }
 
     // ---- analysis (runs once per visited fight — ShowFight no-ops on repeats) --
@@ -536,6 +820,35 @@ public partial class TimelineView : UserControl
                 : $"• Mostly {byStance[0].Name} stance ({100.0 * byStance[0].Sec / dur:0}%) — switched {switches}× mid-fight.");
         }
 
+        // 3e · The pet: its share of the work, and the disaster moment.
+        double petTotal = rec.PetAbilities.Sum(a => a.Total);
+        double selfTotal = rec.SelfAbilities.Sum(a => a.Total);
+        if (petTotal > 0)
+        {
+            string pet = rec.Pet.Length > 0 ? rec.Pet : "Your pet";
+            string line = $"• {pet} dealt {100.0 * petTotal / Math.Max(1, selfTotal + petTotal):0}% of the team's damage ({FormatNum(petTotal)})";
+            line += rec.IncomingPetTotal > 0
+                ? $" and ate {FormatNum(rec.IncomingPetTotal)} of the incoming."
+                : ".";
+            lines.Add(line);
+        }
+        foreach (var d in rec.Events.Where(e => e.Stream == FightStream.PetDeath).OrderBy(e => e.T))
+        {
+            string line = $"• {d.Ability} at {FormatDuration(d.T)}";
+            double before = d.T, after = dur - d.T;
+            if (before >= 5 && after >= 5 && takenEvented > 0)
+            {
+                double takenAfter = rec.Events
+                    .Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0 && e.T > d.T)
+                    .Sum(e => e.Amount);
+                double rateBefore = (takenEvented - takenAfter) / before;
+                double rateAfter = takenAfter / after;
+                if (rateAfter > rateBefore * 1.3)
+                    line += $" — you took {rateAfter:0}/s after vs {rateBefore:0}/s with the pet up.";
+            }
+            lines.Add(line + (line.EndsWith(".") ? "" : "."));
+        }
+
         // 4 · Who kept you alive, and the hit that nearly didn't let them.
         var healers = rec.Healing.Where(h => !h.Enemy && h.Total > 0)
             .OrderByDescending(h => h.Total).ToList();
@@ -606,7 +919,8 @@ public partial class TimelineView : UserControl
 
     private static string FormatNum(double v) => v.ToString("N0");
 
-    private static Brush Rgb(byte r, byte g, byte b) => Freeze(Color.FromRgb(r, g, b));
+    private static string FormatDps(double v) =>
+        v >= 100 ? v.ToString("N0") : v.ToString("0.0");
 
     private static Brush Freeze(Color c)
     {

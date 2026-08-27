@@ -115,6 +115,9 @@ public sealed class CombatParser
         /// <summary>You changed stance mid-fight ("You assume a defensive
         /// stance."). Ability = the stance; pair with StanceAtStart for spans.</summary>
         Stance = 9,
+        /// <summary>Your pet died mid-fight — for pet builds, THE disaster
+        /// moment. Ability carries "&lt;pet&gt; died".</summary>
+        PetDeath = 10,
     }
 
     /// <summary>
@@ -179,6 +182,9 @@ public sealed class CombatParser
         /// <summary>Enemy → level, from /con lines seen this session ("(Lvl: N)").</summary>
         public Dictionary<string, int> EnemyLevels { get; init; } =
             new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>The pet's name during this fight ("" = no pet known).</summary>
+        public string Pet { get; init; } = "";
     }
 
     private readonly List<FightRecord> _history = new();
@@ -977,6 +983,12 @@ public sealed class CombatParser
         if (_enemyDots.Count > 0 && RaidKills.TryParseKill(body, out string deadMob))
             RemoveDotsFor(deadMob); // no return — death lines aren't otherwise consumed here
 
+        // The pet dying mid-fight is a fight event — for pet builds, THE
+        // disaster moment ("Vibarn has been slain by a fire giant warrior!").
+        if (_active && PetName.Trim().Length > 0
+            && RaidKills.TryParseKill(body, out string slainName) && IsPet(slainName))
+            Note(time, $"{PetName.Trim()} died", 0, FightStream.PetDeath);
+
         // Own casts feed the proc detector: a spell landing WITHOUT one procced.
         if (body.StartsWith("You begin ", StringComparison.Ordinal)
             && BeginCastRx.Match(body) is { Success: true } cast)
@@ -1284,6 +1296,7 @@ public sealed class CombatParser
             Loadout = _loadoutAtStart,
             StanceAtStart = _stanceAtStart,
             BuffsAtStart = new List<string>(_buffsAtStart),
+            Pet = PetName.Trim(),
         };
         foreach (var (mob, lvl) in MatchConLevels(rec.Damage)) rec.EnemyLevels[mob] = lvl;
         _history.Insert(0, rec);
