@@ -119,7 +119,7 @@
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
                     <ListBoxItem Content="Condition badges"/>
-                    <ListBoxItem Content="Sky quest helper"/>
+                    <ListBoxItem Content="Sky droppers"/>
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
                     <ListBoxItem Content="Sounds &amp; voices"/>
@@ -929,11 +929,11 @@
                     <ScrollViewer x:Name="SkyHelperPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Sky quest helper" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="Sky droppers" Style="{StaticResource PageTitle}"/>
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="Con or hit a known Plane of Sky quest dropper and its quest items appear — needed first, fading shortly after the last mention. ★-tracked quests (Quests window) keep a standing hunt list. The panel materializes only when it has something to say, or while unlocked so it can be placed."/>
+                                       Text="An overlay panel, separate from the Quests window (toolbar !): con or hit a known Plane of Sky dropper and its quest items appear — needed first, fading shortly after the last mention. ★-tracked quests keep a standing hunt list. The panel materializes only when it has something to say, or while unlocked so it can be placed."/>
 
                             <CheckBox x:Name="SkyHelperVisibleCheck" Content="Show the panel" Margin="0,12,0,0"/>
 

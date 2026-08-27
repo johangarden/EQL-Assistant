@@ -1001,7 +1001,7 @@ public partial class TriggerManagerWindow : Window
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
-            ["Sky quest helper"] = SkyHelperPage,
+            ["Sky droppers"] = SkyHelperPage,
             ["General"] = GeneralPage,
             ["Sounds & voices"] = SoundsPage,
             ["Data"] = DataPage,
