@@ -107,24 +107,10 @@
                                                  FontSize="11"/>
                                         </TextBlock>
 
+                                        <!-- Fight context and the taken totals live in the
+                                             report's chips and tiles — the cards stay pure
+                                             per-ability tables. -->
                                         <WrapPanel>
-                                            <!-- ==== FIGHT CONTEXT ==== -->
-                                            <Border Style="{StaticResource SectionCard}" Width="230"
-                                                    Margin="0,4,10,0" VerticalAlignment="Top"
-                                                    Visibility="{Binding InfoSectionVisibility}">
-                                                <StackPanel>
-                                                    <TextBlock Text="Fight" Foreground="#8FA6C4"
-                                                               Style="{StaticResource SectionHeader}"/>
-                                                    <ItemsControl ItemsSource="{Binding InfoRows}"
-                                                                  ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                                    <StackPanel Visibility="{Binding DropsVisibility}">
-                                                        <TextBlock Text="Dropped" Style="{StaticResource SubLabel}"/>
-                                                        <ItemsControl ItemsSource="{Binding DropRows}" Margin="8,0,0,0"
-                                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                                    </StackPanel>
-                                                </StackPanel>
-                                            </Border>
-
                                             <!-- ==== DAMAGE DEALT ==== -->
                                             <Border Style="{StaticResource SectionCard}" Width="230"
                                                     Margin="0,4,10,0" VerticalAlignment="Top">
@@ -158,19 +144,15 @@
                                                 </StackPanel>
                                             </Border>
 
-                                            <!-- ==== DAMAGE TAKEN ==== -->
+                                            <!-- ==== WHAT HIT YOU ==== -->
                                             <Border Style="{StaticResource SectionCard}" Width="230"
-                                                    Margin="0,4,10,0" VerticalAlignment="Top">
+                                                    Margin="0,4,10,0" VerticalAlignment="Top"
+                                                    Visibility="{Binding TakenSectionVisibility}">
                                                 <StackPanel>
-                                                    <TextBlock Text="Damage taken" Foreground="#FF8A80"
+                                                    <TextBlock Text="What hit you" Foreground="#FF8A80"
                                                                Style="{StaticResource SectionHeader}"/>
-                                                    <ItemsControl ItemsSource="{Binding TakenRows}"
+                                                    <ItemsControl ItemsSource="{Binding TakenAbilityRows}"
                                                                   ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                                    <StackPanel Visibility="{Binding TakenSectionVisibility}">
-                                                        <TextBlock Text="What hit you" Style="{StaticResource SubLabel}"/>
-                                                        <ItemsControl ItemsSource="{Binding TakenAbilityRows}" Margin="8,0,0,0"
-                                                                      ItemTemplate="{StaticResource StatRowTemplate}"/>
-                                                    </StackPanel>
                                                 </StackPanel>
                                             </Border>
 

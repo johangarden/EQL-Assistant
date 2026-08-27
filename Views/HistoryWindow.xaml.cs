@@ -46,15 +46,12 @@ public partial class HistoryWindow : Window
     }
 
     public sealed record FightColumn(string Title, string Subtitle,
-        List<StatRow> DamageRows, List<StatRow> HealingRows, List<StatRow> TakenRows,
-        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows,
-        List<StatRow> InfoRows, List<StatRow> DropRows)
+        List<StatRow> DamageRows, List<StatRow> HealingRows,
+        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows)
     {
         public Visibility SelfSectionVisibility => SelfAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility PetSectionVisibility => PetAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility InfoSectionVisibility => InfoRows.Count > 0 || DropRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility DropsVisibility => DropRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot)
@@ -217,41 +214,14 @@ public partial class HistoryWindow : Window
         if (healing.Count == 0) healing.Add(new StatRow("—", "", NameFg));
 
         double dur = Math.Max(1, r.DurationSeconds);
-        var taken = new List<StatRow>
-        {
-            new("You", $"{FormatDps(r.IncomingSelfTotal / dur)} dps · {FormatNum(r.IncomingSelfTotal)}", IncomingFg),
-        };
-        if (r.IncomingPetTotal > 0)
-            taken.Add(new StatRow("Pet",
-                $"{FormatDps(r.IncomingPetTotal / dur)} dps · {FormatNum(r.IncomingPetTotal)}", IncomingFg));
-
         string zone = r.Zone.Length > 0 ? $" · {r.Zone}" : "";
         return new FightColumn(
             r.Label,
             $"{r.EndedAt:HH:mm:ss} · {FormatDuration(r.DurationSeconds)} · total {FormatDps(r.TotalDps)} dps{zone}",
-            damage, healing, taken,
+            damage, healing,
             AbilityRows(r.SelfAbilities, NameFg, dur, Swings(r.SelfAbilities)),
             AbilityRows(r.PetAbilities, NameFg, dur, Swings(r.PetAbilities)),
-            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0),
-            InfoRows(r), DropRows(r));
-    }
-
-    /// <summary>Fight context — recorded from the current build onward; older
-    /// fights simply have no rows here and the section stays collapsed.</summary>
-    private List<StatRow> InfoRows(CombatParser.FightRecord r)
-    {
-        var rows = new List<StatRow>();
-        if (r.Character.Length > 0)
-            rows.Add(new StatRow("Character",
-                r.Loadout.Length > 0 ? $"{r.Character} · {r.Loadout}" : r.Character, NameFg));
-        if (r.StanceAtStart.Length > 0)
-            rows.Add(new StatRow("Stance at pull", r.StanceAtStart, NameFg));
-        if (r.BuffsAtStart.Count > 0)
-            rows.Add(new StatRow("Buffs up", r.BuffsAtStart.Count.ToString(), NameFg,
-                string.Join(" · ", r.BuffsAtStart)));
-        foreach (var (mob, lvl) in r.EnemyLevels)
-            rows.Add(new StatRow(mob, $"Lvl {lvl}", EnemyFg));
-        return rows;
+            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0));
     }
 
     /// <summary>What the corpse gave — the loot log joined on the fight's own
