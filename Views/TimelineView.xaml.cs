@@ -304,14 +304,15 @@ public partial class TimelineView : UserControl
         if (lanes.Count == 0 && rec.Events.All(e => e.Stream != FightStream.SelfOut)) return;
 
         var board = NewBoard("OFFENCE", DmgFg,
-            "▾ cast · ▬ DoT running · | hit (taller = harder), dim = miss/resist");
-        AddAxis(board, width, dur, scale);
-        DrawGraph(board, width, dur, scale, new[]
+            "▾ cast · ▬ DoT running · | hit (taller = harder), dim = miss/resist",
+            () => _offenceOpen, v => _offenceOpen = v, out var content);
+        AddAxis(content, width, dur, scale);
+        DrawGraph(content, width, dur, scale, new[]
         {
             ("You", DmgFg, (Func<FightEvent, bool>)(e => e.Stream == FightStream.SelfOut)),
             (rec.Pet.Length > 0 ? rec.Pet : "Pet", PetFg, e => e.Stream == FightStream.PetOut),
         });
-        AddLanes(board, lanes, width, scale);
+        AddLanes(content, lanes, width, scale);
         BoardsHost.Children.Add(board);
     }
 
@@ -366,26 +367,45 @@ public partial class TimelineView : UserControl
         if (lanes.Count == 0 && stanceSegs.Count == 0) return;
 
         var board = NewBoard("DEFENCE", TakenFg,
-            "▬ your debuff / CC · | hit on you · | heal · ✕ pet died");
-        AddAxis(board, width, dur, scale);
-        DrawGraph(board, width, dur, scale, new[]
+            "▬ your debuff / CC · | hit on you · | heal · ✕ pet died",
+            () => _defenceOpen, v => _defenceOpen = v, out var content);
+        AddAxis(content, width, dur, scale);
+        DrawGraph(content, width, dur, scale, new[]
         {
             ("Taken", TakenFg, (Func<FightEvent, bool>)(e => e.Stream is FightStream.SelfIn or FightStream.PetIn)),
             ("Healing", HealFg, e => e.Stream is FightStream.HealOut or FightStream.HealIn),
         });
-        AddLanes(board, lanes, width, scale);
+        AddLanes(content, lanes, width, scale);
 
         if (stanceSegs.Count > 0)
-            AddStanceStrip(board, stanceSegs, width, scale);
+            AddStanceStrip(content, stanceSegs, width, scale);
         BoardsHost.Children.Add(board);
     }
 
     // ---- board plumbing --------------------------------------------------------
 
-    private static StackPanel NewBoard(string title, Brush accent, string key)
+    // Fold state survives selection changes and fights — app-session memory.
+    private static bool _offenceOpen = true;
+    private static bool _defenceOpen = true;
+
+    /// <summary>A foldable board: clickable ▾/▸ header, content below. Custom,
+    /// never a stock Expander — every control themed from day one.</summary>
+    private static StackPanel NewBoard(string title, Brush accent, string key,
+        Func<bool> isOpen, Action<bool> setOpen, out Panel content)
     {
         var board = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
-        var head = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
+        var head = new DockPanel
+        {
+            Margin = new Thickness(0, 0, 0, 4),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            Background = Brushes.Transparent, // whole row clickable
+        };
+        var arrow = new TextBlock
+        {
+            Text = isOpen() ? "▾" : "▸", Foreground = accent, FontSize = 11,
+            Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center,
+        };
+        head.Children.Add(arrow);
         head.Children.Add(new TextBlock
         {
             Text = title, Foreground = accent, FontWeight = FontWeights.Bold, FontSize = 12,
@@ -398,6 +418,21 @@ public partial class TimelineView : UserControl
         };
         head.Children.Add(keyTb);
         board.Children.Add(head);
+
+        var inner = new StackPanel
+        {
+            Visibility = isOpen() ? Visibility.Visible : Visibility.Collapsed,
+        };
+        board.Children.Add(inner);
+        content = inner;
+
+        head.MouseLeftButtonDown += (_, _) =>
+        {
+            bool open = !isOpen();
+            setOpen(open);
+            inner.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            arrow.Text = open ? "▾" : "▸";
+        };
         return board;
     }
 
