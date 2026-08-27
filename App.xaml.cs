@@ -217,6 +217,12 @@ public partial class App : Application
             histWin.Show();
             histWin.UpdateLayout();
             histWin.Close();
+
+            // The cursor ring follows the mouse — construction + one frame.
+            var ring = new Views.CursorRingWindow();
+            ring.Show();
+            ring.UpdateLayout();
+            ring.Close();
             try { File.Delete(helperProg); } catch { /* temp */ }
 
             // The Sheet tab renders the doll + detail pane from a real-format
@@ -311,6 +317,7 @@ public partial class App : Application
             fd.Replay($"[{FT(6)}] You assume an offensive stance.");
             fd.NoteCondition("STUNNED", false, fb.AddSeconds(7));
             fd.Replay($"[{FT(4)}] Gobber hits Lady Vox for 50 points of damage.");
+            fd.Replay($"[{FT(6)}] Lady Vox has taken 30 damage from Envenomed Bolt by Johan.");
             fd.Replay($"[{FT(9)}] Gobber has been slain by Lady Vox!");
             fd.Replay($"[{FT(7)}] Your Siphon Life spell is interrupted.");
             fd.Replay($"[{FT(8)}] You resist Lady Vox's Frost Breath!");
@@ -330,6 +337,8 @@ public partial class App : Application
             Check("fight: the stun becomes a condition span (landing -> release)",
                 fdRec.Events.Any(e => e.Stream == CombatParser.FightStream.Condition
                     && e.Ability == "Stunned" && Math.Abs(e.Amount - 5) < 0.01));
+            Check("fight: a tick-shaped damage line flags its spell as a DoT",
+                fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.SelfOut, Ability: "Envenomed Bolt", Dot: true }));
             Check("fight: the pet's name and its death ride the record",
                 fdRec.Pet == "Gobber"
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.PetDeath, Ability: "Gobber died" }));

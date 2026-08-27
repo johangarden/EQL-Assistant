@@ -258,18 +258,25 @@ public partial class TimelineView : UserControl
         var debuffs = ByAbility(rec, FightStream.Debuff);
         var claimedCasts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // DoTs: a debuff that also dealt YOUR damage gets ONE lane — cast
-        // chevron, uptime span, its own ticks inside it.
-        foreach (var (name, spanEvents) in debuffs.OrderBy(kv => kv.Value[0].T))
+        // DoTs get ONE lane — cast chevron, uptime span, ticks inside it. A
+        // spell is a DoT when the log said so: a recorded landing span, OR
+        // tick-shaped damage lines ("has taken X damage from Odium") — the
+        // latter catches DoTs whose landing sentence was never observed.
+        var dotNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in debuffs.Keys)
+            if (selfOut.ContainsKey(name)) dotNames.Add(name); // pure debuff → defence
+        foreach (var (name, ticks) in selfOut)
+            if (ticks.Any(e => e.Dot)) dotNames.Add(name);
+        foreach (var name in dotNames.OrderBy(n =>
+                     Math.Min(debuffs.GetValueOrDefault(n)?[0].T ?? double.MaxValue,
+                         selfOut[n][0].T)))
         {
-            if (!selfOut.TryGetValue(name, out var ticks)) continue; // pure debuff → defence
             claimedCasts.Add(name);
             lanes.Add(("DoTs — cast · uptime · ticks", new LaneSpec(name, "DoT", DmgFg, DmgCrit,
-                ticks, spanEvents, castsBy.GetValueOrDefault(name) ?? new(),
+                selfOut[name], debuffs.GetValueOrDefault(name) ?? new(),
+                castsBy.GetValueOrDefault(name) ?? new(),
                 SpanFill, SpanStroke, "running")));
         }
-        var dotNames = new HashSet<string>(
-            lanes.Select(l => l.Spec.Label), StringComparer.OrdinalIgnoreCase);
 
         // Direct damage, biggest first; each lane carries its own cast chevrons.
         var direct = selfOut.Where(kv => !dotNames.Contains(kv.Key))
@@ -419,11 +426,18 @@ public partial class TimelineView : UserControl
         head.Children.Add(keyTb);
         board.Children.Add(head);
 
-        var inner = new StackPanel
+        // Content sits in a grid with a hit-test-transparent overlay on top —
+        // the hover time-cursor draws there, across graph and lanes alike.
+        var inner = new StackPanel();
+        var overlay = new Canvas { IsHitTestVisible = false, ClipToBounds = true };
+        var wrap = new Grid
         {
+            Background = Brushes.Transparent,
             Visibility = isOpen() ? Visibility.Visible : Visibility.Collapsed,
         };
-        board.Children.Add(inner);
+        wrap.Children.Add(inner);
+        wrap.Children.Add(overlay);
+        board.Children.Add(wrap);
         content = inner;
 
         head.MouseLeftButtonDown += (_, _) =>

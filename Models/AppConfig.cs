@@ -114,6 +114,10 @@ public sealed class OverlayConfig
     /// (materializes only while a condition is active, or unlocked).</summary>
     public bool ConditionsVisible { get; set; } = true;
 
+    /// <summary>The cursor ring: a gold circle following the mouse, so the
+    /// cursor is findable in the heat of battle. Off by default.</summary>
+    public bool CursorRingVisible { get; set; }
+
     /// <summary>Whether the Sky quest helper panel is enabled (materializes
     /// only when a dropper is sighted or quests are tracked).</summary>
     public bool SkyHelperVisible { get; set; } = true;

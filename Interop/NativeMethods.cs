@@ -90,6 +90,12 @@ internal static class NativeMethods
         catch { /* pre-20H1 Windows — keep the light title bar */ }
     }
 
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public struct POINT { public int X; public int Y; }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    public static extern bool GetCursorPos(out POINT lpPoint);
+
     /// <summary>Turn mouse click-through on or off for the given window.</summary>
     public static void SetClickThrough(nint hWnd, bool enabled)
     {

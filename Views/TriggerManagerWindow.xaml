@@ -510,6 +510,8 @@
                             <TextBox x:Name="OpacityBox" Width="120" HorizontalAlignment="Left"/>
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
+                            <CheckBox x:Name="CursorRingCheck" Content="Cursor ring (a gold circle follows your mouse — find it in the heat of battle)"
+                                      Margin="0,6,0,0"/>
 
                         </StackPanel>
                     </ScrollViewer>
