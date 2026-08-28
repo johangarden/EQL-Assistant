@@ -61,10 +61,6 @@
                         Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE81C;"
                         AutomationProperties.AutomationId="MeterHistoryBtn"
                         ToolTip="Fight history — compare past fights"/>
-                <Button x:Name="ModeBtn" DockPanel.Dock="Right" Style="{StaticResource ToolBtn}"
-                        Click="OnToggleMetric" Margin="6,0,0,0" Padding="7,1" Content="DPS"
-                        AutomationProperties.AutomationId="MeterModeBtn"
-                        ToolTip="Toggle between damage (DPS) and healing (HPS)"/>
                 <Button x:Name="ScopeBtn" DockPanel.Dock="Right" Style="{StaticResource ToolBtn}"
                         Click="OnToggleScope" Margin="6,0,0,0" Padding="7,1" Content="SOLO"
                         AutomationProperties.AutomationId="MeterScopeBtn"
