@@ -99,7 +99,7 @@
                                 <Border Margin="0,0,0,10" Padding="10" CornerRadius="8"
                                         Background="#1B2130" BorderBrush="#3A4560" BorderThickness="1">
                                     <StackPanel>
-                                        <TextBlock Margin="0,0,0,2">
+                                        <TextBlock Margin="0,0,0,2" Visibility="{Binding HeaderVisibility}">
                                             <Run Text="{Binding Title, Mode=OneWay}" Foreground="#C9D4E3"
                                                  FontWeight="Bold" FontSize="13"/>
                                             <Run Text="   "/>

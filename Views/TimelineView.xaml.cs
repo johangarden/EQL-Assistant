@@ -396,8 +396,9 @@ public partial class TimelineView : UserControl
     // ---- board plumbing --------------------------------------------------------
 
     // Fold state survives selection changes and fights — app-session memory.
-    private static bool _offenceOpen = true;
-    private static bool _defenceOpen = true;
+    // Folded by default: the pulse at first glance, details on demand.
+    private static bool _offenceOpen;
+    private static bool _defenceOpen;
 
     /// <summary>A foldable board in a section card: clickable ▾/▸ header, the
     /// graph part ALWAYS visible (a folded board still shows the fight's

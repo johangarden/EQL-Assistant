@@ -47,11 +47,15 @@ public partial class HistoryWindow : Window
 
     public sealed record FightColumn(string Title, string Subtitle,
         List<StatRow> DamageRows, List<StatRow> HealingRows,
-        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows)
+        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows,
+        bool ShowHeader)
     {
         public Visibility SelfSectionVisibility => SelfAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility PetSectionVisibility => PetAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        /// <summary>Single selection hides the row header — the report above is
+        /// already titled with this fight; comparisons need their identities.</summary>
+        public Visibility HeaderVisibility => ShowHeader ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot)
@@ -149,7 +153,8 @@ public partial class HistoryWindow : Window
             .OrderBy(e => _shown.IndexOf(e))
             .Take(MaxCompare)
             .ToList();
-        ColumnsControl.ItemsSource = entries.Select(e => BuildColumn(e.Rec)).ToList();
+        ColumnsControl.ItemsSource = entries
+            .Select(e => BuildColumn(e.Rec, showHeader: entries.Count > 1)).ToList();
 
         // The report (highlights + timelines) always shows the first selected
         // fight; comparisons stack their table rows below it.
@@ -194,7 +199,7 @@ public partial class HistoryWindow : Window
     private static int Swings(List<CombatParser.Row> abilities) =>
         abilities.Where(a => CombatParser.IsMeleeAbility(a.Name)).Sum(a => a.Hits + a.Misses);
 
-    private FightColumn BuildColumn(CombatParser.FightRecord r)
+    private FightColumn BuildColumn(CombatParser.FightRecord r, bool showHeader)
     {
         var damage = new List<StatRow>();
         foreach (var row in r.Damage.Where(x => !x.Enemy).Take(MaxDamageRows))
@@ -221,7 +226,8 @@ public partial class HistoryWindow : Window
             damage, healing,
             AbilityRows(r.SelfAbilities, NameFg, dur, Swings(r.SelfAbilities)),
             AbilityRows(r.PetAbilities, NameFg, dur, Swings(r.PetAbilities)),
-            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0));
+            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0),
+            showHeader);
     }
 
     /// <summary>What the corpse gave — the loot log joined on the fight's own
