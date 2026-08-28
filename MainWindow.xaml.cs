@@ -1685,7 +1685,8 @@ public partial class MainWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_combat, _configService, _loot);
+            _historyWindow = new HistoryWindow(_combat, _configService, _loot,
+                () => _config.Overlay.MeterSoloMode);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

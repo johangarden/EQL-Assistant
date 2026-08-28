@@ -216,7 +216,7 @@ public partial class MeterWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_parser, _config, _loot);
+            _historyWindow = new HistoryWindow(_parser, _config, _loot, () => _soloMode);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }
