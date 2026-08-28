@@ -147,7 +147,6 @@ public partial class MainWindow : Window
         // Pet names persist per character — a re-summon gets a NEW name, and
         // forgetting the old ones makes solo fights read as "group".
         _combat.PetDetected += p => _configService.AddKnownPet(_combat.SelfName, p);
-        _combat.SetCompanions(SplitCompanions(_config.Overlay.CompanionNames));
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
@@ -1032,9 +1031,6 @@ public partial class MainWindow : Window
         return m.Success ? m.Groups["name"].Value : "";
     }
 
-    private static IEnumerable<string> SplitCompanions(string csv) =>
-        csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
     /// <summary>An explicit Character name in Settings wins; otherwise the log filename's.</summary>
     private void ApplySelfName()
     {
@@ -1393,7 +1389,6 @@ public partial class MainWindow : Window
         RebuildConditionsWindow(); // its page owns visibility now
         RebuildSkyHelperWindow();  // ditto — the Sky helper page arrived
         ApplyCursorRing();
-        _combat.SetCompanions(SplitCompanions(_config.Overlay.CompanionNames));
         if (_toolbarWin is not null)
         {
             _toolbarWin.DataContext = _vm; // rebound: the VM was rebuilt above

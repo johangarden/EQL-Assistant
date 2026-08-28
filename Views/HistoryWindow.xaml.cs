@@ -157,8 +157,6 @@ public partial class HistoryWindow : Window
         if (PetNameFor(r) is { Length: > 0 } pet
             && row.Name.Equals(pet, StringComparison.OrdinalIgnoreCase)) return false;
         if (_parser.IsKnownPet(row.Name)) return false;
-        // Fused companions are the player's OWN alts — their side, always.
-        if (_parser.IsCompanion(row.Name)) return false;
         // Legacy fights (before pet stamps): the pet's damage row totals
         // exactly what its ability drill-down sums to — a fingerprint no
         // groupmate matches.
@@ -170,9 +168,14 @@ public partial class HistoryWindow : Window
         return true;
     }
 
-    /// <summary>A group fight = anyone besides you and your pet on your side.</summary>
+    /// <summary>A group fight = someone actually JOINED yours — hit one of
+    /// your enemies or healed you. Recorded at capture (Allies); a bystander
+    /// farming the next camp in logging range never counts. Legacy records
+    /// (before the Character stamp) fall back to the row heuristic.</summary>
     private bool IsGroupFight(CombatParser.FightRecord r) =>
-        r.Damage.Any(x => IsOtherPlayer(r, x)) || r.Healing.Any(x => IsOtherPlayer(r, x));
+        r.Allies.Count > 0
+        || (r.Character.Length == 0
+            && (r.Damage.Any(x => IsOtherPlayer(r, x)) || r.Healing.Any(x => IsOtherPlayer(r, x))));
 
     /// <summary>Row = time + mob only; the day lives in the group header and
     /// duration/dps/zone in the tooltip (and the details card).</summary>

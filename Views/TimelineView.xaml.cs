@@ -107,6 +107,8 @@ public partial class TimelineView : UserControl
             AddChip($"Buffs up {rec.BuffsAtStart.Count}", string.Join(" · ", rec.BuffsAtStart));
         foreach (var (mob, lvl) in rec.EnemyLevels)
             AddChip($"{mob} · Lvl {lvl}");
+        if (rec.Allies.Count > 0)
+            AddChip($"With: {string.Join(" · ", rec.Allies)}");
         if (rec.Zone.Length > 0) AddChip(rec.Zone);
         if (_drops.Count > 0)
             AddChip($"Dropped: {string.Join(" · ", _drops)}");

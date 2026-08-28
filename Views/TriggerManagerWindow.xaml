@@ -514,12 +514,6 @@
                             <CheckBox x:Name="CursorRingCheck" Content="Cursor ring (a gold circle follows your mouse — find it in the heat of battle)"
                                       Margin="0,6,0,0"/>
 
-                            <TextBlock Text="Fused companions (comma-separated names)" Style="{StaticResource FieldLabel}"/>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="Your own alt characters in Solo (Fused) mode — the game announces nothing when fusing, so name them here. They count as YOUR side: fights with them stay 'solo' in the history and they remain visible with SOLO on."/>
-                            <TextBox x:Name="CompanionsBox" Width="340" HorizontalAlignment="Left"
-                                     ToolTip="e.g. Tolo, Lonn"/>
-
                         </StackPanel>
                     </ScrollViewer>
 

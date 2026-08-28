@@ -37,18 +37,41 @@ public sealed class CombatParser
             if (!string.IsNullOrWhiteSpace(n)) _knownPets.Add(n.Trim());
     }
 
-    // Fused companions (EQL's Solo N (Fused) mode): the player's OWN alt
-    // characters fighting alongside them. The log announces nothing when
-    // fusing, so the names are user-taught (Manager → General).
-    private HashSet<string> _companions = new(StringComparer.OrdinalIgnoreCase);
+    // ---- whose fight is it -----------------------------------------------------
+    // "Group" must mean someone JOINED your fight — a bystander farming the
+    // next camp over is scenery, even in logging range. My enemies = mobs
+    // I or my pet trade damage with; an ally = any other player who touches
+    // one of them, or heals me/my pet. Order-proof: a helper who tags the
+    // mob before I do is caught the moment the mob becomes mine.
+    private readonly HashSet<string> _myEnemies = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, HashSet<string>> _otherTargets = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _myAllies = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Is this name one of the player's fused companions?</summary>
-    public bool IsCompanion(string name) => _companions.Contains(name.Trim());
+    private void AddMyEnemy(string mob)
+    {
+        if (!_myEnemies.Add(mob)) return;
+        foreach (var (who, targets) in _otherTargets)
+            if (targets.Contains(mob)) _myAllies.Add(who);
+    }
 
-    public void SetCompanions(IEnumerable<string> names) =>
-        _companions = new HashSet<string>(
-            names.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()),
-            StringComparer.OrdinalIgnoreCase);
+    private void TrackSides(string attacker, string target)
+    {
+        bool mineA = IsSelf(attacker) || IsPet(attacker);
+        bool mineT = IsSelf(target) || IsPet(target);
+        if (mineA && IsEnemyName(target)) AddMyEnemy(target);
+        else if (mineT && IsEnemyName(attacker)) AddMyEnemy(attacker);
+        else if (!mineA && !IsEnemyName(attacker) && IsEnemyName(target)
+                 && !_knownPets.Contains(attacker)) // an old pet of MINE is never an ally
+        {
+            if (_myEnemies.Contains(target)) _myAllies.Add(attacker);
+            else
+            {
+                if (!_otherTargets.TryGetValue(attacker, out var t))
+                    _otherTargets[attacker] = t = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                t.Add(target);
+            }
+        }
+    }
 
     // ---- pet auto-detect ------------------------------------------------------
     // The summon prints nothing, but an ORDERED pet names itself: command
@@ -218,6 +241,11 @@ public sealed class CombatParser
         /// <summary>EVERY combatant in this fight that was ever your pet — a
         /// re-summon gets a new name, so one fight can hold several.</summary>
         public List<string> Pets { get; init; } = new();
+
+        /// <summary>Players who actually JOINED this fight — damaged one of
+        /// your enemies or healed you/your pet. Bystanders in logging range
+        /// never land here; empty = a solo fight.</summary>
+        public List<string> Allies { get; init; } = new();
     }
 
     private readonly List<FightRecord> _history = new();
@@ -1337,6 +1365,7 @@ public sealed class CombatParser
                      .Where(r => !r.Enemy && _knownPets.Contains(r.Name))
                      .Select(r => r.Name).Distinct(StringComparer.OrdinalIgnoreCase))
             rec.Pets.Add(name);
+        rec.Allies.AddRange(_myAllies);
         _history.Insert(0, rec);
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
         _archivedActiveSec += rec.DurationSeconds; // session PPM denominator
@@ -1359,6 +1388,9 @@ public sealed class CombatParser
         _events.Clear();
         _eventsTruncated = false;
         _spellSchools.Clear();
+        _myEnemies.Clear();
+        _otherTargets.Clear();
+        _myAllies.Clear();
     }
 
     /// <summary>
@@ -1448,6 +1480,7 @@ public sealed class CombatParser
         target = Normalize(target);
         if (IsReflexive(target)) target = attacker;
         Touch(time);
+        TrackSides(attacker, target);
 
         Bump(_damage, attacker, amount);
         Bump(_taken, target, amount);
@@ -1561,6 +1594,10 @@ public sealed class CombatParser
         target = Normalize(target);
         if (IsReflexive(target)) target = healer;
         Touch(time);
+        // Someone else healing ME (or my pet) joined my fight.
+        if (!IsSelf(healer) && !IsPet(healer) && !_knownPets.Contains(healer)
+            && (IsSelf(target) || IsPet(target)))
+            _myAllies.Add(healer);
         Bump(_healing, healer, amount);
 
         // Per-spell split for the solo HPS view (bare heals have no spell name).

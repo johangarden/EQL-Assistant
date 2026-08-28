@@ -118,12 +118,6 @@ public sealed class OverlayConfig
     /// cursor is findable in the heat of battle. Off by default.</summary>
     public bool CursorRingVisible { get; set; }
 
-    /// <summary>Fused-companion names (comma-separated) — the player's own alt
-    /// characters in Solo (Fused) mode. They count as YOUR side: no "group"
-    /// tag, and they stay visible in SOLO fight details. The log announces
-    /// nothing when fusing, so these are user-taught.</summary>
-    public string CompanionNames { get; set; } = "";
-
     /// <summary>Whether the Sky quest helper panel is enabled (materializes
     /// only when a dropper is sighted or quests are tracked).</summary>
     public bool SkyHelperVisible { get; set; } = true;

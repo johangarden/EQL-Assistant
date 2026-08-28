@@ -364,6 +364,16 @@ public partial class App : Application
             Check("fight: pure healing with a real enemy present still archives",
                 by.History.Count == 1);
 
+            // Allies vs bystanders: "group" means someone joined YOUR fight —
+            // a neighbour farming their own camp in logging range is scenery.
+            var al = new CombatParser { SelfName = "Johan" };
+            al.Replay($"[{FT(500)}] Tolo hit Lady Vox for 40 points of magic damage by Odium."); // tags her FIRST
+            al.Replay($"[{FT(501)}] Lady Vox hit Johan for 100 points of cold damage by Frost Breath.");
+            al.Replay($"[{FT(503)}] Kettel hit a haunted chest for 90 points of magic damage by Blaze.");
+            al.Tick(fb.AddSeconds(560));
+            Check("fight: joining my fight makes an ally, farming next door doesn't",
+                al.History[0].Allies.Contains("Tolo") && !al.History[0].Allies.Contains("Kettel"));
+
             string fdTxt = Views.TimelineView.BuildAnalysis(fdRec);
             Check("analysis: names the dominant school and the resist advice",
                 fdTxt.Contains("COLD") && fdTxt.Contains("More Cold resist")
