@@ -1066,10 +1066,10 @@ public sealed class CombatParser
         // The pet dying mid-fight is a fight event — for pet builds, THE
         // disaster moment ("Vibarn has been slain by a fire giant warrior!").
         // Cheap gate first: the kill regex must not tax every combat line.
-        if (_active && PetName.Trim().Length > 0
+        if (_active
             && body.Contains(" has been slain", StringComparison.Ordinal)
             && RaidKills.TryParseKill(body, out string slainName) && IsPet(slainName))
-            Note(time, $"{PetName.Trim()} died", 0, FightStream.PetDeath);
+            Note(time, $"{slainName} died", 0, FightStream.PetDeath);
 
         // Own casts feed the proc detector: a spell landing WITHOUT one procced.
         if (body.StartsWith("You begin ", StringComparison.Ordinal)
@@ -1366,7 +1366,7 @@ public sealed class CombatParser
             TotalDps = TotalPerSecond(healing: false),
             TotalHps = TotalPerSecond(healing: true),
             SelfAbilities = GetAbilityRows(Self()),
-            PetAbilities = GetAbilityRows(PetName),
+            PetAbilities = GetMergedPetAbilityRows(),
             IncomingSelfAbilities = GetIncomingAbilityRows(pet: false),
             IncomingPetAbilities = GetIncomingAbilityRows(pet: true),
             Events = _events
@@ -1452,6 +1452,31 @@ public sealed class CombatParser
             || !_abilities.TryGetValue(sourceName.Trim(), out var byAbility))
             return new();
         return AbilityRows(byAbility);
+    }
+
+    /// <summary>Ability rows merged across EVERY pet in the fight — a death and
+    /// re-summon splits the drill-down by name, but the report tells one pet
+    /// story ("bite — 10,630"), whichever throat it came from.</summary>
+    private List<Row> GetMergedPetAbilityRows()
+    {
+        var merged = new Dictionary<string, AbilityStat>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (source, byAbility) in _abilities)
+        {
+            if (!IsPet(source)) continue;
+            foreach (var (ability, s) in byAbility)
+            {
+                if (!merged.TryGetValue(ability, out var m))
+                    merged[ability] = m = new AbilityStat();
+                m.Total += s.Total;
+                m.Hits += s.Hits;
+                m.Misses += s.Misses;
+                m.Resists += s.Resists;
+                m.Crits += s.Crits;
+                if (s.Hits > 0 && s.Min < m.Min) m.Min = s.Min;
+                if (s.Max > m.Max) m.Max = s.Max;
+            }
+        }
+        return AbilityRows(merged);
     }
 
     /// <summary>Healing split by spell for one source, highest first (solo HPS view).</summary>
@@ -1732,9 +1757,13 @@ public sealed class CombatParser
     private bool IsSelf(string name) =>
         name.Equals(Self(), StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Yours if it's the CURRENT pet — or any pet you've EVER had:
+    /// a fight fought by a previous summon is still your pet's fight, and
+    /// pet names are random enough that a collision is fantasy.</summary>
     private bool IsPet(string name) =>
-        !string.IsNullOrWhiteSpace(PetName)
-        && name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase);
+        (!string.IsNullOrWhiteSpace(PetName)
+         && name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
+        || _knownPets.Contains(name.Trim());
 
     private static double Amount(Match m, string group) =>
         double.TryParse(m.Groups[group].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out double v)
