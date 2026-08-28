@@ -60,7 +60,10 @@ public partial class TimelineView : UserControl
     public TimelineView()
     {
         InitializeComponent();
-        SizeChanged += (_, _) => Rebuild();
+        // WIDTH changes only: folding a board changes our HEIGHT, and a
+        // height-triggered rebuild recreates the headers mid-click (worse,
+        // the outer scrollbar can flip the width back and forth and loop it).
+        SizeChanged += (_, e) => { if (e.WidthChanged) Rebuild(); };
     }
 
     /// <summary>Point the report at one fight (no-op when already showing it).</summary>
@@ -313,14 +316,14 @@ public partial class TimelineView : UserControl
 
         var board = NewBoard("OFFENCE", DmgFg,
             "▾ cast · ▬ DoT running · | hit (taller = harder), dim = miss/resist",
-            () => _offenceOpen, v => _offenceOpen = v, out var content);
-        AddAxis(content, width, dur, scale);
-        DrawGraph(content, width, dur, scale, new[]
+            () => _offenceOpen, v => _offenceOpen = v, out var graphPart, out var detailPart);
+        AddAxis(graphPart, width, dur, scale);
+        DrawGraph(graphPart, width, dur, scale, new[]
         {
             ("You", DmgFg, (Func<FightEvent, bool>)(e => e.Stream == FightStream.SelfOut)),
             (rec.Pet.Length > 0 ? rec.Pet : "Pet", PetFg, e => e.Stream == FightStream.PetOut),
         });
-        AddLanes(content, lanes, width, scale);
+        AddLanes(detailPart, lanes, width, scale);
         BoardsHost.Children.Add(board);
     }
 
@@ -376,17 +379,17 @@ public partial class TimelineView : UserControl
 
         var board = NewBoard("DEFENCE", TakenFg,
             "▬ your debuff / CC · | hit on you · | heal · ✕ pet died",
-            () => _defenceOpen, v => _defenceOpen = v, out var content);
-        AddAxis(content, width, dur, scale);
-        DrawGraph(content, width, dur, scale, new[]
+            () => _defenceOpen, v => _defenceOpen = v, out var graphPart, out var detailPart);
+        AddAxis(graphPart, width, dur, scale);
+        DrawGraph(graphPart, width, dur, scale, new[]
         {
             ("Taken", TakenFg, (Func<FightEvent, bool>)(e => e.Stream is FightStream.SelfIn or FightStream.PetIn)),
             ("Healing", HealFg, e => e.Stream is FightStream.HealOut or FightStream.HealIn),
         });
-        AddLanes(content, lanes, width, scale);
+        AddLanes(detailPart, lanes, width, scale);
 
         if (stanceSegs.Count > 0)
-            AddStanceStrip(content, stanceSegs, width, scale);
+            AddStanceStrip(detailPart, stanceSegs, width, scale);
         BoardsHost.Children.Add(board);
     }
 
@@ -396,11 +399,12 @@ public partial class TimelineView : UserControl
     private static bool _offenceOpen = true;
     private static bool _defenceOpen = true;
 
-    /// <summary>A foldable board in a section card: clickable ▾/▸ header,
-    /// content below. Custom, never a stock Expander — every control themed
-    /// from day one.</summary>
+    /// <summary>A foldable board in a section card: clickable ▾/▸ header, the
+    /// graph part ALWAYS visible (a folded board still shows the fight's
+    /// pulse), only the lane details fold. Custom, never a stock Expander —
+    /// every control themed from day one.</summary>
     private static Border NewBoard(string title, Brush accent, string key,
-        Func<bool> isOpen, Action<bool> setOpen, out Panel content)
+        Func<bool> isOpen, Action<bool> setOpen, out Panel graphPart, out Panel detailPart)
     {
         var board = new StackPanel();
         var head = new DockPanel
@@ -428,25 +432,24 @@ public partial class TimelineView : UserControl
         head.Children.Add(keyTb);
         board.Children.Add(head);
 
-        // Content sits in a grid with a hit-test-transparent overlay on top —
-        // the hover time-cursor draws there, across graph and lanes alike.
-        var inner = new StackPanel();
-        var overlay = new Canvas { IsHitTestVisible = false, ClipToBounds = true };
-        var wrap = new Grid
+        var always = new StackPanel();
+        board.Children.Add(always);
+        graphPart = always;
+
+        var details = new StackPanel
         {
-            Background = Brushes.Transparent,
             Visibility = isOpen() ? Visibility.Visible : Visibility.Collapsed,
         };
-        wrap.Children.Add(inner);
-        wrap.Children.Add(overlay);
-        board.Children.Add(wrap);
-        content = inner;
+        board.Children.Add(details);
+        detailPart = details;
 
+        // ONE element carries the folded state, and the toggle flips THAT
+        // element — a builder/handler mismatch here once froze boards shut.
         head.MouseLeftButtonDown += (_, _) =>
         {
             bool open = !isOpen();
             setOpen(open);
-            inner.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            details.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
             arrow.Text = open ? "▾" : "▸";
         };
         return new Border
