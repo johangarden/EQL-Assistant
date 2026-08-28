@@ -259,7 +259,7 @@ public partial class HistoryWindow : Window
     }
 
     private static FightSheetView.SheetRow SlimRow(CombatParser.Row x) =>
-        new(x.Name, x.Dps, x.Total, x.Percent, 0, null, null, null, null, null, null);
+        new(x.Name, x.Dps, x.Total, x.Percent, 0, null, null, null, null, null, null, null);
 
     /// <summary>Full drill-down rows. Nulls are honest gaps: a spell with no
     /// miss-tracking must not claim a 100% hit rate, and incoming rows carry
@@ -274,6 +274,9 @@ public partial class HistoryWindow : Window
                 a.Name, a.Dps, a.Total, a.Percent, a.Hits,
                 HitPct: attempts > 0 && a.Misses + a.Resists > 0
                     ? 100.0 * a.Hits / attempts : null,
+                // Resists only exist for spells/procs — melee shows the honest
+                // dash instead of a meaningless zero.
+                Resists: CombatParser.IsMeleeAbility(a.Name) ? null : a.Resists,
                 Min: a.Hits > 0 ? a.Min : null,
                 Avg: a.Hits > 0 ? a.Total / a.Hits : null,
                 Max: a.Hits > 0 ? a.Max : null,

@@ -17,7 +17,7 @@ public partial class FightSheetView : UserControl
     /// <summary>One table row. Nullable cells render as a dim "—": a spell
     /// with no miss-tracking must not pretend a 100% hit rate.</summary>
     public sealed record SheetRow(string Name, double Dps, double Total, double Pct,
-        int Hits, double? HitPct, double? Min, double? Avg, double? Max,
+        int Hits, double? HitPct, int? Resists, double? Min, double? Avg, double? Max,
         double? CritPct, double? PerMin);
 
     /// <summary>One aspect of one actor (Damage dealt / Damage taken /
@@ -50,6 +50,7 @@ public partial class FightSheetView : UserControl
         new("% DMG", r => r.Pct, r => $"{r.Pct:0}%"),
         new("HITS", r => r.Hits, r => r.Hits.ToString("N0")),
         new("HIT %", r => r.HitPct, r => r.HitPct is { } v ? $"{v:0}%" : null),
+        new("RES", r => r.Resists, r => r.Resists is { } v ? v.ToString("N0") : null),
         new("MIN", r => r.Min, r => r.Min is { } v ? v.ToString("N0") : null),
         new("AVG", r => r.Avg, r => r.Avg is { } v ? v.ToString("N0") : null),
         new("MAX", r => r.Max, r => r.Max is { } v ? v.ToString("N0") : null),
