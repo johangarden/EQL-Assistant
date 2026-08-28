@@ -372,8 +372,9 @@ public partial class App : Application
                 fdTxt.Contains("CC held you for 0:05")
                 && fdTxt.Contains("Siphon Life was interrupted")
                 && fdTxt.Contains("Mostly defensive stance") && fdTxt.Contains("switched 1×"));
-            Check("analysis: the pet's share and its death get lines",
-                fdTxt.Contains("Gobber dealt") && fdTxt.Contains("Gobber died at 0:09"));
+            Check("analysis: the pet death speaks, the tile-covered share stays quiet",
+                fdTxt.Contains("Gobber died at 0:09") && !fdTxt.Contains("Gobber dealt")
+                && !fdTxt.Contains("Biggest hit on you:"));
 
             // The playbook rules (eql-fight-analyst): clipping, refresh nudge,
             // melee hit rate vs con level, and the danger window — on a
