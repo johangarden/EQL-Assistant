@@ -233,16 +233,105 @@ public partial class TimelineView : UserControl
             .OrderByDescending(e => e.Amount).Take(3).ToList();
         var worst = rec.IncomingSelfAbilities.Where(a => a.Total > 0)
             .OrderByDescending(a => a.Total).Take(3).ToList();
-        if (hits.Count > 0 || worst.Count > 0)
+        if (hits.Count > 0 || worst.Count > 0 || rec.Events.Count > 0)
         {
-            var row3 = NewTileRow();
+            // A grid, not a wrap: the pulse card claims whatever width the
+            // two lists leave — no dead corner.
+            var row3 = new Grid();
+            row3.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row3.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row3.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            TilesPanel.Children.Add(row3);
             if (hits.Count > 0)
-                AddListCard(row3, "HARDEST HITS ON YOU", hits.Select(e =>
+            {
+                var card = ListCard("HARDEST HITS ON YOU", hits.Select(e =>
                     (FormatNum(e.Amount), $"{e.Ability} · {FormatDuration(e.T)}")));
+                Grid.SetColumn(card, 0);
+                row3.Children.Add(card);
+            }
             if (worst.Count > 0)
-                AddListCard(row3, "WORST INCOMING ABILITIES", worst.Select(a =>
+            {
+                var card = ListCard("WORST INCOMING ABILITIES", worst.Select(a =>
                     (FormatNum(a.Total),
                      $"{a.Name} · {100.0 * a.Total / Math.Max(1, rec.IncomingSelfTotal):0}% · {a.Hits} hits")));
+                Grid.SetColumn(card, 1);
+                row3.Children.Add(card);
+            }
+            if (rec.Events.Count > 0)
+            {
+                var pulse = PulseCard(rec);
+                Grid.SetColumn(pulse, 2);
+                row3.Children.Add(pulse);
+            }
+        }
+    }
+
+    /// <summary>The fight's heartbeat in miniature: dealt (gold), taken (red)
+    /// and healing (green) as 5s-rolling curves — fills the leftover width.</summary>
+    private static Border PulseCard(FightRecord rec)
+    {
+        var stack = new StackPanel();
+        stack.Children.Add(TileLabel("THE PULSE"));
+        var canvas = new Canvas
+        {
+            Height = 52,
+            ClipToBounds = true,
+            Margin = new Thickness(0, 5, 0, 0),
+            Background = Freeze(Color.FromArgb(0x10, 0xFF, 0xFF, 0xFF)),
+        };
+        canvas.SizeChanged += (_, _) => DrawSparkline(canvas, rec);
+        stack.Children.Add(canvas);
+        return TileCard(stack, minWidth: 180);
+    }
+
+    private static void DrawSparkline(Canvas canvas, FightRecord rec)
+    {
+        canvas.Children.Clear();
+        double w = canvas.ActualWidth;
+        if (w < 20) return;
+        double h = canvas.Height;
+        double dur = Math.Max(1, rec.DurationSeconds);
+        double win = Math.Min(5, dur);
+        double step = Math.Max(0.25, dur / 300);
+        double scale = w / dur;
+
+        var series = new (Brush Brush, double Thick, Func<FightEvent, bool> Pick)[]
+        {
+            (HealFg, 1.1, e => e.Stream is FightStream.HealOut or FightStream.HealIn),
+            (TakenFg, 1.3, e => e.Stream is FightStream.SelfIn or FightStream.PetIn),
+            (DmgFg, 1.5, e => e.Stream is FightStream.SelfOut or FightStream.PetOut),
+        };
+
+        var sampled = new List<(Brush Brush, double Thick, List<(double T, double Dps)> Pts)>();
+        double maxDps = 0;
+        foreach (var (brush, thick, pick) in series)
+        {
+            var evs = rec.Events.Where(e => pick(e) && e.Amount > 0).OrderBy(e => e.T).ToList();
+            if (evs.Count == 0) continue;
+            var pts = new List<(double, double)>();
+            double sum = 0;
+            int add = 0, drop = 0;
+            for (double t = 0; t <= dur + 1e-9; t += step)
+            {
+                while (add < evs.Count && evs[add].T <= t) sum += evs[add++].Amount;
+                while (drop < add && evs[drop].T <= t - win) sum -= evs[drop++].Amount;
+                double dps = sum / Math.Min(Math.Max(t, step), win);
+                pts.Add((t, dps));
+                if (dps > maxDps) maxDps = dps;
+            }
+            sampled.Add((brush, thick, pts));
+        }
+        if (maxDps <= 0) return;
+
+        foreach (var (brush, thick, pts) in sampled)
+        {
+            var line = new Polyline
+            {
+                Stroke = brush, StrokeThickness = thick, StrokeLineJoin = PenLineJoin.Round,
+            };
+            foreach (var (t, dps) in pts)
+                line.Points.Add(new Point(t * scale, h - 2 - dps / maxDps * (h - 6)));
+            canvas.Children.Add(line);
         }
     }
 
@@ -272,9 +361,16 @@ public partial class TimelineView : UserControl
 
     private static void AddTile(Panel host, string label, string big, string unit, string sub, Brush accent)
     {
+        // Row-1 tiles read centered — they're single numbers, not lists.
         var stack = new StackPanel();
-        stack.Children.Add(TileLabel(label));
-        var bigLine = new TextBlock { Margin = new Thickness(0, 1, 0, 0) };
+        var lbl = TileLabel(label);
+        lbl.HorizontalAlignment = HorizontalAlignment.Center;
+        stack.Children.Add(lbl);
+        var bigLine = new TextBlock
+        {
+            Margin = new Thickness(0, 1, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
         bigLine.Inlines.Add(new System.Windows.Documents.Run(big)
         { FontSize = 22, FontWeight = FontWeights.Bold, Foreground = accent });
         if (unit.Length > 0)
@@ -282,7 +378,11 @@ public partial class TimelineView : UserControl
             { FontSize = 12, Foreground = ChipFg });
         stack.Children.Add(bigLine);
         if (sub.Length > 0)
-            stack.Children.Add(new TextBlock { Text = sub, FontSize = 11, Foreground = ChipFg });
+            stack.Children.Add(new TextBlock
+            {
+                Text = sub, FontSize = 11, Foreground = ChipFg,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            });
         host.Children.Add(TileCard(stack));
     }
 
@@ -311,8 +411,7 @@ public partial class TimelineView : UserControl
     }
 
     /// <summary>Row-3 card: a top-3 list, value leading in the accent color.</summary>
-    private static void AddListCard(Panel host, string label,
-        IEnumerable<(string Val, string Tail)> rows)
+    private static Border ListCard(string label, IEnumerable<(string Val, string Tail)> rows)
     {
         var stack = new StackPanel();
         stack.Children.Add(TileLabel(label));
@@ -324,7 +423,7 @@ public partial class TimelineView : UserControl
             line.Inlines.Add(new System.Windows.Documents.Run("  " + rest) { Foreground = ChipFg });
             stack.Children.Add(line);
         }
-        host.Children.Add(TileCard(stack, minWidth: 250));
+        return TileCard(stack, minWidth: 250);
     }
 
     /// <summary>Max 5s-rolling rate over the given events (the tiles' "peak").</summary>
