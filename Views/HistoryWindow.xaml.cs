@@ -21,6 +21,7 @@ public partial class HistoryWindow : Window
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
     private readonly LootTracker _loot;
+    private readonly Func<bool> _soloMode; // the meter's SOLO toggle, live
     private readonly DispatcherTimer _tick;
     private readonly List<CombatParser.FightRecord> _saved;
     private List<Entry> _shown = new();
@@ -47,14 +48,19 @@ public partial class HistoryWindow : Window
 
     public sealed record FightColumn(string Title, string Subtitle,
         List<StatRow> DamageRows, List<StatRow> HealingRows,
-        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows)
+        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows,
+        bool ShowHeader)
     {
         public Visibility SelfSectionVisibility => SelfAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility PetSectionVisibility => PetAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        /// <summary>Single selection hides the row header — the report above is
+        /// already titled with this fight; comparisons need their identities.</summary>
+        public Visibility HeaderVisibility => ShowHeader ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot)
+    public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot,
+        Func<bool>? soloMode = null)
     {
         InitializeComponent();
         DialogPlacement.Persist(this, "history");
@@ -62,13 +68,19 @@ public partial class HistoryWindow : Window
         _parser = parser;
         _config = config;
         _loot = loot;
+        _soloMode = soloMode ?? (() => false);
         _saved = config.SavedFights; // the SHARED list — raid auto-keep writes here too
 
         FightsList.SelectionChanged += (_, _) => BuildColumns();
 
         // New fights finish while the window is open — keep the list in sync.
+        // The SOLO toggle lives on the meter; flipping it refreshes the tables.
         _tick = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _tick.Tick += (_, _) => Sync();
+        _tick.Tick += (_, _) =>
+        {
+            Sync();
+            if (_soloMode() != _shownSolo) BuildColumns();
+        };
         _tick.Start();
 
         Loaded += (_, _) =>
@@ -91,6 +103,7 @@ public partial class HistoryWindow : Window
             .OrderByDescending(e => e.Rec.EndedAt)
             .ToList();
 
+        EmptyHint.Visibility = entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         if (!force && entries.SequenceEqual(_shown))
             return;
 
@@ -124,10 +137,51 @@ public partial class HistoryWindow : Window
         }
     }
 
+    /// <summary>Who "you" and "your pet" are for one fight: the record's own
+    /// stamps when it has them (new fights), the live parser's otherwise.</summary>
+    private string SelfNameFor(CombatParser.FightRecord r) =>
+        r.Character.Length > 0 ? r.Character : _parser.SelfName;
+
+    private string PetNameFor(CombatParser.FightRecord r) =>
+        r.Pet.Length > 0 ? r.Pet : _parser.PetName.Trim();
+
+    private bool IsOtherPlayer(CombatParser.FightRecord r, CombatParser.Row row)
+    {
+        if (row.Enemy) return false;
+        if (row.Name.Equals(SelfNameFor(r), StringComparison.OrdinalIgnoreCase)
+            || row.Name.Equals("You", StringComparison.OrdinalIgnoreCase))
+            return false;
+        // Pets: the record's own list (one fight can hold several — each
+        // re-summon gets a new name), the primary stamp, and every pet name
+        // this character has EVER had (session + persisted).
+        if (r.Pets.Any(p => p.Equals(row.Name, StringComparison.OrdinalIgnoreCase))) return false;
+        if (PetNameFor(r) is { Length: > 0 } pet
+            && row.Name.Equals(pet, StringComparison.OrdinalIgnoreCase)) return false;
+        if (_parser.IsKnownPet(row.Name)) return false;
+        // Legacy fights (before pet stamps): the pet's damage row totals
+        // exactly what its ability drill-down sums to — a fingerprint no
+        // groupmate matches.
+        if (r.Pets.Count == 0 && r.Pet.Length == 0)
+        {
+            double petSum = r.PetAbilities.Sum(a => a.Total);
+            if (petSum > 0 && Math.Abs(row.Total - petSum) < 0.5) return false;
+        }
+        return true;
+    }
+
+    /// <summary>A group fight = someone actually JOINED yours — hit one of
+    /// your enemies or healed you. Recorded at capture (Allies); a bystander
+    /// farming the next camp in logging range never counts. Legacy records
+    /// (before the Character stamp) fall back to the row heuristic.</summary>
+    private bool IsGroupFight(CombatParser.FightRecord r) =>
+        r.Allies.Count > 0
+        || (r.Character.Length == 0
+            && (r.Damage.Any(x => IsOtherPlayer(r, x)) || r.Healing.Any(x => IsOtherPlayer(r, x))));
+
     /// <summary>Row = time + mob only; the day lives in the group header and
     /// duration/dps/zone in the tooltip (and the details card).</summary>
-    private static string RowText(Entry e) =>
-        $"{(e.Saved ? "★ " : "")}{e.Rec.EndedAt:HH:mm}  {e.Rec.Label}";
+    private string RowText(Entry e) =>
+        $"{(e.Saved ? "★ " : "")}{e.Rec.EndedAt:HH:mm}  {e.Rec.Label}{(IsGroupFight(e.Rec) ? "   · group" : "")}";
 
     private static string DayText(DateTime d) =>
         d.Date == DateTime.Today ? "Today"
@@ -135,21 +189,26 @@ public partial class HistoryWindow : Window
         : d.Year == DateTime.Today.Year ? d.ToString("dd MMM")
         : d.ToString("dd MMM yyyy");
 
-    private static string TipText(Entry e)
+    private string TipText(Entry e)
     {
         var r = e.Rec;
         string zone = r.Zone.Length > 0 ? $" · {r.Zone}" : "";
-        return $"{r.EndedAt:dd MMM HH:mm} · {r.Label} · {FormatDuration(r.DurationSeconds)} · {FormatDps(r.TotalDps)} dps{zone}";
+        return $"{r.EndedAt:dd MMM HH:mm} · {r.Label} · {FormatDuration(r.DurationSeconds)} · " +
+               $"{FormatDps(r.TotalDps)} dps · {(IsGroupFight(r) ? "group" : "solo")}{zone}";
     }
+
+    private bool _shownSolo;
 
     private void BuildColumns()
     {
+        _shownSolo = _soloMode();
         var entries = FightsList.SelectedItems.Cast<FightItem>()
             .Select(x => x.Entry)
             .OrderBy(e => _shown.IndexOf(e))
             .Take(MaxCompare)
             .ToList();
-        ColumnsControl.ItemsSource = entries.Select(e => BuildColumn(e.Rec)).ToList();
+        ColumnsControl.ItemsSource = entries
+            .Select(e => BuildColumn(e.Rec, showHeader: entries.Count > 1)).ToList();
 
         // The report (highlights + timelines) always shows the first selected
         // fight; comparisons stack their table rows below it.
@@ -194,10 +253,15 @@ public partial class HistoryWindow : Window
     private static int Swings(List<CombatParser.Row> abilities) =>
         abilities.Where(a => CombatParser.IsMeleeAbility(a.Name)).Sum(a => a.Hits + a.Misses);
 
-    private FightColumn BuildColumn(CombatParser.FightRecord r)
+    private FightColumn BuildColumn(CombatParser.FightRecord r, bool showHeader)
     {
+        // SOLO mode is honored here like in the meter: the record still holds
+        // everyone (capture everything), but the tables show only you, your
+        // pet and the enemies. Flip SOLO off to see the group.
+        bool solo = _soloMode();
         var damage = new List<StatRow>();
-        foreach (var row in r.Damage.Where(x => !x.Enemy).Take(MaxDamageRows))
+        foreach (var row in r.Damage.Where(x => !x.Enemy && (!solo || !IsOtherPlayer(r, x)))
+                     .Take(MaxDamageRows))
             damage.Add(new StatRow(row.Name,
                 $"{FormatDps(row.Dps)} ({FormatNum(row.Total)}, {row.Percent:0}%)", FgFor(row.Name)));
 
@@ -208,7 +272,8 @@ public partial class HistoryWindow : Window
         if (damage.Count == 0) damage.Add(new StatRow("—", "", NameFg));
 
         var healing = new List<StatRow>();
-        foreach (var row in r.Healing.Where(x => !x.Enemy).Take(MaxHealingRows))
+        foreach (var row in r.Healing.Where(x => !x.Enemy && (!solo || !IsOtherPlayer(r, x)))
+                     .Take(MaxHealingRows))
             healing.Add(new StatRow(row.Name,
                 $"{FormatDps(row.Dps)} ({FormatNum(row.Total)}, {row.Percent:0}%)", FgFor(row.Name)));
         if (healing.Count == 0) healing.Add(new StatRow("—", "", NameFg));
@@ -221,7 +286,8 @@ public partial class HistoryWindow : Window
             damage, healing,
             AbilityRows(r.SelfAbilities, NameFg, dur, Swings(r.SelfAbilities)),
             AbilityRows(r.PetAbilities, NameFg, dur, Swings(r.PetAbilities)),
-            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0));
+            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0),
+            showHeader);
     }
 
     /// <summary>What the corpse gave — the loot log joined on the fight's own

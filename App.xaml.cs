@@ -342,6 +342,8 @@ public partial class App : Application
             Check("fight: the pet's name and its death ride the record",
                 fdRec.Pet == "Gobber"
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.PetDeath, Ability: "Gobber died" }));
+            Check("fight: the pet lands in the record's pet list, not as a stranger",
+                fdRec.Pets.Contains("Gobber") && fd.IsKnownPet("Gobber"));
             Check("fight: the DD line's school is kept, verbatim from the log",
                 fdRec.Schools.TryGetValue("Frost Breath", out string? fs) && fs == "cold");
             Check("fight: a debuff landing becomes a timeline span with its duration",
@@ -361,6 +363,22 @@ public partial class App : Application
             by.Tick(fb.AddSeconds(400));
             Check("fight: pure healing with a real enemy present still archives",
                 by.History.Count == 1);
+
+            // Allies vs bystanders: "group" means someone joined YOUR fight —
+            // a neighbour farming their own camp in logging range is scenery.
+            var al = new CombatParser { SelfName = "Johan" };
+            al.Replay($"[{FT(500)}] Tolo hit Lady Vox for 40 points of magic damage by Odium."); // tags her FIRST
+            al.Replay($"[{FT(501)}] Lady Vox hit Johan for 100 points of cold damage by Frost Breath.");
+            al.Replay($"[{FT(503)}] Kettel hit a haunted chest for 90 points of magic damage by Blaze.");
+            // Johan damages the chest too — but it never HIT him, and mob
+            // instances share names, so Kettel stays a neighbour (owner's rule).
+            al.Replay($"[{FT(505)}] Johan hit a haunted chest for 10 points of magic damage by Odium.");
+            al.Tick(fb.AddSeconds(560));
+            Check("fight: an ally hit a mob that was ON me; a same-named neighbour never counts",
+                al.History[0].Allies.Contains("Tolo") && !al.History[0].Allies.Contains("Kettel"));
+            Check("fight: an old pet's speech is harvested retroactively",
+                al.TryParsePetSpeech($"[{FT(0)}] Lonaner told you, 'Attacking a will sapper Master.'",
+                    out string oldPet) && oldPet == "Lonaner" && al.IsKnownPet("Lonaner"));
 
             string fdTxt = Views.TimelineView.BuildAnalysis(fdRec);
             Check("analysis: names the dominant school and the resist advice",

@@ -144,6 +144,9 @@ public partial class MainWindow : Window
         _conditions.StateChanged += (kind, started, when) => _combat.NoteCondition(kind, started, when);
         _combat.LoadoutLookup = () => _config.ActiveLoadout;
         _combat.StanceChanged += s => _configService.SaveLastStance(_combat.SelfName, s);
+        // Pet names persist per character — a re-summon gets a NEW name, and
+        // forgetting the old ones makes solo fights read as "group".
+        _combat.PetDetected += p => _configService.AddKnownPet(_combat.SelfName, p);
         _timerHidden = !_config.Overlay.TimerVisible;
         _meterHidden = !_config.Overlay.MeterVisible;
         _skillsHidden = !_config.Overlay.SkillTrackerVisible;
@@ -425,6 +428,7 @@ public partial class MainWindow : Window
         _durations.SampleLearned += onSample;
 
         int lines = 0;
+        var petsSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         _suppressSct = true;
         try
         {
@@ -440,6 +444,11 @@ public partial class MainWindow : Window
                 _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
+                // Pet names ride the reparse: every "… Master." speech in the
+                // whole history teaches the known-pets ledger, so last month's
+                // pet never reads as an ally or a group member again.
+                if (_combat.TryParsePetSpeech(line, out string petName))
+                    petsSeen.Add(petName);
                 lines++;
             }
         }
@@ -456,9 +465,11 @@ public partial class MainWindow : Window
         }
 
         _spellLib.SaveSeenIfDirty();
+        foreach (var p in petsSeen) _configService.AddKnownPet(_combat.SelfName, p);
         int lootNew = Math.Max(0, _loot.Entries.Count - lootBefore);
         string summary = $"Reparsed {lines:N0} lines from {Path.GetFileName(path)}: " +
-            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples.";
+            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples" +
+            $"{(petsSeen.Count > 0 ? $", {petsSeen.Count} pet name(s) learned" : "")}.";
         Log.Info(summary);
         return summary;
     }
@@ -1040,6 +1051,7 @@ public partial class MainWindow : Window
         // The log only prints stances on CHANGE — seed this character's last
         // remembered one so the first fight of the session isn't "unknown".
         _combat.CurrentStance = _configService.LoadLastStances().GetValueOrDefault(name, "");
+        _combat.SeedKnownPets(_configService.LoadKnownPets(name));
         Log.Info($"Combat parser character name: '{name}'" +
                  (string.IsNullOrWhiteSpace(_config.CharacterName) ? " (auto-detected from log filename)" : ""));
     }
@@ -1685,7 +1697,8 @@ public partial class MainWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_combat, _configService, _loot);
+            _historyWindow = new HistoryWindow(_combat, _configService, _loot,
+                () => _config.Overlay.MeterSoloMode);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

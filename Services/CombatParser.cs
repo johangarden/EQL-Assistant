@@ -22,6 +22,58 @@ public sealed class CombatParser
     /// <summary>Optional pet name — enables the pet line in the incoming footer.</summary>
     public string PetName { get; set; } = "";
 
+    // Every pet name seen — a re-summon gets a NEW random name, and a fight
+    // can hold several (pet dies, you summon again). Without this memory the
+    // old pets read as strangers and solo fights get tagged "group".
+    private readonly HashSet<string> _knownPets = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Was this name ever YOUR pet (this session or seeded)?</summary>
+    public bool IsKnownPet(string name) => _knownPets.Contains(name.Trim());
+
+    /// <summary>Seed persisted pet names at startup (per character).</summary>
+    public void SeedKnownPets(IEnumerable<string> names)
+    {
+        foreach (var n in names)
+            if (!string.IsNullOrWhiteSpace(n)) _knownPets.Add(n.Trim());
+    }
+
+    // ---- whose fight is it -----------------------------------------------------
+    // "Group" must mean someone JOINED your fight — a bystander farming the
+    // next camp over is scenery, even in logging range. Mob instances share
+    // names in the log ("an abhorrent" here and twenty meters away print the
+    // same lines), so the bar is deliberately high (owner's rule): a mob is
+    // MY fight only once it has HIT me or my pet, and an ally is a player
+    // who damages such a mob — or heals me. Order-proof: a helper who tags
+    // the mob before it turns on me is caught the moment it does.
+    private readonly HashSet<string> _myEnemies = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, HashSet<string>> _otherTargets = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _myAllies = new(StringComparer.OrdinalIgnoreCase);
+
+    private void AddMyEnemy(string mob)
+    {
+        if (!_myEnemies.Add(mob)) return;
+        foreach (var (who, targets) in _otherTargets)
+            if (targets.Contains(mob)) _myAllies.Add(who);
+    }
+
+    private void TrackSides(string attacker, string target)
+    {
+        bool mineA = IsSelf(attacker) || IsPet(attacker);
+        bool mineT = IsSelf(target) || IsPet(target);
+        if (mineT && IsEnemyName(attacker)) AddMyEnemy(attacker);
+        else if (!mineA && !IsEnemyName(attacker) && IsEnemyName(target)
+                 && !_knownPets.Contains(attacker)) // an old pet of MINE is never an ally
+        {
+            if (_myEnemies.Contains(target)) _myAllies.Add(attacker);
+            else
+            {
+                if (!_otherTargets.TryGetValue(attacker, out var t))
+                    _otherTargets[attacker] = t = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                t.Add(target);
+            }
+        }
+    }
+
     // ---- pet auto-detect ------------------------------------------------------
     // The summon prints nothing, but an ORDERED pet names itself: command
     // responses are fixed phrases in a say line ("Venarab says, 'Following
@@ -48,6 +100,23 @@ public sealed class CombatParser
         "Changing position, Master.",
         "Sorry, Master..calming down.",
     };
+
+    /// <summary>Pet-speech probe for retroactive scans (full-log reparse):
+    /// "Lonaner told you, 'Attacking a will sapper Master.'" → Lonaner.
+    /// Same rules as live detection — never a guess.</summary>
+    public bool TryParsePetSpeech(string rawLine, out string pet)
+    {
+        pet = "";
+        ExtractTimestamp(rawLine, out string body);
+        if (!body.Contains(" says, '", StringComparison.Ordinal)
+            && !body.Contains(" told you, '", StringComparison.Ordinal)) return false;
+        var m = PetSpeechRx.Match(body);
+        if (!m.Success || !IsPetSpeech(m.Groups["via"].Value == "told you", m.Groups["msg"].Value))
+            return false;
+        pet = m.Groups["pet"].Value;
+        _knownPets.Add(pet);
+        return true;
+    }
 
     private bool IsPetSpeech(bool tell, string msg) =>
         tell ? msg.EndsWith(" Master.", StringComparison.Ordinal)
@@ -186,6 +255,16 @@ public sealed class CombatParser
 
         /// <summary>The pet's name during this fight ("" = no pet known).</summary>
         public string Pet { get; init; } = "";
+
+        /// <summary>EVERY combatant in this fight that was ever your pet — a
+        /// re-summon gets a new name, so one fight can hold several.</summary>
+        public List<string> Pets { get; init; } = new();
+
+        /// <summary>Players who actually JOINED this fight — damaged a mob
+        /// that HIT you (or your pet), or healed you. The high bar is
+        /// deliberate: mob instances share names in the log, so merely
+        /// hitting a same-named mob nearby proves nothing. Empty = solo.</summary>
+        public List<string> Allies { get; init; } = new();
     }
 
     private readonly List<FightRecord> _history = new();
@@ -986,7 +1065,9 @@ public sealed class CombatParser
 
         // The pet dying mid-fight is a fight event — for pet builds, THE
         // disaster moment ("Vibarn has been slain by a fire giant warrior!").
+        // Cheap gate first: the kill regex must not tax every combat line.
         if (_active && PetName.Trim().Length > 0
+            && body.Contains(" has been slain", StringComparison.Ordinal)
             && RaidKills.TryParseKill(body, out string slainName) && IsPet(slainName))
             Note(time, $"{PetName.Trim()} died", 0, FightStream.PetDeath);
 
@@ -1056,6 +1137,7 @@ public sealed class CombatParser
             && IsPetSpeech(pet.Groups["via"].Value == "told you", pet.Groups["msg"].Value))
         {
             string name = pet.Groups["pet"].Value;
+            _knownPets.Add(name);
             if (!name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
             {
                 PetName = name;
@@ -1300,6 +1382,13 @@ public sealed class CombatParser
             Pet = PetName.Trim(),
         };
         foreach (var (mob, lvl) in MatchConLevels(rec.Damage)) rec.EnemyLevels[mob] = lvl;
+        foreach (var name in rec.Damage.Concat(rec.Healing)
+                     .Where(r => !r.Enemy && _knownPets.Contains(r.Name))
+                     .Select(r => r.Name).Distinct(StringComparer.OrdinalIgnoreCase))
+            rec.Pets.Add(name);
+        // Filter at the freeze, not just at insert: pet knowledge can ARRIVE
+        // mid-fight (its first speech), after the "ally" was already noted.
+        rec.Allies.AddRange(_myAllies.Where(a => !_knownPets.Contains(a)));
         _history.Insert(0, rec);
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
         _archivedActiveSec += rec.DurationSeconds; // session PPM denominator
@@ -1322,6 +1411,9 @@ public sealed class CombatParser
         _events.Clear();
         _eventsTruncated = false;
         _spellSchools.Clear();
+        _myEnemies.Clear();
+        _otherTargets.Clear();
+        _myAllies.Clear();
     }
 
     /// <summary>
@@ -1411,6 +1503,7 @@ public sealed class CombatParser
         target = Normalize(target);
         if (IsReflexive(target)) target = attacker;
         Touch(time);
+        TrackSides(attacker, target);
 
         Bump(_damage, attacker, amount);
         Bump(_taken, target, amount);
@@ -1524,6 +1617,10 @@ public sealed class CombatParser
         target = Normalize(target);
         if (IsReflexive(target)) target = healer;
         Touch(time);
+        // Someone else healing ME (or my pet) joined my fight.
+        if (!IsSelf(healer) && !IsPet(healer) && !_knownPets.Contains(healer)
+            && (IsSelf(target) || IsPet(target)))
+            _myAllies.Add(healer);
         Bump(_healing, healer, amount);
 
         // Per-spell split for the solo HPS view (bare heals have no spell name).
@@ -1561,6 +1658,7 @@ public sealed class CombatParser
             _loadoutAtStart = LoadoutLookup?.Invoke() ?? "";
             _stanceAtStart = CurrentStance;
             _buffsAtStart = ActiveBuffsLookup?.Invoke()?.ToList() ?? new List<string>();
+            if (PetName.Trim().Length > 0) _knownPets.Add(PetName.Trim());
         }
         if (time > _last) _last = time;
         if (time < _start) _start = time;

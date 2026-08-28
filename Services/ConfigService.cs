@@ -520,6 +520,45 @@ public sealed class ConfigService
         catch { /* best-effort */ }
     }
 
+    // ---- known pet names (per character) --------------------------------------
+    // Every summon gets a new random name; remembering them all is what keeps
+    // last week's dead pets from reading as group members in old fights.
+
+    public string KnownPetsPath => Path.Combine(ConfigDirectory, "known-pets.json");
+
+    public HashSet<string> LoadKnownPets(string character)
+    {
+        var all = LoadKnownPetsFile();
+        return all.TryGetValue(character, out var list)
+            ? new HashSet<string>(list, StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    public void AddKnownPet(string character, string pet)
+    {
+        if (string.IsNullOrWhiteSpace(character) || string.IsNullOrWhiteSpace(pet)
+            || character.Equals("You", StringComparison.OrdinalIgnoreCase)) return;
+        var all = LoadKnownPetsFile();
+        if (!all.TryGetValue(character, out var list))
+            all[character] = list = new List<string>();
+        if (list.Contains(pet, StringComparer.OrdinalIgnoreCase)) return;
+        list.Add(pet);
+        try { File.WriteAllText(KnownPetsPath, JsonSerializer.Serialize(all, WriteOptions)); }
+        catch { /* best-effort */ }
+    }
+
+    private Dictionary<string, List<string>> LoadKnownPetsFile()
+    {
+        if (!File.Exists(KnownPetsPath)) return new(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(
+                       File.ReadAllText(KnownPetsPath), ReadOptions)
+                   ?? new(StringComparer.OrdinalIgnoreCase);
+        }
+        catch { return new(StringComparer.OrdinalIgnoreCase); }
+    }
+
     // ---- global named respawns (repop timer) ---------------------------------
 
     public string RespawnsPath => Path.Combine(ConfigDirectory, "respawns.json");

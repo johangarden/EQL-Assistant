@@ -32,7 +32,9 @@ public partial class MeterWindow : Window
     private bool _skillsVisible;
     private bool _procsVisible;
     private readonly ObservableCollection<MeterRowViewModel> _procRows = new();
-    private bool _showHealing;
+    // Always false since the DPS/HPS toggle was removed (never used — healing
+    // lives in the fight report). The plumbing stays: GetRows(healing) etc.
+    private readonly bool _showHealing = false;
     private bool _soloMode;
     private bool _petExpanded;
     private bool _selfExpanded = true; // your split starts open; the pet's starts folded
@@ -163,13 +165,6 @@ public partial class MeterWindow : Window
 
     // ---- controls -------------------------------------------------------------
 
-    private void OnToggleMetric(object sender, RoutedEventArgs e)
-    {
-        _showHealing = !_showHealing;
-        ModeBtn.Content = _showHealing ? "HPS" : "DPS";
-        Refresh();
-    }
-
     private void OnToggleScope(object sender, RoutedEventArgs e)
     {
         _soloMode = !_soloMode;
@@ -216,7 +211,7 @@ public partial class MeterWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_parser, _config, _loot);
+            _historyWindow = new HistoryWindow(_parser, _config, _loot, () => _soloMode);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }
