@@ -176,8 +176,8 @@ public partial class TimelineView : UserControl
         AddTile(row1, "TOTAL DAMAGE", FormatNum(friendlyTotal), "",
             dmgParts.Count > 1 ? string.Join(" + ", dmgParts) : "", DmgFg);
         AddTile(row1, "DAMAGE TAKEN", FormatNum(takenTotal), "",
-            rec.IncomingPetTotal > 0
-                ? $"{FormatNum(rec.IncomingSelfTotal)} you · {FormatNum(rec.IncomingPetTotal)} pet"
+            petTotal > 0 || rec.IncomingPetTotal > 0
+                ? $"You: {FormatNum(rec.IncomingSelfTotal)} · Pet(s): {FormatNum(rec.IncomingPetTotal)}"
                 : "", TakenFg);
         if (healTotal > 0)
             AddTile(row1, "HEALED", FormatNum(healTotal), "", $"{FormatDps(healTotal / dur)}/s", HealFg);
@@ -192,17 +192,28 @@ public partial class TimelineView : UserControl
 
         if (petTotal > 0)
         {
-            // Top contributor by NAME — with re-summons one fight holds
-            // several pets, and this says which one carried.
-            var petRows = friendly.Where(IsPetRow).OrderByDescending(r => r.Total).ToList();
-            string? topPetName = petRows.Count > 0 ? petRows[0].Name
-                : rec.Pet.Length > 0 ? rec.Pet : null;
-            double topPetTotal = petRows.Count > 0 ? petRows[0].Total : petTotal;
+            // Top = the pets' most damaging ABILITY, same as the You card.
+            // Legacy fights without a pet drill-down fall back to naming the
+            // top-contributing pet instead of showing nothing.
+            var topPetAbility = rec.PetAbilities.OrderByDescending(a => a.Total).FirstOrDefault();
+            string? topName;
+            double topTotal;
+            if (topPetAbility.Total > 0)
+            {
+                topName = topPetAbility.Name;
+                topTotal = topPetAbility.Total;
+            }
+            else
+            {
+                var petRows = friendly.Where(IsPetRow).OrderByDescending(r => r.Total).ToList();
+                topName = petRows.Count > 0 ? petRows[0].Name : null;
+                topTotal = petRows.Count > 0 ? petRows[0].Total : 0;
+            }
             AddActorCard(row2, "DPS · Pet(s)", PetFg,
                 100.0 * petTotal / friendlyTotal, petTotal / dur, petTotal,
-                topPetName,
-                topPetName is not null
-                    ? $" — {FormatNum(topPetTotal)} ({100.0 * topPetTotal / Math.Max(1, petTotal):0}%)"
+                topName,
+                topName is not null
+                    ? $" — {FormatNum(topTotal)} ({100.0 * topTotal / Math.Max(1, petTotal):0}%)"
                     : null);
         }
 
