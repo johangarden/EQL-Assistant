@@ -15,8 +15,6 @@ namespace EQLOverlay.Views;
 public partial class HistoryWindow : Window
 {
     private const int MaxCompare = 3;
-    private const int MaxDamageRows = 8;
-    private const int MaxHealingRows = 4;
 
     private readonly CombatParser _parser;
     private readonly ConfigService _config;
@@ -28,16 +26,9 @@ public partial class HistoryWindow : Window
 
     public sealed record Entry(CombatParser.FightRecord Rec, bool Saved);
 
-    private static readonly Brush NameFg = Freeze(Color.FromRgb(0xC9, 0xD4, 0xE3));
     private static readonly Brush SelfFg = Freeze(Color.FromRgb(0xFF, 0xC1, 0x2E));
-    private static readonly Brush EnemyFg = Freeze(Color.FromRgb(0x8F, 0xA6, 0xC4));
     private static readonly Brush IncomingFg = Freeze(Color.FromRgb(0xFF, 0x8A, 0x80));
 
-    public sealed record StatRow(string Name, string Value, Brush NameBrush, string Detail = "")
-    {
-        public Visibility DetailVisibility =>
-            Detail.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-    }
 
     /// <summary>List item wrapper — reference-unique even when two fights render
     /// identically. Public: the grouped view reflects over Day/Text/Tip.</summary>
@@ -46,18 +37,6 @@ public partial class HistoryWindow : Window
         public override string ToString() => Text;
     }
 
-    public sealed record FightColumn(string Title, string Subtitle,
-        List<StatRow> DamageRows, List<StatRow> HealingRows,
-        List<StatRow> SelfAbilityRows, List<StatRow> PetAbilityRows, List<StatRow> TakenAbilityRows,
-        bool ShowHeader)
-    {
-        public Visibility SelfSectionVisibility => SelfAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility PetSectionVisibility => PetAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility TakenSectionVisibility => TakenAbilityRows.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        /// <summary>Single selection hides the row header — the report above is
-        /// already titled with this fight; comparisons need their identities.</summary>
-        public Visibility HeaderVisibility => ShowHeader ? Visibility.Visible : Visibility.Collapsed;
-    }
 
     public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot,
         Func<bool>? soloMode = null)
@@ -207,15 +186,103 @@ public partial class HistoryWindow : Window
             .OrderBy(e => _shown.IndexOf(e))
             .Take(MaxCompare)
             .ToList();
-        ColumnsControl.ItemsSource = entries
-            .Select(e => BuildColumn(e.Rec, showHeader: entries.Count > 1)).ToList();
+
+        SheetsHost.Children.Clear();
+        foreach (var e in entries)
+        {
+            var sheet = new FightSheetView { Margin = new Thickness(0, 0, 0, 12) };
+            var r = e.Rec;
+            sheet.Show(
+                $"{r.Label}   ·   {r.EndedAt:dd MMM HH:mm} · {FormatDuration(r.DurationSeconds)}",
+                showTitle: entries.Count > 1,
+                BuildSheetActors(r));
+            SheetsHost.Children.Add(sheet);
+        }
 
         // The report (highlights + timelines) always shows the first selected
-        // fight; comparisons stack their table rows below it.
+        // fight; comparisons stack their fact sheets below it.
         if (entries.Count > 0)
-            TimelinePane.ShowFight(entries[0].Rec,
-                DropRows(entries[0].Rec).Select(r => r.Name).ToList());
+            TimelinePane.ShowFight(entries[0].Rec, DropNames(entries[0].Rec));
         else TimelinePane.Clear();
+    }
+
+    // ---- the fact sheet's datasets --------------------------------------------
+
+    private static readonly Brush PetFg = Freeze(Color.FromRgb(0xA1, 0x88, 0x7F));
+    private static readonly Brush OtherFg = Freeze(Color.FromRgb(0xAE, 0xB8, 0xC4));
+    private static readonly Brush HealFg = Freeze(Color.FromRgb(0x81, 0xC7, 0x84));
+
+    private List<FightSheetView.SheetActor> BuildSheetActors(CombatParser.FightRecord r)
+    {
+        double dur = Math.Max(1, r.DurationSeconds);
+        bool solo = _soloMode();
+
+        // Legacy fights predate the per-spell heal capture — fall back to the
+        // actor's per-source Healing row so the aspect isn't silently empty.
+        List<FightSheetView.SheetRow> HealFallback(Func<CombatParser.Row, bool> mine) =>
+            r.Healing.Where(x => !x.Enemy && mine(x)).Select(SlimRow).ToList();
+
+        var youHeal = r.SelfHealAbilities.Count > 0
+            ? new FightSheetView.SheetAspect("heal", "Healing done", FullRows(r.SelfHealAbilities, dur))
+            : new FightSheetView.SheetAspect("heal", "Healing done",
+                HealFallback(x => !IsOtherPlayer(r, x) && !PetNameFor(r).Equals(x.Name, StringComparison.OrdinalIgnoreCase)), Slim: true);
+        var petHeal = r.PetHealAbilities.Count > 0
+            ? new FightSheetView.SheetAspect("heal", "Healing done", FullRows(r.PetHealAbilities, dur))
+            : new FightSheetView.SheetAspect("heal", "Healing done",
+                HealFallback(x => r.Pets.Any(p => p.Equals(x.Name, StringComparison.OrdinalIgnoreCase))
+                                  || PetNameFor(r).Equals(x.Name, StringComparison.OrdinalIgnoreCase)), Slim: true);
+
+        var actors = new List<FightSheetView.SheetActor>
+        {
+            new("you", $"You · {SelfNameFor(r)}", SelfFg, new List<FightSheetView.SheetAspect>
+            {
+                new("dealt", "Damage dealt", FullRows(r.SelfAbilities, dur)),
+                new("taken", "Damage taken", FullRows(r.IncomingSelfAbilities, dur, critTracked: false)),
+                youHeal,
+            }),
+            new("pet", "Pet(s)", PetFg, new List<FightSheetView.SheetAspect>
+            {
+                new("dealt", "Damage dealt", FullRows(r.PetAbilities, dur)),
+                new("taken", "Damage taken", FullRows(r.IncomingPetAbilities, dur, critTracked: false)),
+                petHeal,
+            }),
+        };
+        if (!solo)
+            actors.Add(new("oth", "Others", OtherFg, new List<FightSheetView.SheetAspect>
+            {
+                new("dealt", "Damage dealt",
+                    r.Damage.Where(x => IsOtherPlayer(r, x)).Select(SlimRow).ToList(), Slim: true),
+                new("heal", "Healing done",
+                    r.Healing.Where(x => !x.Enemy && IsOtherPlayer(r, x)).Select(SlimRow).ToList(), Slim: true),
+            }));
+        return actors;
+    }
+
+    private static FightSheetView.SheetRow SlimRow(CombatParser.Row x) =>
+        new(x.Name, x.Dps, x.Total, x.Percent, 0, null, null, null, null, null, null, null);
+
+    /// <summary>Full drill-down rows. Nulls are honest gaps: a spell with no
+    /// miss-tracking must not claim a 100% hit rate, and incoming rows carry
+    /// no crit bookkeeping.</summary>
+    private static List<FightSheetView.SheetRow> FullRows(
+        List<CombatParser.Row> rows, double dur, bool critTracked = true)
+    {
+        return rows.Select(a =>
+        {
+            int attempts = a.Hits + a.Misses + a.Resists;
+            return new FightSheetView.SheetRow(
+                a.Name, a.Dps, a.Total, a.Percent, a.Hits,
+                HitPct: attempts > 0 && a.Misses + a.Resists > 0
+                    ? 100.0 * a.Hits / attempts : null,
+                // Resists only exist for spells/procs — melee shows the honest
+                // dash instead of a meaningless zero.
+                Resists: CombatParser.IsMeleeAbility(a.Name) ? null : a.Resists,
+                Min: a.Hits > 0 ? a.Min : null,
+                Avg: a.Hits > 0 ? a.Total / a.Hits : null,
+                Max: a.Hits > 0 ? a.Max : null,
+                CritPct: critTracked && a.Hits > 0 ? 100.0 * a.Crits / a.Hits : null,
+                PerMin: dur >= 10 && attempts > 0 ? attempts * 60.0 / dur : null);
+        }).ToList();
     }
 
     // ---- keep / remove --------------------------------------------------------
@@ -249,50 +316,9 @@ public partial class HistoryWindow : Window
         Sync(force: true);
     }
 
-    /// <summary>Melee swing attempts (hits + misses) — the denominator for proc rates.</summary>
-    private static int Swings(List<CombatParser.Row> abilities) =>
-        abilities.Where(a => CombatParser.IsMeleeAbility(a.Name)).Sum(a => a.Hits + a.Misses);
-
-    private FightColumn BuildColumn(CombatParser.FightRecord r, bool showHeader)
-    {
-        // SOLO mode is honored here like in the meter: the record still holds
-        // everyone (capture everything), but the tables show only you, your
-        // pet and the enemies. Flip SOLO off to see the group.
-        bool solo = _soloMode();
-        var damage = new List<StatRow>();
-        foreach (var row in r.Damage.Where(x => !x.Enemy && (!solo || !IsOtherPlayer(r, x)))
-                     .Take(MaxDamageRows))
-            damage.Add(new StatRow(row.Name,
-                $"{FormatDps(row.Dps)} ({FormatNum(row.Total)}, {row.Percent:0}%)", FgFor(row.Name)));
-
-        var enemies = r.Damage.Where(x => x.Enemy).ToList();
-        if (enemies.Count > 0)
-            damage.Add(new StatRow($"Enemies ({enemies.Count})",
-                $"{FormatDps(enemies.Sum(x => x.Dps))} ({FormatNum(enemies.Sum(x => x.Total))})", EnemyFg));
-        if (damage.Count == 0) damage.Add(new StatRow("—", "", NameFg));
-
-        var healing = new List<StatRow>();
-        foreach (var row in r.Healing.Where(x => !x.Enemy && (!solo || !IsOtherPlayer(r, x)))
-                     .Take(MaxHealingRows))
-            healing.Add(new StatRow(row.Name,
-                $"{FormatDps(row.Dps)} ({FormatNum(row.Total)}, {row.Percent:0}%)", FgFor(row.Name)));
-        if (healing.Count == 0) healing.Add(new StatRow("—", "", NameFg));
-
-        double dur = Math.Max(1, r.DurationSeconds);
-        string zone = r.Zone.Length > 0 ? $" · {r.Zone}" : "";
-        return new FightColumn(
-            r.Label,
-            $"{r.EndedAt:HH:mm:ss} · {FormatDuration(r.DurationSeconds)} · total {FormatDps(r.TotalDps)} dps{zone}",
-            damage, healing,
-            AbilityRows(r.SelfAbilities, NameFg, dur, Swings(r.SelfAbilities)),
-            AbilityRows(r.PetAbilities, NameFg, dur, Swings(r.PetAbilities)),
-            AbilityRows(r.IncomingSelfAbilities, IncomingFg, dur, 0),
-            showHeader);
-    }
-
     /// <summary>What the corpse gave — the loot log joined on the fight's own
     /// enemies within a window after the kill (looting takes a while).</summary>
-    private List<StatRow> DropRows(CombatParser.FightRecord r)
+    private List<string> DropNames(CombatParser.FightRecord r)
     {
         var enemies = r.Damage.Where(x => x.Enemy).Select(x => x.Name)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -302,49 +328,9 @@ public partial class HistoryWindow : Window
         return _loot.Entries
             .Where(l => l.When >= from && l.When <= to && enemies.Contains(l.Mob))
             .OrderBy(l => l.When)
-            .Select(l => new StatRow(l.Item, l.Count > 1 ? $"×{l.Count}" : "", NameFg))
+            .Select(l => l.Count > 1 ? $"{l.Item} ×{l.Count}" : l.Item)
             .ToList();
     }
-
-    /// <summary>Format ability drill-down rows ("backstab  12,3 (1.100, 46%)")
-    /// with a hit-rate / range / rate detail line when attempts were tracked.</summary>
-    private static List<StatRow> AbilityRows(List<CombatParser.Row> rows, Brush fg,
-        double durationSec = 0, int swings = 0) =>
-        rows.Select(a => new StatRow(a.Name,
-            $"{FormatDps(a.Dps)} ({FormatNum(a.Total)}, {a.Percent:0}%)", fg,
-            AbilityDetail(a, durationSec, swings))).ToList();
-
-    private static string AbilityDetail(CombatParser.Row a, double durationSec, int swings)
-    {
-        int attempts = a.Hits + a.Misses + a.Resists;
-        if (attempts == 0) return ""; // pre-hit-tracking record (older kept fight)
-
-        var parts = new List<string>();
-        if (a.Misses > 0 || a.Resists > 0)
-            parts.Add($"{a.Hits}/{attempts} hit ({100.0 * a.Hits / attempts:0}%)");
-        else
-            parts.Add(a.Hits == 1 ? "1 hit" : $"{a.Hits} hits");
-        if (a.Hits > 0)
-            parts.Add(a.Min == a.Max ? FormatNum(a.Max) : $"{FormatNum(a.Min)}–{FormatNum(a.Max)}");
-        if (a.Crits > 0)
-            parts.Add($"{a.Crits} crit");
-        if (a.Resists > 0)
-            parts.Add($"{a.Resists} resisted");
-
-        // Rates: how often it fires — and for procs/spells, per 100 melee swings
-        // (the number that tells you whether a proc weapon is worth it).
-        if (durationSec >= 10)
-            parts.Add($"{attempts * 60.0 / durationSec:0.#}/min");
-        if (swings > 0 && a.Hits > 0 && !CombatParser.IsMeleeAbility(a.Name))
-            parts.Add($"{100.0 * a.Hits / swings:0.#}/100 swings");
-        return string.Join(" · ", parts);
-    }
-
-    private Brush FgFor(string name) =>
-        name.Equals(_parser.SelfName, StringComparison.OrdinalIgnoreCase)
-        || name.Equals("You", StringComparison.OrdinalIgnoreCase)
-            ? SelfFg : NameFg;
-
     private static string FormatDuration(double seconds)
     {
         var ts = TimeSpan.FromSeconds(Math.Max(0, seconds));

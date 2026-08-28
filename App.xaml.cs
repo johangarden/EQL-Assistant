@@ -363,6 +363,8 @@ public partial class App : Application
             by.Tick(fb.AddSeconds(400));
             Check("fight: pure healing with a real enemy present still archives",
                 by.History.Count == 1);
+            Check("fight: your heal spells get their own drill-down rows",
+                by.History[0].SelfHealAbilities.Any(a => a.Name == "Superior Heal"));
 
             // Allies vs bystanders: "group" means someone joined YOUR fight —
             // a neighbour farming their own camp in logging range is scenery.

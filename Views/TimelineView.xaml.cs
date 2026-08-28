@@ -81,8 +81,13 @@ public partial class TimelineView : UserControl
 
         BuildChips(rec);
         BuildTiles(rec);
-        AnalysisText.Text = BuildAnalysis(rec);
-        AnalysisPanel.Visibility = Visibility.Visible;
+        var (off, def) = BuildAnalysisParts(rec);
+        string quiet = rec.Events.Count > 0
+            ? "Nothing to flag."
+            : "No data — recorded before fight timelines existed.";
+        OffAnalysisText.Text = off.Count > 0 ? string.Join("\n", off) : quiet;
+        DefAnalysisText.Text = def.Count > 0 ? string.Join("\n", def) : quiet;
+        AnalysisHost.Visibility = Visibility.Visible;
         Visibility = Visibility.Visible;
         Rebuild();
     }
@@ -135,79 +140,305 @@ public partial class TimelineView : UserControl
         TilesPanel.Children.Clear();
         double dur = Math.Max(1, rec.DurationSeconds);
 
-        double selfTotal = rec.SelfAbilities.Sum(r => r.Total);
-        if (selfTotal <= 0) // pre-drill-down record: fall back to the damage rows
-            selfTotal = rec.Damage.Where(r => !r.Enemy).Sum(r => r.Total);
-        double petTotal = rec.PetAbilities.Sum(r => r.Total);
-        double healTotal = rec.Healing.Where(r => !r.Enemy).Sum(r => r.Total);
+        // Actor identity from the record's own stamps (legacy fights fall back
+        // to ability sums — they can't name the pet, but the math still holds).
+        string selfName = rec.Character.Length > 0 ? rec.Character : "You";
+        var petNames = new HashSet<string>(rec.Pets, StringComparer.OrdinalIgnoreCase);
+        if (rec.Pet.Length > 0) petNames.Add(rec.Pet);
+        bool IsSelfRow(Row r) => r.Name.Equals(selfName, StringComparison.OrdinalIgnoreCase)
+                                 || r.Name.Equals("You", StringComparison.OrdinalIgnoreCase);
+        bool IsPetRow(Row r) => petNames.Contains(r.Name);
 
+        var friendly = rec.Damage.Where(r => !r.Enemy).ToList();
+        double selfTotal = friendly.Where(IsSelfRow).Sum(r => r.Total);
+        if (selfTotal <= 0) selfTotal = rec.SelfAbilities.Sum(a => a.Total);
+        double petTotal = friendly.Where(IsPetRow).Sum(r => r.Total);
+        if (petTotal <= 0) petTotal = rec.PetAbilities.Sum(a => a.Total);
+        var otherRows = friendly.Where(r => !IsSelfRow(r) && !IsPetRow(r))
+            .OrderByDescending(r => r.Total).ToList();
+        double othersTotal = otherRows.Sum(r => r.Total);
+        double friendlyTotal = Math.Max(friendly.Sum(r => r.Total), selfTotal + petTotal + othersTotal);
+        if (friendlyTotal <= 0) friendlyTotal = 1;
+        double healTotal = rec.Healing.Where(r => !r.Enemy).Sum(r => r.Total);
+        double takenTotal = rec.IncomingSelfTotal + rec.IncomingPetTotal;
+
+        // ---- row 1 · the fight -------------------------------------------------
+        var row1 = new List<Border>
+        {
+            Tile("DURATION", FormatDuration(rec.DurationSeconds), "",
+                $"{rec.EndedAt:dd MMM HH:mm}", NeutralFg),
+        };
         double peak = RollingPeak(rec.Events.Where(e =>
             e.Stream is FightStream.SelfOut or FightStream.PetOut && e.Amount > 0), dur);
-        string peakTxt = peak > 0 ? $" · peak {peak:N0}/s" : "";
-        AddTile("DAMAGE DEALT", FormatDps(selfTotal / dur), "dps",
-            $"{FormatNum(selfTotal)} total{peakTxt}", DmgFg);
+        row1.Add(Tile("TOTAL DPS", FormatDps(friendlyTotal / dur), "dps",
+            peak > 0 ? $"peak {peak:N0}/s" : "", DmgFg));
+        var dmgParts = new List<string> { "you" };
+        if (petTotal > 0) dmgParts.Add(rec.Pet.Length > 0 ? rec.Pet : "pet");
+        if (othersTotal > 0) dmgParts.Add("others");
+        row1.Add(Tile("TOTAL DAMAGE", FormatNum(friendlyTotal), "",
+            dmgParts.Count > 1 ? string.Join(" + ", dmgParts) : "", DmgFg));
+        row1.Add(Tile("DAMAGE TAKEN", FormatNum(takenTotal), "",
+            petTotal > 0 || rec.IncomingPetTotal > 0
+                ? $"You: {FormatNum(rec.IncomingSelfTotal)} · Pet(s): {FormatNum(rec.IncomingPetTotal)}"
+                : "", TakenFg));
+        if (healTotal > 0)
+            row1.Add(Tile("HEALED", FormatNum(healTotal), "", $"{FormatDps(healTotal / dur)}/s", HealFg));
+        AddRow(row1);
+
+        // ---- row 2 · who dealt it ----------------------------------------------
+        var row2 = new List<Border>();
+        var topSelf = rec.SelfAbilities.OrderByDescending(a => a.Total).FirstOrDefault();
+        row2.Add(ActorCard($"DPS · You · {selfName}", DmgFg,
+            100.0 * selfTotal / friendlyTotal, selfTotal / dur, selfTotal,
+            topSelf.Total > 0 ? topSelf.Name : null,
+            topSelf.Total > 0 ? $" — {FormatNum(topSelf.Total)} ({100.0 * topSelf.Total / Math.Max(1, selfTotal):0}%)" : null));
 
         if (petTotal > 0)
         {
-            double share = 100.0 * petTotal / Math.Max(1, selfTotal + petTotal);
-            AddTile((rec.Pet.Length > 0 ? rec.Pet.ToUpperInvariant() : "PET") + " (PET)",
-                FormatDps(petTotal / dur), "dps",
-                $"{FormatNum(petTotal)} · {share:0}% of the team", PetFg);
+            // Top = the pets' most damaging ABILITY, same as the You card.
+            // Legacy fights without a pet drill-down fall back to naming the
+            // top-contributing pet instead of showing nothing.
+            var topPetAbility = rec.PetAbilities.OrderByDescending(a => a.Total).FirstOrDefault();
+            string? topName;
+            double topTotal;
+            if (topPetAbility.Total > 0)
+            {
+                topName = topPetAbility.Name;
+                topTotal = topPetAbility.Total;
+            }
+            else
+            {
+                var petRows = friendly.Where(IsPetRow).OrderByDescending(r => r.Total).ToList();
+                topName = petRows.Count > 0 ? petRows[0].Name : null;
+                topTotal = petRows.Count > 0 ? petRows[0].Total : 0;
+            }
+            row2.Add(ActorCard("DPS · Pet(s)", PetFg,
+                100.0 * petTotal / friendlyTotal, petTotal / dur, petTotal,
+                topName,
+                topName is not null
+                    ? $" — {FormatNum(topTotal)} ({100.0 * topTotal / Math.Max(1, petTotal):0}%)"
+                    : null));
         }
 
-        string takenSub = rec.IncomingPetTotal > 0
-            ? $"{FormatNum(rec.IncomingSelfTotal)} you · {FormatNum(rec.IncomingPetTotal)} pet"
-            : $"{FormatNum(rec.IncomingSelfTotal)} total";
-        AddTile("DAMAGE TAKEN", FormatDps(rec.IncomingSelfTotal / dur), "dps", takenSub, TakenFg);
+        if (othersTotal > 0)
+        {
+            string names = string.Join(", ", otherRows.Take(3).Select(r => r.Name))
+                + (otherRows.Count > 3 ? $" +{otherRows.Count - 3}" : "");
+            var topOther = otherRows[0];
+            row2.Add(ActorCard($"DPS · Others · {names}", NeutralFg,
+                100.0 * othersTotal / friendlyTotal, othersTotal / dur, othersTotal,
+                topOther.Name,
+                $" — {FormatNum(topOther.Total)} ({100.0 * topOther.Total / Math.Max(1, othersTotal):0}%)"));
+        }
+        AddRow(row2);
 
-        if (healTotal > 0)
-            AddTile("HEALING", FormatDps(healTotal / dur), "/s", $"{FormatNum(healTotal)} total", HealFg);
-
-        AddTile("DURATION", FormatDuration(rec.DurationSeconds), "",
-            $"{rec.EndedAt:dd MMM HH:mm}", NeutralFg);
-
-        var bigIn = rec.Events.Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0)
-            .OrderByDescending(e => e.Amount).FirstOrDefault();
-        if (bigIn is not null)
-            AddTile("BIGGEST HIT ON YOU", FormatNum(bigIn.Amount), "",
-                $"{bigIn.Ability} at {FormatDuration(bigIn.T)}", TakenFg);
-
-        var bigOut = rec.Events.Where(e => e.Stream == FightStream.SelfOut && e.Amount > 0)
-            .OrderByDescending(e => e.Amount).FirstOrDefault();
-        if (bigOut is not null)
-            AddTile("BIGGEST HIT BY YOU", FormatNum(bigOut.Amount), "",
-                $"{bigOut.Ability}{(bigOut.Crit ? " (crit)" : "")} at {FormatDuration(bigOut.T)}", DmgFg);
+        // ---- row 3 · what hit you ----------------------------------------------
+        var hits = rec.Events.Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0)
+            .OrderByDescending(e => e.Amount).Take(3).ToList();
+        var worst = rec.IncomingSelfAbilities.Where(a => a.Total > 0)
+            .OrderByDescending(a => a.Total).Take(3).ToList();
+        if (hits.Count > 0 || worst.Count > 0 || rec.Events.Count > 0)
+        {
+            // The lists keep natural width; the pulse claims the rest — and
+            // the ROW spans the same full width as every other row.
+            var row3 = new Grid { Margin = new Thickness(0, 0, -8, 0) };
+            row3.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row3.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row3.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            TilesPanel.Children.Add(row3);
+            if (hits.Count > 0)
+            {
+                var card = ListCard("HARDEST HITS ON YOU", hits.Select(e =>
+                    (FormatNum(e.Amount), $"{e.Ability} · {FormatDuration(e.T)}")));
+                Grid.SetColumn(card, 0);
+                row3.Children.Add(card);
+            }
+            if (worst.Count > 0)
+            {
+                var card = ListCard("WORST INCOMING ABILITIES", worst.Select(a =>
+                    (FormatNum(a.Total),
+                     $"{a.Name} · {100.0 * a.Total / Math.Max(1, rec.IncomingSelfTotal):0}% · {a.Hits} hits")));
+                Grid.SetColumn(card, 1);
+                row3.Children.Add(card);
+            }
+            if (rec.Events.Count > 0)
+            {
+                var pulse = PulseCard(rec);
+                Grid.SetColumn(pulse, 2);
+                row3.Children.Add(pulse);
+            }
+        }
     }
 
-    private void AddTile(string label, string big, string unit, string sub, Brush accent)
+    /// <summary>The fight's heartbeat in miniature: dealt (gold), taken (red)
+    /// and healing (green) as 5s-rolling curves — fills the leftover width.</summary>
+    private static Border PulseCard(FightRecord rec)
     {
         var stack = new StackPanel();
-        stack.Children.Add(new TextBlock
+        stack.Children.Add(TileLabel("THE PULSE"));
+        var canvas = new Canvas
         {
-            Text = label, FontSize = 9, Foreground = AxisFg,
-            // uppercase labels read as labels; a touch of tracking helps
-            FontWeight = FontWeights.SemiBold,
-        });
-        var bigLine = new TextBlock { Margin = new Thickness(0, 1, 0, 0) };
+            Height = 52,
+            ClipToBounds = true,
+            Margin = new Thickness(0, 5, 0, 0),
+            Background = Freeze(Color.FromArgb(0x10, 0xFF, 0xFF, 0xFF)),
+        };
+        canvas.SizeChanged += (_, _) => DrawSparkline(canvas, rec);
+        stack.Children.Add(canvas);
+        return TileCard(stack, minWidth: 180);
+    }
+
+    private static void DrawSparkline(Canvas canvas, FightRecord rec)
+    {
+        canvas.Children.Clear();
+        double w = canvas.ActualWidth;
+        if (w < 20) return;
+        double h = canvas.Height;
+        double dur = Math.Max(1, rec.DurationSeconds);
+        double win = Math.Min(5, dur);
+        double step = Math.Max(0.25, dur / 300);
+        double scale = w / dur;
+
+        var series = new (Brush Brush, double Thick, Func<FightEvent, bool> Pick)[]
+        {
+            (HealFg, 1.1, e => e.Stream is FightStream.HealOut or FightStream.HealIn),
+            (TakenFg, 1.3, e => e.Stream is FightStream.SelfIn or FightStream.PetIn),
+            (DmgFg, 1.5, e => e.Stream is FightStream.SelfOut or FightStream.PetOut),
+        };
+
+        var sampled = new List<(Brush Brush, double Thick, List<(double T, double Dps)> Pts)>();
+        double maxDps = 0;
+        foreach (var (brush, thick, pick) in series)
+        {
+            var evs = rec.Events.Where(e => pick(e) && e.Amount > 0).OrderBy(e => e.T).ToList();
+            if (evs.Count == 0) continue;
+            var pts = new List<(double, double)>();
+            double sum = 0;
+            int add = 0, drop = 0;
+            for (double t = 0; t <= dur + 1e-9; t += step)
+            {
+                while (add < evs.Count && evs[add].T <= t) sum += evs[add++].Amount;
+                while (drop < add && evs[drop].T <= t - win) sum -= evs[drop++].Amount;
+                double dps = sum / Math.Min(Math.Max(t, step), win);
+                pts.Add((t, dps));
+                if (dps > maxDps) maxDps = dps;
+            }
+            sampled.Add((brush, thick, pts));
+        }
+        if (maxDps <= 0) return;
+
+        foreach (var (brush, thick, pts) in sampled)
+        {
+            var line = new Polyline
+            {
+                Stroke = brush, StrokeThickness = thick, StrokeLineJoin = PenLineJoin.Round,
+            };
+            foreach (var (t, dps) in pts)
+                line.Points.Add(new Point(t * scale, h - 2 - dps / maxDps * (h - 6)));
+            canvas.Children.Add(line);
+        }
+    }
+
+    /// <summary>Lay one row of cards on equal star columns spanning the full
+    /// report width — every row shares both edges, every card in a row is the
+    /// same size. (The −8 right margin swallows the last card's gutter so the
+    /// rows sit flush with the analysis boxes and boards below.)</summary>
+    private void AddRow(List<Border> cards)
+    {
+        if (cards.Count == 0) return;
+        var row = new Grid { Margin = new Thickness(0, 0, -8, 0) };
+        for (int i = 0; i < cards.Count; i++)
+        {
+            row.ColumnDefinitions.Add(new ColumnDefinition
+            { Width = new GridLength(1, GridUnitType.Star) });
+            Grid.SetColumn(cards[i], i);
+            row.Children.Add(cards[i]);
+        }
+        TilesPanel.Children.Add(row);
+    }
+
+    private static Border TileCard(UIElement child, double minWidth = 150) => new()
+    {
+        Background = CardBg,
+        BorderBrush = CardLine,
+        BorderThickness = new Thickness(1),
+        CornerRadius = new CornerRadius(6),
+        Padding = new Thickness(12, 7, 14, 7),
+        Margin = new Thickness(0, 0, 8, 8),
+        MinWidth = minWidth,
+        Child = child,
+    };
+
+    private static TextBlock TileLabel(string label) => new()
+    {
+        Text = label, FontSize = 9, Foreground = AxisFg, FontWeight = FontWeights.SemiBold,
+    };
+
+    private static Border Tile(string label, string big, string unit, string sub, Brush accent)
+    {
+        // Row-1 tiles read centered — they're single numbers, not lists.
+        var stack = new StackPanel();
+        var lbl = TileLabel(label);
+        lbl.HorizontalAlignment = HorizontalAlignment.Center;
+        stack.Children.Add(lbl);
+        var bigLine = new TextBlock
+        {
+            Margin = new Thickness(0, 1, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
         bigLine.Inlines.Add(new System.Windows.Documents.Run(big)
         { FontSize = 22, FontWeight = FontWeights.Bold, Foreground = accent });
         if (unit.Length > 0)
             bigLine.Inlines.Add(new System.Windows.Documents.Run(" " + unit)
             { FontSize = 12, Foreground = ChipFg });
         stack.Children.Add(bigLine);
-        stack.Children.Add(new TextBlock { Text = sub, FontSize = 11, Foreground = ChipFg });
+        if (sub.Length > 0)
+            stack.Children.Add(new TextBlock
+            {
+                Text = sub, FontSize = 11, Foreground = ChipFg,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            });
+        return TileCard(stack);
+    }
 
-        TilesPanel.Children.Add(new Border
+    /// <summary>Row-2 card: share · dps · total on one even line, top tool under.</summary>
+    private static Border ActorCard(string label, Brush accent,
+        double sharePct, double dps, double total, string? topName, string? topRest)
+    {
+        var stack = new StackPanel();
+        stack.Children.Add(TileLabel(label.ToUpperInvariant()));
+        var line = new TextBlock { Margin = new Thickness(0, 2, 0, 1) };
+        line.Inlines.Add(new System.Windows.Documents.Run($"{sharePct:0}%")
+        { FontSize = 16, FontWeight = FontWeights.Bold, Foreground = accent });
+        line.Inlines.Add(new System.Windows.Documents.Run($" · {FormatDps(dps)} dps · {FormatNum(total)}")
+        { FontSize = 13, Foreground = Freeze(Color.FromRgb(0xC9, 0xD4, 0xE3)) });
+        stack.Children.Add(line);
+        if (topName is not null)
         {
-            Background = CardBg,
-            BorderBrush = CardLine,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(12, 7, 14, 7),
-            Margin = new Thickness(0, 0, 8, 8),
-            MinWidth = 150,
-            Child = stack,
-        });
+            var top = new TextBlock { FontSize = 11 };
+            top.Inlines.Add(new System.Windows.Documents.Run("top: ") { Foreground = ChipFg });
+            top.Inlines.Add(new System.Windows.Documents.Run(topName)
+            { Foreground = accent, FontWeight = FontWeights.SemiBold });
+            top.Inlines.Add(new System.Windows.Documents.Run(topRest) { Foreground = ChipFg });
+            stack.Children.Add(top);
+        }
+        return TileCard(stack, minWidth: 250);
+    }
+
+    /// <summary>Row-3 card: a top-3 list, value leading in the accent color.</summary>
+    private static Border ListCard(string label, IEnumerable<(string Val, string Tail)> rows)
+    {
+        var stack = new StackPanel();
+        stack.Children.Add(TileLabel(label));
+        foreach (var (val, rest) in rows)
+        {
+            var line = new TextBlock { FontSize = 11, Margin = new Thickness(0, 2, 0, 0) };
+            line.Inlines.Add(new System.Windows.Documents.Run(val)
+            { FontSize = 14, FontWeight = FontWeights.Bold, Foreground = TakenFg });
+            line.Inlines.Add(new System.Windows.Documents.Run("  " + rest) { Foreground = ChipFg });
+            stack.Children.Add(line);
+        }
+        return TileCard(stack, minWidth: 250);
     }
 
     /// <summary>Max 5s-rolling rate over the given events (the tiles' "peak").</summary>
@@ -771,11 +1002,26 @@ public partial class TimelineView : UserControl
 
     // ---- analysis (runs once per visited fight — ShowFight no-ops on repeats) --
 
-    /// <summary>Rules over ONE fight's own numbers — every claim cites them,
-    /// and what the fight didn't record is said, not guessed.</summary>
+    /// <summary>All verdicts as one text (the selftests' view of the analysis).</summary>
     internal static string BuildAnalysis(FightRecord rec)
     {
-        var lines = new List<string>();
+        var (off, def) = BuildAnalysisParts(rec);
+        var all = off.Concat(def).ToList();
+        return all.Count > 0
+            ? string.Join("\n", all)
+            : rec.Events.Count > 0
+                ? "Nothing to flag — a clean fight by the playbook's thresholds."
+                : "Nothing to analyse — this fight recorded no incoming data.";
+    }
+
+    /// <summary>Rules over ONE fight's own numbers — every claim cites them,
+    /// and what the fight didn't record is said, not guessed. Split by the
+    /// player's mindset: offence (why was my dps low) and defence (why did I
+    /// take so much / will I survive).</summary>
+    internal static (List<string> Offence, List<string> Defence) BuildAnalysisParts(FightRecord rec)
+    {
+        var off = new List<string>();
+        var def = new List<string>();
         double dur = Math.Max(1, rec.DurationSeconds);
         double takenTotal = rec.IncomingSelfTotal;
 
@@ -804,7 +1050,7 @@ public partial class TimelineView : UserControl
                 line += $" More {char.ToUpperInvariant(school[0]) + school[1..]} resist bites directly into their biggest tool.";
             if (school is null && rec.Schools.Count == 0 && top.Name != "hit")
                 line += " (School unknown — recorded before school capture; new fights carry it.)";
-            lines.Add(line);
+            def.Add(line);
         }
 
         // 2 · Your spells that kept bouncing — stick rates worth acting on.
@@ -815,7 +1061,7 @@ public partial class TimelineView : UserControl
             int casts = a.Hits + a.Resists;
             double rr = 100.0 * a.Resists / casts;
             if (rr >= 30)
-                lines.Add($"• {a.Name} stuck only {100 - rr:0}% ({a.Resists} of {casts} resisted) — malo/tash territory, or a bad school matchup on this mob.");
+                off.Add($"• {a.Name} stuck only {100 - rr:0}% ({a.Resists} of {casts} resisted) — malo/tash territory, or a bad school matchup on this mob.");
         }
 
         // 2b · Melee landing under ~60% over a real sample: a weapon-skill or
@@ -827,7 +1073,7 @@ public partial class TimelineView : UserControl
         {
             string vs = rec.EnemyLevels.Count > 0
                 ? $" vs a Lvl {rec.EnemyLevels.Values.Max()} target" : "";
-            lines.Add($"• Your melee landed only {100.0 * landed / swings:0}% ({landed} of {swings} swings){vs} — weapon skill or level gap.");
+            off.Add($"• Your melee landed only {100.0 * landed / swings:0}% ({landed} of {swings} swings){vs} — weapon skill or level gap.");
         }
 
         // 3 · Debuff coverage — the gaps are the story. When a debuff had real
@@ -840,14 +1086,17 @@ public partial class TimelineView : UserControl
         foreach (var g in rec.Events.Where(e => e.Stream == FightStream.Debuff)
                      .GroupBy(e => e.Ability, StringComparer.OrdinalIgnoreCase))
         {
+            // A damage DoT is an offence lever; a pure debuff (slow/malo)
+            // shapes the incoming side — each verdict lands in its box.
+            bool isDot = rec.Events.Any(e => e.Stream == FightStream.SelfOut && e.Dot
+                && e.Ability.Equals(g.Key, StringComparison.OrdinalIgnoreCase));
+            var box = isDot ? off : def;
             double covered = CoverageSeconds(g.Select(e => (e.T, e.Amount)), dur);
             if (covered <= 0)
             {
-                lines.Add($"• {g.Key} landed {g.Count()}× (duration unknown — coverage not computable).");
+                box.Add($"• {g.Key} landed {g.Count()}× (duration unknown — coverage not computable).");
                 continue;
             }
-            bool isDot = rec.Events.Any(e => e.Stream == FightStream.SelfOut && e.Dot
-                && e.Ability.Equals(g.Key, StringComparison.OrdinalIgnoreCase));
             var timed = g.Where(e => e.Amount > 0).OrderBy(e => e.T).ToList();
             double avgDur = timed.Average(e => e.Amount);
 
@@ -877,7 +1126,7 @@ public partial class TimelineView : UserControl
             // A clean high uptime is not a finding — the span lane already
             // shows it. Print only below the flag threshold, or with a verdict.
             if (verdict || covered < 0.85 * dur)
-                lines.Add(line);
+                box.Add(line);
 
             // Clipping only reads cleanly on single-enemy fights: with adds,
             // a re-land is usually a SECOND mob, not a wasted refresh.
@@ -891,7 +1140,7 @@ public partial class TimelineView : UserControl
                     if (over > 1) { clipped += over; clips++; }
                 }
                 if (clips > 0 && clipped >= 5)
-                    lines.Add($"• You clipped {g.Key} {clips}× — ~{clipped:0}s of paid-for ticks thrown away (re-cast before it faded).");
+                    off.Add($"• You clipped {g.Key} {clips}× — ~{clipped:0}s of paid-for ticks thrown away (re-cast before it faded).");
             }
         }
 
@@ -913,14 +1162,14 @@ public partial class TimelineView : UserControl
                 if (whileHeld > 0)
                     line += $" {100.0 * whileHeld / takenEvented:0}% of the damage you took landed while you were held.";
             }
-            lines.Add(line);
+            def.Add(line);
         }
 
         // 3c · Casts that broke.
         var broken = rec.Events.Where(e => e.Stream == FightStream.Cast && e.Miss)
             .OrderBy(e => e.T).ToList();
         if (broken.Count > 0)
-            lines.Add(broken.Count == 1
+            off.Add(broken.Count == 1
                 ? $"• Your {broken[0].Ability} was interrupted at {FormatDuration(broken[0].T)}."
                 : $"• {broken.Count} of your casts were interrupted (first: {broken[0].Ability} at {FormatDuration(broken[0].T)}).");
 
@@ -934,7 +1183,7 @@ public partial class TimelineView : UserControl
                 .OrderByDescending(x => x.Sec).ToList();
             int switches = rec.Events.Count(e => e.Stream == FightStream.Stance);
             if (switches > 0)
-                lines.Add($"• Mostly {byStance[0].Name} stance ({100.0 * byStance[0].Sec / dur:0}%) — switched {switches}× mid-fight.");
+                def.Add($"• Mostly {byStance[0].Name} stance ({100.0 * byStance[0].Sec / dur:0}%) — switched {switches}× mid-fight.");
         }
 
         // 3e · The pet's disaster moment. Its SHARE lives in the tiles — the
@@ -953,7 +1202,7 @@ public partial class TimelineView : UserControl
                 if (rateAfter > rateBefore * 1.3)
                     line += $" — you took {rateAfter:0}/s after vs {rateBefore:0}/s with the pet up.";
             }
-            lines.Add(line + (line.EndsWith(".") ? "" : "."));
+            def.Add(line + (line.EndsWith(".") ? "" : "."));
         }
 
         // 4 · The danger window: the 10s stretch where incoming outran healing
@@ -976,7 +1225,7 @@ public partial class TimelineView : UserControl
                 if (tk - hl > bestDef) { bestDef = tk - hl; bestT = t; bestTaken = tk; bestHeal = hl; }
             }
             if (bestDef >= 0.3 * takenEvented)
-                lines.Add($"• Danger window {FormatDuration(bestT)}–{FormatDuration(bestT + W)}: you took {FormatNum(bestTaken)} while healing covered {FormatNum(bestHeal)} — that's where deaths live.");
+                def.Add($"• Danger window {FormatDuration(bestT)}–{FormatDuration(bestT + W)}: you took {FormatNum(bestTaken)} while healing covered {FormatNum(bestHeal)} — that's where deaths live.");
         }
 
         // 4b · Who kept you alive — a finding only when it WASN'T you (solo
@@ -986,13 +1235,9 @@ public partial class TimelineView : UserControl
         if (healers.Count > 0
             && !healers[0].Name.Equals(rec.Character, StringComparison.OrdinalIgnoreCase)
             && !healers[0].Name.Equals("You", StringComparison.OrdinalIgnoreCase))
-            lines.Add($"• {healers[0].Name} carried {healers[0].Percent:0}% of the healing ({FormatNum(healers[0].Total)}) — send a thanks.");
+            def.Add($"• {healers[0].Name} carried {healers[0].Percent:0}% of the healing ({FormatNum(healers[0].Total)}) — send a thanks.");
 
-        return lines.Count > 0
-            ? string.Join("\n", lines)
-            : rec.Events.Count > 0
-                ? "Nothing to flag — a clean fight by the playbook's thresholds."
-                : "Nothing to analyse — this fight recorded no incoming data.";
+        return (off, def);
     }
 
     /// <summary>The fight cut into stance stretches: the stance at pull runs
