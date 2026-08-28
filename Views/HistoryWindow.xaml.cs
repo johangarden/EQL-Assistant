@@ -144,12 +144,29 @@ public partial class HistoryWindow : Window
     private string PetNameFor(CombatParser.FightRecord r) =>
         r.Pet.Length > 0 ? r.Pet : _parser.PetName.Trim();
 
-    private bool IsOtherPlayer(CombatParser.FightRecord r, CombatParser.Row row) =>
-        !row.Enemy
-        && !row.Name.Equals(SelfNameFor(r), StringComparison.OrdinalIgnoreCase)
-        && !row.Name.Equals("You", StringComparison.OrdinalIgnoreCase)
-        && !(PetNameFor(r) is { Length: > 0 } pet
-             && row.Name.Equals(pet, StringComparison.OrdinalIgnoreCase));
+    private bool IsOtherPlayer(CombatParser.FightRecord r, CombatParser.Row row)
+    {
+        if (row.Enemy) return false;
+        if (row.Name.Equals(SelfNameFor(r), StringComparison.OrdinalIgnoreCase)
+            || row.Name.Equals("You", StringComparison.OrdinalIgnoreCase))
+            return false;
+        // Pets: the record's own list (one fight can hold several — each
+        // re-summon gets a new name), the primary stamp, and every pet name
+        // this character has EVER had (session + persisted).
+        if (r.Pets.Any(p => p.Equals(row.Name, StringComparison.OrdinalIgnoreCase))) return false;
+        if (PetNameFor(r) is { Length: > 0 } pet
+            && row.Name.Equals(pet, StringComparison.OrdinalIgnoreCase)) return false;
+        if (_parser.IsKnownPet(row.Name)) return false;
+        // Legacy fights (before pet stamps): the pet's damage row totals
+        // exactly what its ability drill-down sums to — a fingerprint no
+        // groupmate matches.
+        if (r.Pets.Count == 0 && r.Pet.Length == 0)
+        {
+            double petSum = r.PetAbilities.Sum(a => a.Total);
+            if (petSum > 0 && Math.Abs(row.Total - petSum) < 0.5) return false;
+        }
+        return true;
+    }
 
     /// <summary>A group fight = anyone besides you and your pet on your side.</summary>
     private bool IsGroupFight(CombatParser.FightRecord r) =>

@@ -22,6 +22,21 @@ public sealed class CombatParser
     /// <summary>Optional pet name — enables the pet line in the incoming footer.</summary>
     public string PetName { get; set; } = "";
 
+    // Every pet name seen — a re-summon gets a NEW random name, and a fight
+    // can hold several (pet dies, you summon again). Without this memory the
+    // old pets read as strangers and solo fights get tagged "group".
+    private readonly HashSet<string> _knownPets = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Was this name ever YOUR pet (this session or seeded)?</summary>
+    public bool IsKnownPet(string name) => _knownPets.Contains(name.Trim());
+
+    /// <summary>Seed persisted pet names at startup (per character).</summary>
+    public void SeedKnownPets(IEnumerable<string> names)
+    {
+        foreach (var n in names)
+            if (!string.IsNullOrWhiteSpace(n)) _knownPets.Add(n.Trim());
+    }
+
     // ---- pet auto-detect ------------------------------------------------------
     // The summon prints nothing, but an ORDERED pet names itself: command
     // responses are fixed phrases in a say line ("Venarab says, 'Following
@@ -186,6 +201,10 @@ public sealed class CombatParser
 
         /// <summary>The pet's name during this fight ("" = no pet known).</summary>
         public string Pet { get; init; } = "";
+
+        /// <summary>EVERY combatant in this fight that was ever your pet — a
+        /// re-summon gets a new name, so one fight can hold several.</summary>
+        public List<string> Pets { get; init; } = new();
     }
 
     private readonly List<FightRecord> _history = new();
@@ -1056,6 +1075,7 @@ public sealed class CombatParser
             && IsPetSpeech(pet.Groups["via"].Value == "told you", pet.Groups["msg"].Value))
         {
             string name = pet.Groups["pet"].Value;
+            _knownPets.Add(name);
             if (!name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
             {
                 PetName = name;
@@ -1300,6 +1320,10 @@ public sealed class CombatParser
             Pet = PetName.Trim(),
         };
         foreach (var (mob, lvl) in MatchConLevels(rec.Damage)) rec.EnemyLevels[mob] = lvl;
+        foreach (var name in rec.Damage.Concat(rec.Healing)
+                     .Where(r => !r.Enemy && _knownPets.Contains(r.Name))
+                     .Select(r => r.Name).Distinct(StringComparer.OrdinalIgnoreCase))
+            rec.Pets.Add(name);
         _history.Insert(0, rec);
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
         _archivedActiveSec += rec.DurationSeconds; // session PPM denominator
@@ -1561,6 +1585,7 @@ public sealed class CombatParser
             _loadoutAtStart = LoadoutLookup?.Invoke() ?? "";
             _stanceAtStart = CurrentStance;
             _buffsAtStart = ActiveBuffsLookup?.Invoke()?.ToList() ?? new List<string>();
+            if (PetName.Trim().Length > 0) _knownPets.Add(PetName.Trim());
         }
         if (time > _last) _last = time;
         if (time < _start) _start = time;

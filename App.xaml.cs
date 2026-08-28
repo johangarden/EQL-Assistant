@@ -342,6 +342,8 @@ public partial class App : Application
             Check("fight: the pet's name and its death ride the record",
                 fdRec.Pet == "Gobber"
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.PetDeath, Ability: "Gobber died" }));
+            Check("fight: the pet lands in the record's pet list, not as a stranger",
+                fdRec.Pets.Contains("Gobber") && fd.IsKnownPet("Gobber"));
             Check("fight: the DD line's school is kept, verbatim from the log",
                 fdRec.Schools.TryGetValue("Frost Breath", out string? fs) && fs == "cold");
             Check("fight: a debuff landing becomes a timeline span with its duration",
