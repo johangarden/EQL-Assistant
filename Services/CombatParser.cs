@@ -39,10 +39,12 @@ public sealed class CombatParser
 
     // ---- whose fight is it -----------------------------------------------------
     // "Group" must mean someone JOINED your fight — a bystander farming the
-    // next camp over is scenery, even in logging range. My enemies = mobs
-    // I or my pet trade damage with; an ally = any other player who touches
-    // one of them, or heals me/my pet. Order-proof: a helper who tags the
-    // mob before I do is caught the moment the mob becomes mine.
+    // next camp over is scenery, even in logging range. Mob instances share
+    // names in the log ("an abhorrent" here and twenty meters away print the
+    // same lines), so the bar is deliberately high (owner's rule): a mob is
+    // MY fight only once it has HIT me or my pet, and an ally is a player
+    // who damages such a mob — or heals me. Order-proof: a helper who tags
+    // the mob before it turns on me is caught the moment it does.
     private readonly HashSet<string> _myEnemies = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, HashSet<string>> _otherTargets = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _myAllies = new(StringComparer.OrdinalIgnoreCase);
@@ -58,8 +60,7 @@ public sealed class CombatParser
     {
         bool mineA = IsSelf(attacker) || IsPet(attacker);
         bool mineT = IsSelf(target) || IsPet(target);
-        if (mineA && IsEnemyName(target)) AddMyEnemy(target);
-        else if (mineT && IsEnemyName(attacker)) AddMyEnemy(attacker);
+        if (mineT && IsEnemyName(attacker)) AddMyEnemy(attacker);
         else if (!mineA && !IsEnemyName(attacker) && IsEnemyName(target)
                  && !_knownPets.Contains(attacker)) // an old pet of MINE is never an ally
         {
@@ -259,9 +260,10 @@ public sealed class CombatParser
         /// re-summon gets a new name, so one fight can hold several.</summary>
         public List<string> Pets { get; init; } = new();
 
-        /// <summary>Players who actually JOINED this fight — damaged one of
-        /// your enemies or healed you/your pet. Bystanders in logging range
-        /// never land here; empty = a solo fight.</summary>
+        /// <summary>Players who actually JOINED this fight — damaged a mob
+        /// that HIT you (or your pet), or healed you. The high bar is
+        /// deliberate: mob instances share names in the log, so merely
+        /// hitting a same-named mob nearby proves nothing. Empty = solo.</summary>
         public List<string> Allies { get; init; } = new();
     }
 

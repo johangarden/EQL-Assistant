@@ -370,8 +370,11 @@ public partial class App : Application
             al.Replay($"[{FT(500)}] Tolo hit Lady Vox for 40 points of magic damage by Odium."); // tags her FIRST
             al.Replay($"[{FT(501)}] Lady Vox hit Johan for 100 points of cold damage by Frost Breath.");
             al.Replay($"[{FT(503)}] Kettel hit a haunted chest for 90 points of magic damage by Blaze.");
+            // Johan damages the chest too — but it never HIT him, and mob
+            // instances share names, so Kettel stays a neighbour (owner's rule).
+            al.Replay($"[{FT(505)}] Johan hit a haunted chest for 10 points of magic damage by Odium.");
             al.Tick(fb.AddSeconds(560));
-            Check("fight: joining my fight makes an ally, farming next door doesn't",
+            Check("fight: an ally hit a mob that was ON me; a same-named neighbour never counts",
                 al.History[0].Allies.Contains("Tolo") && !al.History[0].Allies.Contains("Kettel"));
             Check("fight: an old pet's speech is harvested retroactively",
                 al.TryParsePetSpeech($"[{FT(0)}] Lonaner told you, 'Attacking a will sapper Master.'",
