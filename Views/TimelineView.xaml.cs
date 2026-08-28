@@ -185,18 +185,25 @@ public partial class TimelineView : UserControl
         // ---- row 2 · who dealt it ----------------------------------------------
         var row2 = NewTileRow();
         var topSelf = rec.SelfAbilities.OrderByDescending(a => a.Total).FirstOrDefault();
-        AddActorCard(row2, $"You · {selfName}", DmgFg,
+        AddActorCard(row2, $"DPS · You · {selfName}", DmgFg,
             100.0 * selfTotal / friendlyTotal, selfTotal / dur, selfTotal,
             topSelf.Total > 0 ? topSelf.Name : null,
             topSelf.Total > 0 ? $" — {FormatNum(topSelf.Total)} ({100.0 * topSelf.Total / Math.Max(1, selfTotal):0}%)" : null);
 
         if (petTotal > 0)
         {
-            var topPet = rec.PetAbilities.OrderByDescending(a => a.Total).FirstOrDefault();
-            AddActorCard(row2, (rec.Pet.Length > 0 ? rec.Pet : "Pet") + " (pet)", PetFg,
+            // Top contributor by NAME — with re-summons one fight holds
+            // several pets, and this says which one carried.
+            var petRows = friendly.Where(IsPetRow).OrderByDescending(r => r.Total).ToList();
+            string? topPetName = petRows.Count > 0 ? petRows[0].Name
+                : rec.Pet.Length > 0 ? rec.Pet : null;
+            double topPetTotal = petRows.Count > 0 ? petRows[0].Total : petTotal;
+            AddActorCard(row2, "DPS · Pet(s)", PetFg,
                 100.0 * petTotal / friendlyTotal, petTotal / dur, petTotal,
-                topPet.Total > 0 ? topPet.Name : null,
-                topPet.Total > 0 ? $" — {FormatNum(topPet.Total)} ({100.0 * topPet.Total / Math.Max(1, petTotal):0}%)" : null);
+                topPetName,
+                topPetName is not null
+                    ? $" — {FormatNum(topPetTotal)} ({100.0 * topPetTotal / Math.Max(1, petTotal):0}%)"
+                    : null);
         }
 
         if (othersTotal > 0)
@@ -204,7 +211,7 @@ public partial class TimelineView : UserControl
             string names = string.Join(", ", otherRows.Take(3).Select(r => r.Name))
                 + (otherRows.Count > 3 ? $" +{otherRows.Count - 3}" : "");
             var topOther = otherRows[0];
-            AddActorCard(row2, $"Others · {names}", NeutralFg,
+            AddActorCard(row2, $"DPS · Others · {names}", NeutralFg,
                 100.0 * othersTotal / friendlyTotal, othersTotal / dur, othersTotal,
                 topOther.Name,
                 $" — {FormatNum(topOther.Total)} ({100.0 * topOther.Total / Math.Max(1, othersTotal):0}%)");
