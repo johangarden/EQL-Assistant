@@ -195,7 +195,7 @@ public partial class HistoryWindow : Window
             sheet.Show(
                 $"{r.Label}   ·   {r.EndedAt:dd MMM HH:mm} · {FormatDuration(r.DurationSeconds)}",
                 showTitle: entries.Count > 1,
-                BuildSheetTabs(r));
+                BuildSheetActors(r));
             SheetsHost.Children.Add(sheet);
         }
 
@@ -212,25 +212,50 @@ public partial class HistoryWindow : Window
     private static readonly Brush OtherFg = Freeze(Color.FromRgb(0xAE, 0xB8, 0xC4));
     private static readonly Brush HealFg = Freeze(Color.FromRgb(0x81, 0xC7, 0x84));
 
-    private List<FightSheetView.SheetTab> BuildSheetTabs(CombatParser.FightRecord r)
+    private List<FightSheetView.SheetActor> BuildSheetActors(CombatParser.FightRecord r)
     {
         double dur = Math.Max(1, r.DurationSeconds);
         bool solo = _soloMode();
-        var tabs = new List<FightSheetView.SheetTab>
+
+        // Legacy fights predate the per-spell heal capture — fall back to the
+        // actor's per-source Healing row so the aspect isn't silently empty.
+        List<FightSheetView.SheetRow> HealFallback(Func<CombatParser.Row, bool> mine) =>
+            r.Healing.Where(x => !x.Enemy && mine(x)).Select(SlimRow).ToList();
+
+        var youHeal = r.SelfHealAbilities.Count > 0
+            ? new FightSheetView.SheetAspect("heal", "Healing", FullRows(r.SelfHealAbilities, dur))
+            : new FightSheetView.SheetAspect("heal", "Healing",
+                HealFallback(x => !IsOtherPlayer(r, x) && !PetNameFor(r).Equals(x.Name, StringComparison.OrdinalIgnoreCase)), Slim: true);
+        var petHeal = r.PetHealAbilities.Count > 0
+            ? new FightSheetView.SheetAspect("heal", "Healing", FullRows(r.PetHealAbilities, dur))
+            : new FightSheetView.SheetAspect("heal", "Healing",
+                HealFallback(x => r.Pets.Any(p => p.Equals(x.Name, StringComparison.OrdinalIgnoreCase))
+                                  || PetNameFor(r).Equals(x.Name, StringComparison.OrdinalIgnoreCase)), Slim: true);
+
+        var actors = new List<FightSheetView.SheetActor>
         {
-            new("you", $"You · {SelfNameFor(r)}", SelfFg, FullRows(r.SelfAbilities, dur)),
-            new("pet", "Pet(s)", PetFg, FullRows(r.PetAbilities, dur)),
+            new("you", $"You · {SelfNameFor(r)}", SelfFg, new List<FightSheetView.SheetAspect>
+            {
+                new("dealt", "Damage dealt", FullRows(r.SelfAbilities, dur)),
+                new("taken", "Damage taken", FullRows(r.IncomingSelfAbilities, dur, critTracked: false)),
+                youHeal,
+            }),
+            new("pet", "Pet(s)", PetFg, new List<FightSheetView.SheetAspect>
+            {
+                new("dealt", "Damage dealt", FullRows(r.PetAbilities, dur)),
+                new("taken", "Damage taken", FullRows(r.IncomingPetAbilities, dur, critTracked: false)),
+                petHeal,
+            }),
         };
         if (!solo)
-            tabs.Add(new("oth", "Others", OtherFg,
-                r.Damage.Where(x => IsOtherPlayer(r, x))
-                    .Select(x => SlimRow(x)).ToList(), Slim: true));
-        tabs.Add(new("inc", "What hit you", IncomingFg,
-            FullRows(r.IncomingSelfAbilities, dur, critTracked: false)));
-        tabs.Add(new("heal", "Healing", HealFg,
-            r.Healing.Where(x => !x.Enemy && (!solo || !IsOtherPlayer(r, x)))
-                .Select(x => SlimRow(x)).ToList(), Slim: true));
-        return tabs;
+            actors.Add(new("oth", "Others", OtherFg, new List<FightSheetView.SheetAspect>
+            {
+                new("dealt", "Damage dealt",
+                    r.Damage.Where(x => IsOtherPlayer(r, x)).Select(SlimRow).ToList(), Slim: true),
+                new("heal", "Healing",
+                    r.Healing.Where(x => !x.Enemy && IsOtherPlayer(r, x)).Select(SlimRow).ToList(), Slim: true),
+            }));
+        return actors;
     }
 
     private static FightSheetView.SheetRow SlimRow(CombatParser.Row x) =>

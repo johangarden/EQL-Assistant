@@ -224,6 +224,12 @@ public sealed class CombatParser
         public List<Row> IncomingSelfAbilities { get; init; } = new();
         public List<Row> IncomingPetAbilities { get; init; } = new();
 
+        /// <summary>Healing per SPELL for you / your pets (added later — the
+        /// fact sheet's per-actor Healing aspect; older fights have these
+        /// empty and fall back to the per-source Healing rows).</summary>
+        public List<Row> SelfHealAbilities { get; init; } = new();
+        public List<Row> PetHealAbilities { get; init; } = new();
+
         // Timeline (added later — older kept fights just have this empty).
         public List<FightEvent> Events { get; init; } = new();
         public bool EventsTruncated { get; init; }
@@ -1367,6 +1373,8 @@ public sealed class CombatParser
             TotalHps = TotalPerSecond(healing: true),
             SelfAbilities = GetAbilityRows(Self()),
             PetAbilities = GetMergedPetAbilityRows(),
+            SelfHealAbilities = GetHealAbilityRows(Self()),
+            PetHealAbilities = GetMergedPetHealAbilityRows(),
             IncomingSelfAbilities = GetIncomingAbilityRows(pet: false),
             IncomingPetAbilities = GetIncomingAbilityRows(pet: true),
             Events = _events
@@ -1471,6 +1479,27 @@ public sealed class CombatParser
                 m.Hits += s.Hits;
                 m.Misses += s.Misses;
                 m.Resists += s.Resists;
+                m.Crits += s.Crits;
+                if (s.Hits > 0 && s.Min < m.Min) m.Min = s.Min;
+                if (s.Max > m.Max) m.Max = s.Max;
+            }
+        }
+        return AbilityRows(merged);
+    }
+
+    /// <summary>Heal-spell rows merged across every pet (lifetaps etc.).</summary>
+    private List<Row> GetMergedPetHealAbilityRows()
+    {
+        var merged = new Dictionary<string, AbilityStat>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (source, bySpell) in _healAbilities)
+        {
+            if (!IsPet(source)) continue;
+            foreach (var (spell, s) in bySpell)
+            {
+                if (!merged.TryGetValue(spell, out var m))
+                    merged[spell] = m = new AbilityStat();
+                m.Total += s.Total;
+                m.Hits += s.Hits;
                 m.Crits += s.Crits;
                 if (s.Hits > 0 && s.Min < m.Min) m.Min = s.Min;
                 if (s.Max > m.Max) m.Max = s.Max;

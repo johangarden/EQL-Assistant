@@ -20,10 +20,13 @@ public partial class FightSheetView : UserControl
         int Hits, double? HitPct, double? Min, double? Avg, double? Max,
         double? CritPct, double? PerMin);
 
-    /// <summary>One tab. Slim = per-source rows (Others, Healing) where only
-    /// dps/total/% exist — the log gives no drill-down for other players.</summary>
-    public sealed record SheetTab(string Key, string Title, Brush Accent,
-        List<SheetRow> Rows, bool Slim = false);
+    /// <summary>One aspect of one actor (Damage dealt / Damage taken /
+    /// Healing). Slim = per-source rows where the log gives no drill-down.</summary>
+    public sealed record SheetAspect(string Key, string Title, List<SheetRow> Rows, bool Slim = false);
+
+    /// <summary>One actor tab (You / Pet(s) / Others), carrying its aspects.</summary>
+    public sealed record SheetActor(string Key, string Title, Brush Accent,
+        List<SheetAspect> Aspects);
 
     private sealed record Col(string Header, Func<SheetRow, IComparable?> Sort,
         Func<SheetRow, string?> Text, bool Left = false);
@@ -62,8 +65,9 @@ public partial class FightSheetView : UserControl
         new("%", r => r.Pct, r => $"{r.Pct:0}%"),
     };
 
-    private IReadOnlyList<SheetTab> _tabs = Array.Empty<SheetTab>();
-    private string _activeKey = "";
+    private IReadOnlyList<SheetActor> _actors = Array.Empty<SheetActor>();
+    private string _actorKey = "";
+    private string _aspectKey = "";
     private int _sortCol = 2;      // TOTAL
     private bool _sortAsc;         // biggest first by default
 
@@ -72,51 +76,92 @@ public partial class FightSheetView : UserControl
         InitializeComponent();
     }
 
-    public void Show(string title, bool showTitle, IReadOnlyList<SheetTab> tabs)
+    public void Show(string title, bool showTitle, IReadOnlyList<SheetActor> actors)
     {
         TitleText.Text = title;
         TitleText.Visibility = showTitle ? Visibility.Visible : Visibility.Collapsed;
-        _tabs = tabs.Where(t => t.Rows.Count > 0).ToList();
-        if (_tabs.All(t => t.Key != _activeKey))
-            _activeKey = _tabs.Count > 0 ? _tabs[0].Key : "";
+        _actors = actors
+            .Select(a => a with { Aspects = a.Aspects.Where(s => s.Rows.Count > 0).ToList() })
+            .Where(a => a.Aspects.Count > 0)
+            .ToList();
+        if (_actors.All(a => a.Key != _actorKey))
+            _actorKey = _actors.Count > 0 ? _actors[0].Key : "";
+        var actor = _actors.FirstOrDefault(a => a.Key == _actorKey);
+        if (actor is not null && actor.Aspects.All(s => s.Key != _aspectKey))
+            _aspectKey = actor.Aspects[0].Key;
         BuildTabs();
         BuildTable();
     }
 
+    private Border Pill(string text, bool on, Brush accent, Action click)
+    {
+        var pill = new Border
+        {
+            Background = on ? TabOnBg : CardBg,
+            BorderBrush = on ? TabOnLine : CardLine,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(13),
+            Padding = new Thickness(13, 3, 13, 4),
+            Margin = new Thickness(0, 0, 6, 4),
+            Cursor = Cursors.Hand,
+            Child = new TextBlock
+            {
+                Text = text,
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = on ? accent : TabOffFg,
+            },
+        };
+        pill.MouseLeftButtonDown += (_, _) => click();
+        return pill;
+    }
+
+    /// <summary>The aspect wears its own color — dealt in the actor's, taken
+    /// red, healing green — so the second row reads at a glance.</summary>
+    private static Brush AspectAccent(string aspectKey, Brush actorAccent) => aspectKey switch
+    {
+        "taken" => Freeze(Color.FromRgb(0xFF, 0x8A, 0x80)),
+        "heal" => Freeze(Color.FromRgb(0x81, 0xC7, 0x84)),
+        _ => actorAccent,
+    };
+
     private void BuildTabs()
     {
         TabsPanel.Children.Clear();
-        foreach (var tab in _tabs)
+        AspectsPanel.Children.Clear();
+        var active = _actors.FirstOrDefault(a => a.Key == _actorKey);
+
+        foreach (var actor in _actors)
         {
-            bool on = tab.Key == _activeKey;
-            var pill = new Border
+            string key = actor.Key;
+            TabsPanel.Children.Add(Pill(actor.Title, actor.Key == _actorKey, actor.Accent, () =>
             {
-                Background = on ? TabOnBg : CardBg,
-                BorderBrush = on ? TabOnLine : CardLine,
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(13),
-                Padding = new Thickness(13, 3, 13, 4),
-                Margin = new Thickness(0, 0, 6, 4),
-                Cursor = Cursors.Hand,
-                Child = new TextBlock
-                {
-                    Text = tab.Title,
-                    FontSize = 11,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = on ? tab.Accent : TabOffFg,
-                },
-            };
-            string key = tab.Key;
-            pill.MouseLeftButtonDown += (_, _) =>
-            {
-                if (_activeKey == key) return;
-                _activeKey = key;
-                _sortCol = 2;      // fresh tab, biggest first again
+                if (_actorKey == key) return;
+                _actorKey = key;
+                var a = _actors.First(x => x.Key == key);
+                if (a.Aspects.All(s => s.Key != _aspectKey))
+                    _aspectKey = a.Aspects[0].Key;
+                _sortCol = 2;
                 _sortAsc = false;
                 BuildTabs();
                 BuildTable();
-            };
-            TabsPanel.Children.Add(pill);
+            }));
+        }
+
+        if (active is null) return;
+        foreach (var aspect in active.Aspects)
+        {
+            string key = aspect.Key;
+            AspectsPanel.Children.Add(Pill(aspect.Title, aspect.Key == _aspectKey,
+                AspectAccent(aspect.Key, active.Accent), () =>
+                {
+                    if (_aspectKey == key) return;
+                    _aspectKey = key;
+                    _sortCol = 2;
+                    _sortAsc = false;
+                    BuildTabs();
+                    BuildTable();
+                }));
         }
     }
 
@@ -125,8 +170,10 @@ public partial class FightSheetView : UserControl
         TableHost.Children.Clear();
         TableHost.RowDefinitions.Clear();
         TableHost.ColumnDefinitions.Clear();
-        var tab = _tabs.FirstOrDefault(t => t.Key == _activeKey);
-        if (tab is null) return;
+        var actor = _actors.FirstOrDefault(a => a.Key == _actorKey);
+        var tab = actor?.Aspects.FirstOrDefault(s => s.Key == _aspectKey);
+        if (actor is null || tab is null) return;
+        Brush accent = AspectAccent(tab.Key, actor.Accent);
 
         var cols = tab.Slim ? SlimCols : FullCols;
         if (_sortCol >= cols.Length) { _sortCol = 2; _sortAsc = false; }
@@ -153,7 +200,7 @@ public partial class FightSheetView : UserControl
                     Text = cols[i].Header + arrow,
                     FontSize = 9.5,
                     FontWeight = FontWeights.SemiBold,
-                    Foreground = _sortCol == i ? tab.Accent : HeadFg,
+                    Foreground = _sortCol == i ? accent : HeadFg,
                     HorizontalAlignment = cols[i].Left
                         ? HorizontalAlignment.Left : HorizontalAlignment.Right,
                 },
