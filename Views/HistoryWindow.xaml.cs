@@ -223,12 +223,12 @@ public partial class HistoryWindow : Window
             r.Healing.Where(x => !x.Enemy && mine(x)).Select(SlimRow).ToList();
 
         var youHeal = r.SelfHealAbilities.Count > 0
-            ? new FightSheetView.SheetAspect("heal", "Healing", FullRows(r.SelfHealAbilities, dur))
-            : new FightSheetView.SheetAspect("heal", "Healing",
+            ? new FightSheetView.SheetAspect("heal", "Healing done", FullRows(r.SelfHealAbilities, dur))
+            : new FightSheetView.SheetAspect("heal", "Healing done",
                 HealFallback(x => !IsOtherPlayer(r, x) && !PetNameFor(r).Equals(x.Name, StringComparison.OrdinalIgnoreCase)), Slim: true);
         var petHeal = r.PetHealAbilities.Count > 0
-            ? new FightSheetView.SheetAspect("heal", "Healing", FullRows(r.PetHealAbilities, dur))
-            : new FightSheetView.SheetAspect("heal", "Healing",
+            ? new FightSheetView.SheetAspect("heal", "Healing done", FullRows(r.PetHealAbilities, dur))
+            : new FightSheetView.SheetAspect("heal", "Healing done",
                 HealFallback(x => r.Pets.Any(p => p.Equals(x.Name, StringComparison.OrdinalIgnoreCase))
                                   || PetNameFor(r).Equals(x.Name, StringComparison.OrdinalIgnoreCase)), Slim: true);
 
@@ -252,7 +252,7 @@ public partial class HistoryWindow : Window
             {
                 new("dealt", "Damage dealt",
                     r.Damage.Where(x => IsOtherPlayer(r, x)).Select(SlimRow).ToList(), Slim: true),
-                new("heal", "Healing",
+                new("heal", "Healing done",
                     r.Healing.Where(x => !x.Enemy && IsOtherPlayer(r, x)).Select(SlimRow).ToList(), Slim: true),
             }));
         return actors;

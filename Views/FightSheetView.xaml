@@ -17,8 +17,7 @@
     <StackPanel>
         <TextBlock x:Name="TitleText" Foreground="#C9D4E3" FontWeight="Bold" FontSize="13"
                    Margin="0,0,0,4" Visibility="Collapsed"/>
-        <WrapPanel x:Name="TabsPanel" Margin="0,0,0,4"/>
-        <WrapPanel x:Name="AspectsPanel" Margin="0,0,0,6"/>
+        <WrapPanel x:Name="TabsPanel" Margin="0,0,0,6"/>
         <Border Background="#1B2130" BorderBrush="#3A4560" BorderThickness="1"
                 CornerRadius="8" Padding="12,4,12,8">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">

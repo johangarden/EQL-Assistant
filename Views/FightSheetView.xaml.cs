@@ -125,43 +125,54 @@ public partial class FightSheetView : UserControl
         _ => actorAccent,
     };
 
+    /// <summary>The selector, the way a designer keeps their window shut: one
+    /// bar of actor GROUPS — a small title (YOU · THORRAK) over its aspect
+    /// pills — groups side by side with a hairline divider. One click picks
+    /// actor and aspect together.</summary>
     private void BuildTabs()
     {
         TabsPanel.Children.Clear();
-        AspectsPanel.Children.Clear();
-        var active = _actors.FirstOrDefault(a => a.Key == _actorKey);
-
+        bool first = true;
         foreach (var actor in _actors)
         {
-            string key = actor.Key;
-            TabsPanel.Children.Add(Pill(actor.Title, actor.Key == _actorKey, actor.Accent, () =>
-            {
-                if (_actorKey == key) return;
-                _actorKey = key;
-                var a = _actors.First(x => x.Key == key);
-                if (a.Aspects.All(s => s.Key != _aspectKey))
-                    _aspectKey = a.Aspects[0].Key;
-                _sortCol = 2;
-                _sortAsc = false;
-                BuildTabs();
-                BuildTable();
-            }));
-        }
-
-        if (active is null) return;
-        foreach (var aspect in active.Aspects)
-        {
-            string key = aspect.Key;
-            AspectsPanel.Children.Add(Pill(aspect.Title, aspect.Key == _aspectKey,
-                AspectAccent(aspect.Key, active.Accent), () =>
+            if (!first)
+                TabsPanel.Children.Add(new Border
                 {
-                    if (_aspectKey == key) return;
-                    _aspectKey = key;
-                    _sortCol = 2;
-                    _sortAsc = false;
-                    BuildTabs();
-                    BuildTable();
-                }));
+                    Width = 1,
+                    Background = CardLine,
+                    Margin = new Thickness(6, 2, 14, 6),
+                });
+            first = false;
+
+            var group = new StackPanel { Margin = new Thickness(0, 0, 8, 2) };
+            group.Children.Add(new TextBlock
+            {
+                Text = actor.Title.ToUpperInvariant(),
+                FontSize = 9,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = actor.Accent,
+                Opacity = 0.85,
+                Margin = new Thickness(2, 0, 0, 3),
+            });
+            var pills = new StackPanel { Orientation = Orientation.Horizontal };
+            foreach (var aspect in actor.Aspects)
+            {
+                string aKey = actor.Key, sKey = aspect.Key;
+                bool on = actor.Key == _actorKey && aspect.Key == _aspectKey;
+                pills.Children.Add(Pill(aspect.Title, on,
+                    AspectAccent(aspect.Key, actor.Accent), () =>
+                    {
+                        if (_actorKey == aKey && _aspectKey == sKey) return;
+                        _actorKey = aKey;
+                        _aspectKey = sKey;
+                        _sortCol = 2;
+                        _sortAsc = false;
+                        BuildTabs();
+                        BuildTable();
+                    }));
+            }
+            group.Children.Add(pills);
+            TabsPanel.Children.Add(group);
         }
     }
 
