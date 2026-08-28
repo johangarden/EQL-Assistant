@@ -373,6 +373,9 @@ public partial class App : Application
             al.Tick(fb.AddSeconds(560));
             Check("fight: joining my fight makes an ally, farming next door doesn't",
                 al.History[0].Allies.Contains("Tolo") && !al.History[0].Allies.Contains("Kettel"));
+            Check("fight: an old pet's speech is harvested retroactively",
+                al.TryParsePetSpeech($"[{FT(0)}] Lonaner told you, 'Attacking a will sapper Master.'",
+                    out string oldPet) && oldPet == "Lonaner" && al.IsKnownPet("Lonaner"));
 
             string fdTxt = Views.TimelineView.BuildAnalysis(fdRec);
             Check("analysis: names the dominant school and the resist advice",

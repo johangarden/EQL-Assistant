@@ -53,6 +53,9 @@
                     <Button Content="Remove fight" Click="Remove_Click" Style="{StaticResource ToolBtn}"
                             ToolTip="Stop keeping the selected saved fight(s)"/>
                 </StackPanel>
+                <TextBlock x:Name="EmptyHint" DockPanel.Dock="Top" Visibility="Collapsed"
+                           Foreground="#7F93AD" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"
+                           Text="No fights yet — right after launch the app is still catching up today's log (a few seconds); they appear here as it finishes."/>
                 <!-- Grouped by day — Standard virtualization, NEVER Recycling:
                      recycling silently skips rows in grouped lists. -->
                 <ListBox x:Name="FightsList"

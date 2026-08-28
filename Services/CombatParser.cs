@@ -100,6 +100,23 @@ public sealed class CombatParser
         "Sorry, Master..calming down.",
     };
 
+    /// <summary>Pet-speech probe for retroactive scans (full-log reparse):
+    /// "Lonaner told you, 'Attacking a will sapper Master.'" → Lonaner.
+    /// Same rules as live detection — never a guess.</summary>
+    public bool TryParsePetSpeech(string rawLine, out string pet)
+    {
+        pet = "";
+        ExtractTimestamp(rawLine, out string body);
+        if (!body.Contains(" says, '", StringComparison.Ordinal)
+            && !body.Contains(" told you, '", StringComparison.Ordinal)) return false;
+        var m = PetSpeechRx.Match(body);
+        if (!m.Success || !IsPetSpeech(m.Groups["via"].Value == "told you", m.Groups["msg"].Value))
+            return false;
+        pet = m.Groups["pet"].Value;
+        _knownPets.Add(pet);
+        return true;
+    }
+
     private bool IsPetSpeech(bool tell, string msg) =>
         tell ? msg.EndsWith(" Master.", StringComparison.Ordinal)
              : PetSayPhrases.Contains(msg)
@@ -1046,7 +1063,9 @@ public sealed class CombatParser
 
         // The pet dying mid-fight is a fight event — for pet builds, THE
         // disaster moment ("Vibarn has been slain by a fire giant warrior!").
+        // Cheap gate first: the kill regex must not tax every combat line.
         if (_active && PetName.Trim().Length > 0
+            && body.Contains(" has been slain", StringComparison.Ordinal)
             && RaidKills.TryParseKill(body, out string slainName) && IsPet(slainName))
             Note(time, $"{PetName.Trim()} died", 0, FightStream.PetDeath);
 
@@ -1365,7 +1384,9 @@ public sealed class CombatParser
                      .Where(r => !r.Enemy && _knownPets.Contains(r.Name))
                      .Select(r => r.Name).Distinct(StringComparer.OrdinalIgnoreCase))
             rec.Pets.Add(name);
-        rec.Allies.AddRange(_myAllies);
+        // Filter at the freeze, not just at insert: pet knowledge can ARRIVE
+        // mid-fight (its first speech), after the "ally" was already noted.
+        rec.Allies.AddRange(_myAllies.Where(a => !_knownPets.Contains(a)));
         _history.Insert(0, rec);
         while (_history.Count > MaxHistory) _history.RemoveAt(_history.Count - 1);
         _archivedActiveSec += rec.DurationSeconds; // session PPM denominator

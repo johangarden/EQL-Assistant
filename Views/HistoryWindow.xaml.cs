@@ -103,6 +103,7 @@ public partial class HistoryWindow : Window
             .OrderByDescending(e => e.Rec.EndedAt)
             .ToList();
 
+        EmptyHint.Visibility = entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         if (!force && entries.SequenceEqual(_shown))
             return;
 

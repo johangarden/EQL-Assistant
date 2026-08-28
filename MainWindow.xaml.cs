@@ -428,6 +428,7 @@ public partial class MainWindow : Window
         _durations.SampleLearned += onSample;
 
         int lines = 0;
+        var petsSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         _suppressSct = true;
         try
         {
@@ -443,6 +444,11 @@ public partial class MainWindow : Window
                 _skyQuests.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
+                // Pet names ride the reparse: every "… Master." speech in the
+                // whole history teaches the known-pets ledger, so last month's
+                // pet never reads as an ally or a group member again.
+                if (_combat.TryParsePetSpeech(line, out string petName))
+                    petsSeen.Add(petName);
                 lines++;
             }
         }
@@ -459,9 +465,11 @@ public partial class MainWindow : Window
         }
 
         _spellLib.SaveSeenIfDirty();
+        foreach (var p in petsSeen) _configService.AddKnownPet(_combat.SelfName, p);
         int lootNew = Math.Max(0, _loot.Entries.Count - lootBefore);
         string summary = $"Reparsed {lines:N0} lines from {Path.GetFileName(path)}: " +
-            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples.";
+            $"{lootNew} new loot, {killsBefore} new raid kills, {durBefore} new duration samples" +
+            $"{(petsSeen.Count > 0 ? $", {petsSeen.Count} pet name(s) learned" : "")}.";
         Log.Info(summary);
         return summary;
     }
