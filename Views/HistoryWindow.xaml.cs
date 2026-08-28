@@ -157,6 +157,8 @@ public partial class HistoryWindow : Window
         if (PetNameFor(r) is { Length: > 0 } pet
             && row.Name.Equals(pet, StringComparison.OrdinalIgnoreCase)) return false;
         if (_parser.IsKnownPet(row.Name)) return false;
+        // Fused companions are the player's OWN alts — their side, always.
+        if (_parser.IsCompanion(row.Name)) return false;
         // Legacy fights (before pet stamps): the pet's damage row totals
         // exactly what its ability drill-down sums to — a fingerprint no
         // groupmate matches.

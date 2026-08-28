@@ -37,6 +37,19 @@ public sealed class CombatParser
             if (!string.IsNullOrWhiteSpace(n)) _knownPets.Add(n.Trim());
     }
 
+    // Fused companions (EQL's Solo N (Fused) mode): the player's OWN alt
+    // characters fighting alongside them. The log announces nothing when
+    // fusing, so the names are user-taught (Manager → General).
+    private HashSet<string> _companions = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Is this name one of the player's fused companions?</summary>
+    public bool IsCompanion(string name) => _companions.Contains(name.Trim());
+
+    public void SetCompanions(IEnumerable<string> names) =>
+        _companions = new HashSet<string>(
+            names.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()),
+            StringComparer.OrdinalIgnoreCase);
+
     // ---- pet auto-detect ------------------------------------------------------
     // The summon prints nothing, but an ORDERED pet names itself: command
     // responses are fixed phrases in a say line ("Venarab says, 'Following
