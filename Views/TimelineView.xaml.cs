@@ -163,32 +163,35 @@ public partial class TimelineView : UserControl
         double takenTotal = rec.IncomingSelfTotal + rec.IncomingPetTotal;
 
         // ---- row 1 · the fight -------------------------------------------------
-        var row1 = NewTileRow();
-        AddTile(row1, "DURATION", FormatDuration(rec.DurationSeconds), "",
-            $"{rec.EndedAt:dd MMM HH:mm}", NeutralFg);
+        var row1 = new List<Border>
+        {
+            Tile("DURATION", FormatDuration(rec.DurationSeconds), "",
+                $"{rec.EndedAt:dd MMM HH:mm}", NeutralFg),
+        };
         double peak = RollingPeak(rec.Events.Where(e =>
             e.Stream is FightStream.SelfOut or FightStream.PetOut && e.Amount > 0), dur);
-        AddTile(row1, "TOTAL DPS", FormatDps(friendlyTotal / dur), "dps",
-            peak > 0 ? $"peak {peak:N0}/s" : "", DmgFg);
+        row1.Add(Tile("TOTAL DPS", FormatDps(friendlyTotal / dur), "dps",
+            peak > 0 ? $"peak {peak:N0}/s" : "", DmgFg));
         var dmgParts = new List<string> { "you" };
         if (petTotal > 0) dmgParts.Add(rec.Pet.Length > 0 ? rec.Pet : "pet");
         if (othersTotal > 0) dmgParts.Add("others");
-        AddTile(row1, "TOTAL DAMAGE", FormatNum(friendlyTotal), "",
-            dmgParts.Count > 1 ? string.Join(" + ", dmgParts) : "", DmgFg);
-        AddTile(row1, "DAMAGE TAKEN", FormatNum(takenTotal), "",
+        row1.Add(Tile("TOTAL DAMAGE", FormatNum(friendlyTotal), "",
+            dmgParts.Count > 1 ? string.Join(" + ", dmgParts) : "", DmgFg));
+        row1.Add(Tile("DAMAGE TAKEN", FormatNum(takenTotal), "",
             petTotal > 0 || rec.IncomingPetTotal > 0
                 ? $"You: {FormatNum(rec.IncomingSelfTotal)} · Pet(s): {FormatNum(rec.IncomingPetTotal)}"
-                : "", TakenFg);
+                : "", TakenFg));
         if (healTotal > 0)
-            AddTile(row1, "HEALED", FormatNum(healTotal), "", $"{FormatDps(healTotal / dur)}/s", HealFg);
+            row1.Add(Tile("HEALED", FormatNum(healTotal), "", $"{FormatDps(healTotal / dur)}/s", HealFg));
+        AddRow(row1);
 
         // ---- row 2 · who dealt it ----------------------------------------------
-        var row2 = NewTileRow();
+        var row2 = new List<Border>();
         var topSelf = rec.SelfAbilities.OrderByDescending(a => a.Total).FirstOrDefault();
-        AddActorCard(row2, $"DPS · You · {selfName}", DmgFg,
+        row2.Add(ActorCard($"DPS · You · {selfName}", DmgFg,
             100.0 * selfTotal / friendlyTotal, selfTotal / dur, selfTotal,
             topSelf.Total > 0 ? topSelf.Name : null,
-            topSelf.Total > 0 ? $" — {FormatNum(topSelf.Total)} ({100.0 * topSelf.Total / Math.Max(1, selfTotal):0}%)" : null);
+            topSelf.Total > 0 ? $" — {FormatNum(topSelf.Total)} ({100.0 * topSelf.Total / Math.Max(1, selfTotal):0}%)" : null));
 
         if (petTotal > 0)
         {
@@ -209,12 +212,12 @@ public partial class TimelineView : UserControl
                 topName = petRows.Count > 0 ? petRows[0].Name : null;
                 topTotal = petRows.Count > 0 ? petRows[0].Total : 0;
             }
-            AddActorCard(row2, "DPS · Pet(s)", PetFg,
+            row2.Add(ActorCard("DPS · Pet(s)", PetFg,
                 100.0 * petTotal / friendlyTotal, petTotal / dur, petTotal,
                 topName,
                 topName is not null
                     ? $" — {FormatNum(topTotal)} ({100.0 * topTotal / Math.Max(1, petTotal):0}%)"
-                    : null);
+                    : null));
         }
 
         if (othersTotal > 0)
@@ -222,11 +225,12 @@ public partial class TimelineView : UserControl
             string names = string.Join(", ", otherRows.Take(3).Select(r => r.Name))
                 + (otherRows.Count > 3 ? $" +{otherRows.Count - 3}" : "");
             var topOther = otherRows[0];
-            AddActorCard(row2, $"DPS · Others · {names}", NeutralFg,
+            row2.Add(ActorCard($"DPS · Others · {names}", NeutralFg,
                 100.0 * othersTotal / friendlyTotal, othersTotal / dur, othersTotal,
                 topOther.Name,
-                $" — {FormatNum(topOther.Total)} ({100.0 * topOther.Total / Math.Max(1, othersTotal):0}%)");
+                $" — {FormatNum(topOther.Total)} ({100.0 * topOther.Total / Math.Max(1, othersTotal):0}%)"));
         }
+        AddRow(row2);
 
         // ---- row 3 · what hit you ----------------------------------------------
         var hits = rec.Events.Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0)
@@ -235,9 +239,9 @@ public partial class TimelineView : UserControl
             .OrderByDescending(a => a.Total).Take(3).ToList();
         if (hits.Count > 0 || worst.Count > 0 || rec.Events.Count > 0)
         {
-            // A grid, not a wrap: the pulse card claims whatever width the
-            // two lists leave — no dead corner.
-            var row3 = new Grid();
+            // The lists keep natural width; the pulse claims the rest — and
+            // the ROW spans the same full width as every other row.
+            var row3 = new Grid { Margin = new Thickness(0, 0, -8, 0) };
             row3.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row3.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row3.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -335,11 +339,22 @@ public partial class TimelineView : UserControl
         }
     }
 
-    private WrapPanel NewTileRow()
+    /// <summary>Lay one row of cards on equal star columns spanning the full
+    /// report width — every row shares both edges, every card in a row is the
+    /// same size. (The −8 right margin swallows the last card's gutter so the
+    /// rows sit flush with the analysis boxes and boards below.)</summary>
+    private void AddRow(List<Border> cards)
     {
-        var row = new WrapPanel();
+        if (cards.Count == 0) return;
+        var row = new Grid { Margin = new Thickness(0, 0, -8, 0) };
+        for (int i = 0; i < cards.Count; i++)
+        {
+            row.ColumnDefinitions.Add(new ColumnDefinition
+            { Width = new GridLength(1, GridUnitType.Star) });
+            Grid.SetColumn(cards[i], i);
+            row.Children.Add(cards[i]);
+        }
         TilesPanel.Children.Add(row);
-        return row;
     }
 
     private static Border TileCard(UIElement child, double minWidth = 150) => new()
@@ -359,7 +374,7 @@ public partial class TimelineView : UserControl
         Text = label, FontSize = 9, Foreground = AxisFg, FontWeight = FontWeights.SemiBold,
     };
 
-    private static void AddTile(Panel host, string label, string big, string unit, string sub, Brush accent)
+    private static Border Tile(string label, string big, string unit, string sub, Brush accent)
     {
         // Row-1 tiles read centered — they're single numbers, not lists.
         var stack = new StackPanel();
@@ -383,11 +398,11 @@ public partial class TimelineView : UserControl
                 Text = sub, FontSize = 11, Foreground = ChipFg,
                 HorizontalAlignment = HorizontalAlignment.Center,
             });
-        host.Children.Add(TileCard(stack));
+        return TileCard(stack);
     }
 
     /// <summary>Row-2 card: share · dps · total on one even line, top tool under.</summary>
-    private static void AddActorCard(Panel host, string label, Brush accent,
+    private static Border ActorCard(string label, Brush accent,
         double sharePct, double dps, double total, string? topName, string? topRest)
     {
         var stack = new StackPanel();
@@ -407,7 +422,7 @@ public partial class TimelineView : UserControl
             top.Inlines.Add(new System.Windows.Documents.Run(topRest) { Foreground = ChipFg });
             stack.Children.Add(top);
         }
-        host.Children.Add(TileCard(stack, minWidth: 250));
+        return TileCard(stack, minWidth: 250);
     }
 
     /// <summary>Row-3 card: a top-3 list, value leading in the accent color.</summary>
