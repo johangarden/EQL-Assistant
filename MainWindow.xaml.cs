@@ -901,7 +901,7 @@ public partial class MainWindow : Window
         _config.Overlay.SkyHelperVisible = !_config.Overlay.SkyHelperVisible;
         _configService.SaveSettings(_config);
         RebuildSkyHelperWindow();
-        _vm.Flash(_config.Overlay.SkyHelperVisible ? "Sky quest helper on." : "Sky quest helper off.");
+        _vm.Flash(_config.Overlay.SkyHelperVisible ? "Sky droppers on." : "Sky droppers off.");
     }
 
     private void RebuildSessionStatsWindow()
@@ -1383,6 +1383,7 @@ public partial class MainWindow : Window
         RebuildFlashWindow();
         RebuildSctLanes();
         RebuildConditionsWindow(); // its page owns visibility now
+        RebuildSkyHelperWindow();  // ditto — the Sky helper page arrived
         ApplyCursorRing();
         if (_toolbarWin is not null)
         {
@@ -1516,7 +1517,9 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("Rebuff reminders", ToggleReminders, "Bars & matrices", () => _config.Overlay.RemindersVisible));
         panels.Items.Add(BurgerPanelRow("Enemy DoTs", ToggleEnemyDots, "Bars & matrices", () => _config.Overlay.EnemyDotsVisible));
         panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, "Condition badges", () => _config.Overlay.ConditionsVisible));
-        panels.Items.Add(BurgerPanelRow("Sky quest helper", ToggleSkyHelper, null, () => _config.Overlay.SkyHelperVisible));
+        // "Sky droppers", NOT "Sky quest helper": the Quests WINDOW (toolbar !)
+        // is a different thing, and the old name kept getting mistaken for it.
+        panels.Items.Add(BurgerPanelRow("Sky droppers", ToggleSkyHelper, "Sky droppers", () => _config.Overlay.SkyHelperVisible));
         panels.Items.Add(BurgerPanelRow("Session stats (XP/AA/motes)", ToggleSessionStats, null, () => _config.Overlay.SessionStatsVisible));
         panels.Items.Add(BurgerPanelRow("Spawn timer", ToggleTimer, "Spawn timer", () => !_timerHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs", () => !_meterHidden));

@@ -1001,6 +1001,7 @@ public partial class TriggerManagerWindow : Window
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
+            ["Sky droppers"] = SkyHelperPage,
             ["General"] = GeneralPage,
             ["Sounds & voices"] = SoundsPage,
             ["Data"] = DataPage,
@@ -1081,6 +1082,8 @@ public partial class TriggerManagerWindow : Window
     private void LoadSettingsFields()
     {
         ConditionsVisibleCheck.IsChecked = _config.Overlay.ConditionsVisible;
+        SkyHelperVisibleCheck.IsChecked = _config.Overlay.SkyHelperVisible;
+        SkyHelperCompletedCheck.IsChecked = _config.Overlay.SkyHelperShowCompleted;
         _soundUxLoading = true;
         InterruptOnCheck.IsChecked = _config.Overlay.InterruptNoticeEnabled;
         InterruptModeBox.SelectedValue = _config.Overlay.InterruptNoticeMode;
@@ -1442,8 +1445,8 @@ public partial class TriggerManagerWindow : Window
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
                 ConditionsVisible = ConditionsVisibleCheck.IsChecked == true,
-                SkyHelperVisible = _config.Overlay.SkyHelperVisible,     // panels-toggled
-                SkyHelperShowCompleted = _config.Overlay.SkyHelperShowCompleted, // panel-toggled
+                SkyHelperVisible = SkyHelperVisibleCheck.IsChecked == true,
+                SkyHelperShowCompleted = SkyHelperCompletedCheck.IsChecked == true,
                 InterruptNoticeEnabled = InterruptOnCheck.IsChecked == true,
                 InterruptNoticeMode = InterruptModeBox.SelectedValue as string ?? "sound",
                 InterruptNoticeSpeak = InterruptSpeakBox.Text.Trim(),

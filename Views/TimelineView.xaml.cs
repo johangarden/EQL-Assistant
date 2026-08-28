@@ -60,7 +60,10 @@ public partial class TimelineView : UserControl
     public TimelineView()
     {
         InitializeComponent();
-        SizeChanged += (_, _) => Rebuild();
+        // WIDTH changes only: folding a board changes our HEIGHT, and a
+        // height-triggered rebuild recreates the headers mid-click (worse,
+        // the outer scrollbar can flip the width back and forth and loop it).
+        SizeChanged += (_, e) => { if (e.WidthChanged) Rebuild(); };
     }
 
     /// <summary>Point the report at one fight (no-op when already showing it).</summary>
@@ -313,14 +316,14 @@ public partial class TimelineView : UserControl
 
         var board = NewBoard("OFFENCE", DmgFg,
             "▾ cast · ▬ DoT running · | hit (taller = harder), dim = miss/resist",
-            () => _offenceOpen, v => _offenceOpen = v, out var content);
-        AddAxis(content, width, dur, scale);
-        DrawGraph(content, width, dur, scale, new[]
+            () => _offenceOpen, v => _offenceOpen = v, out var graphPart, out var detailPart);
+        AddAxis(graphPart, width, dur, scale);
+        DrawGraph(graphPart, width, dur, scale, new[]
         {
             ("You", DmgFg, (Func<FightEvent, bool>)(e => e.Stream == FightStream.SelfOut)),
             (rec.Pet.Length > 0 ? rec.Pet : "Pet", PetFg, e => e.Stream == FightStream.PetOut),
         });
-        AddLanes(content, lanes, width, scale);
+        AddLanes(detailPart, lanes, width, scale);
         BoardsHost.Children.Add(board);
     }
 
@@ -376,17 +379,17 @@ public partial class TimelineView : UserControl
 
         var board = NewBoard("DEFENCE", TakenFg,
             "▬ your debuff / CC · | hit on you · | heal · ✕ pet died",
-            () => _defenceOpen, v => _defenceOpen = v, out var content);
-        AddAxis(content, width, dur, scale);
-        DrawGraph(content, width, dur, scale, new[]
+            () => _defenceOpen, v => _defenceOpen = v, out var graphPart, out var detailPart);
+        AddAxis(graphPart, width, dur, scale);
+        DrawGraph(graphPart, width, dur, scale, new[]
         {
             ("Taken", TakenFg, (Func<FightEvent, bool>)(e => e.Stream is FightStream.SelfIn or FightStream.PetIn)),
             ("Healing", HealFg, e => e.Stream is FightStream.HealOut or FightStream.HealIn),
         });
-        AddLanes(content, lanes, width, scale);
+        AddLanes(detailPart, lanes, width, scale);
 
         if (stanceSegs.Count > 0)
-            AddStanceStrip(content, stanceSegs, width, scale);
+            AddStanceStrip(detailPart, stanceSegs, width, scale);
         BoardsHost.Children.Add(board);
     }
 
@@ -396,11 +399,12 @@ public partial class TimelineView : UserControl
     private static bool _offenceOpen = true;
     private static bool _defenceOpen = true;
 
-    /// <summary>A foldable board in a section card: clickable ▾/▸ header,
-    /// content below. Custom, never a stock Expander — every control themed
-    /// from day one.</summary>
+    /// <summary>A foldable board in a section card: clickable ▾/▸ header, the
+    /// graph part ALWAYS visible (a folded board still shows the fight's
+    /// pulse), only the lane details fold. Custom, never a stock Expander —
+    /// every control themed from day one.</summary>
     private static Border NewBoard(string title, Brush accent, string key,
-        Func<bool> isOpen, Action<bool> setOpen, out Panel content)
+        Func<bool> isOpen, Action<bool> setOpen, out Panel graphPart, out Panel detailPart)
     {
         var board = new StackPanel();
         var head = new DockPanel
@@ -428,25 +432,24 @@ public partial class TimelineView : UserControl
         head.Children.Add(keyTb);
         board.Children.Add(head);
 
-        // Content sits in a grid with a hit-test-transparent overlay on top —
-        // the hover time-cursor draws there, across graph and lanes alike.
-        var inner = new StackPanel();
-        var overlay = new Canvas { IsHitTestVisible = false, ClipToBounds = true };
-        var wrap = new Grid
+        var always = new StackPanel();
+        board.Children.Add(always);
+        graphPart = always;
+
+        var details = new StackPanel
         {
-            Background = Brushes.Transparent,
             Visibility = isOpen() ? Visibility.Visible : Visibility.Collapsed,
         };
-        wrap.Children.Add(inner);
-        wrap.Children.Add(overlay);
-        board.Children.Add(wrap);
-        content = inner;
+        board.Children.Add(details);
+        detailPart = details;
 
+        // ONE element carries the folded state, and the toggle flips THAT
+        // element — a builder/handler mismatch here once froze boards shut.
         head.MouseLeftButtonDown += (_, _) =>
         {
             bool open = !isOpen();
             setOpen(open);
-            inner.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            details.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
             arrow.Text = open ? "▾" : "▸";
         };
         return new Border
@@ -779,7 +782,11 @@ public partial class TimelineView : UserControl
             .Where(a => a.Total > 0)
             .OrderByDescending(a => a.Total)
             .ToList();
-        if (tops.Count > 0 && takenTotal > 0)
+        if (tops.Count > 0 && takenTotal > 0
+            // Verdicts, not statistics: with no school (bare melee "hit") and
+            // no resist data, there is no advice to give — the tiles and the
+            // What-hit-you table already carry the number itself.
+            && (rec.Schools.ContainsKey(tops[0].Name) || tops[0].Resists > 0))
         {
             var top = tops[0];
             double share = 100.0 * top.Total / takenTotal;
@@ -842,6 +849,7 @@ public partial class TimelineView : UserControl
             double avgDur = timed.Average(e => e.Amount);
 
             string line = $"• {g.Key} was up ~{100.0 * covered / dur:0}% of the fight ({FormatDuration(covered)} of {FormatDuration(dur)}).";
+            bool verdict = false;
             double gapSec = dur - covered;
             if (takenEvented > 0 && gapSec >= 3)
             {
@@ -853,11 +861,20 @@ public partial class TimelineView : UserControl
                 double share = 100.0 * inGaps / takenEvented;
                 double gapShare = 100.0 * gapSec / dur;
                 if (inGaps > 0 && share > gapShare + 10)
+                {
                     line += $" The gaps bit: {share:0}% of the damage you took landed in that {FormatDuration(gapSec)} without it.";
+                    verdict = true;
+                }
             }
             if (isDot && covered < 0.85 * dur && dur >= 2 * avgDur)
+            {
                 line += " Refresh sooner — every gap second is unpaid ticks.";
-            lines.Add(line);
+                verdict = true;
+            }
+            // A clean high uptime is not a finding — the span lane already
+            // shows it. Print only below the flag threshold, or with a verdict.
+            if (verdict || covered < 0.85 * dur)
+                lines.Add(line);
 
             // Clipping only reads cleanly on single-enemy fights: with adds,
             // a re-land is usually a SECOND mob, not a wasted refresh.
@@ -904,7 +921,8 @@ public partial class TimelineView : UserControl
                 ? $"• Your {broken[0].Ability} was interrupted at {FormatDuration(broken[0].T)}."
                 : $"• {broken.Count} of your casts were interrupted (first: {broken[0].Ability} at {FormatDuration(broken[0].T)}).");
 
-        // 3d · Stance — where the fight was actually spent.
+        // 3d · Stance — a verdict only when the fight actually danced; the
+        //      stance chip and strip already say where it sat.
         var stanceSegs = StanceSegments(rec);
         if (stanceSegs.Count > 0)
         {
@@ -912,23 +930,12 @@ public partial class TimelineView : UserControl
                 .Select(k => (Name: k.Key, Sec: k.Sum(s => s.T1 - s.T0)))
                 .OrderByDescending(x => x.Sec).ToList();
             int switches = rec.Events.Count(e => e.Stream == FightStream.Stance);
-            lines.Add(switches == 0
-                ? $"• Entire fight in {byStance[0].Name} stance."
-                : $"• Mostly {byStance[0].Name} stance ({100.0 * byStance[0].Sec / dur:0}%) — switched {switches}× mid-fight.");
+            if (switches > 0)
+                lines.Add($"• Mostly {byStance[0].Name} stance ({100.0 * byStance[0].Sec / dur:0}%) — switched {switches}× mid-fight.");
         }
 
-        // 3e · The pet: its share of the work, and the disaster moment.
-        double petTotal = rec.PetAbilities.Sum(a => a.Total);
-        double selfTotal = rec.SelfAbilities.Sum(a => a.Total);
-        if (petTotal > 0)
-        {
-            string pet = rec.Pet.Length > 0 ? rec.Pet : "Your pet";
-            string line = $"• {pet} dealt {100.0 * petTotal / Math.Max(1, selfTotal + petTotal):0}% of the team's damage ({FormatNum(petTotal)})";
-            line += rec.IncomingPetTotal > 0
-                ? $" and ate {FormatNum(rec.IncomingPetTotal)} of the incoming."
-                : ".";
-            lines.Add(line);
-        }
+        // 3e · The pet's disaster moment. Its SHARE lives in the tiles — the
+        //      analysis only speaks when the pet dies.
         foreach (var d in rec.Events.Where(e => e.Stream == FightStream.PetDeath).OrderBy(e => e.T))
         {
             string line = $"• {d.Ability} at {FormatDuration(d.T)}";
@@ -969,19 +976,20 @@ public partial class TimelineView : UserControl
                 lines.Add($"• Danger window {FormatDuration(bestT)}–{FormatDuration(bestT + W)}: you took {FormatNum(bestTaken)} while healing covered {FormatNum(bestHeal)} — that's where deaths live.");
         }
 
-        // 4b · Who kept you alive, and the hit that nearly didn't let them.
+        // 4b · Who kept you alive — a finding only when it WASN'T you (solo
+        //      self-healing is the tiles' story; the biggest hit is a tile too).
         var healers = rec.Healing.Where(h => !h.Enemy && h.Total > 0)
             .OrderByDescending(h => h.Total).ToList();
-        if (healers.Count > 0)
-            lines.Add($"• {healers[0].Name} carried {healers[0].Percent:0}% of the healing ({FormatNum(healers[0].Total)}).");
-        var big = rec.Events.Where(e => e.Stream == FightStream.SelfIn && e.Amount > 0)
-            .OrderByDescending(e => e.Amount).FirstOrDefault();
-        if (big is not null)
-            lines.Add($"• Biggest hit on you: {big.Ability} {FormatNum(big.Amount)} at {FormatDuration(big.T)}.");
+        if (healers.Count > 0
+            && !healers[0].Name.Equals(rec.Character, StringComparison.OrdinalIgnoreCase)
+            && !healers[0].Name.Equals("You", StringComparison.OrdinalIgnoreCase))
+            lines.Add($"• {healers[0].Name} carried {healers[0].Percent:0}% of the healing ({FormatNum(healers[0].Total)}) — send a thanks.");
 
         return lines.Count > 0
             ? string.Join("\n", lines)
-            : "Nothing to analyse — this fight recorded no incoming data.";
+            : rec.Events.Count > 0
+                ? "Nothing to flag — a clean fight by the playbook's thresholds."
+                : "Nothing to analyse — this fight recorded no incoming data.";
     }
 
     /// <summary>The fight cut into stance stretches: the stance at pull runs
