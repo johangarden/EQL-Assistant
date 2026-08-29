@@ -583,6 +583,11 @@ public partial class App : Application
                 out lk, out li, out lm, out lr, out long lc, out _)
                 && lk == LootTracker.LootKind.Sold && li == "Bronze Spear +1" && lc == 2214);
             Check("loot: coin formatting", LootTracker.FormatCoins(2214) == "2p 2g 1s 4c");
+            Check("loot: currency form (motes, wind runes)", LootTracker.TryParseLoot(
+                "You looted a Mote of Minor Potential from a shin ghoul knight's corpse and stored it in your currency",
+                out lk, out li, out lm, out lr, out _, out _)
+                && lk == LootTracker.LootKind.Currency && li == "Mote of Minor Potential"
+                && lm == "a shin ghoul knight");
             Check("loot: combat line is not loot", !LootTracker.TryParseLoot(
                 "You slash a rat for 5 points of damage.", out lk, out li, out lm, out lr, out _, out _));
             Check("loot: item key strips +N", LootTracker.ItemKey("Sphinx Claw +2") == "sphinx claw"
@@ -1700,7 +1705,7 @@ public partial class App : Application
                 Check("sky helper: the library carries FULL dropper names",
                     voice.Items.First(i => i.Name == "Light Woolen Mantle").Mobs
                         .Contains("Keeper of Souls")
-                    && voice.Items.First(i => i.Name.StartsWith("Wind Rune")).Mobs.Count == 0
+                    && voice.Items.First(i => i.Name.EndsWith("Wind Rune")).Mobs.Count == 0
                     && sq.Quests.All(q => q.Items.Count > 0));
 
                 var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };

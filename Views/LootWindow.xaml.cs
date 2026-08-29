@@ -76,6 +76,7 @@ public partial class LootWindow : Window
         {
             LootTracker.LootKind.Upgrade => new RowVm(item, detail, $"→ {e.Result}", UpgradeFg),
             LootTracker.LootKind.Sold => new RowVm(item, detail, $"+{LootTracker.FormatCoins(e.Copper)}", SoldFg),
+            LootTracker.LootKind.Currency => new RowVm(item, detail, "currency", KeptFg),
             _ => new RowVm(item, detail, "kept", KeptFg),
         };
     }
