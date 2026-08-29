@@ -1711,6 +1711,13 @@ public partial class App : Application
                     && voice.Items.First(i => i.Name.EndsWith("Wind Rune")).Mobs.Count == 0
                     && sq.Quests.All(q => q.Items.Count > 0));
 
+                // Wind runes are CURRENCIES in EQL — their pickup line must
+                // count toward the quest like a kept item would.
+                skyLoot.ProcessLine("[Sat Aug 29 00:10:00 2026] You looted a Jaka Wind Rune from a gust of wind's corpse and stored it in your currency");
+                var gest = sq.Quests.First(q => q.Name == "Magician Test of Gesticulation");
+                Check("sky: a currency rune pickup ticks the quest's have-count",
+                    sq.HeldCount(gest.Items.First(i => i.Name == "Jaka Wind Rune")) == 1);
+
                 var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };
                 var sighted = new List<string>();
                 helper.Sighted += m => sighted.Add(m);
