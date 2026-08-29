@@ -117,7 +117,10 @@ public sealed class SkyQuests
 
     private bool CountLoot(LootTracker.LootEntry e, bool save)
     {
-        if (e.Kind != LootTracker.LootKind.Kept) return false;
+        // Kept items AND currency pickups: the wind runes became currencies
+        // in EQL, and a rune stored in your currency tab is every bit "had".
+        if (e.Kind is not (LootTracker.LootKind.Kept or LootTracker.LootKind.Currency))
+            return false;
         string key = LootTracker.ItemKey(e.Item);
         if (!_questItemKeys.Contains(key)) return false;
         _counts[key] = _counts.GetValueOrDefault(key) + Math.Max(1, e.Count);
