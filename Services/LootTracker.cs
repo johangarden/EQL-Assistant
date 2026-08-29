@@ -16,7 +16,7 @@ namespace EQLOverlay.Services;
 /// </summary>
 public sealed class LootTracker
 {
-    public enum LootKind { Upgrade, Kept, Sold }
+    public enum LootKind { Upgrade, Kept, Sold, Currency }
 
     public sealed record LootEntry(DateTime When, string Item, string Mob, string Zone, LootKind Kind,
         string Result = "", long Copper = 0, int Count = 1);
@@ -62,6 +62,13 @@ public sealed class LootTracker
 
     private static readonly Regex KeptRx = new(
         @"^--You have looted (?<item>.+?) from (?<mob>.+?)'s corpse\.--$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // Currency pickups (motes, wind runes) print their own form, confirmed:
+    // "You looted a Mote of Minor Potential from a shin ghoul knight's corpse
+    //  and stored it in your currency" — no trailing period.
+    private static readonly Regex CurrencyRx = new(
+        @"^You looted (?:an?|the) (?<item>.+?) from (?<mob>.+?)'s corpse and stored it in your currency\.?$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex CoinRx = new(
@@ -147,6 +154,15 @@ public sealed class LootTracker
             item = m.Groups["item"].Value;
             mob = m.Groups["mob"].Value;
             copper = ParseCoins(m.Groups["money"].Value);
+            return true;
+        }
+
+        m = CurrencyRx.Match(body);
+        if (m.Success)
+        {
+            kind = LootKind.Currency;
+            item = m.Groups["item"].Value;
+            mob = m.Groups["mob"].Value;
             return true;
         }
 
