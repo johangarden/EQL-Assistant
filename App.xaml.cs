@@ -1732,6 +1732,23 @@ public partial class App : Application
                     sqAgain.HeldCount(sqAgain.Quests.First(q => q.Name == "Magician Test of Gesticulation")
                         .Items.First(i => i.Name == "Wind Rune Jaka")) >= jakaBefore + 1);
 
+                // Turn-ins ARE logged even though rewards aren't: offering all
+                // of a quest's items to ITS OWN NPC completes it, drops the
+                // held counts — and a catch-up replay of the same lines never
+                // double-counts.
+                var cleric = sqAgain.Quests.First(q => q.Name == "Cleric Test of Skill");
+                string offer1 = "[Sat Aug 29 00:30:00 2026] You offered 1 Small Shield to Josin Faithbringer.";
+                string offer2 = "[Sat Aug 29 00:30:01 2026] You offered 1 Wind Rune Meda to Josin Faithbringer.";
+                sqAgain.ProcessLine(offer1);
+                Check("sky: half a turn-in completes nothing", !sqAgain.IsCompleted(cleric));
+                sqAgain.ProcessLine(offer2);
+                Check("sky: offering every item to the quest's NPC completes it",
+                    sqAgain.IsCompleted(cleric));
+                int medaHeld = sqAgain.HeldCount(cleric.Items.First(i => i.Name == "Wind Rune Meda"));
+                sqAgain.ProcessLine(offer2); // replayed line (catch-up) — must dedupe
+                Check("sky: a replayed offer line never double-counts",
+                    sqAgain.HeldCount(cleric.Items.First(i => i.Name == "Wind Rune Meda")) == medaHeld);
+
                 var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };
                 var sighted = new List<string>();
                 helper.Sighted += m => sighted.Add(m);

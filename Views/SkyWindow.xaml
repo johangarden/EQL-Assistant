@@ -26,7 +26,7 @@
                 <TextBlock Text="Plane of Sky — Test quests" Style="{StaticResource PageTitle}"/>
             </DockPanel>
             <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,6"
-                       Text="Click a class badge to see its quests — the ring fills as they complete. Turn-in items are counted from your loot history (kept items and currency pickups like wind runes); a quest checks itself off when its reward shows up in the log, or tick it yourself."/>
+                       Text="Click a class badge to see its quests — the ring fills as they complete. Turn-in items are counted from your loot history (kept items and currency pickups like wind runes); a quest checks itself off when you offer its items to the turn-in NPC ('You offered 1 ...'), or tick it yourself."/>
 
             <!-- Class badges: monogram ring + completion arc; click filters. -->
             <ItemsControl x:Name="BadgesControl" Margin="0,2,0,8">
