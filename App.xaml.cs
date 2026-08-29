@@ -1708,15 +1708,23 @@ public partial class App : Application
                 Check("sky helper: the library carries FULL dropper names",
                     voice.Items.First(i => i.Name == "Light Woolen Mantle").Mobs
                         .Contains("Keeper of Souls")
-                    && voice.Items.First(i => i.Name.EndsWith("Wind Rune")).Mobs.Count == 0
+                    && voice.Items.First(i => i.Name.StartsWith("Wind Rune")).Mobs.Count == 0
                     && sq.Quests.All(q => q.Items.Count > 0));
 
-                // Wind runes are CURRENCIES in EQL — their pickup line must
-                // count toward the quest like a kept item would.
-                skyLoot.ProcessLine("[Sat Aug 29 00:10:00 2026] You looted a Jaka Wind Rune from a gust of wind's corpse and stored it in your currency");
+                // Wind runes are CURRENCIES in EQL — their pickup line (real
+                // form, 29 Aug log: word order is "Wind Rune Jaka", whatever
+                // the currency TAB displays) must count toward the quest.
+                skyLoot.ProcessLine("[Sat Aug 29 18:37:11 2026] You looted a Wind Rune Jaka from an azarack's corpse and stored it in your currency");
                 var gest = sq.Quests.First(q => q.Name == "Magician Test of Gesticulation");
                 Check("sky: a currency rune pickup ticks the quest's have-count",
-                    sq.HeldCount(gest.Items.First(i => i.Name == "Jaka Wind Rune")) == 1);
+                    sq.HeldCount(gest.Items.First(i => i.Name == "Wind Rune Jaka")) == 1);
+
+                // Runes recorded BEFORE their quest key matched reconcile in
+                // on the next start — counts lift from history, never drop.
+                var sqAgain = new SkyQuests(skyCfg, skyLoot, skyProg);
+                Check("sky: startup reconciles missed loot into the counts",
+                    sqAgain.HeldCount(sqAgain.Quests.First(q => q.Name == "Magician Test of Gesticulation")
+                        .Items.First(i => i.Name == "Wind Rune Jaka")) == 1);
 
                 var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };
                 var sighted = new List<string>();

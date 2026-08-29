@@ -100,17 +100,25 @@ public sealed class SkyQuests
             foreach (var it in q.Items)
                 _questItemKeys.Add(LootTracker.ItemKey(it.Name));
 
-        bool firstRun = !File.Exists(_progressPath);
         LoadProgress();
 
-        // First run: the loot history may already hold quest pieces — seed from it
-        // once, then stay incremental (immune to the loot list's cap).
-        if (firstRun)
+        // Reconcile with the loot history on EVERY start, taking the MAX of
+        // persisted vs recomputed per item: the incremental counts can miss
+        // entries recorded before their quest key matched (the wind-rune
+        // naming saga), while persisted values win where the capped loot
+        // list has already forgotten old pieces. Never decreases anything.
+        var fromLoot = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var e in loot.Entries)
         {
-            foreach (var e in loot.Entries)
-                CountLoot(e, save: false);
-            SaveProgress();
+            if (e.Kind is not (LootTracker.LootKind.Kept or LootTracker.LootKind.Currency)) continue;
+            string key = LootTracker.ItemKey(e.Item);
+            if (_questItemKeys.Contains(key))
+                fromLoot[key] = fromLoot.GetValueOrDefault(key) + Math.Max(1, e.Count);
         }
+        bool lifted = false;
+        foreach (var (key, n) in fromLoot)
+            if (n > _counts.GetValueOrDefault(key)) { _counts[key] = n; lifted = true; }
+        if (lifted) SaveProgress();
 
         loot.Added += e => { if (CountLoot(e, save: true)) Changed?.Invoke(); };
     }
