@@ -93,9 +93,11 @@ public sealed class LootTracker
         PropertyNameCaseInsensitive = true,
     };
 
-    public LootTracker(ConfigService config)
+    public LootTracker(ConfigService config, string? pathOverride = null)
     {
-        _path = Path.Combine(config.ConfigDirectory, "loot.json");
+        // pathOverride: selftests bring their own file — the REAL loot.json
+        // must never collect synthetic test entries.
+        _path = pathOverride ?? Path.Combine(config.ConfigDirectory, "loot.json");
         Load();
     }
 

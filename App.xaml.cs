@@ -1702,7 +1702,8 @@ public partial class App : Application
                 string skyProg = Path.Combine(Path.GetTempPath(),
                     $"eql_test_skyprog_{Guid.NewGuid():N}.json");
                 var skyCfg = new ConfigService();
-                var skyLoot = new LootTracker(skyCfg);
+                var skyLoot = new LootTracker(skyCfg, Path.Combine(Path.GetTempPath(),
+                    $"eql_test_loot_{Guid.NewGuid():N}.json"));
                 var sq = new SkyQuests(skyCfg, skyLoot, skyProg);
                 var voice = sq.Quests.First(q => q.Name == "Bard Test of Voice");
                 Check("sky helper: the library carries FULL dropper names",
@@ -1714,17 +1715,22 @@ public partial class App : Application
                 // Wind runes are CURRENCIES in EQL — their pickup line (real
                 // form, 29 Aug log: word order is "Wind Rune Jaka", whatever
                 // the currency TAB displays) must count toward the quest.
-                skyLoot.ProcessLine("[Sat Aug 29 18:37:11 2026] You looted a Wind Rune Jaka from an azarack's corpse and stored it in your currency");
-                var gest = sq.Quests.First(q => q.Name == "Magician Test of Gesticulation");
+                // Delta-based: the tracker rides the REAL loot history here,
+                // so absolute counts belong to Johan, not the test. The
+                // synthetic line's mob/date never collide with real entries.
+                var jaka = sq.Quests.First(q => q.Name == "Magician Test of Gesticulation")
+                    .Items.First(i => i.Name == "Wind Rune Jaka");
+                int jakaBefore = sq.HeldCount(jaka);
+                skyLoot.ProcessLine("[Mon Jan 06 12:00:00 2020] You looted a Wind Rune Jaka from a selftest zephyr's corpse and stored it in your currency");
                 Check("sky: a currency rune pickup ticks the quest's have-count",
-                    sq.HeldCount(gest.Items.First(i => i.Name == "Wind Rune Jaka")) == 1);
+                    sq.HeldCount(jaka) == jakaBefore + 1);
 
                 // Runes recorded BEFORE their quest key matched reconcile in
                 // on the next start — counts lift from history, never drop.
                 var sqAgain = new SkyQuests(skyCfg, skyLoot, skyProg);
                 Check("sky: startup reconciles missed loot into the counts",
                     sqAgain.HeldCount(sqAgain.Quests.First(q => q.Name == "Magician Test of Gesticulation")
-                        .Items.First(i => i.Name == "Wind Rune Jaka")) == 1);
+                        .Items.First(i => i.Name == "Wind Rune Jaka")) >= jakaBefore + 1);
 
                 var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };
                 var sighted = new List<string>();
