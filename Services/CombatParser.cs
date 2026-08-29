@@ -1671,8 +1671,12 @@ public sealed class CombatParser
         target = Normalize(target);
         if (IsReflexive(target)) target = healer;
         Touch(time);
-        // Someone else healing ME (or my pet) joined my fight.
+        // Someone else healing ME (or my pet) joined my fight — someone
+        // PLAYER-shaped: a mob "healing" you (a fully mitigated drain prints
+        // a 0-heal, and Innoruuk once made the allies chip this way) is not
+        // a friend.
         if (!IsSelf(healer) && !IsPet(healer) && !_knownPets.Contains(healer)
+            && !IsEnemyName(healer)
             && (IsSelf(target) || IsPet(target)))
             _myAllies.Add(healer);
         Bump(_healing, healer, amount);

@@ -375,9 +375,12 @@ public partial class App : Application
             // Johan damages the chest too — but it never HIT him, and mob
             // instances share names, so Kettel stays a neighbour (owner's rule).
             al.Replay($"[{FT(505)}] Johan hit a haunted chest for 10 points of magic damage by Odium.");
+            // A mob "healing" you (mitigated drains print 0-heals) is no friend.
+            al.Replay($"[{FT(506)}] Lady Vox healed Johan for 0 hit points by Drain Essence.");
             al.Tick(fb.AddSeconds(560));
             Check("fight: an ally hit a mob that was ON me; a same-named neighbour never counts",
-                al.History[0].Allies.Contains("Tolo") && !al.History[0].Allies.Contains("Kettel"));
+                al.History[0].Allies.Contains("Tolo") && !al.History[0].Allies.Contains("Kettel")
+                && !al.History[0].Allies.Contains("Lady Vox"));
             Check("fight: an old pet's speech is harvested retroactively",
                 al.TryParsePetSpeech($"[{FT(0)}] Lonaner told you, 'Attacking a will sapper Master.'",
                     out string oldPet) && oldPet == "Lonaner" && al.IsKnownPet("Lonaner"));
