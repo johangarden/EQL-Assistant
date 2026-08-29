@@ -59,10 +59,17 @@ public sealed class SkyQuests
         public Dictionary<string, int> Counts { get; set; } = new();
         public List<string> Completed { get; set; } = new();
         public List<string> Tracked { get; set; } = new();
+        public Dictionary<string, int> Offered { get; set; } = new();
+        public Dictionary<string, List<string>> QuestOffers { get; set; } = new();
+        public List<string> OfferSeen { get; set; } = new();
     }
 
     private readonly string _progressPath;
-    private readonly Dictionary<string, int> _counts = new();          // ItemKey -> held
+    private readonly Dictionary<string, int> _counts = new();          // ItemKey -> looted
+    private readonly Dictionary<string, int> _offered = new();         // ItemKey -> turned in
+    private readonly Dictionary<string, HashSet<string>> _questOffers  // quest -> ItemKeys offered
+        = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _offerSeen = new(StringComparer.Ordinal); // replay dedupe
     private readonly HashSet<string> _completed = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _tracked = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _questItemKeys = new();           // fast loot filter
@@ -136,11 +143,59 @@ public sealed class SkyQuests
         return true;
     }
 
-    /// <summary>Watch for reward receipts — the exact wording is unconfirmed, so any
-    /// receive/hand-in-shaped line naming a known reward completes its quest.</summary>
+    // Turn-ins ARE logged even though rewards are not (confirmed 29 Aug 2026):
+    // "You offered 1 Wind Rune Meda to Josin Faithbringer."
+    private static readonly Regex OfferRx = new(
+        @"^You offered (?<n>\d+) (?<item>.+?) to (?<npc>.+?)\.$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>Watch the log: offering a quest's items to its own NPC marks
+    /// them turned in (held counts drop) and completes the quest once every
+    /// item has been offered; reward-receipt lines still complete as backup.</summary>
     public void ProcessLine(string rawLine)
     {
         string body = TimestampPrefix.Replace(rawLine, "", 1);
+
+        if (body.StartsWith("You offered ", StringComparison.Ordinal)
+            && OfferRx.Match(body) is { Success: true } om)
+        {
+            string itemKey = LootTracker.ItemKey(om.Groups["item"].Value);
+            if (!_questItemKeys.Contains(itemKey)) return;
+            string npc = om.Groups["npc"].Value;
+            int n = Math.Max(1, int.Parse(om.Groups["n"].Value));
+
+            // Catch-up replays today's log every start — the LAW: every
+            // retroactive consumer dedupes. The raw line (timestamp included)
+            // is the identity.
+            if (!_offerSeen.Add(rawLine)) return;
+
+            // The item left your bags — tracked separately from the looted
+            // counts so the startup loot-reconcile can't resurrect it.
+            _offered[itemKey] = _offered.GetValueOrDefault(itemKey) + n;
+
+            foreach (var q in _quests)
+            {
+                if (_completed.Contains(q.Key)) continue;
+                if (!q.Giver.Equals(npc, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!q.Items.Any(i => LootTracker.ItemKey(i.Name) == itemKey)) continue;
+
+                if (!_questOffers.TryGetValue(q.Key, out var offered))
+                    _questOffers[q.Key] = offered = new HashSet<string>();
+                offered.Add(itemKey);
+
+                if (q.Items.All(i => offered.Contains(LootTracker.ItemKey(i.Name))))
+                {
+                    _completed.Add(q.Key);
+                    _tracked.Remove(q.Key);
+                    Log.Info($"Sky quest complete (all items offered): {q.Name} -> {q.Reward}");
+                    QuestCompleted?.Invoke(q);
+                }
+            }
+            SaveProgress();
+            Changed?.Invoke();
+            return;
+        }
+
         if (!body.StartsWith("You receive", StringComparison.Ordinal)
             && !body.StartsWith("You have received", StringComparison.Ordinal)
             && !body.Contains(" hands you ", StringComparison.Ordinal))
@@ -168,12 +223,19 @@ public sealed class SkyQuests
     {
         _counts.Clear();
         _completed.Clear();
+        _offered.Clear();
+        _questOffers.Clear();
+        _offerSeen.Clear();
         SaveProgress();
         Changed?.Invoke();
     }
 
-    public int HeldCount(SkyItem item) =>
-        _counts.GetValueOrDefault(LootTracker.ItemKey(item.Name));
+    /// <summary>Looted minus turned in — what's actually still in your bags.</summary>
+    public int HeldCount(SkyItem item)
+    {
+        string key = LootTracker.ItemKey(item.Name);
+        return Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key));
+    }
 
     public bool IsCompleted(SkyQuest q) => _completed.Contains(q.Key);
 
@@ -231,6 +293,10 @@ public sealed class SkyQuests
             foreach (var (k, v) in doc.Counts) _counts[k] = v;
             foreach (var k in doc.Completed) _completed.Add(k);
             foreach (var k in doc.Tracked) _tracked.Add(k);
+            foreach (var (k, v) in doc.Offered) _offered[k] = v;
+            foreach (var (k, v) in doc.QuestOffers)
+                _questOffers[k] = new HashSet<string>(v);
+            foreach (var s in doc.OfferSeen) _offerSeen.Add(s);
         }
         catch { /* corrupt -> start empty */ }
     }
@@ -244,6 +310,9 @@ public sealed class SkyQuests
                 Counts = new Dictionary<string, int>(_counts),
                 Completed = _completed.ToList(),
                 Tracked = _tracked.ToList(),
+                Offered = new Dictionary<string, int>(_offered),
+                QuestOffers = _questOffers.ToDictionary(kv => kv.Key, kv => kv.Value.ToList()),
+                OfferSeen = _offerSeen.ToList(),
             }, JsonOpts));
         }
         catch { /* best-effort */ }
