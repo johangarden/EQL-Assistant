@@ -1737,6 +1737,16 @@ public partial class App : Application
                 // held counts — and a catch-up replay of the same lines never
                 // double-counts.
                 var cleric = sqAgain.Quests.First(q => q.Name == "Cleric Test of Skill");
+                var shaman = sqAgain.Quests.First(q => q.Name == "Shaman Test of Might");
+                var clericMeda = cleric.Items.First(i => i.Name == "Wind Rune Meda");
+                var shamanMeda = shaman.Items.First(i => i.Name == "Wind Rune Meda");
+
+                // Every rune serves 6-7 quests: ONE looted Meda lights them
+                // all up (you hold one, any could spend it)…
+                skyLoot.ProcessLine("[Sat Aug 29 00:29:00 2026] You looted a Wind Rune Meda from a selftest zephyr's corpse and stored it in your currency");
+                Check("sky: one looted rune counts for every quest that wants it",
+                    sqAgain.HeldCount(clericMeda) == 1 && sqAgain.HeldCount(shamanMeda) == 1);
+
                 string offer1 = "[Sat Aug 29 00:30:00 2026] You offered 1 Small Shield to Josin Faithbringer.";
                 string offer2 = "[Sat Aug 29 00:30:01 2026] You offered 1 Wind Rune Meda to Josin Faithbringer.";
                 sqAgain.ProcessLine(offer1);
@@ -1744,10 +1754,16 @@ public partial class App : Application
                 sqAgain.ProcessLine(offer2);
                 Check("sky: offering every item to the quest's NPC completes it",
                     sqAgain.IsCompleted(cleric));
-                int medaHeld = sqAgain.HeldCount(cleric.Items.First(i => i.Name == "Wind Rune Meda"));
+
+                // …and spending it on the Cleric leaves the Shaman honestly
+                // short again — the rune left your bags.
+                Check("sky: a turned-in rune stops counting for the OTHER quests",
+                    sqAgain.HeldCount(shamanMeda) == 0 && !sqAgain.IsCompleted(shaman));
+
+                int medaHeld = sqAgain.HeldCount(clericMeda);
                 sqAgain.ProcessLine(offer2); // replayed line (catch-up) — must dedupe
                 Check("sky: a replayed offer line never double-counts",
-                    sqAgain.HeldCount(cleric.Items.First(i => i.Name == "Wind Rune Meda")) == medaHeld);
+                    sqAgain.HeldCount(clericMeda) == medaHeld);
 
                 var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };
                 var sighted = new List<string>();
