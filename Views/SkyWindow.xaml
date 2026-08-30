@@ -68,10 +68,15 @@
             <DockPanel Margin="0,0,0,8">
                 <ComboBox x:Name="SlotBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0"
                           SelectionChanged="Filters_Changed"/>
-                <CheckBox x:Name="HideDoneCheck" DockPanel.Dock="Right" Content="Hide completed"
-                          IsChecked="True"
-                          Margin="8,0,0,0" VerticalAlignment="Center" Checked="Filters_Changed"
-                          Unchecked="Filters_Changed"/>
+                <ComboBox x:Name="StatusBox" DockPanel.Dock="Right" Width="140" Margin="8,0,0,0"
+                          SelectedValuePath="Tag" SelectedIndex="0"
+                          SelectionChanged="Filters_Changed">
+                    <ComboBoxItem Content="Active (not done)" Tag="active"/>
+                    <ComboBoxItem Content="All" Tag="all"/>
+                    <ComboBoxItem Content="Ready to turn in" Tag="ready"/>
+                    <ComboBoxItem Content="Partly done" Tag="partly"/>
+                    <ComboBoxItem Content="Done" Tag="done"/>
+                </ComboBox>
                 <TextBox x:Name="SearchBox" TextChanged="Filters_Changed"
                          AutomationProperties.AutomationId="SkySearchBox"
                          ToolTip="Search quest, reward or item"/>
