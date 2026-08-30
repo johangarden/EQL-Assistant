@@ -207,7 +207,7 @@ public partial class SkyWindow : Window
         string cls = _selectedClass;
         string slot = SlotBox.SelectedIndex > 0 ? (string)SlotBox.SelectedItem : "";
         string search = SearchBox.Text.Trim();
-        bool hideDone = HideDoneCheck.IsChecked == true;
+        string status = StatusBox.SelectedValue as string ?? "active";
 
         var vms = new List<QuestVm>();
         foreach (var q in _sky.Quests)
@@ -216,7 +216,16 @@ public partial class SkyWindow : Window
             if (slot.Length > 0 && !q.Slot.Split(' ', StringSplitOptions.RemoveEmptyEntries)
                     .Contains(slot, StringComparer.OrdinalIgnoreCase)) continue;
             bool done = _sky.IsCompleted(q);
-            if (hideDone && done) continue;
+            var (have, need) = _sky.Progress(q);
+            bool keep = status switch
+            {
+                "all" => true,
+                "done" => done,
+                "ready" => !done && need > 0 && have >= need,
+                "partly" => !done && have > 0 && have < need,
+                _ => !done, // active
+            };
+            if (!keep) continue;
             if (search.Length > 0
                 && !q.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
                 && !q.Reward.Contains(search, StringComparison.OrdinalIgnoreCase)
