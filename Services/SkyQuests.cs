@@ -278,8 +278,8 @@ public sealed class SkyQuests
 
     /// <summary>One still-needed item, aggregated across ACTIVE quests: a
     /// shared rune needed by five open quests with none held is "missing 5".</summary>
-    public sealed record IsleNeed(string Isle, string Item, int Missing, string Who,
-        List<string> Quests);
+    public sealed record IsleNeed(string Isle, string Item, int Missing, int Needed,
+        string Who, List<string> Quests);
 
     /// <summary>An item the ledger says nothing active still wants — spare
     /// copies safe to hand to a guildie (or the vendor).</summary>
@@ -316,7 +316,7 @@ public sealed class SkyQuests
             if (missing <= 0) continue;
             string isle = a.Sample.Where.Length > 0 ? a.Sample.Where : "Any isle · random Sky drop";
             string who = a.Sample.Mobs.Count > 0 ? string.Join(", ", a.Sample.Mobs) : a.Sample.Who;
-            rows.Add(new IsleNeed(isle, name, missing, who, a.Quests.ToList()));
+            rows.Add(new IsleNeed(isle, name, missing, a.Needed, who, a.Quests.ToList()));
         }
         return rows.OrderBy(r => IsleOrder(r.Isle)).ThenBy(r => r.Isle, StringComparer.OrdinalIgnoreCase)
             .ThenByDescending(r => r.Missing).ThenBy(r => r.Item, StringComparer.OrdinalIgnoreCase)

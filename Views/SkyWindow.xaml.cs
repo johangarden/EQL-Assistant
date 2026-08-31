@@ -201,7 +201,21 @@ public partial class SkyWindow : Window
 
     /// <summary>Isle/housekeeping row VMs (simple text rows).</summary>
     public sealed record LineVm(string Main, string Count, string Sub = "");
-    public sealed record IsleVm(string Isle, List<LineVm> Rows);
+    public sealed record IsleVm(string Isle, string NeedText, bool Open, List<LineVm> Rows)
+    {
+        public string Arrow => Open ? "▾" : "▸";
+        public Visibility RowsVisibility => Open ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    // Folded by default — a glance gives the per-isle tallies, expand to farm.
+    private readonly HashSet<string> _isleOpen = new(StringComparer.OrdinalIgnoreCase);
+
+    private void Isle_Toggle(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string isle) return;
+        if (!_isleOpen.Add(isle)) _isleOpen.Remove(isle);
+        RefreshIsles();
+    }
 
     private void Refresh()
     {
@@ -272,12 +286,16 @@ public partial class SkyWindow : Window
             .ToList();
 
         var isles = rows.GroupBy(r => r.Isle)
-            .Select(g => new IsleVm(g.Key, g.Select(r => new LineVm(
-                r.Item,
-                $"need {r.Missing}",
-                (r.Who.Length > 0 ? $"drops: {r.Who} · " : "") +
-                $"for: {string.Join(", ", r.Quests.Take(4))}{(r.Quests.Count > 4 ? $" +{r.Quests.Count - 4}" : "")}"))
-                .ToList()))
+            .Select(g => new IsleVm(
+                g.Key,
+                $"need {g.Sum(r => r.Missing)} of {g.Sum(r => r.Needed)}",
+                _isleOpen.Contains(g.Key),
+                g.Select(r => new LineVm(
+                    r.Item,
+                    $"need {r.Missing}",
+                    (r.Who.Length > 0 ? $"drops: {r.Who} · " : "") +
+                    $"for: {string.Join(", ", r.Quests.Take(4))}{(r.Quests.Count > 4 ? $" +{r.Quests.Count - 4}" : "")}"))
+                    .ToList()))
             .ToList();
 
         IsleControl.ItemsSource = isles;

@@ -177,10 +177,19 @@
             <ItemsControl x:Name="IsleControl">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel Margin="0,0,0,10">
-                            <TextBlock Text="{Binding Isle}" Foreground="{StaticResource Brush.Gold}"
-                                       FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
-                            <ItemsControl ItemsSource="{Binding Rows}">
+                        <StackPanel Margin="0,0,0,8">
+                            <StackPanel Orientation="Horizontal" Cursor="Hand" Background="Transparent"
+                                        MouseLeftButtonDown="Isle_Toggle" Tag="{Binding Isle}"
+                                        Margin="0,0,0,4">
+                                <TextBlock Text="{Binding Arrow}" Foreground="{StaticResource Brush.Gold}"
+                                           FontSize="11" Margin="0,2,6,0"/>
+                                <TextBlock Text="{Binding Isle}" Foreground="{StaticResource Brush.Gold}"
+                                           FontWeight="Bold" FontSize="13"/>
+                                <TextBlock Text="{Binding NeedText}" Foreground="#FF8A80"
+                                           FontWeight="SemiBold" FontSize="11.5"
+                                           Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Rows}" Visibility="{Binding RowsVisibility}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,0,0,4" Padding="9,5" CornerRadius="5"
