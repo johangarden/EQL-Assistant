@@ -199,11 +199,22 @@ public partial class SkyWindow : Window
         BadgesControl.ItemsSource = badges;
     }
 
+    /// <summary>Isle/housekeeping row VMs (simple text rows).</summary>
+    public sealed record LineVm(string Main, string Count, string Sub = "");
+    public sealed record IsleVm(string Isle, List<LineVm> Rows);
+
     private void Refresh()
     {
         if (_initializing || QuestsControl is null) return;
 
         RefreshBadges();
+        string view = ViewBox.SelectedValue as string ?? "quests";
+        QuestsScroll.Visibility = view == "quests" ? Visibility.Visible : Visibility.Collapsed;
+        IsleScroll.Visibility = view == "isle" ? Visibility.Visible : Visibility.Collapsed;
+        HouseScroll.Visibility = view == "house" ? Visibility.Visible : Visibility.Collapsed;
+
+        if (view == "isle") { RefreshIsles(); return; }
+        if (view == "house") { RefreshHousekeeping(); return; }
         string cls = _selectedClass;
         string slot = SlotBox.SelectedIndex > 0 ? (string)SlotBox.SelectedItem : "";
         string search = SearchBox.Text.Trim();
@@ -247,6 +258,42 @@ public partial class SkyWindow : Window
 
         QuestsControl.ItemsSource = vms;
         SummaryText.Text = $"{_sky.CompletedCount} / {_sky.Quests.Count} complete";
+    }
+
+    /// <summary>The shopping list — everything ACTIVE quests still need,
+    /// grouped by isle; the class badge and search narrow it.</summary>
+    private void RefreshIsles()
+    {
+        string search = SearchBox.Text.Trim();
+        var rows = _sky.MissingByIsle(_selectedClass)
+            .Where(r => search.Length == 0
+                        || r.Item.Contains(search, StringComparison.OrdinalIgnoreCase)
+                        || r.Quests.Any(q => q.Contains(search, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        var isles = rows.GroupBy(r => r.Isle)
+            .Select(g => new IsleVm(g.Key, g.Select(r => new LineVm(
+                r.Item,
+                $"need {r.Missing}",
+                (r.Who.Length > 0 ? $"drops: {r.Who} · " : "") +
+                $"for: {string.Join(", ", r.Quests.Take(4))}{(r.Quests.Count > 4 ? $" +{r.Quests.Count - 4}" : "")}"))
+                .ToList()))
+            .ToList();
+
+        IsleControl.ItemsSource = isles;
+        SummaryText.Text = $"{rows.Sum(r => r.Missing)} items still to collect · {isles.Count} isles";
+    }
+
+    private void RefreshHousekeeping()
+    {
+        var rows = _sky.Surplus()
+            .Select(s => new LineVm(s.Item, $"×{s.Surplus} spare"))
+            .ToList();
+        HouseControl.ItemsSource = rows;
+        HouseHint.Text = rows.Count > 0
+            ? "Per the loot ledger (looted minus turned in): spare copies no ACTIVE quest still needs — every quest wanting them is done, or you hold extras. Safe to hand to a guildie or clear out."
+            : "Nothing to clear out — everything you hold is still wanted by an open quest (per the loot ledger).";
+        SummaryText.Text = $"{rows.Count} item(s) with spares";
     }
 
     private QuestVm ToVm(SkyQuests.SkyQuest q, bool done)

@@ -73,6 +73,7 @@ public sealed class SkyQuests
     private readonly HashSet<string> _completed = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _tracked = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _questItemKeys = new();           // fast loot filter
+    private readonly Dictionary<string, string> _keyToName = new();    // ItemKey -> display name
     private readonly List<SkyQuest> _quests = new();
 
     /// <summary>All quests (16 classes, ~95 quests).</summary>
@@ -105,7 +106,11 @@ public sealed class SkyQuests
 
         foreach (var q in _quests)
             foreach (var it in q.Items)
-                _questItemKeys.Add(LootTracker.ItemKey(it.Name));
+            {
+                string key = LootTracker.ItemKey(it.Name);
+                _questItemKeys.Add(key);
+                _keyToName.TryAdd(key, it.Name);
+            }
 
         LoadProgress();
 
@@ -268,6 +273,87 @@ public sealed class SkyQuests
     /// <summary>Tracked quests in data order.</summary>
     public IReadOnlyList<SkyQuest> TrackedQuests() =>
         _quests.Where(q => _tracked.Contains(q.Key)).ToList();
+
+    // ---- shopping list & housekeeping -----------------------------------------
+
+    /// <summary>One still-needed item, aggregated across ACTIVE quests: a
+    /// shared rune needed by five open quests with none held is "missing 5".</summary>
+    public sealed record IsleNeed(string Isle, string Item, int Missing, string Who,
+        List<string> Quests);
+
+    /// <summary>An item the ledger says nothing active still wants — spare
+    /// copies safe to hand to a guildie (or the vendor).</summary>
+    public sealed record SurplusItem(string Item, int Surplus);
+
+    private int HeldByKey(string key) =>
+        Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key));
+
+    /// <summary>The per-isle shopping list: everything ACTIVE quests still
+    /// need beyond what you hold, grouped by where it drops.</summary>
+    public IReadOnlyList<IsleNeed> MissingByIsle(string classFilter = "")
+    {
+        var agg = new Dictionary<string, (int Needed, SkyItem Sample, SortedSet<string> Quests)>(
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var q in _quests)
+        {
+            if (_completed.Contains(q.Key)) continue;
+            if (classFilter.Length > 0
+                && !q.Class.Equals(classFilter, StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var it in q.Items)
+            {
+                if (!agg.TryGetValue(it.Name, out var a))
+                    a = (0, it, new SortedSet<string>(StringComparer.OrdinalIgnoreCase));
+                a.Needed += it.Count;
+                a.Quests.Add(q.Name);
+                agg[it.Name] = a;
+            }
+        }
+
+        var rows = new List<IsleNeed>();
+        foreach (var (name, a) in agg)
+        {
+            int missing = a.Needed - HeldByKey(LootTracker.ItemKey(name));
+            if (missing <= 0) continue;
+            string isle = a.Sample.Where.Length > 0 ? a.Sample.Where : "Any isle · random Sky drop";
+            string who = a.Sample.Mobs.Count > 0 ? string.Join(", ", a.Sample.Mobs) : a.Sample.Who;
+            rows.Add(new IsleNeed(isle, name, missing, who, a.Quests.ToList()));
+        }
+        return rows.OrderBy(r => IsleOrder(r.Isle)).ThenBy(r => r.Isle, StringComparer.OrdinalIgnoreCase)
+            .ThenByDescending(r => r.Missing).ThenBy(r => r.Item, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static int IsleOrder(string isle)
+    {
+        var m = Regex.Match(isle, @"\d+");
+        return m.Success ? int.Parse(m.Value) : 99; // "Any isle" and oddballs sink
+    }
+
+    /// <summary>Held copies no ACTIVE quest still wants (per the loot ledger):
+    /// every quest for the item is done, or you hold more than they need.</summary>
+    public IReadOnlyList<SurplusItem> Surplus()
+    {
+        var needed = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var q in _quests)
+        {
+            if (_completed.Contains(q.Key)) continue;
+            foreach (var it in q.Items)
+            {
+                string key = LootTracker.ItemKey(it.Name);
+                needed[key] = needed.GetValueOrDefault(key) + it.Count;
+            }
+        }
+
+        var rows = new List<SurplusItem>();
+        foreach (var key in _counts.Keys)
+        {
+            int surplus = HeldByKey(key) - needed.GetValueOrDefault(key);
+            if (surplus > 0)
+                rows.Add(new SurplusItem(_keyToName.GetValueOrDefault(key, key), surplus));
+        }
+        return rows.OrderByDescending(r => r.Surplus)
+            .ThenBy(r => r.Item, StringComparer.OrdinalIgnoreCase).ToList();
+    }
 
     /// <summary>Items still owed for a quest (0 when ready to turn in).</summary>
     public (int Have, int Need) Progress(SkyQuest q)

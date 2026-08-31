@@ -1765,6 +1765,23 @@ public partial class App : Application
                 Check("sky: a replayed offer line never double-counts",
                     sqAgain.HeldCount(clericMeda) == medaHeld);
 
+                // The shopping list: Meda is spent, five quests still want one
+                // each — "need 5", aggregated, filed under the random-drop isle.
+                var medaNeed = sqAgain.MissingByIsle()
+                    .FirstOrDefault(r => r.Item == "Wind Rune Meda");
+                Check("sky: the isle list aggregates a shared rune across its open quests",
+                    medaNeed is { Missing: 5, Quests.Count: 5 });
+
+                // Housekeeping: complete every Ozah quest, then loot an Ozah —
+                // the ledger calls it spare.
+                foreach (var q in sqAgain.Quests.Where(q =>
+                             q.Items.Any(i => i.Name == "Wind Rune Ozah")))
+                    sqAgain.SetCompleted(q, true);
+                skyLoot.ProcessLine("[Sat Aug 29 00:40:00 2026] You looted a Wind Rune Ozah from a selftest zephyr's corpse and stored it in your currency");
+                Check("sky: a rune nothing active wants shows as surplus",
+                    sqAgain.Surplus().Any(s => s.Item == "Wind Rune Ozah" && s.Surplus == 1)
+                    && sqAgain.MissingByIsle().All(r => r.Item != "Wind Rune Ozah"));
+
                 var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };
                 var sighted = new List<string>();
                 helper.Sighted += m => sighted.Add(m);

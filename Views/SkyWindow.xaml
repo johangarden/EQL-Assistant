@@ -66,6 +66,14 @@
             </ItemsControl>
 
             <DockPanel Margin="0,0,0,8">
+                <ComboBox x:Name="ViewBox" DockPanel.Dock="Left" Width="130" Margin="0,0,8,0"
+                          SelectedValuePath="Tag" SelectedIndex="0"
+                          SelectionChanged="Filters_Changed"
+                          ToolTip="Quests: the cards. Needed by isle: the shopping list — everything active quests still need, grouped by where it drops. Housekeeping: spare copies nothing active wants.">
+                    <ComboBoxItem Content="Quests" Tag="quests"/>
+                    <ComboBoxItem Content="Needed by isle" Tag="isle"/>
+                    <ComboBoxItem Content="Housekeeping" Tag="house"/>
+                </ComboBox>
                 <ComboBox x:Name="SlotBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0"
                           SelectionChanged="Filters_Changed"/>
                 <ComboBox x:Name="StatusBox" DockPanel.Dock="Right" Width="140" Margin="8,0,0,0"
@@ -83,7 +91,8 @@
             </DockPanel>
         </StackPanel>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid>
+        <ScrollViewer x:Name="QuestsScroll" VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="QuestsControl">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -162,5 +171,67 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+
+        <!-- Needed by isle: the shopping list, one section per island. -->
+        <ScrollViewer x:Name="IsleScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+            <ItemsControl x:Name="IsleControl">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="0,0,0,10">
+                            <TextBlock Text="{Binding Isle}" Foreground="{StaticResource Brush.Gold}"
+                                       FontWeight="Bold" FontSize="13" Margin="0,0,0,4"/>
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,4" Padding="9,5" CornerRadius="5"
+                                                Background="{StaticResource Brush.Surface}"
+                                                BorderBrush="{StaticResource Brush.Border}" BorderThickness="1">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Main}"
+                                                               Foreground="{StaticResource Brush.TextDim}"
+                                                               FontWeight="SemiBold" FontSize="12"/>
+                                                    <TextBlock Text="{Binding Count}" Foreground="#FF8A80"
+                                                               FontWeight="Bold" FontSize="12" Margin="8,0,0,0"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding Sub}"
+                                                           Foreground="{StaticResource Brush.TextHint}"
+                                                           FontSize="10.5" TextWrapping="Wrap" Margin="0,1,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Housekeeping: spare copies nothing active still wants. -->
+        <ScrollViewer x:Name="HouseScroll" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock x:Name="HouseHint" Foreground="{StaticResource Brush.TextHint}" FontSize="11"
+                           TextWrapping="Wrap" Margin="0,0,0,8"
+                           Text="Per the loot ledger (looted minus turned in): spare copies no ACTIVE quest still needs — every quest wanting them is done, or you hold extras. Safe to hand to a guildie or clear out."/>
+                <ItemsControl x:Name="HouseControl">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,0,4" Padding="9,5" CornerRadius="5"
+                                    Background="{StaticResource Brush.Surface}"
+                                    BorderBrush="{StaticResource Brush.Border}" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Main}" Foreground="{StaticResource Brush.TextDim}"
+                                               FontWeight="SemiBold" FontSize="12"/>
+                                    <TextBlock Text="{Binding Count}" Foreground="#81C784"
+                                               FontWeight="Bold" FontSize="12" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+        </Grid>
     </DockPanel>
 </Window>
