@@ -1749,21 +1749,27 @@ public partial class App : Application
 
                 string offer1 = "[Sat Aug 29 00:30:00 2026] You offered 1 Small Shield to Josin Faithbringer.";
                 string offer2 = "[Sat Aug 29 00:30:01 2026] You offered 1 Wind Rune Meda to Josin Faithbringer.";
+                string trade = "[Sat Aug 29 00:30:05 2026] You complete the trade with Josin Faithbringer.";
                 sqAgain.ProcessLine(offer1);
-                Check("sky: half a turn-in completes nothing", !sqAgain.IsCompleted(cleric));
                 sqAgain.ProcessLine(offer2);
-                Check("sky: offering every item to the quest's NPC completes it",
-                    sqAgain.IsCompleted(cleric));
+                // A trade can be CANCELLED (window closed, death) — offers
+                // alone must neither complete the quest nor spend the rune.
+                Check("sky: offers alone seal nothing — the trade can still cancel",
+                    !sqAgain.IsCompleted(cleric) && sqAgain.HeldCount(clericMeda) == 1);
+                sqAgain.ProcessLine(trade);
+                Check("sky: the completed trade seals the turn-in",
+                    sqAgain.IsCompleted(cleric) && sqAgain.HeldCount(clericMeda) == 0);
 
                 // …and spending it on the Cleric leaves the Shaman honestly
                 // short again — the rune left your bags.
                 Check("sky: a turned-in rune stops counting for the OTHER quests",
                     sqAgain.HeldCount(shamanMeda) == 0 && !sqAgain.IsCompleted(shaman));
 
-                int medaHeld = sqAgain.HeldCount(clericMeda);
-                sqAgain.ProcessLine(offer2); // replayed line (catch-up) — must dedupe
-                Check("sky: a replayed offer line never double-counts",
-                    sqAgain.HeldCount(clericMeda) == medaHeld);
+                sqAgain.ProcessLine(offer2); // catch-up replays the whole trade —
+                sqAgain.ProcessLine(trade);  // committed lines must dedupe
+                Check("sky: a replayed trade never double-counts",
+                    sqAgain.HeldCount(clericMeda) == 0
+                    && sqAgain.MissingByIsle().First(r => r.Item == "Wind Rune Meda").Missing == 5);
 
                 // The shopping list: Meda is spent, five quests still want one
                 // each — "need 5", aggregated, filed under the random-drop isle.

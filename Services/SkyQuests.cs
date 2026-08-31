@@ -149,14 +149,30 @@ public sealed class SkyQuests
     }
 
     // Turn-ins ARE logged even though rewards are not (confirmed 29 Aug 2026):
-    // "You offered 1 Wind Rune Meda to Josin Faithbringer."
+    //   "You offered 1 Wind Rune Meda to Josin Faithbringer."
+    //   "You complete the trade with Josin Faithbringer."
+    // Offers alone prove NOTHING — a trade can be cancelled (window closed,
+    // death mid-trade) and the items come back. Only the completed trade
+    // seals them (owner's report, 30 Aug 2026).
     private static readonly Regex OfferRx = new(
         @"^You offered (?<n>\d+) (?<item>.+?) to (?<npc>.+?)\.$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex TradeDoneRx = new(
+        @"^You complete the trade with (?<npc>.+?)\.$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    /// <summary>Watch the log: offering a quest's items to its own NPC marks
-    /// them turned in (held counts drop) and completes the quest once every
-    /// item has been offered; reward-receipt lines still complete as backup.</summary>
+    private sealed record PendingOffer(DateTime At, string ItemKey, int N, string RawLine);
+    private readonly Dictionary<string, List<PendingOffer>> _pendingOffers
+        = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>An offer older than this when the trade completes belongs to
+    /// an earlier, abandoned trade window — never committed.</summary>
+    private const double TradeWindowSec = 300;
+
+    /// <summary>Watch the log: offers to an NPC buffer as a pending trade;
+    /// "You complete the trade" commits them — held counts drop and a quest
+    /// completes once every item reached its own NPC. Cancelled trades
+    /// simply never commit. Reward-receipt lines still complete as backup.</summary>
     public void ProcessLine(string rawLine)
     {
         string body = TimestampPrefix.Replace(rawLine, "", 1);
@@ -166,38 +182,25 @@ public sealed class SkyQuests
         {
             string itemKey = LootTracker.ItemKey(om.Groups["item"].Value);
             if (!_questItemKeys.Contains(itemKey)) return;
+            // Already committed in an earlier session/replay — the LAW: every
+            // retroactive consumer dedupes.
+            if (_offerSeen.Contains(rawLine)) return;
+
             string npc = om.Groups["npc"].Value;
-            int n = Math.Max(1, int.Parse(om.Groups["n"].Value));
+            var when = LineTime(rawLine);
+            if (!_pendingOffers.TryGetValue(npc, out var list))
+                _pendingOffers[npc] = list = new List<PendingOffer>();
+            list.RemoveAll(p => (when - p.At).TotalSeconds > TradeWindowSec); // stale window
+            if (list.All(p => p.RawLine != rawLine))
+                list.Add(new PendingOffer(when, itemKey,
+                    Math.Max(1, int.Parse(om.Groups["n"].Value)), rawLine));
+            return;
+        }
 
-            // Catch-up replays today's log every start — the LAW: every
-            // retroactive consumer dedupes. The raw line (timestamp included)
-            // is the identity.
-            if (!_offerSeen.Add(rawLine)) return;
-
-            // The item left your bags — tracked separately from the looted
-            // counts so the startup loot-reconcile can't resurrect it.
-            _offered[itemKey] = _offered.GetValueOrDefault(itemKey) + n;
-
-            foreach (var q in _quests)
-            {
-                if (_completed.Contains(q.Key)) continue;
-                if (!q.Giver.Equals(npc, StringComparison.OrdinalIgnoreCase)) continue;
-                if (!q.Items.Any(i => LootTracker.ItemKey(i.Name) == itemKey)) continue;
-
-                if (!_questOffers.TryGetValue(q.Key, out var offered))
-                    _questOffers[q.Key] = offered = new HashSet<string>();
-                offered.Add(itemKey);
-
-                if (q.Items.All(i => offered.Contains(LootTracker.ItemKey(i.Name))))
-                {
-                    _completed.Add(q.Key);
-                    _tracked.Remove(q.Key);
-                    Log.Info($"Sky quest complete (all items offered): {q.Name} -> {q.Reward}");
-                    QuestCompleted?.Invoke(q);
-                }
-            }
-            SaveProgress();
-            Changed?.Invoke();
+        if (body.StartsWith("You complete the trade with ", StringComparison.Ordinal)
+            && TradeDoneRx.Match(body) is { Success: true } tm)
+        {
+            CommitTrade(tm.Groups["npc"].Value, LineTime(rawLine));
             return;
         }
 
@@ -220,6 +223,54 @@ public sealed class SkyQuests
             Changed?.Invoke();
             return;
         }
+    }
+
+    /// <summary>The completed trade seals its pending offers: held counts
+    /// drop (tracked apart from looted so the loot-reconcile can't resurrect
+    /// them), and a quest completes once every item reached its own NPC.</summary>
+    private void CommitTrade(string npc, DateTime when)
+    {
+        if (!_pendingOffers.Remove(npc, out var list)) return;
+        bool any = false;
+        foreach (var p in list)
+        {
+            if ((when - p.At).TotalSeconds > TradeWindowSec) continue; // earlier, abandoned window
+            if (!_offerSeen.Add(p.RawLine)) continue;                  // replay dedupe
+            any = true;
+            _offered[p.ItemKey] = _offered.GetValueOrDefault(p.ItemKey) + p.N;
+
+            foreach (var q in _quests)
+            {
+                if (_completed.Contains(q.Key)) continue;
+                if (!q.Giver.Equals(npc, StringComparison.OrdinalIgnoreCase)) continue;
+                if (q.Items.All(i => LootTracker.ItemKey(i.Name) != p.ItemKey)) continue;
+
+                if (!_questOffers.TryGetValue(q.Key, out var offered))
+                    _questOffers[q.Key] = offered = new HashSet<string>();
+                offered.Add(p.ItemKey);
+
+                if (q.Items.All(i => offered.Contains(LootTracker.ItemKey(i.Name))))
+                {
+                    _completed.Add(q.Key);
+                    _tracked.Remove(q.Key);
+                    Log.Info($"Sky quest complete (trade with {npc}): {q.Name} -> {q.Reward}");
+                    QuestCompleted?.Invoke(q);
+                }
+            }
+        }
+        if (!any) return;
+        SaveProgress();
+        Changed?.Invoke();
+    }
+
+    private static DateTime LineTime(string rawLine)
+    {
+        var m = Regex.Match(rawLine, @"^\[(?<ts>.+?)\]");
+        return m.Success && DateTime.TryParseExact(m.Groups["ts"].Value,
+            new[] { "ddd MMM d HH:mm:ss yyyy", "ddd MMM dd HH:mm:ss yyyy" },
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var t)
+            ? t : DateTime.Now;
     }
 
     /// <summary>Wipe item counts + completions (Data page reset — a following
