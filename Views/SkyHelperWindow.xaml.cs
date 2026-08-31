@@ -145,7 +145,7 @@ public partial class SkyHelperWindow : Window
         foreach (var it in items)
         {
             bool have = it.Held >= it.Need;
-            string state = it.QuestDone ? "quest done"
+            string state = it.QuestDone ? "DONE"
                 : have ? (it.Need > 1 ? $"HAVE {it.Held}/{it.Need} — hand in" : "HAVE — hand in")
                 : it.Need > 1 ? $"NEEDED {it.Held}/{it.Need}" : "NEEDED";
             Brush fg = it.QuestDone ? DimFg : have ? HaveFg : NeedFg;
