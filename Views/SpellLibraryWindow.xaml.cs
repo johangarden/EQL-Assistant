@@ -1,7 +1,5 @@
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using EQLOverlay.Interop;
 using EQLOverlay.Models;
 using EQLOverlay.Services;
@@ -9,26 +7,20 @@ using EQLOverlay.Services;
 namespace EQLOverlay.Views;
 
 /// <summary>
-/// Browse the prebaked spell library and add ready-made triggers with one
-/// click: every add is a bar with a default spoken fade warning (voice can be
-/// toggled off on the trigger afterwards). Rows are grouped by level —
-/// the filtered class's level when one is picked, else the lowest class
-/// level — alphabetical inside each level. Owned by the Manager; additions
-/// land in the current loadout.
+/// The spell library window, one view (owner ruling): the learned-durations
+/// insight table — estimate with its log/db source, sample count, median,
+/// IQR and min–max per sampled spell — with a ＋ button per row that adds a
+/// ready-made countdown bar trigger. The search box reaches the WHOLE
+/// library: matches without samples join the table with the library's
+/// duration and honest dashes, so any spell is one search from a trigger.
 /// </summary>
 public partial class SpellLibraryWindow : Window
 {
-    private const int MaxRows = 250;
+    private const int MaxSearchRows = 120;
 
     private readonly SpellLibrary _library;
     private readonly Action<TriggerDefinition> _onAdd;
     private readonly SpellDurations? _durations;
-
-    public sealed record SpellRow(SpellLibrary.Spell Spell, string Name, string Detail,
-        string SeenBadge, bool CanBar, string GroupLabel);
-
-    private static readonly Regex ClassLevelRx = new(
-        @"(?<c>[A-Z]{2,3}) (?<l>\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public SpellLibraryWindow(SpellLibrary library, Action<TriggerDefinition> onAdd,
         SpellDurations? durations = null)
@@ -53,90 +45,50 @@ public partial class SpellLibraryWindow : Window
 
     private void Refresh()
     {
-        if (ResultsList is null) return; // during InitializeComponent
+        if (DurTableHost is null) return; // during InitializeComponent
 
-        string filter = FilterBox?.SelectedValue as string ?? "";
-        string cls = ClassBox?.SelectedIndex > 0 ? (string)ClassBox.SelectedItem : "";
-
-        // The Learned-durations filter swaps the row list for the insights
-        // table — same window, two presentations.
-        bool learnedView = filter == "learned";
-        DurScroll.Visibility = learnedView ? Visibility.Visible : Visibility.Collapsed;
-        ResultsList.Visibility = learnedView ? Visibility.Collapsed : Visibility.Visible;
-        if (learnedView) { RefreshDurTable(cls); return; }
-
-        var hits = _library.Search(SearchBox?.Text ?? "", filter, cls);
-
-        var rows = hits
-            .Select(s => (Spell: s, Level: LevelOf(s, cls)))
-            .OrderBy(x => x.Level == 0 ? int.MaxValue : x.Level) // level-less last
-            .ThenBy(x => x.Spell.Name, StringComparer.OrdinalIgnoreCase)
-            .Take(MaxRows)
-            .Select(x => ToRow(x.Spell, x.Level))
-            .ToList();
-
-        var view = new ListCollectionView(rows);
-        view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(SpellRow.GroupLabel)));
-        ResultsList.ItemsSource = view;
-
-        CountText.Text = hits.Count > MaxRows
-            ? $"{hits.Count} matches (showing {MaxRows}) · {_library.SeenCount} seen in your log"
-            : $"{hits.Count} of {_library.Spells.Count} spells · {_library.SeenCount} seen in your log";
-    }
-
-    /// <summary>The level a spell sorts under: the filtered class's own level
-    /// when a class is picked, else the lowest level any class gets it at.
-    /// 0 = the classes string carries no numbers.</summary>
-    private static int LevelOf(SpellLibrary.Spell s, string cls)
-    {
-        int best = 0;
-        foreach (Match m in ClassLevelRx.Matches(s.Classes))
-        {
-            int lvl = int.Parse(m.Groups["l"].Value,
-                System.Globalization.CultureInfo.InvariantCulture);
-            if (cls.Length > 0)
-            {
-                if (m.Groups["c"].Value == cls) return lvl;
-            }
-            else if (best == 0 || lvl < best)
-            {
-                best = lvl;
-            }
-        }
-        return cls.Length > 0 ? 0 : best;
-    }
-
-    private SpellRow ToRow(SpellLibrary.Spell s, int level)
-    {
-        var bits = new List<string>();
-        if (s.Classes.Length > 0) bits.Add(s.Classes);
-        if (s.DurationSec > 0) bits.Add(FormatDuration(s.DurationSec));
-        bits.Add(s.Illusion ? "Illusion" : s.Type.Length > 0 ? s.Type : s.Bucket);
-        return new SpellRow(s, s.Name, string.Join("  ·  ", bits),
-            _library.IsSeen(s) ? "● seen" : "",
-            CanBar: s.Name.Length > 0, // junk landing text falls back to the begin-cast line
-            level == 0 ? "NO LEVEL" : $"LEVEL {level}");
-    }
-
-    // ---- the learned-durations table (Companion-inspired insights) ------------
-
-    private void RefreshDurTable(string cls)
-    {
         DurTableHost.Children.Clear();
         DurTableHost.RowDefinitions.Clear();
         DurTableHost.ColumnDefinitions.Clear();
 
         string search = SearchBox?.Text.Trim() ?? "";
-        var rows = (_durations?.Insights() ?? (IReadOnlyList<SpellDurations.DurationInsight>)
-                Array.Empty<SpellDurations.DurationInsight>())
+        string cls = ClassBox?.SelectedIndex > 0 ? (string)ClassBox.SelectedItem : "";
+
+        bool InClass(string name) =>
+            cls.Length == 0
+            || (_library.FindByBaseName(SpellDurations.BaseName(name))?.Classes
+                .Contains(cls, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        var rows = (_durations?.Insights()
+                    ?? (IReadOnlyList<SpellDurations.DurationInsight>)Array.Empty<SpellDurations.DurationInsight>())
             .Where(r => search.Length == 0
                         || r.Spell.Contains(search, StringComparison.OrdinalIgnoreCase))
-            .Where(r => cls.Length == 0
-                        || (_library.FindByBaseName(SpellDurations.BaseName(r.Spell))?.Classes
-                            .Contains(cls, StringComparison.OrdinalIgnoreCase) ?? false))
+            .Where(r => InClass(r.Spell))
             .ToList();
 
-        CountText.Text = $"{rows.Count} spell(s) with learned durations";
+        // The search reaches the whole library: unsampled matches join with
+        // the library's duration and honest dashes.
+        int unsampled = 0;
+        if (search.Length > 0)
+        {
+            var have = new HashSet<string>(
+                rows.Select(r => SpellDurations.BaseKey(r.Spell)), StringComparer.Ordinal);
+            foreach (var s in _library.Search(search, "", cls).Take(MaxSearchRows))
+            {
+                if (!have.Add(SpellDurations.BaseKey(s.Name))) continue;
+                double? lib = s.DurationSec > 0 ? s.DurationSec : null;
+                rows.Add(new SpellDurations.DurationInsight(
+                    s.Name, SpellLibrary.TriggerCategory(s), lib, FromLog: false,
+                    0, 0, 0, 0, 0, 0, lib));
+                unsampled++;
+            }
+            rows = rows.OrderBy(r => r.Category, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(r => r.Spell, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        CountText.Text = search.Length > 0
+            ? $"{rows.Count} match(es) · {rows.Count - unsampled} with samples"
+            : $"{rows.Count} spell(s) with learned durations · {_library.SeenCount} seen in your log";
 
         if (rows.Count == 0)
         {
@@ -145,8 +97,8 @@ public partial class SpellLibraryWindow : Window
             DurTableHost.Children.Add(new TextBlock
             {
                 Text = search.Length > 0 || cls.Length > 0
-                    ? "No sampled spell matches the filters."
-                    : "No samples yet — durations learn from your own cast → landing → fade cycles.",
+                    ? "No spell matches the filters."
+                    : "No samples yet — durations learn from your own cast → landing → fade cycles. Search to reach the whole library.",
                 Foreground = DurDimFg,
                 FontSize = 12,
                 Margin = new Thickness(2, 6, 0, 0),
@@ -154,7 +106,7 @@ public partial class SpellLibraryWindow : Window
             return;
         }
 
-        string[] heads = { "SPELL", "ESTIMATE", "", "N", "MEDIAN", "IQR (P25–P75)", "MIN–MAX" };
+        string[] heads = { "SPELL", "ESTIMATE", "", "N", "MEDIAN", "IQR (P25–P75)", "MIN–MAX", "" };
         for (int i = 0; i < heads.Length; i++)
             DurTableHost.ColumnDefinitions.Add(new ColumnDefinition
             { Width = i == 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
@@ -186,20 +138,59 @@ public partial class SpellLibraryWindow : Window
                 row++;
             }
 
+            bool sampled = r.N > 0;
             DurTableHost.RowDefinitions.Add(new RowDefinition());
             DurCell(r.Spell, row, 0, DurNameFg, right: false, bold: true);
             DurCell(r.Estimate is { } est ? DurationText.Compact(est) : "—",
                 row, 1, DurValFg, right: true);
-            DurBadge(r.FromLog ? "log" : "db", row, 2, r.FromLog);
-            DurCell(r.N.ToString(), row, 3, DurValFg, right: true);
-            DurCell(DurationText.Compact(Math.Round(r.Median)), row, 4, DurValFg, right: true);
-            DurCell($"{DurationText.Compact(Math.Round(r.P25))} – {DurationText.Compact(Math.Round(r.P75))}",
-                row, 5, DurDimFg, right: true);
-            DurCell($"{DurationText.Compact(Math.Round(r.Min))} – {DurationText.Compact(Math.Round(r.Max))}",
-                row, 6, DurDimFg, right: true);
+            DurBadge(r.Estimate is null ? "" : r.FromLog ? "log" : "db", row, 2, r.FromLog);
+            DurCell(sampled ? r.N.ToString() : "—", row, 3, sampled ? DurValFg : DurDimFg, right: true);
+            DurCell(sampled ? DurationText.Compact(Math.Round(r.Median)) : "—",
+                row, 4, sampled ? DurValFg : DurDimFg, right: true);
+            DurCell(sampled
+                    ? $"{DurationText.Compact(Math.Round(r.P25))} – {DurationText.Compact(Math.Round(r.P75))}"
+                    : "—", row, 5, DurDimFg, right: true);
+            DurCell(sampled
+                    ? $"{DurationText.Compact(Math.Round(r.Min))} – {DurationText.Compact(Math.Round(r.Max))}"
+                    : "—", row, 6, DurDimFg, right: true);
+            AddButton(r.Spell, row, heads.Length - 1);
             row++;
         }
     }
+
+    /// <summary>The ＋ per row: the same ready-made bar the old browser added
+    /// — type, color, duration and spoken fade warning prefilled.</summary>
+    private void AddButton(string spellName, int row, int col)
+    {
+        var host = new Border
+        {
+            BorderBrush = DurLine,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(10, 2, 2, 2),
+        };
+        var spell = _library.FindByBaseName(SpellDurations.BaseName(spellName));
+        if (spell is not null)
+        {
+            var btn = new Button
+            {
+                Content = "＋ Add",
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = "Countdown bar with the right type, color and duration, plus a spoken fade warning — everything editable on the trigger afterwards",
+            };
+            btn.Click += (_, _) =>
+            {
+                if (SpellLibrary.BarTrigger(spell, spokenWarning: true) is not { } def) return;
+                _onAdd(def);
+                Close(); // it lands in the trigger list this window covers
+            };
+            host.Child = btn;
+        }
+        Grid.SetRow(host, row);
+        Grid.SetColumn(host, col);
+        DurTableHost.Children.Add(host);
+    }
+
+    // ---- table cells -----------------------------------------------------------
 
     private static readonly System.Windows.Media.Brush DurHeadFg = FreezeBrush(0x5C, 0x6B, 0x82);
     private static readonly System.Windows.Media.Brush DurCatFg = FreezeBrush(0xE8, 0xC1, 0x5A);
@@ -234,6 +225,7 @@ public partial class SpellLibraryWindow : Window
                 FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
                 Foreground = fg,
                 HorizontalAlignment = right ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center,
             },
         };
         Grid.SetRow(border, row);
@@ -248,7 +240,9 @@ public partial class SpellLibraryWindow : Window
             BorderBrush = DurLine,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Padding = new Thickness(6, 4, 2, 3),
-            Child = new Border
+        };
+        if (text.Length > 0)
+            host.Child = new Border
             {
                 Background = DurBadgeBg,
                 CornerRadius = new CornerRadius(7),
@@ -261,25 +255,9 @@ public partial class SpellLibraryWindow : Window
                     FontWeight = FontWeights.SemiBold,
                     Foreground = log ? DurLogFg : DurDbFg,
                 },
-            },
-        };
+            };
         Grid.SetRow(host, row);
         Grid.SetColumn(host, col);
         DurTableHost.Children.Add(host);
-    }
-
-    private static string FormatDuration(double sec) =>
-        sec >= 3600 ? $"{sec / 3600:0.#}h" : sec >= 60 ? $"{sec / 60:0} min" : $"{sec:0}s";
-
-    /// <summary>The one add: a bar with the default spoken fade warning. The
-    /// window closes with it — it covers the trigger list, so staying open
-    /// hides where the pick just landed; re-open per trigger instead.</summary>
-    private void Add_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.DataContext is not SpellRow row) return;
-        var def = SpellLibrary.BarTrigger(row.Spell, spokenWarning: true);
-        if (def is null) return;
-        _onAdd(def);
-        Close();
     }
 }
