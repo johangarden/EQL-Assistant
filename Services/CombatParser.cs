@@ -1793,7 +1793,7 @@ public sealed class CombatParser
     /// <summary>Yours if it's the CURRENT pet — or any pet you've EVER had:
     /// a fight fought by a previous summon is still your pet's fight, and
     /// pet names are random enough that a collision is fantasy.</summary>
-    private bool IsPet(string name) =>
+    public bool IsPet(string name) =>
         (!string.IsNullOrWhiteSpace(PetName)
          && name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
         || _knownPets.Contains(name.Trim());

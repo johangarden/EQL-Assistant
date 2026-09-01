@@ -263,9 +263,9 @@ public sealed class ConfigService
         if (t.Panel is Panels.Bars or Panels.SelfBuffs or Panels.TargetDebuffs)
         {
             if (string.IsNullOrWhiteSpace(a.Speak))
-                a.Speak = AlertConfig.DefaultWarnPhrase(t.Name);
+                a.Speak = AlertConfig.DefaultWarnPhrase(t.Name, t.OnPet);
             if (string.IsNullOrWhiteSpace(a.FadedSpeak))
-                a.FadedSpeak = AlertConfig.DefaultFadedPhrase(t.Name, t.Category);
+                a.FadedSpeak = AlertConfig.DefaultFadedPhrase(t.Name, t.Category, t.OnPet);
         }
 
         // Keep the legacy flags coherent so an old exe reading this file stays

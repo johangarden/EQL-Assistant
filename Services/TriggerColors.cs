@@ -16,6 +16,7 @@ public static class TriggerColors
     public const string Debuff = "#FFD54F";    // yellow
     public const string Dot = "#E57373";       // red
     public const string Cooldown = "#BA68C8";  // purple
+    public const string Pet = "#FFA85C";       // orange — buffs riding the pet
     public const string Flash = "#FFCC33";     // amber
     public const string Repop = "#4DB6AC";     // teal
     public const string Other = "#90A4AE";     // slate
@@ -36,6 +37,7 @@ public static class TriggerColors
     public static string ForCategory(string? category)
     {
         string c = (category ?? "").Trim();
+        if (c.Contains("pet", StringComparison.OrdinalIgnoreCase)) return Pet;
         if (c.Contains("dot", StringComparison.OrdinalIgnoreCase)) return Dot;
         if (c.Contains("debuff", StringComparison.OrdinalIgnoreCase)) return Debuff;
         if (c.Contains("hot", StringComparison.OrdinalIgnoreCase)

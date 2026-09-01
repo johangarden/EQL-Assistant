@@ -159,7 +159,9 @@ public partial class SpellLibraryWindow : Window
     }
 
     /// <summary>The ＋ per row: the same ready-made bar the old browser added
-    /// — type, color, duration and spoken fade warning prefilled.</summary>
+    /// — type, color, duration and spoken fade warning prefilled. Spells with
+    /// a usable third-person landing get a second ＋Pet pill that tracks the
+    /// buff on your pet instead.</summary>
     private void AddButton(string spellName, int row, int col)
     {
         var host = new Border
@@ -171,38 +173,52 @@ public partial class SpellLibraryWindow : Window
         var spell = _library.FindByBaseName(SpellDurations.BaseName(spellName));
         if (spell is not null)
         {
-            // A themed pill, never stock chrome (house rule, day one).
-            var btn = new Border
-            {
-                Background = DurBadgeBg,
-                BorderBrush = FreezeBrush(0x3A, 0x45, 0x60),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(11, 1, 11, 2),
-                Cursor = System.Windows.Input.Cursors.Hand,
-                VerticalAlignment = VerticalAlignment.Center,
-                ToolTip = "Countdown bar with the right type, color and duration, plus a spoken fade warning — everything editable on the trigger afterwards",
-                Child = new TextBlock
-                {
-                    Text = "＋ Add",
-                    FontSize = 11,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = DurLogFg,
-                },
-            };
-            btn.MouseEnter += (_, _) => btn.BorderBrush = FreezeBrush(0x5A, 0x6B, 0x8C);
-            btn.MouseLeave += (_, _) => btn.BorderBrush = FreezeBrush(0x3A, 0x45, 0x60);
-            btn.MouseLeftButtonDown += (_, _) =>
-            {
-                if (SpellLibrary.BarTrigger(spell, spokenWarning: true) is not { } def) return;
-                _onAdd(def);
-                Close(); // it lands in the trigger list this window covers
-            };
-            host.Child = btn;
+            var pills = new StackPanel { Orientation = Orientation.Horizontal };
+            pills.Children.Add(MakePill("＋ Add",
+                "Countdown bar with the right type, color and duration, plus a spoken fade warning — everything editable on the trigger afterwards",
+                () => SpellLibrary.BarTrigger(spell, spokenWarning: true)));
+            if (SpellLibrary.HasPetLanding(spell))
+                pills.Children.Add(MakePill("＋ Pet",
+                    "Track this buff on your PET — starts when it lands on the pet (anchored to your cast or the pet's own), shows under its own PET group in the bars",
+                    () => SpellLibrary.PetBarTrigger(spell, spokenWarning: true)));
+            host.Child = pills;
         }
         Grid.SetRow(host, row);
         Grid.SetColumn(host, col);
         DurTableHost.Children.Add(host);
+    }
+
+    /// <summary>A themed pill, never stock chrome (house rule, day one).</summary>
+    private Border MakePill(string text, string tooltip, Func<TriggerDefinition?> make)
+    {
+        var btn = new Border
+        {
+            Background = DurBadgeBg,
+            BorderBrush = FreezeBrush(0x3A, 0x45, 0x60),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(11, 1, 11, 2),
+            Margin = new Thickness(0, 0, 6, 0),
+            Cursor = System.Windows.Input.Cursors.Hand,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = tooltip,
+            Child = new TextBlock
+            {
+                Text = text,
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = DurLogFg,
+            },
+        };
+        btn.MouseEnter += (_, _) => btn.BorderBrush = FreezeBrush(0x5A, 0x6B, 0x8C);
+        btn.MouseLeave += (_, _) => btn.BorderBrush = FreezeBrush(0x3A, 0x45, 0x60);
+        btn.MouseLeftButtonDown += (_, _) =>
+        {
+            if (make() is not { } def) return;
+            _onAdd(def);
+            Close(); // it lands in the trigger list this window covers
+        };
+        return btn;
     }
 
     // ---- table cells -----------------------------------------------------------

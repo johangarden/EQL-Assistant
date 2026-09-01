@@ -29,15 +29,15 @@ public sealed class TriggerEditViewModel : ViewModelBase
         get => _name;
         set
         {
-            string prevWarn = AlertConfig.DefaultWarnPhrase(_name);
-            string prevFaded = AlertConfig.DefaultFadedPhrase(_name, _category);
+            string prevWarn = AlertConfig.DefaultWarnPhrase(_name, OnPet);
+            string prevFaded = AlertConfig.DefaultFadedPhrase(_name, _category, OnPet);
             if (!SetField(ref _name, value)) return;
             OnPropertyChanged(nameof(Display));
             // Prefilled alert phrases follow the name until hand-edited.
             if (WarnSpeak.Length == 0 || WarnSpeak == prevWarn)
-                WarnSpeak = AlertConfig.DefaultWarnPhrase(value);
+                WarnSpeak = AlertConfig.DefaultWarnPhrase(value, OnPet);
             if (FadedSpeak.Length == 0 || FadedSpeak == prevFaded)
-                FadedSpeak = AlertConfig.DefaultFadedPhrase(value, _category);
+                FadedSpeak = AlertConfig.DefaultFadedPhrase(value, _category, OnPet);
         }
     }
 
@@ -47,7 +47,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
         get => _category;
         set
         {
-            string prevFaded = AlertConfig.DefaultFadedPhrase(_name, _category);
+            string prevFaded = AlertConfig.DefaultFadedPhrase(_name, _category, OnPet);
             if (!SetField(ref _category, value)) return;
             OnPropertyChanged(nameof(Display));
             OnPropertyChanged(nameof(PreviewBrush));
@@ -55,7 +55,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
             // Cooldowns say "is ready" instead of "faded" — keep a default
             // phrase in step when the type changes.
             if (FadedSpeak.Length == 0 || FadedSpeak == prevFaded)
-                FadedSpeak = AlertConfig.DefaultFadedPhrase(_name, value);
+                FadedSpeak = AlertConfig.DefaultFadedPhrase(_name, value, OnPet);
         }
     }
 
@@ -149,6 +149,10 @@ public sealed class TriggerEditViewModel : ViewModelBase
     /// anchor themselves); true/false = the user's explicit choice.</summary>
     public bool? CastAnchored { get => _castAnchored; set => SetField(ref _castAnchored, value); }
 
+    /// <summary>Tracks the buff on the PET, not you (drives the pet-voiced
+    /// default phrases; not editable — the library's ＋Pet button sets it).</summary>
+    public bool OnPet { get; set; }
+
     private string _color = "#4FC3F7";
     /// <summary>Legacy passthrough — colors derive from the type since 2.9.</summary>
     public string Color { get => _color; set => SetField(ref _color, value); }
@@ -234,6 +238,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
         return new()
         {
             Id = d.Id,
+            OnPet = d.OnPet, // before Name/Category: their setters read it
             Name = d.Name,
             Category = d.Category,
             Panel = string.IsNullOrWhiteSpace(d.Panel) ? Panels.Bars : d.Panel,
@@ -250,13 +255,13 @@ public sealed class TriggerEditViewModel : ViewModelBase
             WarnMode = d.Alert?.WarnMode is AlertConfig.ModeSound
                 ? AlertConfig.ModeSound : AlertConfig.ModeSpeak,
             WarnSpeak = string.IsNullOrWhiteSpace(d.Alert?.Speak)
-                ? AlertConfig.DefaultWarnPhrase(d.Name) : d.Alert!.Speak!,
+                ? AlertConfig.DefaultWarnPhrase(d.Name, d.OnPet) : d.Alert!.Speak!,
             WarnSound = d.Alert?.Sound ?? "",
             FadedOn = d.Alert?.FadedEnabled ?? false,
             FadedMode = d.Alert?.FadedMode is AlertConfig.ModeSound
                 ? AlertConfig.ModeSound : AlertConfig.ModeSpeak,
             FadedSpeak = string.IsNullOrWhiteSpace(d.Alert?.FadedSpeak)
-                ? AlertConfig.DefaultFadedPhrase(d.Name, d.Category) : d.Alert!.FadedSpeak!,
+                ? AlertConfig.DefaultFadedPhrase(d.Name, d.Category, d.OnPet) : d.Alert!.FadedSpeak!,
             FadedSound = d.Alert?.FadedSound ?? "",
             FlashText = d.Alert?.FlashText ?? "",
             RemindWhenMissing = d.RemindWhenMissing,
@@ -282,6 +287,7 @@ public sealed class TriggerEditViewModel : ViewModelBase
             DurationSeconds = DurationSeconds,
             DurationAuto = DurationAuto,
             CastAnchored = CastAnchored,
+            OnPet = OnPet,
             Color = Color,
             RefreshOnRetrigger = RefreshOnRetrigger,
             RemindWhenMissing = RemindWhenMissing,

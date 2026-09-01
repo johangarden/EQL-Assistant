@@ -297,6 +297,76 @@ public partial class App : Application
             engine.ProcessLine($"[{now}] Your Spirit of Wolf spell has worn off.");
             Check("SoW worn off -> 0 bars", engine.Bars.Count == 0);
 
+            // ---- pet buffs: third-person landings gated to YOUR pet, anchored
+            // to your begin-cast or the pet's own; the anonymous wear-off obeys
+            // self-first then oldest; your death spares them, the pet's doesn't.
+            var alacSpell = new SpellLibrary.Spell
+            {
+                Name = "Alacrity", Bucket = "Buff",
+                CastOnYou = "You feel much faster.",
+                CastOnOther = "Someone feels much faster.",
+                WearsOff = "You feel yourself slow down.", // second-person: unusable on the pet
+                DurationSec = 900,
+            };
+            var vortexSpell = new SpellLibrary.Spell
+            {
+                Name = "Shadow Vortex", Bucket = "Buff",
+                CastOnOther = "Someone is protected by a vortex of shadows.",
+                WearsOff = "The vortex of shadows fades.", // impersonal: prints for the pet too
+                DurationSec = 90,
+            };
+            var petAlac = SpellLibrary.PetBarTrigger(alacSpell, spokenWarning: true);
+            var petVortex = SpellLibrary.PetBarTrigger(vortexSpell, spokenWarning: false);
+            Check("pet trigger: generated with OnPet, Pet category and the pet phrase",
+                petAlac is { OnPet: true, Category: "Pet" }
+                && petAlac.Alert?.Speak == "Your pet's Alacrity is about to fall");
+            Check("pet trigger: a second-person wear-off is dropped, an impersonal one kept",
+                petAlac!.EndPattern is null && petVortex!.EndPattern is not null);
+
+            var pcfg = new Models.AppConfig();
+            pcfg.Triggers.Add(petAlac);
+            pcfg.Triggers.Add(petVortex!);
+            pcfg.Triggers.Add(new Models.TriggerDefinition
+            {
+                Id = "selfvortex", Name = "Shadow Vortex", Category = "Buffs",
+                StartPattern = @"You are protected by a vortex of shadows\.",
+                EndPattern = @"The\ vortex\ of\ shadows\ fades\.",
+                DurationSeconds = 90,
+            });
+            foreach (var t in pcfg.Triggers) ConfigService.CompileOne(t);
+            var pe = new TriggerEngine(pcfg, new AlertService());
+            pe.IsPetName = n => n is "Lonaner" or "Kibarn";
+
+            pe.ProcessLine($"[{now}] Lonaner feels much faster.");
+            Check("pet buff: an unanchored landing starts nothing", pe.Bars.Count == 0);
+            pe.ProcessLine($"[{now}] You begin casting Alacrity.");
+            pe.ProcessLine($"[{now}] Caladar feels much faster.");
+            Check("pet buff: a groupmate's pet landing starts nothing", pe.Bars.Count == 0);
+            pe.ProcessLine($"[{now}] Lonaner feels much faster.");
+            Check("pet buff: your cast + the pet's landing = a named bar",
+                pe.Bars.Count == 1 && pe.Bars[0].Name == "Alacrity — Lonaner"
+                && pe.Bars[0].Category == "Pet");
+            pe.ProcessLine($"[{now}] Lonaner begins casting Shadow Vortex.");
+            pe.ProcessLine($"[{now}] Lonaner is protected by a vortex of shadows.");
+            Check("pet buff: the pet's own cast anchors its self-buff",
+                pe.Bars.Any(b => b.Name == "Shadow Vortex — Lonaner"));
+            pe.ProcessLine($"[{now}] You are protected by a vortex of shadows.");
+            Check("pet buff: your own vortex bar runs beside the pet's",
+                pe.Bars.Count(b => b.Name.StartsWith("Shadow Vortex", StringComparison.Ordinal)) == 2);
+            pe.ProcessLine($"[{now}] The vortex of shadows fades.");
+            Check("pet buff: the anonymous fade takes YOUR bar first, the pet's stays",
+                pe.Bars.Any(b => b.Name == "Shadow Vortex — Lonaner")
+                && !pe.Bars.Any(b => b.Name == "Shadow Vortex"));
+            pe.ProcessLine($"[{now}] The vortex of shadows fades.");
+            Check("pet buff: the next fade closes the pet's bar",
+                !pe.Bars.Any(b => b.Name.StartsWith("Shadow Vortex", StringComparison.Ordinal)));
+            pe.ProcessLine($"[{now}] You are protected by a vortex of shadows.");
+            pe.ProcessLine($"[{now}] You have been slain by a gnoll!");
+            Check("pet buff: your death strips your bars but spares the pet's",
+                pe.Bars.Count == 1 && pe.Bars[0].Name == "Alacrity — Lonaner");
+            pe.ProcessLine($"[{now}] Lonaner has been slain by a gnoll!");
+            Check("pet buff: the pet's death takes its buffs with it", pe.Bars.Count == 0);
+
             // ---- fight details capture: damage schools from the log's own
             // words, debuff landings as timeline spans, and the analysis rules.
             var fd = new CombatParser { SelfName = "Johan", PetName = "Gobber" };

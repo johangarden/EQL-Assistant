@@ -66,6 +66,14 @@ public sealed class TriggerDefinition
     /// <summary>If true, a fresh match resets a running bar to full duration.</summary>
     public bool RefreshOnRetrigger { get; set; } = true;
 
+    /// <summary>This trigger tracks the buff on your PET, not on you: the start
+    /// pattern is the spell's third-person landing ("Lonaner feels much
+    /// faster.") and only fires when the named target is a known pet, anchored
+    /// to YOUR begin-cast OR the pet's own. The wear-off line is anonymous, so
+    /// when you and the pet run the same buff your own bar takes the fade and
+    /// the pet's rides its estimate.</summary>
+    public bool OnPet { get; set; }
+
     /// <summary>Optional audible/spoken alert configuration.</summary>
     public AlertConfig? Alert { get; set; }
 
@@ -150,12 +158,16 @@ public sealed class AlertConfig
     /// speak/sound payload between the timed warning and the expiry alert).</summary>
     public bool OnExpire { get; set; }
 
-    /// <summary>Default pre-fade phrase for a trigger name.</summary>
-    public static string DefaultWarnPhrase(string name) => name + " is about to end";
+    /// <summary>Default pre-fade phrase for a trigger name — pet triggers speak
+    /// about the pet ("Your pet's Alacrity is about to fall").</summary>
+    public static string DefaultWarnPhrase(string name, bool onPet = false) =>
+        onPet ? "Your pet's " + name + " is about to fall" : name + " is about to end";
 
-    /// <summary>Default faded phrase — cooldown-flavoured triggers announce "ready".</summary>
-    public static string DefaultFadedPhrase(string name, string category) =>
-        (category ?? "").Contains("cool", StringComparison.OrdinalIgnoreCase)
+    /// <summary>Default faded phrase — cooldown-flavoured triggers announce
+    /// "ready", pet triggers report the drop.</summary>
+    public static string DefaultFadedPhrase(string name, string category, bool onPet = false) =>
+        onPet ? "Your pet's " + name + " has dropped"
+        : (category ?? "").Contains("cool", StringComparison.OrdinalIgnoreCase)
             ? name + " is ready"
             : name + " faded";
 }

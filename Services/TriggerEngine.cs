@@ -61,11 +61,28 @@ public sealed class TriggerEngine
     private const double CastAnchorWindowSec = 15;   // begin-cast -> landing (same as SpellDurations)
     private const double QuickBuffWindowSec = 8;     // activation -> burst (observed: 3s)
     private (string Key, DateTime At)? _lastOwnCast; // rank-stripped, from "You begin casting X."
+    private (string Key, DateTime At)? _lastPetCast; // the pet's own "Lonaner begins casting X."
     private DateTime _quickBuffAt = DateTime.MinValue;
     private readonly HashSet<string> _everCast = new(StringComparer.Ordinal); // session, rank-stripped
 
+    /// <summary>Is this name YOUR pet (current or any past summon)? Wired to
+    /// the combat parser's known-pets ledger — the gate that keeps a
+    /// groupmate's pet (or a mob) from starting a pet-buff bar.</summary>
+    public Func<string, bool>? IsPetName { get; set; }
+
     private static readonly Regex BeginCastRx = new(
         @"^You begin (?:casting|singing) (?<s>.+?)\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>A single capitalized word casting — the shape of pet (and
+    /// player) names; "a froglok shaman begins casting" stays lowercase and
+    /// multi-word named mobs don't fit one word.</summary>
+    private static readonly Regex PetCastRx = new(
+        @"^(?<who>[A-Z][A-Za-z`]*) begins casting (?<s>.+?)\.",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex SlainRx = new(
+        @"^(?:You have slain (?<n1>.+?)!|(?<n2>.+?) has been slain)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>The cast-anchor gate (the Companion's ruling): an anchored
@@ -88,6 +105,12 @@ public sealed class TriggerEngine
         if (_lastOwnCast is { } c && c.Key == key
             && (eventTime - c.At).TotalSeconds is >= 0 and <= CastAnchorWindowSec)
             return true;
+
+        // Pet triggers accept the PET's own begin-cast as an anchor too — its
+        // self-buffs (Shadow Vortex) land without any cast of yours.
+        if (trigger.OnPet)
+            return _lastPetCast is { } p && p.Key == key
+                && (eventTime - p.At).TotalSeconds is >= 0 and <= CastAnchorWindowSec;
 
         // Quick Buff burst (the Companion's case 3): the AA lands the whole
         // spellbar at once with NO cast lines, so the named anchor never
@@ -221,9 +244,14 @@ public sealed class TriggerEngine
     /// dying before it prints.</summary>
     private void StripOnDeath()
     {
+        var petIds = _triggers.Where(t => t.OnPet).Select(t => t.Id)
+            .ToHashSet(StringComparer.Ordinal);
         foreach (var (key, bar) in _active.ToList())
         {
             if (bar.Category.Contains("cool", StringComparison.OrdinalIgnoreCase)) continue;
+            // YOUR death doesn't strip the PET's buffs — it outlives you.
+            int pipe = key.IndexOf('|');
+            if (petIds.Contains(pipe < 0 ? key : key[..pipe])) continue;
             _active.Remove(key);
             Bars.Remove(bar);
         }
@@ -292,6 +320,20 @@ public sealed class TriggerEngine
         {
             StripOnDeath();
         }
+        else if (IsPetName is not null && body.Contains(" begins casting ", StringComparison.Ordinal))
+        {
+            var pc = PetCastRx.Match(body);
+            if (pc.Success && IsPetName(pc.Groups["who"].Value))
+                _lastPetCast = (SpellDurations.BaseKey(pc.Groups["s"].Value), eventTime);
+        }
+        else if (IsPetName is not null && body.Contains("slain", StringComparison.Ordinal))
+        {
+            var sm = SlainRx.Match(body);
+            string slain = sm.Success
+                ? (sm.Groups["n1"].Success ? sm.Groups["n1"].Value : sm.Groups["n2"].Value).Trim()
+                : "";
+            if (slain.Length > 0 && IsPetName(slain)) StripPetBars(slain);
+        }
 
         foreach (var trigger in _triggers)
         {
@@ -340,13 +382,29 @@ public sealed class TriggerEngine
             if (trigger.EndRegex is { } endRx)
             {
                 var m = endRx.Match(body);
-                if (m.Success) Remove(BuildKey(trigger, m));
+                if (m.Success)
+                {
+                    // A pet trigger's wear-off is ANONYMOUS ("The vortex of
+                    // shadows fades.") — it can't say whose buff dropped. Your
+                    // own bar takes the fade first (the pet's rides its
+                    // estimate); with only pet bars up, the OLDEST one closes
+                    // (the enemy-DoT law).
+                    if (trigger.OnPet)
+                    {
+                        if (!SelfBarOwnsFade(trigger)) RemoveOldestFor(trigger.Id);
+                    }
+                    else
+                    {
+                        Remove(BuildKey(trigger, m));
+                    }
+                }
             }
 
             if (trigger.StartRegex is { } startRx)
             {
                 var m = startRx.Match(body);
-                if (m.Success && AnchorAllows(trigger, eventTime))
+                if (m.Success && AnchorAllows(trigger, eventTime)
+                    && (!trigger.OnPet || IsPetTarget(m)))
                     StartOrRefresh(trigger, m, eventTime);
             }
 
@@ -421,6 +479,60 @@ public sealed class TriggerEngine
     {
         if (_active.Remove(key, out var vm))
             Bars.Remove(vm);
+    }
+
+    /// <summary>The landing's named target must be YOUR pet — a groupmate's
+    /// pet printing the same sentence starts nothing. A pattern without a
+    /// target group (hand-made pet trigger) passes through.</summary>
+    private bool IsPetTarget(Match match)
+    {
+        var target = match.Groups["target"];
+        if (!target.Success || target.Value.Length == 0) return true;
+        return IsPetName?.Invoke(target.Value.Trim()) ?? false;
+    }
+
+    /// <summary>Does a running SELF bar share this pet trigger's wear-off
+    /// line? Then the anonymous fade is (most likely) yours, not the pet's.</summary>
+    private bool SelfBarOwnsFade(TriggerDefinition petTrigger) =>
+        _triggers.Any(o => o != petTrigger && o.Enabled && !o.OnPet
+            && o.Panel == Panels.Bars
+            && o.EndPattern is { Length: > 0 } ep && ep == petTrigger.EndPattern
+            && _active.Keys.Any(k => k == o.Id
+                || k.StartsWith(o.Id + "|", StringComparison.Ordinal)));
+
+    /// <summary>Close the trigger's oldest running bar (earliest end time) —
+    /// how an anonymous wear-off picks among per-pet instances.</summary>
+    private void RemoveOldestFor(string triggerId)
+    {
+        string? oldest = null;
+        DateTime oldestEnd = DateTime.MaxValue;
+        foreach (var (key, bar) in _active)
+        {
+            if (key != triggerId
+                && !key.StartsWith(triggerId + "|", StringComparison.Ordinal)) continue;
+            if (bar.EndTimeLocal < oldestEnd) { oldestEnd = bar.EndTimeLocal; oldest = key; }
+        }
+        if (oldest is not null) Remove(oldest);
+    }
+
+    /// <summary>Pet died — its buffs die with it. Bars keyed to that pet's
+    /// name go; keyless pet bars (hand-made trigger without a target group)
+    /// go too, since they can only mean the pet you had.</summary>
+    private void StripPetBars(string pet)
+    {
+        var petIds = _triggers.Where(t => t.OnPet).Select(t => t.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        if (petIds.Count == 0) return;
+        foreach (var key in _active.Keys.ToList())
+        {
+            int pipe = key.IndexOf('|');
+            string id = pipe < 0 ? key : key[..pipe];
+            if (!petIds.Contains(id)) continue;
+            string target = pipe < 0 ? "" : key[(pipe + 1)..];
+            if (target.Length == 0
+                || target.Equals(pet, StringComparison.OrdinalIgnoreCase))
+                Remove(key);
+        }
     }
 
     public void AddDemoTimer()
