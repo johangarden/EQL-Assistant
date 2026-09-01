@@ -144,6 +144,7 @@ public partial class MainWindow : Window
         _conditions.StateChanged += (kind, started, when) => _combat.NoteCondition(kind, started, when);
         _combat.LoadoutLookup = () => _config.ActiveLoadout;
         _combat.StanceChanged += s => _configService.SaveLastStance(_combat.SelfName, s);
+        _combat.ClassesChanged += (c, l) => _configService.SaveLastClasses(_combat.SelfName, c, l);
         // Pet names persist per character — a re-summon gets a NEW name, and
         // forgetting the old ones makes solo fights read as "group".
         _combat.PetDetected += p => _configService.AddKnownPet(_combat.SelfName, p);
@@ -1052,6 +1053,7 @@ public partial class MainWindow : Window
         // The log only prints stances on CHANGE — seed this character's last
         // remembered one so the first fight of the session isn't "unknown".
         _combat.CurrentStance = _configService.LoadLastStances().GetValueOrDefault(name, "");
+        (_combat.CurrentClasses, _combat.CurrentLevel) = _configService.LoadLastClasses(name);
         _combat.SeedKnownPets(_configService.LoadKnownPets(name));
         Log.Info($"Combat parser character name: '{name}'" +
                  (string.IsNullOrWhiteSpace(_config.CharacterName) ? " (auto-detected from log filename)" : ""));

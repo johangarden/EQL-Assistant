@@ -379,6 +379,7 @@ public partial class App : Application
             var fb = new DateTime(2026, 8, 20, 21, 0, 0);
             string FT(int s) => fb.AddSeconds(s).ToString("ddd MMM dd HH:mm:ss yyyy",
                 System.Globalization.CultureInfo.InvariantCulture);
+            fd.Replay($"[{FT(-40)}] [50 SHD/NEC] Johan (Ogre) <The Chosen Alliance> ZONE: Permafrost Keep (permafrost)  ");
             fd.Replay($"[{FT(-30)}] Lady Vox scowls at you, ready to attack -- looks like it would wipe the floor with you! (Lvl: 55)");
             fd.Replay($"[{FT(0)}] Lady Vox hit Johan for 250 points of cold damage by Frost Breath.");
             fd.NoteCondition("STUNNED", true, fb.AddSeconds(2));
@@ -400,6 +401,30 @@ public partial class App : Application
                 && fdRec.BuffsAtStart.Contains("Spirit of Wolf"));
             Check("fight: the earlier /con stamps the enemy's level",
                 fdRec.EnemyLevels.TryGetValue("Lady Vox", out int lvVox) && lvVox == 55);
+            Check("fight: the /who line stamps YOUR level and class combo at the pull",
+                fdRec.Classes == "SHD/NEC" && fdRec.Level == 50);
+
+            // ---- class-combo capture: /who teaches, level-ups track, a
+            // loadout swap (grant burst, no level line) honestly forgets.
+            var wc = new CombatParser { SelfName = "Thorrak" };
+            wc.Replay($"[{FT(600)}] [26 SHD/ROG/SHM] Thorrak (Ogre) <The Chosen Alliance> ZONE: Najena (najena)  ");
+            Check("classes: your own /who line teaches level + combo",
+                wc.CurrentClasses == "SHD/ROG/SHM" && wc.CurrentLevel == 26);
+            wc.Replay($"[{FT(601)}] [50 CLR/DRU/MAG] Retlon (Gnome)  ZONE: Najena (najena)  ");
+            Check("classes: someone else's /who line changes nothing",
+                wc.CurrentClasses == "SHD/ROG/SHM" && wc.CurrentLevel == 26);
+            for (int i = 0; i < 5; i++)
+                wc.Replay($"[{FT(620)}] You have been granted the following spell: Spell {i}.");
+            wc.Replay($"[{FT(620)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(620)}] You have gained a level! Welcome to level 27!");
+            wc.Replay($"[{FT(640)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: a level-up's grant burst tracks the level, keeps the combo",
+                wc.CurrentClasses == "SHD/ROG/SHM" && wc.CurrentLevel == 27);
+            for (int i = 0; i < 5; i++)
+                wc.Replay($"[{FT(700)}] You have been granted the following spell: Other {i}.");
+            wc.Replay($"[{FT(710)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: a grant burst with no level line = a swap = honestly unknown",
+                wc.CurrentClasses == "" && wc.CurrentLevel == 0);
             Check("fight: stance change, cast and interrupt ride the timeline",
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Stance, Ability: "offensive" })
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Ability: "Drowsy", Miss: false })

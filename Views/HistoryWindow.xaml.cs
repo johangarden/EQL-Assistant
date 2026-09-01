@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -54,6 +55,8 @@ public partial class HistoryWindow : Window
         // stranger until it first speaks, and fights archived in that gap
         // need the render-time correction.
         TimelinePane.IsOwnPet = name => _parser.IsKnownPet(name);
+        TimelinePane.SiblingsLookup = SiblingsFor;
+        StylePills();
 
         FightsList.SelectionChanged += (_, _) => BuildColumns();
 
@@ -91,6 +94,8 @@ public partial class HistoryWindow : Window
         if (!force && entries.SequenceEqual(_shown))
             return;
 
+        bool listChanged = !entries.SequenceEqual(_shown);
+
         var selected = FightsList.SelectedItems.Cast<FightItem>().Select(x => x.Entry.Rec).ToHashSet();
 
         _shown = entries;
@@ -102,7 +107,20 @@ public partial class HistoryWindow : Window
         foreach (FightItem item in FightsList.Items)
             if (selected.Contains(item.Entry.Rec))
                 FightsList.SelectedItems.Add(item);
+
+        if (listChanged && _view == "parses") BuildParses();
     }
+
+    /// <summary>Sibling fights for the trend card: same mob, same character
+    /// (a legacy record without a stamp matches anyone), oldest first,
+    /// including the fight itself.</summary>
+    private IReadOnlyList<CombatParser.FightRecord> SiblingsFor(CombatParser.FightRecord rec) =>
+        _shown.Select(e => e.Rec)
+            .Where(r => r.Label.Equals(rec.Label, StringComparison.OrdinalIgnoreCase)
+                && (r.Character.Length == 0 || rec.Character.Length == 0
+                    || r.Character.Equals(rec.Character, StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(r => r.EndedAt)
+            .ToList();
 
     private static bool SameFight(CombatParser.FightRecord a, CombatParser.FightRecord b) =>
         ReferenceEquals(a, b) || (a.EndedAt == b.EndedAt && a.Label == b.Label);
@@ -350,6 +368,212 @@ public partial class HistoryWindow : Window
         v >= 100 ? v.ToString("N0") : v.ToString("0.0");
 
     private static string FormatNum(double v) => v.ToString("N0");
+
+    // ---- the Parses view: every recorded fight grouped by mob -----------------
+
+    private string _view = "fights";
+
+    private static readonly Brush PillOnBg = Freeze(Color.FromRgb(0x23, 0x2B, 0x40));
+    private static readonly Brush PillOnLine = Freeze(Color.FromRgb(0x5A, 0x6B, 0x8C));
+    private static readonly Brush PillOnFg = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
+    private static readonly Brush PillOffBg = Freeze(Color.FromRgb(0x1B, 0x21, 0x30));
+    private static readonly Brush PillOffLine = Freeze(Color.FromRgb(0x3A, 0x45, 0x60));
+    private static readonly Brush PillOffFg = Freeze(Color.FromRgb(0x7F, 0x93, 0xAD));
+    private static readonly Brush ParseHeadFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
+    private static readonly Brush ParseGroupFg = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
+    private static readonly Brush ParseValFg = Freeze(Color.FromRgb(0xC9, 0xD4, 0xE3));
+    private static readonly Brush ParseDimFg = Freeze(Color.FromRgb(0x7F, 0x93, 0xAD));
+    private static readonly Brush ParseLine = Freeze(Color.FromRgb(0x1F, 0x26, 0x37));
+    private static readonly Brush ParseBest = Freeze(Color.FromRgb(0x81, 0xC7, 0x84));
+    private static readonly Brush ParseWorse = Freeze(Color.FromRgb(0xE5, 0x73, 0x73));
+    private static readonly Brush ParseCombo = Freeze(Color.FromRgb(0x4F, 0xC3, 0xF7));
+    private static readonly Brush ParseHover = Freeze(Color.FromRgb(0x1A, 0x20, 0x30));
+
+    private void View_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string v || v == _view) return;
+        _view = v;
+        StylePills();
+        if (_view == "parses") BuildParses();
+    }
+
+    private void StylePills()
+    {
+        bool parses = _view == "parses";
+        foreach (var (pill, on) in new[] { (FightsPill, !parses), (ParsesPill, parses) })
+        {
+            pill.Background = on ? PillOnBg : PillOffBg;
+            pill.BorderBrush = on ? PillOnLine : PillOffLine;
+            if (pill.Child is System.Windows.Controls.TextBlock tb)
+                tb.Foreground = on ? PillOnFg : PillOffFg;
+        }
+        FightsView.Visibility = parses ? Visibility.Collapsed : Visibility.Visible;
+        ParsesView.Visibility = parses ? Visibility.Visible : Visibility.Collapsed;
+        HintText.Text = parses
+            ? "Every recorded fight (kept + this session) grouped by mob, newest first. Δ compares each row to the one before it on the same mob — DPS for target dummies, kill time for everything else; the best value per mob reads green. Click a row to open that fight's report."
+            : "A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 50). Select one for details — the breakdown, the timeline and ⚡ Analyse. Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's.";
+    }
+
+    private void ParseSearch_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_view == "parses") BuildParses();
+    }
+
+    private double SelfDps(CombatParser.FightRecord r) =>
+        r.SelfAbilities.Sum(a => a.Total) / Math.Max(1, r.DurationSeconds);
+
+    private double PetDps(CombatParser.FightRecord r) =>
+        r.PetAbilities.Sum(a => a.Total) / Math.Max(1, r.DurationSeconds);
+
+    private static string ComboText(CombatParser.FightRecord r) =>
+        r.Classes.Length > 0
+            ? (r.Level > 0 ? $"{r.Level} {r.Classes}" : r.Classes)
+            : "";
+
+    private void BuildParses()
+    {
+        ParsesHost.Children.Clear();
+        string q = ParseSearch.Text.Trim();
+
+        var groups = _shown
+            .GroupBy(e => e.Rec.Label, StringComparer.OrdinalIgnoreCase)
+            .Where(g => q.Length == 0 || g.Key.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(g => g.Count() > 1) // mobs with history first
+            .ThenByDescending(g => g.Max(e => e.Rec.EndedAt))
+            .ToList();
+
+        if (groups.Count == 0)
+        {
+            ParsesHost.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = q.Length > 0 ? "No mob matches the filter."
+                    : "No fights recorded yet.",
+                Foreground = ParseDimFg, FontSize = 12, Margin = new Thickness(2, 6, 0, 0),
+            });
+            return;
+        }
+
+        foreach (var g in groups)
+        {
+            // Oldest→newest for the Δ chain; the table shows newest first.
+            var asc = g.Select(e => e.Rec).OrderBy(r => r.EndedAt).ToList();
+            bool dummy = g.Key.Contains("dummy", StringComparison.OrdinalIgnoreCase);
+            double Metric(CombatParser.FightRecord r) =>
+                dummy ? SelfDps(r) + PetDps(r) : r.DurationSeconds;
+            double best = dummy ? asc.Max(Metric) : asc.Min(Metric);
+
+            var deltas = new Dictionary<CombatParser.FightRecord, double?>();
+            for (int i = 0; i < asc.Count; i++)
+            {
+                double? d = null;
+                if (i > 0 && Metric(asc[i - 1]) > 0)
+                {
+                    double cur = Metric(asc[i]), prev = Metric(asc[i - 1]);
+                    d = dummy ? (cur - prev) / prev : (prev - cur) / prev; // + = better
+                    if (Math.Abs(d.Value) < 0.01) d = null;
+                }
+                deltas[asc[i]] = d;
+            }
+
+            var head = new System.Windows.Controls.TextBlock
+            {
+                FontSize = 10.5, FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(2, 12, 0, 3),
+            };
+            head.Inlines.Add(new System.Windows.Documents.Run(g.Key.ToUpperInvariant())
+            { Foreground = ParseGroupFg });
+            head.Inlines.Add(new System.Windows.Documents.Run(
+                $"   {asc.Count} fight(s) · best " + (dummy
+                    ? $"{FormatDps(best)} dps"
+                    : FormatDuration(best)))
+            { Foreground = ParseHeadFg, FontWeight = FontWeights.Normal });
+            ParsesHost.Children.Add(head);
+
+            var grid = new System.Windows.Controls.Grid();
+            double[] widths = { 110, 62, 76, 72, 76, 58, 110, 0 };
+            foreach (double w in widths)
+                grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition
+                { Width = w > 0 ? new GridLength(w) : new GridLength(1, GridUnitType.Star) });
+
+            string[] heads = { "WHEN", "DUR", "YOU DPS", "PET DPS", "TOTAL", "Δ", "CLASSES", "LOADOUT" };
+            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+            for (int c = 0; c < heads.Length; c++)
+                PCell(grid, heads[c], 0, c, ParseHeadFg, size: 9.5, bold: true,
+                    right: c is > 0 and < 6);
+
+            int row = 1;
+            foreach (var r in asc.AsEnumerable().Reverse())
+            {
+                grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+                double you = SelfDps(r), pet = PetDps(r), total = you + pet;
+                bool isBest = asc.Count > 1 && Math.Abs(Metric(r) - best) < 1e-9;
+
+                PCell(grid, r.EndedAt.ToString("dd MMM HH:mm"), row, 0, ParseDimFg);
+                PCell(grid, FormatDuration(r.DurationSeconds), row, 1,
+                    !dummy && isBest ? ParseBest : ParseValFg, right: true, bold: !dummy && isBest);
+                PCell(grid, FormatDps(you), row, 2, ParseValFg, right: true);
+                PCell(grid, pet > 0 ? FormatDps(pet) : "—", row, 3,
+                    pet > 0 ? ParseValFg : ParseDimFg, right: true);
+                PCell(grid, FormatDps(total), row, 4,
+                    dummy && isBest ? ParseBest : ParseValFg, right: true, bold: dummy && isBest);
+                double? delta = deltas[r];
+                PCell(grid, delta is { } dv ? $"{(dv >= 0 ? "+" : "−")}{Math.Abs(dv) * 100:0}%" : "",
+                    row, 5, delta is { } d2 && d2 >= 0 ? ParseBest : ParseWorse,
+                    right: true, size: 10.5);
+                string combo = ComboText(r);
+                PCell(grid, combo.Length > 0 ? combo : "—", row, 6,
+                    combo.Length > 0 ? ParseCombo : ParseDimFg);
+                PCell(grid, r.Loadout.Length > 0 ? r.Loadout : "—", row, 7,
+                    r.Loadout.Length > 0 ? ParseDimFg : ParseDimFg);
+
+                // The whole row is a link to the fight's report.
+                var hit = new Border
+                {
+                    Background = Brushes.Transparent,
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    ToolTip = "Open this fight's report",
+                };
+                var rec = r;
+                hit.MouseEnter += (_, _) => hit.Background = ParseHover;
+                hit.MouseLeave += (_, _) => hit.Background = Brushes.Transparent;
+                hit.MouseLeftButtonDown += (_, _) => JumpToFight(rec);
+                System.Windows.Controls.Grid.SetRow(hit, row);
+                System.Windows.Controls.Grid.SetColumnSpan(hit, heads.Length);
+                grid.Children.Insert(0, hit); // under the text cells
+                row++;
+            }
+            ParsesHost.Children.Add(grid);
+        }
+    }
+
+    private static void PCell(System.Windows.Controls.Grid grid, string text, int row, int col,
+        Brush fg, bool right = false, double size = 12, bool bold = false)
+    {
+        var border = new Border
+        {
+            BorderBrush = ParseLine,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Padding = new Thickness(col == 0 ? 2 : 10, 3, 2, 3),
+            IsHitTestVisible = false, // clicks fall through to the row link
+            Child = new System.Windows.Controls.TextBlock
+            {
+                Text = text, FontSize = size, Foreground = fg,
+                FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
+                HorizontalAlignment = right ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            },
+        };
+        System.Windows.Controls.Grid.SetRow(border, row);
+        System.Windows.Controls.Grid.SetColumn(border, col);
+        grid.Children.Add(border);
+    }
+
+    private void JumpToFight(CombatParser.FightRecord rec)
+    {
+        _view = "fights";
+        StylePills();
+        SelectFight(rec.EndedAt, rec.Label);
+    }
 
     private static Brush Freeze(Color c)
     {

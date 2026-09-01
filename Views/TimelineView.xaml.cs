@@ -30,6 +30,11 @@ public partial class TimelineView : UserControl
     /// that moment carry it as an "ally" — at render time we know better.</summary>
     public Func<string, bool>? IsOwnPet { get; set; }
 
+    /// <summary>Sibling fights of the shown one — same mob, same character,
+    /// oldest first, INCLUDING the shown fight (wired by the History window).
+    /// With 3+ recorded, the TREND card appears.</summary>
+    public Func<FightRecord, IReadOnlyList<FightRecord>>? SiblingsLookup { get; set; }
+
     private static readonly Brush LaneBg = Freeze(Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
     private static readonly Brush AxisFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
     private static readonly Brush MissFg = Freeze(Color.FromArgb(0x77, 0x8F, 0xA6, 0xC4));
@@ -111,6 +116,9 @@ public partial class TimelineView : UserControl
         ChipsPanel.Children.Clear();
         if (rec.Character.Length > 0)
             AddChip(rec.Loadout.Length > 0 ? $"{rec.Character} · {rec.Loadout}" : rec.Character);
+        if (rec.Classes.Length > 0)
+            AddChip(rec.Level > 0 ? $"{rec.Level} {rec.Classes}" : rec.Classes,
+                "The in-game class combo at the pull, from your last /who");
         if (rec.StanceAtStart.Length > 0)
             AddChip($"{rec.StanceAtStart} stance");
         if (rec.BuffsAtStart.Count > 0)
@@ -274,6 +282,213 @@ public partial class TimelineView : UserControl
                 row3.Children.Add(pulse);
             }
         }
+
+        BuildTrend(rec);
+    }
+
+    // ---- the trend card: this kill against its siblings -------------------------
+
+    private static readonly Brush TrendGold = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
+    private static readonly Brush TrendBar = Freeze(Color.FromArgb(0xBF, 0x4F, 0xC3, 0xF7));
+    private static readonly Brush TrendBarBg = Freeze(Color.FromRgb(0x0B, 0x0E, 0x14));
+    private static readonly Brush TrendRowBg = Freeze(Color.FromRgb(0x22, 0x29, 0x3C));
+
+    private double CombinedDps(FightRecord r)
+    {
+        double dur = Math.Max(1, r.DurationSeconds);
+        return (r.SelfAbilities.Sum(a => a.Total) + r.PetAbilities.Sum(a => a.Total)) / dur;
+    }
+
+    /// <summary>One line per sibling kill (bar = kill time, or DPS for target
+    /// dummies), the shown fight gold, then verdicts in the analyst voice —
+    /// they speak only when the change is real and they name the control that
+    /// moved (class combo / loadout, allies, levels).</summary>
+    private void BuildTrend(FightRecord rec)
+    {
+        var sibs = SiblingsLookup?.Invoke(rec);
+        if (sibs is null || sibs.Count < 3) return; // 2+ other kills, or stay quiet
+
+        bool dummy = rec.Label.Contains("dummy", StringComparison.OrdinalIgnoreCase);
+        var shown = sibs.Skip(Math.Max(0, sibs.Count - 6)).ToList();
+        bool IsThis(FightRecord r) => ReferenceEquals(r, rec)
+            || (r.EndedAt == rec.EndedAt && r.Label == rec.Label);
+
+        var stack = new StackPanel();
+        stack.Children.Add(TileLabel(
+            $"TREND · {rec.Label.ToUpperInvariant()} · {sibs.Count} FIGHTS RECORDED"
+            + (sibs.Count > shown.Count ? $" · LAST {shown.Count} SHOWN" : "")));
+
+        // Bars scale to the slowest kill (or the best dummy parse).
+        double barMax = dummy ? shown.Max(CombinedDps) : shown.Max(r => r.DurationSeconds);
+        if (barMax <= 0) barMax = 1;
+
+        foreach (var r in shown)
+        {
+            bool cur = IsThis(r);
+            var row = new Grid { Margin = new Thickness(0, 2, 0, 0) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var date = new TextBlock
+            {
+                Text = r.EndedAt.ToString("dd MMM"), FontSize = 10.5, Foreground = ChipFg,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(date, 0);
+            row.Children.Add(date);
+
+            double frac = Math.Clamp((dummy ? CombinedDps(r) : r.DurationSeconds) / barMax, 0.02, 1);
+            var barHost = new Grid
+            {
+                Background = TrendBarBg, Height = 12, Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            barHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(frac, GridUnitType.Star) });
+            barHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1 - frac, GridUnitType.Star) });
+            var bar = new Border { Background = cur ? TrendGold : TrendBar, CornerRadius = new CornerRadius(2) };
+            barHost.Children.Add(bar);
+            Grid.SetColumn(barHost, 1);
+            row.Children.Add(barHost);
+
+            var durTxt = new TextBlock
+            {
+                Text = FormatDuration(r.DurationSeconds), FontSize = 11, Foreground = ChipBold,
+                HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(durTxt, 2);
+            row.Children.Add(durTxt);
+
+            var dpsTxt = new TextBlock
+            {
+                Text = FormatDps(CombinedDps(r)) + " dps", FontSize = 10.5, Foreground = ChipFg,
+                HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, 10, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            Grid.SetColumn(dpsTxt, 3);
+            row.Children.Add(dpsTxt);
+
+            string combo = ComboLabel(r);
+            if (combo.Length > 0)
+            {
+                var chip = new Border
+                {
+                    Background = Freeze(Color.FromRgb(0x23, 0x2B, 0x40)),
+                    CornerRadius = new CornerRadius(7),
+                    Padding = new Thickness(7, 0, 7, 1),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Child = new TextBlock { Text = combo, FontSize = 10, Foreground = CastFg },
+                };
+                Grid.SetColumn(chip, 4);
+                row.Children.Add(chip);
+            }
+
+            if (cur)
+                stack.Children.Add(new Border
+                {
+                    Background = TrendRowBg, CornerRadius = new CornerRadius(3),
+                    Padding = new Thickness(3, 1, 3, 2), Margin = new Thickness(-3, 1, -3, 0),
+                    Child = row,
+                });
+            else stack.Children.Add(row);
+        }
+
+        var verdicts = TrendVerdicts(sibs, rec, dummy);
+        if (verdicts.Count > 0)
+        {
+            var sep = new Border
+            {
+                BorderBrush = CardLine, BorderThickness = new Thickness(0, 1, 0, 0),
+                Margin = new Thickness(0, 7, 0, 5),
+            };
+            stack.Children.Add(sep);
+            foreach (var (text, caveat) in verdicts)
+            {
+                var line = new TextBlock { FontSize = 11.5, TextWrapping = TextWrapping.Wrap };
+                line.Inlines.Add(new System.Windows.Documents.Run(caveat ? "◇ " : "◆ ")
+                { Foreground = caveat ? AxisFg : TrendGold, FontSize = 9 });
+                line.Inlines.Add(new System.Windows.Documents.Run(text)
+                { Foreground = caveat ? ChipFg : ChipBold });
+                stack.Children.Add(line);
+            }
+        }
+
+        // Full-width row, same gutter trick as every other tile row.
+        var host = new Grid { Margin = new Thickness(0, 0, -8, 0) };
+        host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var card = TileCard(stack);
+        host.Children.Add(card);
+        TilesPanel.Children.Add(host);
+    }
+
+    /// <summary>The label a kill "ran as": the /who class combo when captured,
+    /// the app loadout otherwise.</summary>
+    private static string ComboLabel(FightRecord r) =>
+        r.Classes.Length > 0
+            ? (r.Level > 0 ? $"{r.Level} {r.Classes}" : r.Classes)
+            : r.Loadout;
+
+    private List<(string Text, bool Caveat)> TrendVerdicts(
+        IReadOnlyList<FightRecord> sibs, FightRecord rec, bool dummy)
+    {
+        var v = new List<(string, bool)>();
+        double dur = Math.Max(1, rec.DurationSeconds);
+
+        // The headline: best-yet, or off the pace — only when the gap is real.
+        if (dummy)
+        {
+            double cur = CombinedDps(rec);
+            double prevBest = sibs.Where(r => !ReferenceEquals(r, rec)).Max(CombinedDps);
+            if (prevBest > 0 && cur >= prevBest * 1.05)
+                v.Add(($"Best parse yet — {FormatDps(cur)} dps, " +
+                       $"{100 * (cur - prevBest) / prevBest:0}% over your previous best.", false));
+            else if (prevBest > 0 && cur <= prevBest * 0.9)
+                v.Add(($"Off the pace — {FormatDps(cur)} dps against your best {FormatDps(prevBest)}.", false));
+        }
+        else
+        {
+            double best = sibs.Where(r => !ReferenceEquals(r, rec)).Min(r => r.DurationSeconds);
+            double first = sibs[0].DurationSeconds;
+            if (best > 0 && dur <= best * 0.95)
+                v.Add(($"Fastest {rec.Label} yet — {FormatDuration(dur)}" +
+                       (first > dur ? $", {100 * (first - dur) / first:0}% quicker than your first recorded kill" : "")
+                       + ".", false));
+            else if (best > 0 && dur >= best * 1.15)
+                v.Add(($"Off the pace — {FormatDuration(dur)} against your best {FormatDuration(best)}.", false));
+        }
+
+        // Attribution: when two combos/loadouts both fought this mob and their
+        // averages part by ≥10%, the CONTROL gets the credit, not you.
+        var groups = sibs.GroupBy(ComboLabel, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Key.Length > 0)
+            .Select(g => (Label: g.Key,
+                Avg: dummy ? g.Average(CombinedDps) : g.Average(r => r.DurationSeconds),
+                N: g.Count()))
+            .OrderBy(g => g.Avg).ToList();
+        if (groups.Count >= 2)
+        {
+            var (fast, slow) = dummy ? (groups[^1], groups[0]) : (groups[0], groups[^1]);
+            double gap = dummy
+                ? (slow.Avg > 0 ? (fast.Avg - slow.Avg) / slow.Avg : 0)
+                : (slow.Avg > 0 ? (slow.Avg - fast.Avg) / slow.Avg : 0);
+            if (gap >= 0.10)
+                v.Add((dummy
+                    ? $"The combo is the story: {fast.Label} parses average {FormatDps(fast.Avg)} dps, {slow.Label} {FormatDps(slow.Avg)}."
+                    : $"The combo is the story: {fast.Label} kills average {FormatDuration(fast.Avg)}, {slow.Label} {FormatDuration(slow.Avg)}.", false));
+        }
+
+        // Caveats: mixed company and mixed levels poison a clean comparison.
+        int withAllies = sibs.Count(r => r.Allies.Any(a => IsOwnPet?.Invoke(a) != true));
+        if (withAllies > 0 && withAllies < sibs.Count)
+            v.Add(($"{withAllies} of {sibs.Count} ran with allies — not a clean solo comparison.", true));
+        var levels = sibs.Where(r => r.Level > 0).Select(r => r.Level).Distinct().ToList();
+        if (levels.Count > 1)
+            v.Add(($"Levels ranged {levels.Min()}–{levels.Max()} across these fights.", true));
+
+        return v.Take(4).ToList();
     }
 
     /// <summary>The fight's heartbeat in miniature: dealt (gold), taken (red)
