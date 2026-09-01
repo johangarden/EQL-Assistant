@@ -210,6 +210,36 @@ public partial class SkyWindow : Window
     // Folded by default — a glance gives the per-isle tallies, expand to farm.
     private readonly HashSet<string> _isleOpen = new(StringComparer.OrdinalIgnoreCase);
 
+    // ---- the view pills -------------------------------------------------------
+
+    private string _view = "quests";
+
+    private static readonly Brush PillOnBg = Freeze(Color.FromRgb(0x23, 0x2B, 0x40));
+    private static readonly Brush PillOnLine = Freeze(Color.FromRgb(0x5A, 0x6B, 0x8C));
+    private static readonly Brush PillOnFg = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
+    private static readonly Brush PillOffBg = Freeze(Color.FromRgb(0x1B, 0x21, 0x30));
+    private static readonly Brush PillOffLine = Freeze(Color.FromRgb(0x3A, 0x45, 0x60));
+    private static readonly Brush PillOffFg = Freeze(Color.FromRgb(0x7F, 0x93, 0xAD));
+
+    private void View_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string v || v == _view) return;
+        _view = v;
+        Refresh();
+    }
+
+    private void StylePills()
+    {
+        foreach (var (pill, key) in new[]
+                 { (QuestsPill, "quests"), (IslePill, "isle"), (HousePill, "house") })
+        {
+            bool on = key == _view;
+            pill.Background = on ? PillOnBg : PillOffBg;
+            pill.BorderBrush = on ? PillOnLine : PillOffLine;
+            if (pill.Child is TextBlock tb) tb.Foreground = on ? PillOnFg : PillOffFg;
+        }
+    }
+
     private void Isle_Toggle(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is not string isle) return;
@@ -222,17 +252,22 @@ public partial class SkyWindow : Window
         if (_initializing || QuestsControl is null) return;
 
         RefreshBadges();
-        string view = ViewBox.SelectedValue as string ?? "quests";
-        QuestsScroll.Visibility = view == "quests" ? Visibility.Visible : Visibility.Collapsed;
-        IsleScroll.Visibility = view == "isle" ? Visibility.Visible : Visibility.Collapsed;
-        HouseScroll.Visibility = view == "house" ? Visibility.Visible : Visibility.Collapsed;
+        StylePills();
+        QuestsScroll.Visibility = _view == "quests" ? Visibility.Visible : Visibility.Collapsed;
+        IsleScroll.Visibility = _view == "isle" ? Visibility.Visible : Visibility.Collapsed;
+        HouseScroll.Visibility = _view == "house" ? Visibility.Visible : Visibility.Collapsed;
 
-        if (view == "isle") { RefreshIsles(); return; }
-        if (view == "house") { RefreshHousekeeping(); return; }
+        // Filters belong to the Quests view; search also serves the isle list.
+        FiltersRow.Visibility = _view == "house" ? Visibility.Collapsed : Visibility.Visible;
+        StatusBox.Visibility = _view == "quests" ? Visibility.Visible : Visibility.Collapsed;
+        SlotBox.Visibility = _view == "quests" ? Visibility.Visible : Visibility.Collapsed;
+
+        if (_view == "isle") { RefreshIsles(); return; }
+        if (_view == "house") { RefreshHousekeeping(); return; }
         string cls = _selectedClass;
         string slot = SlotBox.SelectedIndex > 0 ? (string)SlotBox.SelectedItem : "";
         string search = SearchBox.Text.Trim();
-        string status = StatusBox.SelectedValue as string ?? "active";
+        string status = StatusBox.SelectedValue as string ?? "ready";
 
         var vms = new List<QuestVm>();
         foreach (var q in _sky.Quests)
@@ -309,7 +344,7 @@ public partial class SkyWindow : Window
             .ToList();
         HouseControl.ItemsSource = rows;
         HouseHint.Text = rows.Count > 0
-            ? "Per the loot ledger (looted minus turned in): spare copies no ACTIVE quest still needs — every quest wanting them is done, or you hold extras. Safe to hand to a guildie or clear out."
+            ? "Per the loot ledger (looted minus turned in): spare copies no ACTIVE Plane of Sky quest still needs — every quest wanting them is done, or you hold extras. Safe to hand to a guildie or clear out."
             : "Nothing to clear out — everything you hold is still wanted by an open quest (per the loot ledger).";
         SummaryText.Text = $"{rows.Count} item(s) with spares";
     }

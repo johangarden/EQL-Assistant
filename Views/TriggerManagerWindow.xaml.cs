@@ -311,7 +311,7 @@ public partial class TriggerManagerWindow : Window
     {
         if (_libraryWindow is null)
         {
-            _libraryWindow = new SpellLibraryWindow(_spellLibrary, AddFromLibrary) { Owner = this };
+            _libraryWindow = new SpellLibraryWindow(_spellLibrary, AddFromLibrary, _durations) { Owner = this };
             _libraryWindow.Closed += (_, _) => _libraryWindow = null;
             _libraryWindow.Show();
         }

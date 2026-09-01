@@ -385,6 +385,11 @@ public partial class App : Application
                 al.TryParsePetSpeech($"[{FT(0)}] Lonaner told you, 'Attacking a will sapper Master.'",
                     out string oldPet) && oldPet == "Lonaner" && al.IsKnownPet("Lonaner"));
 
+            Check("durations: percentile math (median + quartiles, interpolated)",
+                Math.Abs(SpellDurations.Percentile(new[] { 1.0, 2, 3, 4 }, 0.50) - 2.5) < 0.001
+                && Math.Abs(SpellDurations.Percentile(new[] { 1.0, 2, 3, 4 }, 0.25) - 1.75) < 0.001
+                && Math.Abs(SpellDurations.Percentile(new[] { 7.0 }, 0.75) - 7) < 0.001);
+
             string fdTxt = Views.TimelineView.BuildAnalysis(fdRec);
             Check("analysis: names the dominant school and the resist advice",
                 fdTxt.Contains("COLD") && fdTxt.Contains("More Cold resist")
