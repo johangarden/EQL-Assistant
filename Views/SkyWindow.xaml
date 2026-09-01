@@ -65,23 +65,34 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <DockPanel Margin="0,0,0,8">
-                <ComboBox x:Name="ViewBox" DockPanel.Dock="Left" Width="130" Margin="0,0,8,0"
-                          SelectedValuePath="Tag" SelectedIndex="0"
-                          SelectionChanged="Filters_Changed"
-                          ToolTip="Quests: the cards. Needed by isle: the shopping list — everything active quests still need, grouped by where it drops. Housekeeping: spare copies nothing active wants.">
-                    <ComboBoxItem Content="Quests" Tag="quests"/>
-                    <ComboBoxItem Content="Needed by isle" Tag="isle"/>
-                    <ComboBoxItem Content="Housekeeping" Tag="house"/>
-                </ComboBox>
+            <!-- VIEW pills — what the window IS showing; the filters below
+                 belong to the Quests view (search also serves the isle list). -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <Border x:Name="QuestsPill" CornerRadius="14" BorderThickness="1" Padding="15,4"
+                        Cursor="Hand" Margin="0,0,6,0" MouseLeftButtonDown="View_Click" Tag="quests">
+                    <TextBlock Text="Quests" FontSize="11.5" FontWeight="SemiBold"/>
+                </Border>
+                <Border x:Name="IslePill" CornerRadius="14" BorderThickness="1" Padding="15,4"
+                        Cursor="Hand" Margin="0,0,6,0" MouseLeftButtonDown="View_Click" Tag="isle"
+                        ToolTip="The shopping list — everything active quests still need, grouped by the isle it drops on">
+                    <TextBlock Text="Needed by isle" FontSize="11.5" FontWeight="SemiBold"/>
+                </Border>
+                <Border x:Name="HousePill" CornerRadius="14" BorderThickness="1" Padding="15,4"
+                        Cursor="Hand" MouseLeftButtonDown="View_Click" Tag="house"
+                        ToolTip="Spare copies no active quest still needs — safe to hand to a guildie">
+                    <TextBlock Text="Quest item housekeeping" FontSize="11.5" FontWeight="SemiBold"/>
+                </Border>
+            </StackPanel>
+
+            <DockPanel x:Name="FiltersRow" Margin="0,0,0,8">
                 <ComboBox x:Name="SlotBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0"
                           SelectionChanged="Filters_Changed"/>
                 <ComboBox x:Name="StatusBox" DockPanel.Dock="Right" Width="140" Margin="8,0,0,0"
                           SelectedValuePath="Tag" SelectedIndex="0"
                           SelectionChanged="Filters_Changed">
+                    <ComboBoxItem Content="Ready to turn in" Tag="ready"/>
                     <ComboBoxItem Content="Active (not done)" Tag="active"/>
                     <ComboBoxItem Content="All" Tag="all"/>
-                    <ComboBoxItem Content="Ready to turn in" Tag="ready"/>
                     <ComboBoxItem Content="Partly done" Tag="partly"/>
                     <ComboBoxItem Content="Done" Tag="done"/>
                 </ComboBox>
