@@ -16,10 +16,6 @@
                 <ResourceDictionary Source="/Themes/Controls.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                <Setter Property="FontSize" Value="11"/>
-                <Setter Property="Padding" Value="8,2"/>
-            </Style>
         </ResourceDictionary>
     </Window.Resources>
 

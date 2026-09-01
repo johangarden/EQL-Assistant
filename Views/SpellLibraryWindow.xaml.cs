@@ -171,13 +171,28 @@ public partial class SpellLibraryWindow : Window
         var spell = _library.FindByBaseName(SpellDurations.BaseName(spellName));
         if (spell is not null)
         {
-            var btn = new Button
+            // A themed pill, never stock chrome (house rule, day one).
+            var btn = new Border
             {
-                Content = "＋ Add",
+                Background = DurBadgeBg,
+                BorderBrush = FreezeBrush(0x3A, 0x45, 0x60),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(11, 1, 11, 2),
+                Cursor = System.Windows.Input.Cursors.Hand,
                 VerticalAlignment = VerticalAlignment.Center,
                 ToolTip = "Countdown bar with the right type, color and duration, plus a spoken fade warning — everything editable on the trigger afterwards",
+                Child = new TextBlock
+                {
+                    Text = "＋ Add",
+                    FontSize = 11,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = DurLogFg,
+                },
             };
-            btn.Click += (_, _) =>
+            btn.MouseEnter += (_, _) => btn.BorderBrush = FreezeBrush(0x5A, 0x6B, 0x8C);
+            btn.MouseLeave += (_, _) => btn.BorderBrush = FreezeBrush(0x3A, 0x45, 0x60);
+            btn.MouseLeftButtonDown += (_, _) =>
             {
                 if (SpellLibrary.BarTrigger(spell, spokenWarning: true) is not { } def) return;
                 _onAdd(def);
