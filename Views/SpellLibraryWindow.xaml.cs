@@ -174,7 +174,7 @@ public partial class SpellLibraryWindow : Window
         if (spell is not null)
         {
             var pills = new StackPanel { Orientation = Orientation.Horizontal };
-            pills.Children.Add(MakePill("＋ Add",
+            pills.Children.Add(MakePill("＋ Me",
                 "Countdown bar with the right type, color and duration, plus a spoken fade warning — everything editable on the trigger afterwards",
                 () => SpellLibrary.BarTrigger(spell, spokenWarning: true)));
             if (SpellLibrary.HasPetLanding(spell))

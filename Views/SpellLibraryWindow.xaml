@@ -27,7 +27,7 @@
                 <TextBlock Text="Spell library" FontSize="16" FontWeight="Bold" Foreground="White"/>
             </DockPanel>
             <TextBlock Foreground="#7F93AD" FontSize="11" Margin="0,2,0,8" TextWrapping="Wrap"
-                       Text="Every spell the duration learner has measured — the estimate the bars use (log = learned from your own cast→fade cycles, db = the library's figure), sample count and spread. Search reaches the WHOLE ~1400-spell library; ＋ adds a ready-made countdown bar trigger (type, color, duration and fade voice prefilled) to the current loadout."/>
+                       Text="Every spell the duration learner has measured — the estimate the bars use (log = learned from your own cast→fade cycles, db = the library's figure), sample count and spread. Search reaches the WHOLE ~1400-spell library; ＋ Me adds a ready-made countdown bar trigger (type, color, duration and fade voice prefilled) to the current loadout, ＋ Pet tracks the buff on your pet instead."/>
 
             <DockPanel Margin="0,0,0,8">
                 <ComboBox x:Name="ClassBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0"
