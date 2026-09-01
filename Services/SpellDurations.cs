@@ -130,6 +130,48 @@ public sealed class SpellDurations
     public int SampleCount(string spellOrTriggerName) =>
         _byKey.TryGetValue(BaseKey(spellOrTriggerName), out var rec) ? rec.Samples.Count : 0;
 
+    // ---- insights (the Manager's Durations page) ------------------------------
+
+    /// <summary>One sampled spell's duration story: the estimate the bars use
+    /// (and whether it came from the log or the library), plus the spread of
+    /// everything observed. Median/IQR run over ALL stored samples (up to 20);
+    /// the estimate stays the recent-window max — spread is diagnosis, the
+    /// max is policy (early breaks read short and must never drag bars down).</summary>
+    public sealed record DurationInsight(string Spell, string Category,
+        double? Estimate, bool FromLog, int N,
+        double Median, double P25, double P75, double Min, double Max,
+        double? LibrarySec);
+
+    public IReadOnlyList<DurationInsight> Insights()
+    {
+        var rows = new List<DurationInsight>();
+        foreach (var rec in _byKey.Values)
+        {
+            if (rec.Samples.Count == 0) continue;
+            var xs = rec.Samples.Select(s => s.Seconds).OrderBy(x => x).ToList();
+            double? lib = LibraryFloorSeconds(rec.Name);
+            double? learned = LearnedMaxSeconds(rec.Name);
+            string cat = _library.FindByBaseName(BaseName(rec.Name)) is { } sp
+                ? SpellLibrary.TriggerCategory(sp) : "Other";
+            rows.Add(new DurationInsight(rec.Name, cat,
+                learned ?? lib, FromLog: learned is not null, xs.Count,
+                Percentile(xs, 0.50), Percentile(xs, 0.25), Percentile(xs, 0.75),
+                xs[0], xs[^1], lib));
+        }
+        return rows.OrderBy(r => r.Category, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(r => r.Spell, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>Linear-interpolated percentile over a sorted list.</summary>
+    internal static double Percentile(IReadOnlyList<double> sorted, double p)
+    {
+        if (sorted.Count == 1) return sorted[0];
+        double rank = p * (sorted.Count - 1);
+        int lo = (int)Math.Floor(rank);
+        int hi = (int)Math.Ceiling(rank);
+        return sorted[lo] + (sorted[hi] - sorted[lo]) * (rank - lo);
+    }
+
     public void ProcessLine(string rawLine)
     {
         DateTime time = ExtractTimestamp(rawLine, out string body);
