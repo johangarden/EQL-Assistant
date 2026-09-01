@@ -40,6 +40,7 @@
                           MinHeight="30" SelectionChanged="Filters_Changed" SelectedValuePath="Tag">
                     <ComboBoxItem Content="All spells" Tag="" IsSelected="True"/>
                     <ComboBoxItem Content="Seen in your log" Tag="seen"/>
+                    <ComboBoxItem Content="Learned durations" Tag="learned"/>
                     <ComboBoxItem Content="Buffs" Tag="Buff"/>
                     <ComboBoxItem Content="Debuffs" Tag="Debuff"/>
                     <ComboBoxItem Content="Illusions" Tag="Illusion"/>
@@ -87,6 +88,9 @@
                             </StackPanel>
                             <TextBlock Text="{Binding Detail}" Foreground="#7F93AD" FontSize="11"
                                        TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding LearnedText}" Foreground="#B9A15E" FontSize="10.5"
+                                       TextTrimming="CharacterEllipsis"
+                                       Visibility="{Binding LearnedVisibility}"/>
                         </StackPanel>
                     </DockPanel>
                 </DataTemplate>

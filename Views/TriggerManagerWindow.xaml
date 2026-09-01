@@ -518,23 +518,6 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- ============================ DURATIONS ============================ -->
-                    <ScrollViewer x:Name="DurationsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="14" MaxWidth="720" HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Durations" Style="{StaticResource PageTitle}"/>
-                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="Everything the duration learner has OBSERVED, spell by spell: the estimate the bars actually use (log = learned from your own casts, db = the library's figure), how many landing→fade cycles were sampled, and the spread — median, the middle half (IQR), and the extremes. A wide spread usually means polluted cycles (deaths, zones, shared wear-off sentences); the estimate stays the recent max on purpose, because early breaks read short."/>
-
-                            <TextBox x:Name="DurSearchBox" Width="240" HorizontalAlignment="Left"
-                                     Margin="0,10,0,8" TextChanged="DurSearch_Changed"
-                                     ToolTip="Filter by spell name"/>
-                            <Grid x:Name="DurTableHost"/>
-                        </StackPanel>
-                    </ScrollViewer>
-
                     <!-- ============================ DATA ============================ -->
                     <ScrollViewer x:Name="DataPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">

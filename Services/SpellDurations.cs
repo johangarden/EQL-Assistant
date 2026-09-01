@@ -142,24 +142,28 @@ public sealed class SpellDurations
         double Median, double P25, double P75, double Min, double Max,
         double? LibrarySec);
 
-    public IReadOnlyList<DurationInsight> Insights()
-    {
-        var rows = new List<DurationInsight>();
-        foreach (var rec in _byKey.Values)
-        {
-            if (rec.Samples.Count == 0) continue;
-            var xs = rec.Samples.Select(s => s.Seconds).OrderBy(x => x).ToList();
-            double? lib = LibraryFloorSeconds(rec.Name);
-            double? learned = LearnedMaxSeconds(rec.Name);
-            string cat = _library.FindByBaseName(BaseName(rec.Name)) is { } sp
-                ? SpellLibrary.TriggerCategory(sp) : "Other";
-            rows.Add(new DurationInsight(rec.Name, cat,
-                learned ?? lib, FromLog: learned is not null, xs.Count,
-                Percentile(xs, 0.50), Percentile(xs, 0.25), Percentile(xs, 0.75),
-                xs[0], xs[^1], lib));
-        }
-        return rows.OrderBy(r => r.Category, StringComparer.OrdinalIgnoreCase)
+    public IReadOnlyList<DurationInsight> Insights() =>
+        _byKey.Values.Where(r => r.Samples.Count > 0).Select(BuildInsight)
+            .OrderBy(r => r.Category, StringComparer.OrdinalIgnoreCase)
             .ThenBy(r => r.Spell, StringComparer.OrdinalIgnoreCase).ToList();
+
+    /// <summary>The insight for ONE spell (the library browser's learned
+    /// line), or null when nothing was ever sampled.</summary>
+    public DurationInsight? InsightFor(string spellName) =>
+        _byKey.TryGetValue(BaseKey(spellName), out var rec) && rec.Samples.Count > 0
+            ? BuildInsight(rec) : null;
+
+    private DurationInsight BuildInsight(SpellRec rec)
+    {
+        var xs = rec.Samples.Select(s => s.Seconds).OrderBy(x => x).ToList();
+        double? lib = LibraryFloorSeconds(rec.Name);
+        double? learned = LearnedMaxSeconds(rec.Name);
+        string cat = _library.FindByBaseName(BaseName(rec.Name)) is { } sp
+            ? SpellLibrary.TriggerCategory(sp) : "Other";
+        return new DurationInsight(rec.Name, cat,
+            learned ?? lib, FromLog: learned is not null, xs.Count,
+            Percentile(xs, 0.50), Percentile(xs, 0.25), Percentile(xs, 0.75),
+            xs[0], xs[^1], lib);
     }
 
     /// <summary>Linear-interpolated percentile over a sorted list.</summary>

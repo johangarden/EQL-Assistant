@@ -311,7 +311,7 @@ public partial class TriggerManagerWindow : Window
     {
         if (_libraryWindow is null)
         {
-            _libraryWindow = new SpellLibraryWindow(_spellLibrary, AddFromLibrary) { Owner = this };
+            _libraryWindow = new SpellLibraryWindow(_spellLibrary, AddFromLibrary, _durations) { Owner = this };
             _libraryWindow.Closed += (_, _) => _libraryWindow = null;
             _libraryWindow.Show();
         }
@@ -1004,7 +1004,6 @@ public partial class TriggerManagerWindow : Window
             ["Sky droppers"] = SkyHelperPage,
             ["General"] = GeneralPage,
             ["Sounds & voices"] = SoundsPage,
-            ["Durations"] = DurationsPage,
             ["Data"] = DataPage,
             ["Shortcuts"] = ShortcutsPage,
         };
@@ -1013,160 +1012,7 @@ public partial class TriggerManagerWindow : Window
             return;
         foreach (var p in byTitle.Values) p.Visibility = Visibility.Collapsed;
         page.Visibility = Visibility.Visible;
-        if (page == DurationsPage) RefreshDurations();
     }
-
-    // ---- Durations page (Companion-inspired insights) -------------------------
-
-    private void DurSearch_Changed(object sender,
-        System.Windows.Controls.TextChangedEventArgs e) => RefreshDurations();
-
-    private void RefreshDurations()
-    {
-        if (DurTableHost is null || _durations is null) return;
-        DurTableHost.Children.Clear();
-        DurTableHost.RowDefinitions.Clear();
-        DurTableHost.ColumnDefinitions.Clear();
-
-        string search = DurSearchBox.Text.Trim();
-        var rows = _durations.Insights()
-            .Where(r => search.Length == 0
-                        || r.Spell.Contains(search, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        if (rows.Count == 0)
-        {
-            DurTableHost.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition());
-            DurTableHost.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-            var empty = new System.Windows.Controls.TextBlock
-            {
-                Text = search.Length > 0
-                    ? "No sampled spell matches the search."
-                    : "No samples yet — durations learn from your own cast → landing → fade cycles.",
-                Foreground = DurHintFg,
-                FontSize = 12,
-                Margin = new Thickness(0, 6, 0, 0),
-            };
-            DurTableHost.Children.Add(empty);
-            return;
-        }
-
-        string[] heads = { "SPELL", "ESTIMATE", "", "N", "MEDIAN", "IQR (P25–P75)", "MIN–MAX" };
-        for (int i = 0; i < heads.Length; i++)
-            DurTableHost.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition
-            { Width = i == 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
-
-        int row = 0;
-        DurTableHost.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-        for (int i = 0; i < heads.Length; i++)
-            DurCell(heads[i], row, i, DurHeadFg, right: i > 0, size: 9.5, bold: true);
-        row++;
-
-        string lastCat = "";
-        foreach (var r in rows)
-        {
-            if (!r.Category.Equals(lastCat, StringComparison.OrdinalIgnoreCase))
-            {
-                lastCat = r.Category;
-                DurTableHost.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-                var cat = new System.Windows.Controls.TextBlock
-                {
-                    Text = r.Category.ToUpperInvariant(),
-                    Foreground = DurCatFg,
-                    FontSize = 10,
-                    FontWeight = FontWeights.SemiBold,
-                    Margin = new Thickness(0, 10, 0, 3),
-                };
-                System.Windows.Controls.Grid.SetRow(cat, row);
-                System.Windows.Controls.Grid.SetColumnSpan(cat, heads.Length);
-                DurTableHost.Children.Add(cat);
-                row++;
-            }
-
-            DurTableHost.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-            DurCell(r.Spell, row, 0, DurNameFg, right: false, bold: true);
-            DurCell(r.Estimate is { } est ? Services.DurationText.Compact(est) : "—",
-                row, 1, DurValFg, right: true);
-            // The estimate's source: learned from YOUR log, or the library's word.
-            DurBadge(r.N == 0 ? "" : r.FromLog ? "log" : "db", row, 2, r.FromLog);
-            DurCell(r.N.ToString(), row, 3, DurValFg, right: true);
-            DurCell(Services.DurationText.Compact(r.Median), row, 4, DurValFg, right: true);
-            DurCell($"{Services.DurationText.Compact(r.P25)} – {Services.DurationText.Compact(r.P75)}",
-                row, 5, DurDimFg, right: true);
-            DurCell($"{Services.DurationText.Compact(r.Min)} – {Services.DurationText.Compact(r.Max)}",
-                row, 6, DurDimFg, right: true);
-            row++;
-        }
-    }
-
-    private static readonly Brush DurHeadFg = FreezeBrush(0x5C, 0x6B, 0x82);
-    private static readonly Brush DurCatFg = FreezeBrush(0xE8, 0xC1, 0x5A);
-    private static readonly Brush DurNameFg = FreezeBrush(0x9F, 0xB4, 0xD0);
-    private static readonly Brush DurValFg = FreezeBrush(0xC9, 0xD4, 0xE3);
-    private static readonly Brush DurDimFg = FreezeBrush(0x7F, 0x93, 0xAD);
-    private static readonly Brush DurHintFg = FreezeBrush(0x7F, 0x93, 0xAD);
-    private static readonly Brush DurLine = FreezeBrush(0x1F, 0x26, 0x37);
-    private static readonly Brush DurLogFg = FreezeBrush(0xE8, 0xC1, 0x5A);
-    private static readonly Brush DurDbFg = FreezeBrush(0x4F, 0xC3, 0xF7);
-
-    private static Brush FreezeBrush(byte r, byte g, byte b)
-    {
-        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
-        brush.Freeze();
-        return brush;
-    }
-
-    private void DurCell(string text, int row, int col, Brush fg, bool right,
-        double size = 12, bool bold = false)
-    {
-        var border = new System.Windows.Controls.Border
-        {
-            BorderBrush = DurLine,
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(col == 0 ? 2 : 12, 4, col == 0 ? 12 : 2, 3),
-            Child = new System.Windows.Controls.TextBlock
-            {
-                Text = text,
-                FontSize = size,
-                FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
-                Foreground = fg,
-                HorizontalAlignment = right ? HorizontalAlignment.Right : HorizontalAlignment.Left,
-            },
-        };
-        System.Windows.Controls.Grid.SetRow(border, row);
-        System.Windows.Controls.Grid.SetColumn(border, col);
-        DurTableHost.Children.Add(border);
-    }
-
-    private void DurBadge(string text, int row, int col, bool log)
-    {
-        var host = new System.Windows.Controls.Border
-        {
-            BorderBrush = DurLine,
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Padding = new Thickness(6, 4, 2, 3),
-        };
-        if (text.Length > 0)
-            host.Child = new System.Windows.Controls.Border
-            {
-                Background = FreezeBrushStatic ??= FreezeBrush(0x23, 0x2B, 0x40),
-                CornerRadius = new CornerRadius(7),
-                Padding = new Thickness(7, 0, 7, 1),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new System.Windows.Controls.TextBlock
-                {
-                    Text = text,
-                    FontSize = 9.5,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = log ? DurLogFg : DurDbFg,
-                },
-            };
-        System.Windows.Controls.Grid.SetRow(host, row);
-        System.Windows.Controls.Grid.SetColumn(host, col);
-        DurTableHost.Children.Add(host);
-    }
-
-    private static Brush? FreezeBrushStatic;
 
     // ---- contextual details form ---------------------------------------------
 

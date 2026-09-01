@@ -22,19 +22,26 @@ public partial class SpellLibraryWindow : Window
 
     private readonly SpellLibrary _library;
     private readonly Action<TriggerDefinition> _onAdd;
+    private readonly SpellDurations? _durations;
 
     public sealed record SpellRow(SpellLibrary.Spell Spell, string Name, string Detail,
-        string SeenBadge, bool CanBar, string GroupLabel);
+        string SeenBadge, bool CanBar, string GroupLabel, string LearnedText = "")
+    {
+        public Visibility LearnedVisibility =>
+            LearnedText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     private static readonly Regex ClassLevelRx = new(
         @"(?<c>[A-Z]{2,3}) (?<l>\d+)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    public SpellLibraryWindow(SpellLibrary library, Action<TriggerDefinition> onAdd)
+    public SpellLibraryWindow(SpellLibrary library, Action<TriggerDefinition> onAdd,
+        SpellDurations? durations = null)
     {
         InitializeComponent();
         WindowTheme.ApplyDark(this);
         _library = library;
         _onAdd = onAdd;
+        _durations = durations;
 
         ClassBox.ItemsSource = new[]
         {
@@ -54,7 +61,11 @@ public partial class SpellLibraryWindow : Window
 
         string filter = FilterBox?.SelectedValue as string ?? "";
         string cls = ClassBox?.SelectedIndex > 0 ? (string)ClassBox.SelectedItem : "";
-        var hits = _library.Search(SearchBox?.Text ?? "", filter, cls);
+        // "Learned durations" is the learner's filter, not the library's.
+        string libFilter = filter == "learned" ? "" : filter;
+        var hits = _library.Search(SearchBox?.Text ?? "", libFilter, cls);
+        if (filter == "learned")
+            hits = hits.Where(s => _durations?.SampleCount(s.Name) > 0).ToList();
 
         var rows = hits
             .Select(s => (Spell: s, Level: LevelOf(s, cls)))
@@ -101,10 +112,23 @@ public partial class SpellLibraryWindow : Window
         if (s.Classes.Length > 0) bits.Add(s.Classes);
         if (s.DurationSec > 0) bits.Add(FormatDuration(s.DurationSec));
         bits.Add(s.Illusion ? "Illusion" : s.Type.Length > 0 ? s.Type : s.Bucket);
+
+        // The learner's story rides the row (Companion-inspired): the estimate
+        // the bars use with its source, then the observed spread — a wide IQR
+        // usually means polluted cycles.
+        string learned = "";
+        if (_durations?.InsightFor(s.Name) is { } ins)
+            learned = $"learned {(ins.Estimate is { } est ? DurationText.Compact(est) : "—")}"
+                + $" ({(ins.FromLog ? "log" : "db")}) · {ins.N} sample{(ins.N == 1 ? "" : "s")}"
+                + $" · median {DurationText.Compact(ins.Median)}"
+                + $" · IQR {DurationText.Compact(ins.P25)}–{DurationText.Compact(ins.P75)}"
+                + $" · {DurationText.Compact(ins.Min)}–{DurationText.Compact(ins.Max)}";
+
         return new SpellRow(s, s.Name, string.Join("  ·  ", bits),
             _library.IsSeen(s) ? "● seen" : "",
             CanBar: s.Name.Length > 0, // junk landing text falls back to the begin-cast line
-            level == 0 ? "NO LEVEL" : $"LEVEL {level}");
+            level == 0 ? "NO LEVEL" : $"LEVEL {level}",
+            learned);
     }
 
     private static string FormatDuration(double sec) =>
