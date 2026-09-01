@@ -38,12 +38,10 @@
                           MinHeight="30" SelectionChanged="Filters_Changed"/>
                 <ComboBox x:Name="FilterBox" DockPanel.Dock="Right" Width="150" Margin="8,0,0,0"
                           MinHeight="30" SelectionChanged="Filters_Changed" SelectedValuePath="Tag">
+                    <!-- Two views only (owner ruling): the add-a-trigger browser,
+                         and the learned-durations insight table. -->
                     <ComboBoxItem Content="All spells" Tag="" IsSelected="True"/>
-                    <ComboBoxItem Content="Seen in your log" Tag="seen"/>
                     <ComboBoxItem Content="Learned durations" Tag="learned"/>
-                    <ComboBoxItem Content="Buffs" Tag="Buff"/>
-                    <ComboBoxItem Content="Debuffs" Tag="Debuff"/>
-                    <ComboBoxItem Content="Illusions" Tag="Illusion"/>
                 </ComboBox>
                 <TextBox x:Name="SearchBox" TextChanged="Filters_Changed"
                          AutomationProperties.AutomationId="LibrarySearchBox"

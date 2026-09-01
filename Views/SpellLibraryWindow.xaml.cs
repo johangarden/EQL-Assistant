@@ -192,10 +192,10 @@ public partial class SpellLibraryWindow : Window
                 row, 1, DurValFg, right: true);
             DurBadge(r.FromLog ? "log" : "db", row, 2, r.FromLog);
             DurCell(r.N.ToString(), row, 3, DurValFg, right: true);
-            DurCell(DurationText.Compact(r.Median), row, 4, DurValFg, right: true);
-            DurCell($"{DurationText.Compact(r.P25)} – {DurationText.Compact(r.P75)}",
+            DurCell(DurationText.Compact(Math.Round(r.Median)), row, 4, DurValFg, right: true);
+            DurCell($"{DurationText.Compact(Math.Round(r.P25))} – {DurationText.Compact(Math.Round(r.P75))}",
                 row, 5, DurDimFg, right: true);
-            DurCell($"{DurationText.Compact(r.Min)} – {DurationText.Compact(r.Max)}",
+            DurCell($"{DurationText.Compact(Math.Round(r.Min))} – {DurationText.Compact(Math.Round(r.Max))}",
                 row, 6, DurDimFg, right: true);
             row++;
         }
