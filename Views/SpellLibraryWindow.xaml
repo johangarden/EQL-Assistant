@@ -51,6 +51,15 @@
             </DockPanel>
         </StackPanel>
 
+        <Grid>
+
+        <!-- The Learned-durations filter swaps the row list for the insights
+             TABLE — estimate (log/db) · n · median · IQR · min–max. -->
+        <ScrollViewer x:Name="DurScroll" Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto">
+            <Grid x:Name="DurTableHost" VerticalAlignment="Top"/>
+        </ScrollViewer>
+
         <!-- Recycling + IsVirtualizingWhenGrouping is a known WPF combo that
              silently skips rows while scrolling grouped lists (Sloths Healing
              vanished from the SHM listing) — Standard mode renders reliably
@@ -88,13 +97,11 @@
                             </StackPanel>
                             <TextBlock Text="{Binding Detail}" Foreground="#7F93AD" FontSize="11"
                                        TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="{Binding LearnedText}" Foreground="#B9A15E" FontSize="10.5"
-                                       TextTrimming="CharacterEllipsis"
-                                       Visibility="{Binding LearnedVisibility}"/>
                         </StackPanel>
                     </DockPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+        </Grid>
     </DockPanel>
 </Window>
