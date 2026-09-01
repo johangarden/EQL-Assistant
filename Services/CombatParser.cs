@@ -722,6 +722,12 @@ public sealed class CombatParser
     /// swap invalidation (persist it).</summary>
     public event Action<string, int>? ClassesChanged;
 
+    /// <summary>Raised when a LOADOUT SWAP was detected (grant burst or
+    /// spellbook refresh with no level-up to explain it) — the cue to remind
+    /// the player to /who so their parses stay labeled. Live-only concern:
+    /// the wiring must gate out catch-up replays.</summary>
+    public event Action? SwapDetected;
+
     // "[26 SHD/ROG/SHM] Thorrak (Ogre) <guild> ZONE: ..." — /who output IS
     // logged; 1–3 class tags cover EQL's multiclass combos.
     private static readonly Regex WhoRx = new(
@@ -1066,6 +1072,7 @@ public sealed class CombatParser
             CurrentClasses = "";
             CurrentLevel = 0;
             ClassesChanged?.Invoke(CurrentClasses, CurrentLevel);
+            SwapDetected?.Invoke();
         }
 
         if (body.StartsWith(ZonePrefix, StringComparison.Ordinal) && body.EndsWith('.'))
@@ -1081,6 +1088,7 @@ public sealed class CombatParser
             && WhoRx.Match(body) is { Success: true } who
             && who.Groups["name"].Value.Equals(Self(), StringComparison.OrdinalIgnoreCase))
         {
+            _swapSuspectAt = DateTime.MinValue; // the /who answered the question
             CurrentClasses = who.Groups["cls"].Value;
             CurrentLevel = (int)Amount(who, "lvl");
             ClassesChanged?.Invoke(CurrentClasses, CurrentLevel);
@@ -1094,6 +1102,14 @@ public sealed class CombatParser
         {
             if ((time - _grantBurstStart).TotalSeconds > 3) { _grantBurstStart = time; _grantCount = 0; }
             if (++_grantCount >= 4) _swapSuspectAt = time;
+            return;
+        }
+        // The spellbook refresh prints on swaps too — Johan's hypothesis:
+        // even for pure-melee combos that grant no spell lines. Same jury:
+        // a level line within 5s acquits it, silence convicts.
+        if (body.StartsWith("Your spellbook has been updated!", StringComparison.Ordinal))
+        {
+            _swapSuspectAt = time;
             return;
         }
         if (body.StartsWith("You have gained a level!", StringComparison.Ordinal))

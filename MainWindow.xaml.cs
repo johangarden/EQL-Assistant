@@ -145,6 +145,14 @@ public partial class MainWindow : Window
         _combat.LoadoutLookup = () => _config.ActiveLoadout;
         _combat.StanceChanged += s => _configService.SaveLastStance(_combat.SelfName, s);
         _combat.ClassesChanged += (c, l) => _configService.SaveLastClasses(_combat.SelfName, c, l);
+        _combat.SwapDetected += () =>
+        {
+            if (_suppressSct) return; // catch-up/reparse replays old swaps
+            OnFlashRequested("Loadout changed — /who to relabel your parses", "#FFA85C");
+            _alerts.Fire(null, System.IO.Path.Combine(
+                Environment.GetEnvironmentVariable("SystemRoot") ?? @"C:\Windows",
+                "Media", "Windows Ding.wav"));
+        };
         // Pet names persist per character — a re-summon gets a NEW name, and
         // forgetting the old ones makes solo fights read as "group".
         _combat.PetDetected += p => _configService.AddKnownPet(_combat.SelfName, p);

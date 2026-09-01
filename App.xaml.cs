@@ -407,6 +407,8 @@ public partial class App : Application
             // ---- class-combo capture: /who teaches, level-ups track, a
             // loadout swap (grant burst, no level line) honestly forgets.
             var wc = new CombatParser { SelfName = "Thorrak" };
+            int swaps = 0;
+            wc.SwapDetected += () => swaps++;
             wc.Replay($"[{FT(600)}] [26 SHD/ROG/SHM] Thorrak (Ogre) <The Chosen Alliance> ZONE: Najena (najena)  ");
             Check("classes: your own /who line teaches level + combo",
                 wc.CurrentClasses == "SHD/ROG/SHM" && wc.CurrentLevel == 26);
@@ -425,6 +427,19 @@ public partial class App : Application
             wc.Replay($"[{FT(710)}] You are as quiet as a cat stalking its prey.");
             Check("classes: a grant burst with no level line = a swap = honestly unknown",
                 wc.CurrentClasses == "" && wc.CurrentLevel == 0);
+            wc.Replay($"[{FT(800)}] [27 SHD/ROG/SHM] Thorrak (Ogre)  ZONE: Najena (najena)  ");
+            Check("classes: the next /who relabels after a swap",
+                wc.CurrentClasses == "SHD/ROG/SHM" && wc.CurrentLevel == 27);
+            wc.Replay($"[{FT(900)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(910)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: a lone spellbook refresh (pure-melee swap) also forgets",
+                wc.CurrentClasses == "" && wc.CurrentLevel == 0);
+            wc.Replay($"[{FT(1000)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(1002)}] [30 SHD/BER] Thorrak (Ogre)  ZONE: Najena (najena)  ");
+            wc.Replay($"[{FT(1010)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: a /who inside the suspicion window is not wiped by it",
+                wc.CurrentClasses == "SHD/BER" && wc.CurrentLevel == 30);
+            Check("classes: the /who nag fired once per convicted swap", swaps == 2);
             Check("fight: stance change, cast and interrupt ride the timeline",
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Stance, Ability: "offensive" })
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Ability: "Drowsy", Miss: false })
