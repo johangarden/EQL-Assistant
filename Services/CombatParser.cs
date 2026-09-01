@@ -251,6 +251,13 @@ public sealed class CombatParser
         /// Stance CHANGES during the fight ride Events as <see cref="FightStream.Stance"/>.</summary>
         public string StanceAtStart { get; init; } = "";
 
+        /// <summary>The in-game class combo at the pull ("SHD/ROG/SHM"), from
+        /// the last /who line ("" = never observed, or a swap made it unknown).</summary>
+        public string Classes { get; init; } = "";
+
+        /// <summary>Your level at the pull (0 = unknown).</summary>
+        public int Level { get; init; }
+
         /// <summary>Names of the trigger bars/cells running when the fight began
         /// — the "did I go in buffed" comparison across kills.</summary>
         public List<string> BuffsAtStart { get; init; } = new();
@@ -701,6 +708,40 @@ public sealed class CombatParser
     /// <summary>Raised when the log confirms a stance change (persist it).</summary>
     public event Action<string>? StanceChanged;
 
+    /// <summary>The in-game class combo ("SHD/ROG/SHM") from your last /who
+    /// line — the game's own truth, ahead of the app's loadout name. "" =
+    /// never observed, or invalidated by a detected loadout swap. Seed from
+    /// persistence at startup.</summary>
+    public string CurrentClasses { get; set; } = "";
+
+    /// <summary>Your level from the same /who line (0 = unknown). Level-up
+    /// lines keep it current between /who runs.</summary>
+    public int CurrentLevel { get; set; }
+
+    /// <summary>Raised when the class picture changes — /who, level-up, or a
+    /// swap invalidation (persist it).</summary>
+    public event Action<string, int>? ClassesChanged;
+
+    /// <summary>Raised when a LOADOUT SWAP was detected (grant burst or
+    /// spellbook refresh with no level-up to explain it) — the cue to remind
+    /// the player to /who so their parses stay labeled. Live-only concern:
+    /// the wiring must gate out catch-up replays.</summary>
+    public event Action? SwapDetected;
+
+    // "[26 SHD/ROG/SHM] Thorrak (Ogre) <guild> ZONE: ..." — /who output IS
+    // logged; 1–3 class tags cover EQL's multiclass combos.
+    private static readonly Regex WhoRx = new(
+        @"^\[(?<lvl>\d+) (?<cls>[A-Z]{2,3}(?:/[A-Z]{2,3}){0,2})\] (?<name>[A-Za-z]+) \(",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex LevelUpRx = new(
+        @"^You have gained a level! Welcome to level (?<lvl>\d+)!",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private DateTime _grantBurstStart = DateTime.MinValue;
+    private int _grantCount;
+    private DateTime _swapSuspectAt = DateTime.MinValue;
+
     private static readonly Regex StanceRx = new(
         @"^You assume an? (?<s>.+?) stance\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -730,6 +771,8 @@ public sealed class CombatParser
     private string _charAtStart = "";
     private string _loadoutAtStart = "";
     private string _stanceAtStart = "";
+    private string _classesAtStart = "";
+    private int _levelAtStart;
     private List<string> _buffsAtStart = new();
 
     /// <summary>CC state change on YOU (from the ConditionWatcher — its landing
@@ -1020,10 +1063,63 @@ public sealed class CombatParser
     {
         DateTime time = ExtractTimestamp(rawLine, out string body);
 
+        // A grant burst that no level-up ever explained = a loadout swap: the
+        // class picture is now UNKNOWN (levels are per-combo too) until the
+        // next /who says otherwise.
+        if (_swapSuspectAt != DateTime.MinValue && (time - _swapSuspectAt).TotalSeconds > 5)
+        {
+            _swapSuspectAt = DateTime.MinValue;
+            CurrentClasses = "";
+            CurrentLevel = 0;
+            ClassesChanged?.Invoke(CurrentClasses, CurrentLevel);
+            SwapDetected?.Invoke();
+        }
+
         if (body.StartsWith(ZonePrefix, StringComparison.Ordinal) && body.EndsWith('.'))
         {
             CurrentZone = body[ZonePrefix.Length..^1];
             _enemyDots.Clear(); // hostiles are left behind on zone
+            return;
+        }
+
+        // Your own /who line — "[26 SHD/ROG/SHM] Thorrak (Ogre) ..." — is the
+        // game's own statement of level + class combo; only YOUR line counts.
+        if (body.StartsWith("[", StringComparison.Ordinal)
+            && WhoRx.Match(body) is { Success: true } who
+            && who.Groups["name"].Value.Equals(Self(), StringComparison.OrdinalIgnoreCase))
+        {
+            _swapSuspectAt = DateTime.MinValue; // the /who answered the question
+            CurrentClasses = who.Groups["cls"].Value;
+            CurrentLevel = (int)Amount(who, "lvl");
+            ClassesChanged?.Invoke(CurrentClasses, CurrentLevel);
+            return;
+        }
+
+        // Spell grants arrive in bursts twice: on level-up (with a "You have
+        // gained a level!" line) and on a LOADOUT SWAP (without one). Suspect
+        // a swap at 4+ grants; the level line acquits it.
+        if (body.StartsWith("You have been granted the following ", StringComparison.Ordinal))
+        {
+            if ((time - _grantBurstStart).TotalSeconds > 3) { _grantBurstStart = time; _grantCount = 0; }
+            if (++_grantCount >= 4) _swapSuspectAt = time;
+            return;
+        }
+        // The spellbook refresh prints on swaps too — Johan's hypothesis:
+        // even for pure-melee combos that grant no spell lines. Same jury:
+        // a level line within 5s acquits it, silence convicts.
+        if (body.StartsWith("Your spellbook has been updated!", StringComparison.Ordinal))
+        {
+            _swapSuspectAt = time;
+            return;
+        }
+        if (body.StartsWith("You have gained a level!", StringComparison.Ordinal))
+        {
+            _swapSuspectAt = DateTime.MinValue; // the burst was the level-up's
+            if (LevelUpRx.Match(body) is { Success: true } lvl && CurrentClasses.Length > 0)
+            {
+                CurrentLevel = (int)Amount(lvl, "lvl");
+                ClassesChanged?.Invoke(CurrentClasses, CurrentLevel);
+            }
             return;
         }
 
@@ -1386,6 +1482,8 @@ public sealed class CombatParser
             Character = _charAtStart,
             Loadout = _loadoutAtStart,
             StanceAtStart = _stanceAtStart,
+            Classes = _classesAtStart,
+            Level = _levelAtStart,
             BuffsAtStart = new List<string>(_buffsAtStart),
             Pet = PetName.Trim(),
         };
@@ -1715,6 +1813,8 @@ public sealed class CombatParser
             _charAtStart = Self();
             _loadoutAtStart = LoadoutLookup?.Invoke() ?? "";
             _stanceAtStart = CurrentStance;
+            _classesAtStart = CurrentClasses;
+            _levelAtStart = CurrentLevel;
             _buffsAtStart = ActiveBuffsLookup?.Invoke()?.ToList() ?? new List<string>();
             if (PetName.Trim().Length > 0) _knownPets.Add(PetName.Trim());
         }
@@ -1793,7 +1893,7 @@ public sealed class CombatParser
     /// <summary>Yours if it's the CURRENT pet — or any pet you've EVER had:
     /// a fight fought by a previous summon is still your pet's fight, and
     /// pet names are random enough that a collision is fantasy.</summary>
-    private bool IsPet(string name) =>
+    public bool IsPet(string name) =>
         (!string.IsNullOrWhiteSpace(PetName)
          && name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
         || _knownPets.Contains(name.Trim());

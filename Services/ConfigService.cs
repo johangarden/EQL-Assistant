@@ -263,9 +263,9 @@ public sealed class ConfigService
         if (t.Panel is Panels.Bars or Panels.SelfBuffs or Panels.TargetDebuffs)
         {
             if (string.IsNullOrWhiteSpace(a.Speak))
-                a.Speak = AlertConfig.DefaultWarnPhrase(t.Name);
+                a.Speak = AlertConfig.DefaultWarnPhrase(t.Name, t.OnPet);
             if (string.IsNullOrWhiteSpace(a.FadedSpeak))
-                a.FadedSpeak = AlertConfig.DefaultFadedPhrase(t.Name, t.Category);
+                a.FadedSpeak = AlertConfig.DefaultFadedPhrase(t.Name, t.Category, t.OnPet);
         }
 
         // Keep the legacy flags coherent so an old exe reading this file stays
@@ -516,6 +516,29 @@ public sealed class ConfigService
             || character.Equals("You", StringComparison.OrdinalIgnoreCase)) return;
         var d = LoadLastStances();
         d[character] = stance;
+        try { File.WriteAllText(CharStatePath, JsonSerializer.Serialize(d, WriteOptions)); }
+        catch { /* best-effort */ }
+    }
+
+    // The class combo rides the same file under "<char>#classes" (value
+    // "50 SHD/ROG/SHM") — the stance loader keys on the bare name and never
+    // sees these entries.
+
+    public (string Classes, int Level) LoadLastClasses(string character)
+    {
+        string v = LoadLastStances().GetValueOrDefault(character + "#classes", "");
+        int sp = v.IndexOf(' ');
+        return sp > 0 && int.TryParse(v[..sp], out int lvl)
+            ? (v[(sp + 1)..], lvl)
+            : (v, 0);
+    }
+
+    public void SaveLastClasses(string character, string classes, int level)
+    {
+        if (string.IsNullOrWhiteSpace(character)
+            || character.Equals("You", StringComparison.OrdinalIgnoreCase)) return;
+        var d = LoadLastStances();
+        d[character + "#classes"] = level > 0 ? level + " " + classes : classes;
         try { File.WriteAllText(CharStatePath, JsonSerializer.Serialize(d, WriteOptions)); }
         catch { /* best-effort */ }
     }

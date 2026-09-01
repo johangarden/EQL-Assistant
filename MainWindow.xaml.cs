@@ -144,6 +144,15 @@ public partial class MainWindow : Window
         _conditions.StateChanged += (kind, started, when) => _combat.NoteCondition(kind, started, when);
         _combat.LoadoutLookup = () => _config.ActiveLoadout;
         _combat.StanceChanged += s => _configService.SaveLastStance(_combat.SelfName, s);
+        _combat.ClassesChanged += (c, l) => _configService.SaveLastClasses(_combat.SelfName, c, l);
+        _combat.SwapDetected += () =>
+        {
+            if (_suppressSct) return; // catch-up/reparse replays old swaps
+            OnFlashRequested("Loadout changed — /who to relabel your parses", "#FFA85C");
+            _alerts.Fire(null, System.IO.Path.Combine(
+                Environment.GetEnvironmentVariable("SystemRoot") ?? @"C:\Windows",
+                "Media", "Windows Ding.wav"));
+        };
         // Pet names persist per character — a re-summon gets a NEW name, and
         // forgetting the old ones makes solo fights read as "group".
         _combat.PetDetected += p => _configService.AddKnownPet(_combat.SelfName, p);
@@ -170,6 +179,7 @@ public partial class MainWindow : Window
         _combat.FightArchived += OnFightArchived;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.LearnedDuration = name => _durations.LearnedMaxSeconds(name);
+        _engine.IsPetName = name => _combat.IsPet(name);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;
         _engine.BarReduced += OnBarReduced;
@@ -1051,6 +1061,7 @@ public partial class MainWindow : Window
         // The log only prints stances on CHANGE — seed this character's last
         // remembered one so the first fight of the session isn't "unknown".
         _combat.CurrentStance = _configService.LoadLastStances().GetValueOrDefault(name, "");
+        (_combat.CurrentClasses, _combat.CurrentLevel) = _configService.LoadLastClasses(name);
         _combat.SeedKnownPets(_configService.LoadKnownPets(name));
         Log.Info($"Combat parser character name: '{name}'" +
                  (string.IsNullOrWhiteSpace(_config.CharacterName) ? " (auto-detected from log filename)" : ""));

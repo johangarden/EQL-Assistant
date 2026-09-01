@@ -332,6 +332,7 @@ public sealed class SpellLibrary
         foreach (var t in triggers)
         {
             if (!t.Id.StartsWith("lib-", StringComparison.Ordinal)) continue;
+            if (t.OnPet) continue; // pet triggers own their third-person patterns
             if (FindByName(t.Name) is not { } s) continue;
             bool touched = false;
 
@@ -399,6 +400,61 @@ public sealed class SpellLibrary
                     AtSeconds = 15,
                     WarnMode = AlertConfig.ModeSpeak,
                     Speak = AlertConfig.DefaultWarnPhrase(s.Name),
+                    FadedEnabled = false,
+                }
+                : null,
+        };
+        ConfigService.CompileOne(t);
+        return t;
+    }
+
+    /// <summary>Can this spell be tracked on the pet? Needs the third-person
+    /// landing sentence ("Someone feels much faster.") — that's the only line
+    /// that names the pet when the buff lands on it.</summary>
+    public static bool HasPetLanding(Spell s) =>
+        s.Bucket == "Buff" && !s.Illusion
+        && s.CastOnOther.StartsWith("Someone ", StringComparison.Ordinal)
+        && !JunkMessage(s.CastOnOther);
+
+    /// <summary>Pet countdown bar: starts on the spell's third-person landing
+    /// with the target captured ("Lonaner feels much faster." → bar
+    /// "Spirit of Wolf — Lonaner"), cleared by the ANONYMOUS wear-off line the
+    /// game prints even for buffs on others ("The vortex of shadows fades." —
+    /// proven in real logs by the pet's own Shadow Vortex). The engine gates
+    /// the landing to known pet names and anchors it to your begin-cast or the
+    /// pet's own.</summary>
+    public static TriggerDefinition? PetBarTrigger(Spell s, bool spokenWarning)
+    {
+        if (s.Name.Length == 0 || !HasPetLanding(s)) return null;
+        // "Someone feels much faster." → ^(?<target>.+?)\ feels\ much\ faster\.
+        // (possessive scrape forms "Someone 's blood boils." keep their space).
+        string escaped = Regex.Escape(s.CastOnOther);
+        string pattern = "^(?<target>.+?)" + escaped["Someone".Length..];
+        var t = new TriggerDefinition
+        {
+            Id = "lib-pet-" + Slug(s.Name),
+            Name = s.Name,
+            Category = "Pet",
+            OnPet = true,
+            Panel = Panels.Bars,
+            StartPattern = pattern,
+            // Only an IMPERSONAL wear-off ("The vortex of shadows fades.")
+            // prints when the buff fades off the pet — a second-person one
+            // ("You feel yourself slow down.") only fires for you, and waiting
+            // for it would gray the bar forever. No usable fade = the bar runs
+            // on its estimate alone.
+            EndPattern = s.WearsOff.Length > 0
+                         && !s.WearsOff.StartsWith("You", StringComparison.OrdinalIgnoreCase)
+                ? Regex.Escape(s.WearsOff) : null,
+            DurationSeconds = s.DurationSec > 0 ? s.DurationSec : 60,
+            RefreshOnRetrigger = true,
+            Alert = spokenWarning
+                ? new AlertConfig
+                {
+                    WarnEnabled = true,
+                    AtSeconds = 15,
+                    WarnMode = AlertConfig.ModeSpeak,
+                    Speak = AlertConfig.DefaultWarnPhrase(s.Name, onPet: true),
                     FadedEnabled = false,
                 }
                 : null,
