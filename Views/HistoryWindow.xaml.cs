@@ -50,6 +50,11 @@ public partial class HistoryWindow : Window
         _soloMode = soloMode ?? (() => false);
         _saved = config.SavedFights; // the SHARED list — raid auto-keep writes here too
 
+        // The report consults the live pet ledger: a fresh summon is a
+        // stranger until it first speaks, and fights archived in that gap
+        // need the render-time correction.
+        TimelinePane.IsOwnPet = name => _parser.IsKnownPet(name);
+
         FightsList.SelectionChanged += (_, _) => BuildColumns();
 
         // New fights finish while the window is open — keep the list in sync.
@@ -153,7 +158,9 @@ public partial class HistoryWindow : Window
     /// farming the next camp in logging range never counts. Legacy records
     /// (before the Character stamp) fall back to the row heuristic.</summary>
     private bool IsGroupFight(CombatParser.FightRecord r) =>
-        r.Allies.Count > 0
+        // An "ally" the ledger NOW knows was your own pet (it hadn't spoken
+        // yet when the fight archived) doesn't make a group.
+        r.Allies.Any(a => !_parser.IsKnownPet(a))
         || (r.Character.Length == 0
             && (r.Damage.Any(x => IsOtherPlayer(r, x)) || r.Healing.Any(x => IsOtherPlayer(r, x))));
 

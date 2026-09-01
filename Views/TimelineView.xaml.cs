@@ -25,6 +25,11 @@ public partial class TimelineView : UserControl
     private FightRecord? _rec;
     private IReadOnlyList<string> _drops = Array.Empty<string>();
 
+    /// <summary>The known-pets oracle (wired by the History window): a fresh
+    /// summon is a stranger until it first speaks, so fights archived before
+    /// that moment carry it as an "ally" — at render time we know better.</summary>
+    public Func<string, bool>? IsOwnPet { get; set; }
+
     private static readonly Brush LaneBg = Freeze(Color.FromArgb(0x12, 0xFF, 0xFF, 0xFF));
     private static readonly Brush AxisFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
     private static readonly Brush MissFg = Freeze(Color.FromArgb(0x77, 0x8F, 0xA6, 0xC4));
@@ -112,8 +117,9 @@ public partial class TimelineView : UserControl
             AddChip($"Buffs up {rec.BuffsAtStart.Count}", string.Join(" · ", rec.BuffsAtStart));
         foreach (var (mob, lvl) in rec.EnemyLevels)
             AddChip($"{mob} · Lvl {lvl}");
-        if (rec.Allies.Count > 0)
-            AddChip($"With: {string.Join(" · ", rec.Allies)}");
+        var allies = rec.Allies.Where(a => IsOwnPet?.Invoke(a) != true).ToList();
+        if (allies.Count > 0)
+            AddChip($"With: {string.Join(" · ", allies)}");
         if (rec.Zone.Length > 0) AddChip(rec.Zone);
         if (_drops.Count > 0)
             AddChip($"Dropped: {string.Join(" · ", _drops)}");
@@ -147,7 +153,7 @@ public partial class TimelineView : UserControl
         if (rec.Pet.Length > 0) petNames.Add(rec.Pet);
         bool IsSelfRow(Row r) => r.Name.Equals(selfName, StringComparison.OrdinalIgnoreCase)
                                  || r.Name.Equals("You", StringComparison.OrdinalIgnoreCase);
-        bool IsPetRow(Row r) => petNames.Contains(r.Name);
+        bool IsPetRow(Row r) => petNames.Contains(r.Name) || IsOwnPet?.Invoke(r.Name) == true;
 
         var friendly = rec.Damage.Where(r => !r.Enemy).ToList();
         double selfTotal = friendly.Where(IsSelfRow).Sum(r => r.Total);
