@@ -223,6 +223,12 @@ public partial class App : Application
             ring.Show();
             ring.UpdateLayout();
             ring.Close();
+
+            // The mote ticker builds and stays hidden with no live stint.
+            var ticker = new Views.MoteTickerWindow(new LootTracker(cs), cs, 1.0);
+            ticker.Show();
+            ticker.UpdateLayout();
+            ticker.Close();
             try { File.Delete(helperProg); } catch { /* temp */ }
 
             // The Sheet tab renders the doll + detail pane from a real-format
