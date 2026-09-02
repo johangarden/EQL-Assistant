@@ -240,11 +240,27 @@
                             <Border Margin="0,0,0,4" Padding="9,5" CornerRadius="5"
                                     Background="{StaticResource Brush.Surface}"
                                     BorderBrush="{StaticResource Brush.Border}" BorderThickness="1">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Main}" Foreground="{StaticResource Brush.TextDim}"
-                                               FontWeight="SemiBold" FontSize="12"/>
-                                    <TextBlock Text="{Binding Count}" Foreground="#81C784"
-                                               FontWeight="Bold" FontSize="12" Margin="8,0,0,0"/>
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Cursor="Hand" Background="Transparent"
+                                                MouseLeftButtonDown="House_Toggle" Tag="{Binding Main}">
+                                        <TextBlock Text="{Binding Arrow}" Foreground="{StaticResource Brush.Gold}"
+                                                   FontSize="11" Margin="0,1,6,0"/>
+                                        <TextBlock Text="{Binding Main}" Foreground="{StaticResource Brush.TextDim}"
+                                                   FontWeight="SemiBold" FontSize="12"/>
+                                        <TextBlock Text="{Binding Count}" Foreground="#81C784"
+                                                   FontWeight="Bold" FontSize="12" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                    <ItemsControl ItemsSource="{Binding Locations}"
+                                                  Visibility="{Binding RowsVisibility}"
+                                                  Margin="17,4,0,1">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}"
+                                                           Foreground="{StaticResource Brush.TextHint}"
+                                                           FontSize="11" TextWrapping="Wrap" Margin="0,1,0,0"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>

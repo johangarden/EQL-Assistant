@@ -314,31 +314,67 @@ public partial class TimelineView : UserControl
             || (r.EndedAt == rec.EndedAt && r.Label == rec.Label);
 
         var stack = new StackPanel();
+        string tier = ZoneTierLabel(rec.Zone);
         stack.Children.Add(TileLabel(
-            $"TREND · {rec.Label.ToUpperInvariant()} · {sibs.Count} FIGHTS RECORDED"
+            $"TREND · {rec.Label.ToUpperInvariant()}{(tier.Length > 0 ? " · " + tier : "")}"
+            + $" · {sibs.Count} FIGHTS RECORDED"
             + (sibs.Count > shown.Count ? $" · LAST {shown.Count} SHOWN" : "")));
 
-        // Bars scale to the slowest kill (or the best dummy parse).
+        // Bars scale to the slowest kill (or the best dummy parse). ONE grid
+        // for header + all rows, so every bar shares the same track — rows
+        // may lack a combo chip, and per-row grids let those bars stretch
+        // further right, which made lengths incomparable (Johan, 1 Sep).
         double barMax = dummy ? shown.Max(CombinedDps) : shown.Max(r => r.DurationSeconds);
         if (barMax <= 0) barMax = 1;
 
+        var grid = new Grid { Margin = new Thickness(0, 4, 0, 0) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MinWidth = 90 });
+
+        void HeadCell(string text, int col, bool right)
+        {
+            var tb = new TextBlock
+            {
+                Text = text, FontSize = 9, Foreground = AxisFg, FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 0, col is 2 or 3 ? 8 : 0, 3),
+                HorizontalAlignment = right ? HorizontalAlignment.Right : HorizontalAlignment.Left,
+            };
+            Grid.SetRow(tb, 0);
+            Grid.SetColumn(tb, col);
+            grid.Children.Add(tb);
+        }
+        grid.RowDefinitions.Add(new RowDefinition());
+        HeadCell("WHEN", 0, right: false);
+        HeadCell(dummy ? "PARSE DPS (longer = better)" : "KILL TIME (shorter = faster)", 1, right: false);
+        HeadCell("DUR", 2, right: true);
+        HeadCell("DPS", 3, right: true);
+        HeadCell("COMBO", 4, right: false);
+
+        int rowIx = 1;
         foreach (var r in shown)
         {
             bool cur = IsThis(r);
-            var row = new Grid { Margin = new Thickness(0, 2, 0, 0) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition());
+
+            if (cur)
+            {
+                var hl = new Border { Background = TrendRowBg, CornerRadius = new CornerRadius(3) };
+                Grid.SetRow(hl, rowIx);
+                Grid.SetColumnSpan(hl, 5);
+                grid.Children.Add(hl);
+            }
 
             var date = new TextBlock
             {
                 Text = r.EndedAt.ToString("dd MMM"), FontSize = 10.5, Foreground = ChipFg,
-                VerticalAlignment = VerticalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 1, 0, 1),
             };
+            Grid.SetRow(date, rowIx);
             Grid.SetColumn(date, 0);
-            row.Children.Add(date);
+            grid.Children.Add(date);
 
             double frac = Math.Clamp((dummy ? CombinedDps(r) : r.DurationSeconds) / barMax, 0.02, 1);
             var barHost = new Grid
@@ -350,8 +386,9 @@ public partial class TimelineView : UserControl
             barHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1 - frac, GridUnitType.Star) });
             var bar = new Border { Background = cur ? TrendGold : TrendBar, CornerRadius = new CornerRadius(2) };
             barHost.Children.Add(bar);
+            Grid.SetRow(barHost, rowIx);
             Grid.SetColumn(barHost, 1);
-            row.Children.Add(barHost);
+            grid.Children.Add(barHost);
 
             var durTxt = new TextBlock
             {
@@ -359,8 +396,9 @@ public partial class TimelineView : UserControl
                 HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, 8, 0),
                 VerticalAlignment = VerticalAlignment.Center,
             };
+            Grid.SetRow(durTxt, rowIx);
             Grid.SetColumn(durTxt, 2);
-            row.Children.Add(durTxt);
+            grid.Children.Add(durTxt);
 
             var dpsTxt = new TextBlock
             {
@@ -368,8 +406,9 @@ public partial class TimelineView : UserControl
                 HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, 10, 0),
                 VerticalAlignment = VerticalAlignment.Center,
             };
+            Grid.SetRow(dpsTxt, rowIx);
             Grid.SetColumn(dpsTxt, 3);
-            row.Children.Add(dpsTxt);
+            grid.Children.Add(dpsTxt);
 
             string combo = ComboLabel(r);
             if (combo.Length > 0)
@@ -379,22 +418,18 @@ public partial class TimelineView : UserControl
                     Background = Freeze(Color.FromRgb(0x23, 0x2B, 0x40)),
                     CornerRadius = new CornerRadius(7),
                     Padding = new Thickness(7, 0, 7, 1),
+                    Margin = new Thickness(0, 1, 2, 1),
+                    HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Center,
                     Child = new TextBlock { Text = combo, FontSize = 10, Foreground = CastFg },
                 };
+                Grid.SetRow(chip, rowIx);
                 Grid.SetColumn(chip, 4);
-                row.Children.Add(chip);
+                grid.Children.Add(chip);
             }
-
-            if (cur)
-                stack.Children.Add(new Border
-                {
-                    Background = TrendRowBg, CornerRadius = new CornerRadius(3),
-                    Padding = new Thickness(3, 1, 3, 2), Margin = new Thickness(-3, 1, -3, 0),
-                    Child = row,
-                });
-            else stack.Children.Add(row);
+            rowIx++;
         }
+        stack.Children.Add(grid);
 
         var verdicts = TrendVerdicts(sibs, rec, dummy);
         if (verdicts.Count > 0)

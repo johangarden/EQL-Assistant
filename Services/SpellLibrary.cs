@@ -408,28 +408,51 @@ public sealed class SpellLibrary
         return t;
     }
 
-    /// <summary>Can this spell be tracked on the pet? Needs the third-person
-    /// landing sentence ("Someone feels much faster.") — that's the only line
-    /// that names the pet when the buff lands on it.</summary>
+    /// <summary>Can this spell be tracked on the pet? Needs a usable
+    /// third-person landing sentence — the only line that names the pet when
+    /// the buff lands on it.</summary>
     public static bool HasPetLanding(Spell s) =>
-        s.Bucket == "Buff" && !s.Illusion
-        && s.CastOnOther.StartsWith("Someone ", StringComparison.Ordinal)
-        && !JunkMessage(s.CastOnOther);
+        s.Bucket == "Buff" && !s.Illusion && PetLandingPattern(s) is not null;
+
+    /// <summary>The third-person landing as a regex with the target captured,
+    /// or null when the scrape has nothing usable. The scrape's placeholder
+    /// subject varies — "Someone growls…", "Target growls…" (Spirit of the
+    /// Puma), "Player…", possessives ("Someone's skin…"), and subjectless
+    /// lines ("coats … in ice") where the game prints the name first.</summary>
+    public static string? PetLandingPattern(Spell s)
+    {
+        string o = s.CastOnOther.Trim();
+        if (o.Length < 4 || JunkMessage(o)) return null;
+        foreach (var ph in new[] { "Someone's ", "Target's ", "Player's " })
+            if (o.StartsWith(ph, StringComparison.Ordinal))
+                return "^(?<target>.+?)" + Regex.Escape("'s " + o[ph.Length..]);
+        foreach (var ph in new[] { "Someone ", "Target ", "Player " })
+            if (o.StartsWith(ph, StringComparison.Ordinal))
+                return "^(?<target>.+?) " + Regex.Escape(o[ph.Length..]);
+        if (o.StartsWith("'s ", StringComparison.Ordinal))
+            return "^(?<target>.+?)" + Regex.Escape(o);
+        if (char.IsLower(o[0])) // subjectless scrape line — name leads in game
+            return "^(?<target>.+?) " + Regex.Escape(o);
+        return null; // an unrecognized full sentence — better no pill than a bar that never fires
+    }
+
+    /// <summary>The NAMED pet wear-off the game prints (confirmed in real
+    /// logs, 1 Sep 2026): "Your pet's Spirit of the Puma spell has worn off."
+    /// — unambiguous, and it prints even for spells whose own wear-off text
+    /// is second-person or missing.</summary>
+    public static string PetWornOffPattern(string spellName) =>
+        @"^Your pet's " + Regex.Escape(spellName.Trim())
+        + @"(?: [IVX]{1,7})? spell has worn off\.";
 
     /// <summary>Pet countdown bar: starts on the spell's third-person landing
-    /// with the target captured ("Lonaner feels much faster." → bar
-    /// "Spirit of Wolf — Lonaner"), cleared by the ANONYMOUS wear-off line the
-    /// game prints even for buffs on others ("The vortex of shadows fades." —
-    /// proven in real logs by the pet's own Shadow Vortex). The engine gates
-    /// the landing to known pet names and anchors it to your begin-cast or the
-    /// pet's own.</summary>
+    /// with the target captured ("Vekn growls with the spirit of the puma." →
+    /// bar "Spirit of the Puma — Vekn"), cleared by the named pet wear-off
+    /// line. The engine gates the landing to known pet names and anchors it
+    /// to your begin-cast or the pet's own.</summary>
     public static TriggerDefinition? PetBarTrigger(Spell s, bool spokenWarning)
     {
         if (s.Name.Length == 0 || !HasPetLanding(s)) return null;
-        // "Someone feels much faster." → ^(?<target>.+?)\ feels\ much\ faster\.
-        // (possessive scrape forms "Someone 's blood boils." keep their space).
-        string escaped = Regex.Escape(s.CastOnOther);
-        string pattern = "^(?<target>.+?)" + escaped["Someone".Length..];
+        string pattern = PetLandingPattern(s)!;
         var t = new TriggerDefinition
         {
             Id = "lib-pet-" + Slug(s.Name),
@@ -438,14 +461,7 @@ public sealed class SpellLibrary
             OnPet = true,
             Panel = Panels.Bars,
             StartPattern = pattern,
-            // Only an IMPERSONAL wear-off ("The vortex of shadows fades.")
-            // prints when the buff fades off the pet — a second-person one
-            // ("You feel yourself slow down.") only fires for you, and waiting
-            // for it would gray the bar forever. No usable fade = the bar runs
-            // on its estimate alone.
-            EndPattern = s.WearsOff.Length > 0
-                         && !s.WearsOff.StartsWith("You", StringComparison.OrdinalIgnoreCase)
-                ? Regex.Escape(s.WearsOff) : null,
+            EndPattern = PetWornOffPattern(s.Name),
             DurationSeconds = s.DurationSec > 0 ? s.DurationSec : 60,
             RefreshOnRetrigger = true,
             Alert = spokenWarning

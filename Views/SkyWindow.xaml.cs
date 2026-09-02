@@ -100,12 +100,13 @@ public partial class SkyWindow : Window
             _sky.SetTracked(vm.Quest, !vm.Tracked);
     }
 
-    public SkyWindow(SkyQuests sky)
+    public SkyWindow(SkyQuests sky, Func<string?>? inventoryDumpFile = null)
     {
         InitializeComponent();
         DialogPlacement.Persist(this, "sky");
         WindowTheme.ApplyDark(this);
         _sky = sky;
+        _dumpFile = inventoryDumpFile;
 
         // Slots split into tokens — "FACE BACK" filters under both FACE and BACK.
         SlotBox.ItemsSource = new[] { "All slots" }
@@ -201,6 +202,14 @@ public partial class SkyWindow : Window
 
     /// <summary>Isle/housekeeping row VMs (simple text rows).</summary>
     public sealed record LineVm(string Main, string Count, string Sub = "");
+    /// <summary>Housekeeping row: the spare item, foldable to WHERE it sits
+    /// (per the last /outputfile inventory snapshot).</summary>
+    public sealed record HouseVm(string Main, string Count, bool Open, List<string> Locations)
+    {
+        public string Arrow => Open ? "▾" : "▸";
+        public Visibility RowsVisibility => Open ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     public sealed record IsleVm(string Isle, string NeedText, bool Open, List<LineVm> Rows)
     {
         public string Arrow => Open ? "▾" : "▸";
@@ -337,10 +346,65 @@ public partial class SkyWindow : Window
         SummaryText.Text = $"{rows.Sum(r => r.Missing)} items still to collect · {isles.Count} isles";
     }
 
+    // ---- where a spare actually sits: the inventory snapshot ------------------
+
+    private readonly Func<string?>? _dumpFile;
+    private readonly HashSet<string> _houseOpen = new(StringComparer.OrdinalIgnoreCase);
+    private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _dumpCache;
+
+    /// <summary>The parsed /outputfile inventory snapshot, re-read only when
+    /// the file on disk changed. Null = no dump found.</summary>
+    private List<InventoryStore.CarryRow>? DumpRows(out string stamp)
+    {
+        stamp = "";
+        string? path = _dumpFile?.Invoke();
+        if (path is null || !System.IO.File.Exists(path)) return null;
+        var t = System.IO.File.GetLastWriteTime(path);
+        if (_dumpCache is not { } c || c.Path != path || c.Stamp != t)
+        {
+            try
+            {
+                var dump = InventoryStore.Parse(System.IO.File.ReadAllText(path));
+                _dumpCache = (path, t, InventoryStore.CarryAll(dump).Rows);
+            }
+            catch { return null; }
+        }
+        stamp = _dumpCache!.Value.Stamp.ToString("dd MMM HH:mm");
+        return _dumpCache.Value.Rows;
+    }
+
+    private void House_Toggle(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string item) return;
+        if (!_houseOpen.Add(item)) _houseOpen.Remove(item);
+        RefreshHousekeeping();
+    }
+
+    private List<string> HouseLocations(string item,
+        List<InventoryStore.CarryRow>? inv, string stamp)
+    {
+        if (inv is null)
+            return new List<string>
+            { "Where it sits: no inventory snapshot found — run /outputfile inventory in game." };
+        var hits = inv.Where(r => r.Name.Equals(item, StringComparison.OrdinalIgnoreCase))
+            .Select(r => r.Count > 1 ? $"{r.Location} · ×{r.Count}" : r.Location)
+            .ToList();
+        if (hits.Count == 0)
+            hits.Add(item.StartsWith("Wind Rune", StringComparison.OrdinalIgnoreCase)
+                ? "Currency tab (runes never appear in the inventory dump)."
+                : "Not in the inventory snapshot — looted after it, or already gone.");
+        hits.Add($"— snapshot from {(stamp.Length > 0 ? stamp : "?")}");
+        return hits;
+    }
+
     private void RefreshHousekeeping()
     {
+        var inv = DumpRows(out string stamp);
         var rows = _sky.Surplus()
-            .Select(s => new LineVm(s.Item, $"×{s.Surplus} spare"))
+            .Select(s => new HouseVm(s.Item, $"×{s.Surplus} spare",
+                _houseOpen.Contains(s.Item),
+                _houseOpen.Contains(s.Item)
+                    ? HouseLocations(s.Item, inv, stamp) : new List<string>()))
             .ToList();
         HouseControl.ItemsSource = rows;
         HouseHint.Text = rows.Count > 0

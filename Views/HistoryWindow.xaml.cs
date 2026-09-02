@@ -117,6 +117,9 @@ public partial class HistoryWindow : Window
     private IReadOnlyList<CombatParser.FightRecord> SiblingsFor(CombatParser.FightRecord rec) =>
         _shown.Select(e => e.Rec)
             .Where(r => r.Label.Equals(rec.Label, StringComparison.OrdinalIgnoreCase)
+                // A T4 kill against a T0 kill is apples and oranges — the
+                // instance tier is part of the mob's identity.
+                && CombatParser.ZoneTier(r.Zone) == CombatParser.ZoneTier(rec.Zone)
                 && (r.Character.Length == 0 || rec.Character.Length == 0
                     || r.Character.Equals(rec.Character, StringComparison.OrdinalIgnoreCase)))
             .OrderBy(r => r.EndedAt)
@@ -184,8 +187,13 @@ public partial class HistoryWindow : Window
 
     /// <summary>Row = time + mob only; the day lives in the group header and
     /// duration/dps/zone in the tooltip (and the details card).</summary>
-    private string RowText(Entry e) =>
-        $"{(e.Saved ? "★ " : "")}{e.Rec.EndedAt:HH:mm}  {e.Rec.Label}{(IsGroupFight(e.Rec) ? "   · group" : "")}";
+    private string RowText(Entry e)
+    {
+        string tier = CombatParser.ZoneTierLabel(e.Rec.Zone);
+        return $"{(e.Saved ? "★ " : "")}{e.Rec.EndedAt:HH:mm}  {e.Rec.Label}"
+               + (tier.Length > 0 ? $"  · {tier}" : "")
+               + (IsGroupFight(e.Rec) ? "   · group" : "");
+    }
 
     private static string DayText(DateTime d) =>
         d.Date == DateTime.Today ? "Today"
@@ -410,7 +418,7 @@ public partial class HistoryWindow : Window
         FightsView.Visibility = parses ? Visibility.Collapsed : Visibility.Visible;
         ParsesView.Visibility = parses ? Visibility.Visible : Visibility.Collapsed;
         HintText.Text = parses
-            ? "Every recorded fight (kept + this session) grouped by mob, newest first. Δ compares each row to the one before it on the same mob — DPS for target dummies, kill time for everything else; the best value per mob reads green. Click a row to open that fight's report."
+            ? "Every recorded fight (kept + this session) grouped by mob and instance tier (a T4 kill never compares against a T0 one), newest first. Δ compares each row to the one before it on the same mob — DPS for target dummies, kill time for everything else; the best value per mob reads green. Click a row to open that fight's report."
             : "A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 50). Select one for details — the breakdown, the timeline and ⚡ Analyse. Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's.";
     }
 
@@ -435,8 +443,13 @@ public partial class HistoryWindow : Window
         ParsesHost.Children.Clear();
         string q = ParseSearch.Text.Trim();
 
+        // Tier joins the mob's identity: a T4 Nagafen compares only to other
+        // T4 Nagafens (drops and difficulty both scale with the tier).
         var groups = _shown
-            .GroupBy(e => e.Rec.Label, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(e => e.Rec.Label.ToUpperInvariant()
+                          + (CombatParser.ZoneTierLabel(e.Rec.Zone) is { Length: > 0 } t
+                              ? " · " + t : ""),
+                StringComparer.Ordinal)
             .Where(g => q.Length == 0 || g.Key.Contains(q, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(g => g.Count() > 1) // mobs with history first
             .ThenByDescending(g => g.Max(e => e.Rec.EndedAt))
@@ -480,7 +493,7 @@ public partial class HistoryWindow : Window
                 FontSize = 10.5, FontWeight = FontWeights.SemiBold,
                 Margin = new Thickness(2, 12, 0, 3),
             };
-            head.Inlines.Add(new System.Windows.Documents.Run(g.Key.ToUpperInvariant())
+            head.Inlines.Add(new System.Windows.Documents.Run(g.Key)
             { Foreground = ParseGroupFg });
             head.Inlines.Add(new System.Windows.Documents.Run(
                 $"   {asc.Count} fight(s) · best " + (dummy

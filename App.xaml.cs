@@ -305,23 +305,38 @@ public partial class App : Application
                 Name = "Alacrity", Bucket = "Buff",
                 CastOnYou = "You feel much faster.",
                 CastOnOther = "Someone feels much faster.",
-                WearsOff = "You feel yourself slow down.", // second-person: unusable on the pet
+                WearsOff = "You feel yourself slow down.",
                 DurationSec = 900,
             };
             var vortexSpell = new SpellLibrary.Spell
             {
                 Name = "Shadow Vortex", Bucket = "Buff",
                 CastOnOther = "Someone is protected by a vortex of shadows.",
-                WearsOff = "The vortex of shadows fades.", // impersonal: prints for the pet too
+                WearsOff = "The vortex of shadows fades.",
                 DurationSec = 90,
+            };
+            // The scrape's placeholder subject varies — Spirit of the Puma
+            // says "Target growls…" (the bug Johan caught 1 Sep 2026).
+            var pumaSpell = new SpellLibrary.Spell
+            {
+                Name = "Spirit of the Puma", Bucket = "Buff",
+                CastOnYou = "You begin to snarl as your features become feline.",
+                CastOnOther = "Target growls with the spirit of the puma.",
+                WearsOff = "The spirit of the puma departs.",
+                DurationSec = 0,
             };
             var petAlac = SpellLibrary.PetBarTrigger(alacSpell, spokenWarning: true);
             var petVortex = SpellLibrary.PetBarTrigger(vortexSpell, spokenWarning: false);
+            var petPuma = SpellLibrary.PetBarTrigger(pumaSpell, spokenWarning: false);
             Check("pet trigger: generated with OnPet, Pet category and the pet phrase",
                 petAlac is { OnPet: true, Category: "Pet" }
                 && petAlac.Alert?.Speak == "Your pet's Alacrity is about to fall");
-            Check("pet trigger: a second-person wear-off is dropped, an impersonal one kept",
-                petAlac!.EndPattern is null && petVortex!.EndPattern is not null);
+            Check("pet trigger: every pet bar fades on the NAMED pet wear-off line",
+                petAlac!.EndPattern == @"^Your pet's Alacrity(?: [IVX]{1,7})? spell has worn off\."
+                && petVortex!.EndPattern is not null);
+            Check("pet trigger: a 'Target …' scrape placeholder works too (Spirit of the Puma)",
+                petPuma is not null
+                && petPuma.StartRegex!.IsMatch("Vekn growls with the spirit of the puma."));
 
             var pcfg = new Models.AppConfig();
             pcfg.Triggers.Add(petAlac);
@@ -354,11 +369,11 @@ public partial class App : Application
             Check("pet buff: your own vortex bar runs beside the pet's",
                 pe.Bars.Count(b => b.Name.StartsWith("Shadow Vortex", StringComparison.Ordinal)) == 2);
             pe.ProcessLine($"[{now}] The vortex of shadows fades.");
-            Check("pet buff: the anonymous fade takes YOUR bar first, the pet's stays",
+            Check("pet buff: the impersonal fade takes YOUR bar only, the pet's stays",
                 pe.Bars.Any(b => b.Name == "Shadow Vortex — Lonaner")
                 && !pe.Bars.Any(b => b.Name == "Shadow Vortex"));
-            pe.ProcessLine($"[{now}] The vortex of shadows fades.");
-            Check("pet buff: the next fade closes the pet's bar",
+            pe.ProcessLine($"[{now}] Your pet's Shadow Vortex spell has worn off.");
+            Check("pet buff: the NAMED pet wear-off closes the pet's bar",
                 !pe.Bars.Any(b => b.Name.StartsWith("Shadow Vortex", StringComparison.Ordinal)));
             pe.ProcessLine($"[{now}] You are protected by a vortex of shadows.");
             pe.ProcessLine($"[{now}] You have been slain by a gnoll!");
@@ -440,6 +455,17 @@ public partial class App : Application
             Check("classes: a /who inside the suspicion window is not wiped by it",
                 wc.CurrentClasses == "SHD/BER" && wc.CurrentLevel == 30);
             Check("classes: the /who nag fired once per convicted swap", swaps == 2);
+
+            // ---- instance tiers ride the zone name (Johan, 1 Sep 2026):
+            // "Nagafen's Lair - Solo 4 (Refined)" = tier 4; no suffix = base.
+            Check("tiers: the zone name's digit+mode is the tier",
+                CombatParser.ZoneTier("Nagafen's Lair - Solo 4 (Refined)") == 4
+                && CombatParser.ZoneTier("Befallen 3 (Fused)") == 3
+                && CombatParser.ZoneTierLabel("The Ruins of Old Guk 1 (Awakened)") == "T1");
+            Check("tiers: base zones, solo instances and blanks are tier 0",
+                CombatParser.ZoneTier("Nagafen's Lair") == 0
+                && CombatParser.ZoneTier("Nagafen's Lair - Solo") == 0
+                && CombatParser.ZoneTierLabel("") == "");
             Check("fight: stance change, cast and interrupt ride the timeline",
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Stance, Ability: "offensive" })
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Ability: "Drowsy", Miss: false })

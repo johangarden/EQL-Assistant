@@ -1804,7 +1804,17 @@ public partial class MainWindow : Window
     {
         if (_skyWindow is null)
         {
-            _skyWindow = new Views.SkyWindow(_skyQuests);
+            _skyWindow = new Views.SkyWindow(_skyQuests, () =>
+            {
+                // The housekeeping fold-outs read the game's own inventory
+                // dump for WHERE a spare sits — same file the Character
+                // window follows.
+                string logPath = _watcher?.CurrentPath ?? "";
+                if (logPath.Length == 0) return null;
+                var (name, server) = InventoryStore.ParseLogName(logPath);
+                return InventoryStore.FindDumpFile(
+                    InventoryStore.EqRootOf(logPath), name, server);
+            });
             _skyWindow.Closed += (_, _) => _skyWindow = null;
             _skyWindow.Show();
         }
