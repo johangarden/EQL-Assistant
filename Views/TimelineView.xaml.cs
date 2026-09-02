@@ -314,8 +314,10 @@ public partial class TimelineView : UserControl
             || (r.EndedAt == rec.EndedAt && r.Label == rec.Label);
 
         var stack = new StackPanel();
+        string tier = ZoneTierLabel(rec.Zone);
         stack.Children.Add(TileLabel(
-            $"TREND · {rec.Label.ToUpperInvariant()} · {sibs.Count} FIGHTS RECORDED"
+            $"TREND · {rec.Label.ToUpperInvariant()}{(tier.Length > 0 ? " · " + tier : "")}"
+            + $" · {sibs.Count} FIGHTS RECORDED"
             + (sibs.Count > shown.Count ? $" · LAST {shown.Count} SHOWN" : "")));
 
         // Bars scale to the slowest kill (or the best dummy parse). ONE grid

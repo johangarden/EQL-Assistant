@@ -1799,6 +1799,24 @@ public sealed class CombatParser
         }
     }
 
+    // "Nagafen's Lair - Solo 4 (Refined)" — instanced zones carry their TIER
+    // as a small digit + mode name (1 Awakened · 2 Adaptive · 3 Fused ·
+    // 4 Refined; no suffix = tier 0). The "creating instance Befallen 1244"
+    // number is unrelated (arbitrary instance id, no parenthesis).
+    private static readonly Regex ZoneTierRx = new(
+        @" (?<n>\d+) \([A-Za-z]+\)\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>The instance tier baked into a zone name (0 = base/untiered).</summary>
+    public static int ZoneTier(string zone) =>
+        ZoneTierRx.Match(zone ?? "") is { Success: true } m
+            ? int.Parse(m.Groups["n"].Value, CultureInfo.InvariantCulture)
+            : 0;
+
+    /// <summary>Compact tier badge for lists ("T3"; "" for base zones).</summary>
+    public static string ZoneTierLabel(string zone) =>
+        ZoneTier(zone) is > 0 and var t ? "T" + t : "";
+
     /// <summary>First combat line after an idle fight wipes it and starts fresh.</summary>
     private void Touch(DateTime time)
     {

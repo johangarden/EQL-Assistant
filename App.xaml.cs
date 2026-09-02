@@ -455,6 +455,17 @@ public partial class App : Application
             Check("classes: a /who inside the suspicion window is not wiped by it",
                 wc.CurrentClasses == "SHD/BER" && wc.CurrentLevel == 30);
             Check("classes: the /who nag fired once per convicted swap", swaps == 2);
+
+            // ---- instance tiers ride the zone name (Johan, 1 Sep 2026):
+            // "Nagafen's Lair - Solo 4 (Refined)" = tier 4; no suffix = base.
+            Check("tiers: the zone name's digit+mode is the tier",
+                CombatParser.ZoneTier("Nagafen's Lair - Solo 4 (Refined)") == 4
+                && CombatParser.ZoneTier("Befallen 3 (Fused)") == 3
+                && CombatParser.ZoneTierLabel("The Ruins of Old Guk 1 (Awakened)") == "T1");
+            Check("tiers: base zones, solo instances and blanks are tier 0",
+                CombatParser.ZoneTier("Nagafen's Lair") == 0
+                && CombatParser.ZoneTier("Nagafen's Lair - Solo") == 0
+                && CombatParser.ZoneTierLabel("") == "");
             Check("fight: stance change, cast and interrupt ride the timeline",
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Stance, Ability: "offensive" })
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Ability: "Drowsy", Miss: false })
