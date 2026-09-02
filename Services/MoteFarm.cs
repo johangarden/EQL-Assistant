@@ -11,13 +11,22 @@ namespace EQLOverlay.Services;
 /// </summary>
 public static class MoteFarm
 {
-    /// <summary>Grade ladder, weakest first. "Potential" is the plain
-    /// "Mote of Potential"; Infinite has only been seen in chat so far.</summary>
+    /// <summary>The Rank 1→10 ladder, straight from the eqlwiki Mote Guide —
+    /// note MAJOR sits BELOW Greater in EQL (rank 5 vs 6), unlike classic
+    /// EQ's research ladder. "Potential" is the plain "Mote of Potential".</summary>
     public static readonly string[] Grades =
-        { "Infinitesimal", "Minor", "Lesser", "Potential", "Greater", "Major", "Infinite" };
+    {
+        "Infinitesimal", "Minor", "Lesser", "Potential", "Major",
+        "Greater", "Superior", "Grand", "Ascendant", "Infinite",
+    };
+
+    /// <summary>Spell-upgrade points per rank (wiki Mote Guide) — doubles
+    /// every rank, the natural weight for a future "value per hour".
+    /// (Item points run 1,1,2,4,5..10, capped by the item's tier.)</summary>
+    public static readonly int[] SpellPoints = { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 };
 
     private static readonly Regex MoteRx = new(
-        @"^Mote of (?:(?<g>Infinitesimal|Minor|Lesser|Greater|Major|Infinite) )?Potential$",
+        @"^Mote of (?:(?<g>Infinitesimal|Minor|Lesser|Major|Greater|Superior|Grand|Ascendant|Infinite) )?Potential$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>Grade index of a mote item name, or -1 when it isn't a mote.</summary>

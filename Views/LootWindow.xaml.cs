@@ -27,7 +27,6 @@ public partial class LootWindow : Window
         _loot = loot;
         _loot.Changed += OnLootChanged;
         Closed += (_, _) => _loot.Changed -= OnLootChanged;
-        BuildGradePills();
         BuildTimePills();
         StylePills();
         Refresh();
@@ -113,14 +112,18 @@ public partial class LootWindow : Window
     private static readonly Brush MoteTierFg = Freeze(Color.FromRgb(0x4F, 0xC3, 0xF7));
     private static readonly Brush MoteGoldFg = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
 
-    // One color per grade, weakest → strongest (matches MoteFarm.Grades).
+    // One color per grade, rank 1 → 10 (matches MoteFarm.Grades / the wiki).
     private static readonly Brush[] GradeFg =
     {
         Freeze(Color.FromRgb(0x9E, 0x9E, 0x9E)), Freeze(Color.FromRgb(0xA5, 0xD6, 0xA7)),
         Freeze(Color.FromRgb(0x81, 0xD4, 0xFA)), Freeze(Color.FromRgb(0xCE, 0x93, 0xD8)),
-        Freeze(Color.FromRgb(0xFF, 0xCC, 0x80)), Freeze(Color.FromRgb(0xF4, 0x8F, 0xB1)),
-        Freeze(Color.FromRgb(0xFF, 0xF1, 0x76)),
+        Freeze(Color.FromRgb(0xF4, 0x8F, 0xB1)), Freeze(Color.FromRgb(0xFF, 0xCC, 0x80)),
+        Freeze(Color.FromRgb(0xE5, 0x73, 0x73)), Freeze(Color.FromRgb(0x4D, 0xB6, 0xAC)),
+        Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A)), Freeze(Color.FromRgb(0xFF, 0xF1, 0x76)),
     };
+
+    private static readonly string[] GradeShort =
+        { "INF", "MIN", "LES", "POT", "MAJ", "GRT", "SUP", "GRD", "ASC", "∞" };
 
     private void View_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
@@ -149,15 +152,17 @@ public partial class LootWindow : Window
             : "Every item looted, from the log: upgrades applied to your gear, items kept in your bags, and auto-vendored drops with what they sold for.";
     }
 
-    /// <summary>The grade lens: All + one pill per grade, in ladder colors.</summary>
-    private void BuildGradePills()
+    /// <summary>The grade lens: All + one pill per grade YOU'VE looted —
+    /// the 10-rank ladder only floods the row once it's earned.</summary>
+    private void BuildGradePills(IReadOnlyCollection<int> seen)
     {
         GradePills.Children.Clear();
-        for (int i = -1; i < MoteFarm.Grades.Length; i++)
+        foreach (int i in new[] { -1 }.Concat(seen.OrderBy(x => x)))
         {
             int ix = i;
             var pill = new Border
             {
+                Tag = ix,
                 CornerRadius = new CornerRadius(10),
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(11, 2, 11, 3),
@@ -182,8 +187,10 @@ public partial class LootWindow : Window
     // The strictness dial (owner request, 2 Sep): only zones with at least
     // this much clock stand as farms; the rest demote to a collapsed hint
     // row. Default 30m — the same bar a rate needs anyway.
+    // No "Any time": under-dial zones are already one click away in the
+    // hints fold, so the loosest dial is the rate floor itself.
     private static readonly (double Min, string Label)[] TimeOptions =
-        { (0, "Any time"), (30, "30m+"), (60, "1h+"), (90, "1h30m+") };
+        { (30, "30m+"), (60, "1h+"), (90, "1h30m+") };
     private double _minFarmed = 30;
     private bool _thinOpen;
 
@@ -233,10 +240,9 @@ public partial class LootWindow : Window
 
     private void StyleGradePills()
     {
-        for (int i = 0; i < GradePills.Children.Count; i++)
+        foreach (var child in GradePills.Children)
         {
-            if (GradePills.Children[i] is not Border pill) continue;
-            int ix = i - 1;
+            if (child is not Border pill || pill.Tag is not int ix) continue;
             bool on = ix == _gradeIx;
             pill.Background = on ? PillOnBg : PillOffBg;
             pill.BorderBrush = on ? PillOnLine : PillOffLine;
@@ -249,14 +255,22 @@ public partial class LootWindow : Window
 
     private void RefreshMotes()
     {
-        StyleGradePills();
-        StyleTimePills();
         MoteVerdicts.Children.Clear();
         MoteTableHost.Children.Clear();
         MoteTableHost.RowDefinitions.Clear();
         MoteTableHost.ColumnDefinitions.Clear();
 
         var all = MoteFarm.Build(_loot.Entries);
+
+        // Pills and columns only for grades actually looted — the wiki's
+        // 10-rank ladder shows up as it's earned.
+        var seen = Enumerable.Range(0, MoteFarm.Grades.Length)
+            .Where(i => all.Any(r => r.ByGrade[i] > 0)).ToList();
+        if (_gradeIx >= 0 && !seen.Contains(_gradeIx)) _gradeIx = -1;
+        BuildGradePills(seen);
+        StyleGradePills();
+        StyleTimePills();
+
         var (farms, thin) = MoteFarm.SplitByFarmed(all, _minFarmed);
         var rows = MoteFarm.Ranked(farms, _gradeIx);
         SummaryText.Text = $"{all.Sum(r => r.Total)} mote(s) across {all.Count} zone(s)";
@@ -283,22 +297,18 @@ public partial class LootWindow : Window
             return;
         }
 
-        // ZONE · total · per-grade columns · farmed · rate · last
-        int gradeCols = MoteFarm.Grades.Length - 1; // Infinite hides until it ever drops
-        bool anyInfinite = all.Any(r => r.ByGrade[^1] > 0);
-        if (anyInfinite) gradeCols++;
-
+        // ZONE · per-seen-grade columns · farmed · rate · last
+        int gradeCols = seen.Count;
         MoteTableHost.ColumnDefinitions.Add(new ColumnDefinition
         { Width = new GridLength(1, GridUnitType.Star) });
-        for (int i = 0; i < gradeCols + 4; i++)
+        for (int i = 0; i < gradeCols + 3; i++)
             MoteTableHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         int row = 0;
         MoteTableHost.RowDefinitions.Add(new RowDefinition());
         MCell("ZONE", row, 0, MoteHeadFg, right: false, size: 9.5, bold: true);
-        string[] shortGrade = { "INF", "MIN", "LES", "POT", "GRT", "MAJ", "∞" };
-        for (int i = 0; i < gradeCols; i++)
-            MCell(shortGrade[i], row, 1 + i, MoteHeadFg, right: true, size: 9.5, bold: true);
+        for (int c = 0; c < gradeCols; c++)
+            MCell(GradeShort[seen[c]], row, 1 + c, MoteHeadFg, right: true, size: 9.5, bold: true);
         MCell("FARMED", row, 1 + gradeCols, MoteHeadFg, right: true, size: 9.5, bold: true);
         MCell("MOTES/H", row, 2 + gradeCols, MoteHeadFg, right: true, size: 9.5, bold: true);
         MCell("LAST", row, 3 + gradeCols, MoteHeadFg, right: true, size: 9.5, bold: true);
@@ -334,12 +344,15 @@ public partial class LootWindow : Window
             Grid.SetColumn(zoneCell, 0);
             MoteTableHost.Children.Add(zoneCell);
 
-            for (int i = 0; i < gradeCols; i++)
-                MCell(r.ByGrade[i] > 0 ? r.ByGrade[i].ToString() : "—", row, 1 + i,
+            for (int c = 0; c < gradeCols; c++)
+            {
+                int i = seen[c];
+                MCell(r.ByGrade[i] > 0 ? r.ByGrade[i].ToString() : "—", row, 1 + c,
                     r.ByGrade[i] > 0 && !hint
                         ? (i == _gradeIx || _gradeIx < 0 ? GradeFg[i] : MoteDimFg)
                         : MoteDimmerFg,
                     right: true, noLine: open);
+            }
             MCell(MoteFarm.FormatMinutes(r.Minutes), row, 1 + gradeCols, MoteDimFg,
                 right: true, noLine: open);
             double? rate = r.RateFor(_gradeIx);

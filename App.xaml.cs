@@ -469,29 +469,33 @@ public partial class App : Application
 
             // ---- mote farm board: stints, floors, the grade lens and the
             // tier-lever verdict, over synthetic ledger entries.
-            Check("motes: the grade ladder reads the item names",
+            Check("motes: the ladder is the wiki's — Major BELOW Greater, ten ranks",
                 MoteFarm.GradeOf("Mote of Minor Potential") == 1
                 && MoteFarm.GradeOf("Mote of Potential") == 3
-                && MoteFarm.GradeOf("Mote of Major Potential") == 5
-                && MoteFarm.GradeOf("Wind Rune Meda") == -1);
+                && MoteFarm.GradeOf("Mote of Major Potential") == 4
+                && MoteFarm.GradeOf("Mote of Greater Potential") == 5
+                && MoteFarm.GradeOf("Mote of Ascendant Potential") == 8
+                && MoteFarm.GradeOf("Mote of Infinite Potential") == 9
+                && MoteFarm.GradeOf("Wind Rune Meda") == -1
+                && MoteFarm.SpellPoints[9] == 512);
             var mb = new DateTime(2026, 9, 1, 20, 0, 0);
             var mEntries = new List<LootTracker.LootEntry>();
-            // Old Paineel T4: 10 Majors over 54 minutes — a PROVEN farm.
+            // Old Paineel T4: 10 Greaters over 54 minutes — a PROVEN farm.
             for (int i = 0; i < 10; i++)
                 mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(i * 6),
-                    "Mote of Major Potential", "Master Yael",
+                    "Mote of Greater Potential", "Master Yael",
                     "The Ruins of Old Paineel - Solo 4 (Refined)", LootTracker.LootKind.Currency));
             // Plane of Hate: 8 motes in a hot ~32 minutes — rated, but too
             // young for the crown (Johan's 12-minute-wonder objection).
             for (int i = 0; i < 8; i++)
                 mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(500 + i * 4.5),
-                    "Mote of Major Potential", "an ashenbone drake",
+                    "Mote of Greater Potential", "an ashenbone drake",
                     "The Plane of Hate - Solo 4 (Refined)", LootTracker.LootKind.Currency));
             // Old Paineel T3: 4 Greaters over 30 minutes — under the mote
             // floor but over the minutes floor.
             for (int i = 0; i < 4; i++)
                 mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(120 + i * 10),
-                    "Mote of Greater Potential", "a burynai cleric",
+                    "Mote of Major Potential", "a burynai cleric",
                     "The Ruins of Old Paineel - Solo 3 (Fused)", LootTracker.LootKind.Currency));
             // Najena: two drops 40 minutes apart = TWO stints, 0 minutes on
             // the clock — small sample, no rate.
