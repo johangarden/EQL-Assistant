@@ -1874,7 +1874,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
         menu.Items.Add("Character…", null, (_, _) => OpenCharacterSheet());
-        menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
+        menu.Items.Add("Quests…", null, (_, _) => OpenSkyQuests());
         menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 

@@ -466,6 +466,51 @@ public partial class App : Application
                 CombatParser.ZoneTier("Nagafen's Lair") == 0
                 && CombatParser.ZoneTier("Nagafen's Lair - Solo") == 0
                 && CombatParser.ZoneTierLabel("") == "");
+
+            // ---- mote farm board: stints, floors, the grade lens and the
+            // tier-lever verdict, over synthetic ledger entries.
+            Check("motes: the grade ladder reads the item names",
+                MoteFarm.GradeOf("Mote of Minor Potential") == 1
+                && MoteFarm.GradeOf("Mote of Potential") == 3
+                && MoteFarm.GradeOf("Mote of Major Potential") == 5
+                && MoteFarm.GradeOf("Wind Rune Meda") == -1);
+            var mb = new DateTime(2026, 9, 1, 20, 0, 0);
+            var mEntries = new List<LootTracker.LootEntry>();
+            // Old Paineel T4: 9 Majors over 40 minutes — a real farm.
+            for (int i = 0; i < 9; i++)
+                mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(i * 5),
+                    "Mote of Major Potential", "Master Yael",
+                    "The Ruins of Old Paineel - Solo 4 (Refined)", LootTracker.LootKind.Currency));
+            // Old Paineel T3: 4 Greaters over 30 minutes — under the mote
+            // floor but over the minutes floor.
+            for (int i = 0; i < 4; i++)
+                mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(120 + i * 10),
+                    "Mote of Greater Potential", "a burynai cleric",
+                    "The Ruins of Old Paineel - Solo 3 (Fused)", LootTracker.LootKind.Currency));
+            // Najena: two drops 40 minutes apart = TWO stints, 0 minutes on
+            // the clock — small sample, no rate.
+            mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(300), "Mote of Potential", "a ghoul",
+                "Najena 2 (Adaptive)", LootTracker.LootKind.Currency));
+            mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(340), "Mote of Potential", "a ghoul",
+                "Najena 2 (Adaptive)", LootTracker.LootKind.Currency));
+            var board = MoteFarm.Build(mEntries);
+            var t4 = board.First(r => r.Zone.Contains("4 (Refined)"));
+            var naj = board.First(r => r.Zone.StartsWith("Najena", StringComparison.Ordinal));
+            Check("motes: a farmed zone rates in motes/hour",
+                t4.RateFor() is { } t4r && Math.Abs(t4r - 13.5) < 0.6 && t4.Tier == 4);
+            Check("motes: a gap over 15 minutes splits the stint and the clock stays honest",
+                naj.Stints.Count == 2 && naj.RateFor() is null);
+            Check("motes: the grade lens ranks by that grade alone",
+                MoteFarm.Ranked(board, 4).All(r => r.ByGrade[4] > 0)
+                && MoteFarm.Ranked(board, 4)[0].Zone.Contains("3 (Fused)"));
+            Check("motes: droppers name who actually paid",
+                t4.Droppers.Count == 1 && t4.Droppers[0] == ("Master Yael", 9));
+            var mv = MoteFarm.Verdicts(board);
+            Check("motes: the verdicts crown the best farm and spot the tier lever",
+                mv.Any(x => x.Text.StartsWith("Your best farm", StringComparison.Ordinal)
+                    && x.Text.Contains("4 (Refined)"))
+                && mv.Any(x => x.Text.Contains("Tier is the lever")
+                    && x.Text.Contains("Greater") && x.Text.Contains("Major")));
             Check("fight: stance change, cast and interrupt ride the timeline",
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Stance, Ability: "offensive" })
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Ability: "Drowsy", Miss: false })

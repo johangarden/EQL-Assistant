@@ -20,6 +20,16 @@
 
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <!-- Content eras (owner ruling, 2 Sep): Kunark and beyond join
+                 this row when their raid targets are added. -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                <Border Background="#232B40" BorderBrush="#5A6B8C" BorderThickness="1"
+                        CornerRadius="14" Padding="15,4" Margin="0,0,6,0"
+                        ToolTip="More eras (Kunark…) join this row as their raid targets are added">
+                    <TextBlock Text="Classic" FontSize="11.5" FontWeight="SemiBold"
+                               Foreground="#E8C15A"/>
+                </Border>
+            </StackPanel>
             <DockPanel>
                 <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="#FFD54F"
                            FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
