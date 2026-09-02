@@ -384,19 +384,11 @@ public sealed class TriggerEngine
                 var m = endRx.Match(body);
                 if (m.Success)
                 {
-                    // A pet trigger's wear-off is ANONYMOUS ("The vortex of
-                    // shadows fades.") — it can't say whose buff dropped. Your
-                    // own bar takes the fade first (the pet's rides its
-                    // estimate); with only pet bars up, the OLDEST one closes
-                    // (the enemy-DoT law).
-                    if (trigger.OnPet)
-                    {
-                        if (!SelfBarOwnsFade(trigger)) RemoveOldestFor(trigger.Id);
-                    }
-                    else
-                    {
-                        Remove(BuildKey(trigger, m));
-                    }
+                    // A pet trigger's wear-off ("Your pet's X spell has worn
+                    // off.") names the owner but not WHICH pet — the OLDEST
+                    // bar closes (the enemy-DoT law).
+                    if (trigger.OnPet) RemoveOldestFor(trigger.Id);
+                    else Remove(BuildKey(trigger, m));
                 }
             }
 
@@ -491,17 +483,8 @@ public sealed class TriggerEngine
         return IsPetName?.Invoke(target.Value.Trim()) ?? false;
     }
 
-    /// <summary>Does a running SELF bar share this pet trigger's wear-off
-    /// line? Then the anonymous fade is (most likely) yours, not the pet's.</summary>
-    private bool SelfBarOwnsFade(TriggerDefinition petTrigger) =>
-        _triggers.Any(o => o != petTrigger && o.Enabled && !o.OnPet
-            && o.Panel == Panels.Bars
-            && o.EndPattern is { Length: > 0 } ep && ep == petTrigger.EndPattern
-            && _active.Keys.Any(k => k == o.Id
-                || k.StartsWith(o.Id + "|", StringComparison.Ordinal)));
-
     /// <summary>Close the trigger's oldest running bar (earliest end time) —
-    /// how an anonymous wear-off picks among per-pet instances.</summary>
+    /// how a wear-off that doesn't name WHICH pet picks among instances.</summary>
     private void RemoveOldestFor(string triggerId)
     {
         string? oldest = null;
