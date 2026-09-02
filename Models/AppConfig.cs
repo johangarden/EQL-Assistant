@@ -122,6 +122,10 @@ public sealed class OverlayConfig
     /// only when a dropper is sighted or quests are tracked).</summary>
     public bool SkyHelperVisible { get; set; } = true;
 
+    /// <summary>The live mote-farming ticker (materializes only while a
+    /// stint is running — a mote looted within the last 15 minutes).</summary>
+    public bool MoteTickerVisible { get; set; } = true;
+
     /// <summary>Helper panel: admit items whose quest is already completed.</summary>
     public bool SkyHelperShowCompleted { get; set; }
 

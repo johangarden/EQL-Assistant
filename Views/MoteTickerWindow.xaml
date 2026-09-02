@@ -1,0 +1,38 @@
+<Window x:Class="EQLOverlay.Views.MoteTickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Border x:Name="RootBorder" CornerRadius="6" Padding="6" Background="Transparent">
+        <StackPanel>
+            <!-- Drag handle + title, shown only when unlocked. -->
+            <Border x:Name="Header" Background="#E01B2130" CornerRadius="5" Padding="8,3" Margin="0,0,0,4"
+                    Visibility="Collapsed" MouseLeftButtonDown="Header_DragMove">
+                <TextBlock Text="Mote stint — automatic" Foreground="#9FB4D0" FontWeight="Bold" FontSize="11"/>
+            </Border>
+
+            <TextBlock x:Name="Placeholder" Foreground="#7F93AD" FontSize="11" Margin="2,2,2,4"
+                       Visibility="Collapsed"
+                       Text="Appears on its own while you farm motes — the live stint's pace."/>
+
+            <Border x:Name="Card" CornerRadius="4" Background="#C0141A26"
+                    Padding="9,5" BorderBrush="#2C3650" BorderThickness="1" MinWidth="240">
+                <StackPanel>
+                    <TextBlock x:Name="ZoneText" Foreground="#E8C15A" FontSize="10"
+                               FontWeight="Bold" TextTrimming="CharacterEllipsis" MaxWidth="300"/>
+                    <TextBlock x:Name="BigText" Foreground="#E2E6EC" FontSize="13"
+                               FontWeight="Bold" Margin="0,1,0,0"/>
+                    <TextBlock x:Name="SubText" Foreground="#7F93AD" FontSize="10.5" Margin="0,1,0,0"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Border>
+</Window>

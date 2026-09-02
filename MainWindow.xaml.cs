@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private FlashWindow? _flash;
     private MeterWindow? _meter;
     private EnemyDotsWindow? _enemyDotsWin;
+    private MoteTickerWindow? _moteTickerWin;
     private ConditionsWindow? _conditionsWin;
     private SkyHelperWindow? _skyHelperWin;
     private SkyHelper _skyHelper = null!;
@@ -809,6 +810,7 @@ public partial class MainWindow : Window
         _targetMatrix = RebuildPanel(_targetMatrix, "targetDebuffs", "Target Debuffs",
             _engine.TargetCells, defaultLeft: 420, defaultTop: 420);
         RebuildEnemyDotsWindow();
+        RebuildMoteTickerWindow();
         RebuildConditionsWindow();
         RebuildSkyHelperWindow();
         RebuildSessionStatsWindow();
@@ -878,6 +880,16 @@ public partial class MainWindow : Window
         _enemyDotsWin.Show();
         _enemyDotsWin.SetLocked(_vm.Locked);
         _enemyDotsWin.SetHidden(_hidden);
+    }
+
+    private void RebuildMoteTickerWindow()
+    {
+        if (_moteTickerWin is not null) { try { _moteTickerWin.Close(); } catch { /* ignore */ } _moteTickerWin = null; }
+        if (!_config.Overlay.MoteTickerVisible) return;
+        _moteTickerWin = new MoteTickerWindow(_loot, _configService, _config.Overlay.Opacity);
+        _moteTickerWin.Show();
+        _moteTickerWin.SetLocked(_vm.Locked);
+        _moteTickerWin.SetHidden(_hidden);
     }
 
     private void RebuildConditionsWindow()
@@ -1135,6 +1147,7 @@ public partial class MainWindow : Window
         _selfMatrix?.SetLocked(_vm.Locked);
         _targetMatrix?.SetLocked(_vm.Locked);
         _enemyDotsWin?.SetLocked(_vm.Locked);
+        _moteTickerWin?.SetLocked(_vm.Locked);
         _conditionsWin?.SetLocked(_vm.Locked);
         _skyHelperWin?.SetLocked(_vm.Locked);
         _sessionWin?.SetLocked(_vm.Locked);
@@ -1161,11 +1174,20 @@ public partial class MainWindow : Window
         _vm.Flash(_config.Overlay.EnemyDotsVisible ? "Enemy DoTs shown." : "Enemy DoTs hidden.");
     }
 
+    private void ToggleMoteTicker()
+    {
+        _config.Overlay.MoteTickerVisible = !_config.Overlay.MoteTickerVisible;
+        _configService.SaveSettings(_config);
+        RebuildMoteTickerWindow();
+        _vm.Flash(_config.Overlay.MoteTickerVisible ? "Mote ticker shown." : "Mote ticker hidden.");
+    }
+
     private void ToggleHide()
     {
         _hidden = !_hidden;
         ApplyCursorRing(); // the ring hides with everything else
         _enemyDotsWin?.SetHidden(_hidden);
+        _moteTickerWin?.SetHidden(_hidden);
         _conditionsWin?.SetHidden(_hidden);
         _skyHelperWin?.SetHidden(_hidden);
         _sessionWin?.SetHidden(_hidden);
@@ -1199,6 +1221,7 @@ public partial class MainWindow : Window
             _selfMatrix?.SetLocked(false);
             _targetMatrix?.SetLocked(false);
             _enemyDotsWin?.SetLocked(false);
+            _moteTickerWin?.SetLocked(false);
             _conditionsWin?.SetLocked(false);
             _skyHelperWin?.SetLocked(false);
             _sessionWin?.SetLocked(false);
@@ -1212,6 +1235,7 @@ public partial class MainWindow : Window
         _selfMatrix?.ResetPosition();
         _targetMatrix?.ResetPosition();
         _enemyDotsWin?.ResetPosition();
+        _moteTickerWin?.ResetPosition();
         _conditionsWin?.ResetPosition();
         _skyHelperWin?.ResetPosition();
         _sessionWin?.ResetPosition();
@@ -1539,6 +1563,7 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("Target-debuffs matrix", ToggleTargetMatrix, "Bars & matrices", () => _config.Overlay.TargetMatrixVisible));
         panels.Items.Add(BurgerPanelRow("Rebuff reminders", ToggleReminders, "Bars & matrices", () => _config.Overlay.RemindersVisible));
         panels.Items.Add(BurgerPanelRow("Enemy DoTs", ToggleEnemyDots, "Bars & matrices", () => _config.Overlay.EnemyDotsVisible));
+        panels.Items.Add(BurgerPanelRow("Mote ticker", ToggleMoteTicker, "Bars & matrices", () => _config.Overlay.MoteTickerVisible));
         panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, "Condition badges", () => _config.Overlay.ConditionsVisible));
         // "Sky droppers", NOT "Sky quest helper": the Quests WINDOW (toolbar !)
         // is a different thing, and the old name kept getting mistaken for it.
@@ -1874,7 +1899,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Raid kills…", null, (_, _) => OpenRaidKills());
         menu.Items.Add("Loot history…", null, (_, _) => OpenLootHistory());
         menu.Items.Add("Character…", null, (_, _) => OpenCharacterSheet());
-        menu.Items.Add("Sky quests…", null, (_, _) => OpenSkyQuests());
+        menu.Items.Add("Quests…", null, (_, _) => OpenSkyQuests());
         menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
@@ -2012,6 +2037,7 @@ public partial class MainWindow : Window
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
         try { _enemyDotsWin?.Close(); } catch { /* ignore */ }
+        try { _moteTickerWin?.Close(); } catch { /* ignore */ }
         try { _conditionsWin?.Close(); } catch { /* ignore */ }
         try { _skyHelperWin?.Close(); } catch { /* ignore */ }
         try { _sessionWin?.Close(); } catch { /* ignore */ }

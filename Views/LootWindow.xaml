@@ -25,10 +25,25 @@
                            FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
                 <TextBlock Text="Loot history" Style="{StaticResource PageTitle}"/>
             </DockPanel>
-            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,8"
+
+            <!-- The sub-views (owner ruling, 2 Sep): the parent window owns
+                 the domain, pills pick the lens. -->
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,8">
+                <Border x:Name="DropPill" CornerRadius="14" BorderThickness="1" Padding="15,4"
+                        Cursor="Hand" Margin="0,0,6,0" MouseLeftButtonDown="View_Click" Tag="drops">
+                    <TextBlock Text="Drop log" FontSize="11.5" FontWeight="SemiBold"/>
+                </Border>
+                <Border x:Name="MotePill" CornerRadius="14" BorderThickness="1" Padding="15,4"
+                        Cursor="Hand" MouseLeftButtonDown="View_Click" Tag="motes"
+                        ToolTip="Where an hour of farming actually pays — mote rates per zone and tier, mined from this loot ledger">
+                    <TextBlock Text="Mote farming" FontSize="11.5" FontWeight="SemiBold"/>
+                </Border>
+            </StackPanel>
+
+            <TextBlock x:Name="HintText" Style="{StaticResource Hint}" Margin="0,0,0,8"
                        Text="Every item looted, from the log: upgrades applied to your gear, items kept in your bags, and auto-vendored drops with what they sold for."/>
 
-            <DockPanel Margin="0,0,0,8">
+            <DockPanel x:Name="FiltersRow" Margin="0,0,0,8">
                 <ComboBox x:Name="KindBox" DockPanel.Dock="Right" Width="130" Margin="8,0,0,0"
                           SelectionChanged="Filters_Changed" SelectedValuePath="Tag">
                     <ComboBoxItem Content="Everything" Tag="" IsSelected="True"/>
@@ -40,26 +55,40 @@
                          AutomationProperties.AutomationId="LootSearchBox"
                          ToolTip="Search item, mob or zone"/>
             </DockPanel>
+
+            <!-- Mote view: the grade lens + strictness pills (built in code) -->
+            <WrapPanel x:Name="GradePills" Margin="0,0,0,4" Visibility="Collapsed"/>
+            <WrapPanel x:Name="TimePills" Margin="0,0,0,8" Visibility="Collapsed"/>
         </StackPanel>
 
-        <ListBox x:Name="ResultsList"
-                 HorizontalContentAlignment="Stretch"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 VirtualizingPanel.VirtualizationMode="Recycling">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <DockPanel Margin="2,3">
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding ValueText}"
-                                   Foreground="{Binding ValueBrush}" FontWeight="SemiBold" FontSize="11"
-                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
-                        <StackPanel>
-                            <TextBlock Text="{Binding Item}" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Brush.TextHint}"
-                                       FontSize="11" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
-                    </DockPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        <Grid>
+            <ListBox x:Name="ResultsList"
+                     HorizontalContentAlignment="Stretch"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.VirtualizationMode="Recycling">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel Margin="2,3">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding ValueText}"
+                                       Foreground="{Binding ValueBrush}" FontWeight="SemiBold" FontSize="11"
+                                       VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Item}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Detail}" Foreground="{StaticResource Brush.TextHint}"
+                                           FontSize="11" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <ScrollViewer x:Name="MoteScroll" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
+                <StackPanel>
+                    <StackPanel x:Name="MoteVerdicts" Margin="0,0,0,10"/>
+                    <Grid x:Name="MoteTableHost" VerticalAlignment="Top"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
     </DockPanel>
 </Window>
