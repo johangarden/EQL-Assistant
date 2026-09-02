@@ -28,6 +28,7 @@ public partial class LootWindow : Window
         _loot.Changed += OnLootChanged;
         Closed += (_, _) => _loot.Changed -= OnLootChanged;
         BuildGradePills();
+        BuildTimePills();
         StylePills();
         Refresh();
     }
@@ -140,6 +141,7 @@ public partial class LootWindow : Window
         }
         FiltersRow.Visibility = motes ? Visibility.Collapsed : Visibility.Visible;
         GradePills.Visibility = motes ? Visibility.Visible : Visibility.Collapsed;
+        TimePills.Visibility = motes ? Visibility.Visible : Visibility.Collapsed;
         ResultsList.Visibility = motes ? Visibility.Collapsed : Visibility.Visible;
         MoteScroll.Visibility = motes ? Visibility.Visible : Visibility.Collapsed;
         HintText.Text = motes
@@ -177,6 +179,58 @@ public partial class LootWindow : Window
         }
     }
 
+    // The strictness dial (owner request, 2 Sep): only zones with at least
+    // this much clock stand as farms; the rest demote to a collapsed hint
+    // row. Default 30m — the same bar a rate needs anyway.
+    private static readonly (double Min, string Label)[] TimeOptions =
+        { (0, "Any time"), (30, "30m+"), (60, "1h+"), (90, "1h30m+") };
+    private double _minFarmed = 30;
+    private bool _thinOpen;
+
+    private void BuildTimePills()
+    {
+        TimePills.Children.Clear();
+        TimePills.Children.Add(new TextBlock
+        {
+            Text = "Farmed at least:",
+            FontSize = 11,
+            Foreground = MoteDimFg,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 4),
+        });
+        foreach (var (min, label) in TimeOptions)
+        {
+            double m = min;
+            var pill = new Border
+            {
+                CornerRadius = new CornerRadius(10),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(11, 2, 11, 3),
+                Margin = new Thickness(0, 0, 6, 4),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Child = new TextBlock { Text = label, FontSize = 11, FontWeight = FontWeights.SemiBold },
+            };
+            pill.MouseLeftButtonDown += (_, _) =>
+            {
+                _minFarmed = m;
+                RefreshMotes();
+            };
+            TimePills.Children.Add(pill);
+        }
+    }
+
+    private void StyleTimePills()
+    {
+        for (int i = 1; i < TimePills.Children.Count; i++) // 0 = the label
+        {
+            if (TimePills.Children[i] is not Border pill) continue;
+            bool on = Math.Abs(TimeOptions[i - 1].Min - _minFarmed) < 0.1;
+            pill.Background = on ? PillOnBg : PillOffBg;
+            pill.BorderBrush = on ? PillOnLine : PillOffLine;
+            if (pill.Child is TextBlock tb) tb.Foreground = on ? PillOnFg : PillOffFg;
+        }
+    }
+
     private void StyleGradePills()
     {
         for (int i = 0; i < GradePills.Children.Count; i++)
@@ -196,16 +250,18 @@ public partial class LootWindow : Window
     private void RefreshMotes()
     {
         StyleGradePills();
+        StyleTimePills();
         MoteVerdicts.Children.Clear();
         MoteTableHost.Children.Clear();
         MoteTableHost.RowDefinitions.Clear();
         MoteTableHost.ColumnDefinitions.Clear();
 
         var all = MoteFarm.Build(_loot.Entries);
-        var rows = MoteFarm.Ranked(all, _gradeIx);
+        var (farms, thin) = MoteFarm.SplitByFarmed(all, _minFarmed);
+        var rows = MoteFarm.Ranked(farms, _gradeIx);
         SummaryText.Text = $"{all.Sum(r => r.Total)} mote(s) across {all.Count} zone(s)";
 
-        foreach (var (text, caveat) in MoteFarm.Verdicts(all, _gradeIx))
+        foreach (var (text, caveat) in MoteFarm.Verdicts(farms, _gradeIx))
         {
             var line = new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap };
             line.Inlines.Add(new System.Windows.Documents.Run(caveat ? "◇ " : "◆ ")
@@ -215,7 +271,7 @@ public partial class LootWindow : Window
             MoteVerdicts.Children.Add(line);
         }
 
-        if (rows.Count == 0)
+        if (rows.Count == 0 && thin.Count == 0)
         {
             MoteVerdicts.Children.Add(new TextBlock
             {
@@ -229,7 +285,7 @@ public partial class LootWindow : Window
 
         // ZONE · total · per-grade columns · farmed · rate · last
         int gradeCols = MoteFarm.Grades.Length - 1; // Infinite hides until it ever drops
-        bool anyInfinite = rows.Any(r => r.ByGrade[^1] > 0);
+        bool anyInfinite = all.Any(r => r.ByGrade[^1] > 0);
         if (anyInfinite) gradeCols++;
 
         MoteTableHost.ColumnDefinitions.Add(new ColumnDefinition
@@ -248,7 +304,7 @@ public partial class LootWindow : Window
         MCell("LAST", row, 3 + gradeCols, MoteHeadFg, right: true, size: 9.5, bold: true);
         row++;
 
-        foreach (var r in rows)
+        void RenderZoneRow(MoteFarm.ZoneRow r, bool hint)
         {
             bool open = _moteOpen.Contains(r.Zone);
             MoteTableHost.RowDefinitions.Add(new RowDefinition());
@@ -258,7 +314,7 @@ public partial class LootWindow : Window
             zoneText.Inlines.Add(new System.Windows.Documents.Run(open ? "▾ " : "▸ ")
             { Foreground = MoteGoldFg, FontSize = 10 });
             zoneText.Inlines.Add(new System.Windows.Documents.Run(r.Zone)
-            { Foreground = MoteZoneFg, FontWeight = FontWeights.SemiBold });
+            { Foreground = hint ? MoteDimFg : MoteZoneFg, FontWeight = FontWeights.SemiBold });
             var zoneCell = new Border
             {
                 BorderBrush = MoteLine,
@@ -280,7 +336,7 @@ public partial class LootWindow : Window
 
             for (int i = 0; i < gradeCols; i++)
                 MCell(r.ByGrade[i] > 0 ? r.ByGrade[i].ToString() : "—", row, 1 + i,
-                    r.ByGrade[i] > 0
+                    r.ByGrade[i] > 0 && !hint
                         ? (i == _gradeIx || _gradeIx < 0 ? GradeFg[i] : MoteDimFg)
                         : MoteDimmerFg,
                     right: true, noLine: open);
@@ -288,8 +344,8 @@ public partial class LootWindow : Window
                 right: true, noLine: open);
             double? rate = r.RateFor(_gradeIx);
             MCell(rate is { } rv ? $"{rv:0}/h" : "small sample", row, 2 + gradeCols,
-                rate is not null ? MoteRateFg : MoteDimmerFg, right: true,
-                size: rate is not null ? 12.5 : 10.5, bold: rate is not null, noLine: open);
+                rate is not null && !hint ? MoteRateFg : MoteDimmerFg, right: true,
+                size: rate is not null ? 12.5 : 10.5, bold: rate is not null && !hint, noLine: open);
             MCell(r.Last.Date == DateTime.Today ? r.Last.ToString("HH:mm") : r.Last.ToString("dd MMM"),
                 row, 3 + gradeCols, MoteDimmerFg, right: true, noLine: open);
             row++;
@@ -317,6 +373,41 @@ public partial class LootWindow : Window
                 MoteTableHost.Children.Add(host);
                 row++;
             }
+        }
+
+        foreach (var r in rows) RenderZoneRow(r, hint: false);
+
+        // Zones under the dial collapse into one dim line — hints live
+        // below the farms, never ranked beside them (owner ruling, 2 Sep).
+        if (thin.Count > 0)
+        {
+            MoteTableHost.RowDefinitions.Add(new RowDefinition());
+            var thinText = new TextBlock { FontSize = 11 };
+            thinText.Inlines.Add(new System.Windows.Documents.Run(_thinOpen ? "▾ " : "▸ ")
+            { Foreground = MoteGoldFg, FontSize = 10 });
+            thinText.Inlines.Add(new System.Windows.Documents.Run(
+                $"{thin.Count} zone(s) under {MoteFarm.FormatMinutes(_minFarmed)} farmed — hints, not farms")
+            { Foreground = MoteDimFg });
+            var thinToggle = new Border
+            {
+                Padding = new Thickness(2, 8, 2, 4),
+                Background = Brushes.Transparent,
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Child = thinText,
+            };
+            thinToggle.MouseLeftButtonDown += (_, _) =>
+            {
+                _thinOpen = !_thinOpen;
+                RefreshMotes();
+            };
+            Grid.SetRow(thinToggle, row);
+            Grid.SetColumnSpan(thinToggle, 4 + gradeCols);
+            MoteTableHost.Children.Add(thinToggle);
+            row++;
+
+            if (_thinOpen)
+                foreach (var r in thin.OrderByDescending(t => t.Total))
+                    RenderZoneRow(r, hint: true);
         }
     }
 

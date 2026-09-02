@@ -520,6 +520,11 @@ public partial class App : Application
             Check("motes: a hotter but younger zone gets the lucky-window caveat, not the crown",
                 mv.Any(x => x.Caveat && x.Text.Contains("The Plane of Hate")
                     && x.Text.Contains("lucky window")));
+            var (msShown, msThin) = MoteFarm.SplitByFarmed(board, 45);
+            Check("motes: the strictness dial splits farms from hints",
+                msShown.Count == 1 && msShown[0].Zone.Contains("Old Paineel")
+                && msThin.Count == 3 // Hate (32m), Old Paineel T3 (30m), Najena (0m)
+                && MoteFarm.SplitByFarmed(board, 0).Thin.Count == 0);
             Check("fight: stance change, cast and interrupt ride the timeline",
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Stance, Ability: "offensive" })
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Ability: "Drowsy", Miss: false })

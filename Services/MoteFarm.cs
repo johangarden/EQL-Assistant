@@ -185,6 +185,17 @@ public static class MoteFarm
         return v;
     }
 
+    /// <summary>The strictness dial: rows with at least the wanted minutes
+    /// farmed stand as farms; the rest are demoted to hints (shown collapsed
+    /// under the board, never ranked beside the real ones).</summary>
+    public static (List<ZoneRow> Shown, List<ZoneRow> Thin) SplitByFarmed(
+        List<ZoneRow> rows, double minMinutes)
+    {
+        var shown = rows.Where(r => r.Minutes >= minMinutes).ToList();
+        var thin = rows.Where(r => r.Minutes < minMinutes && r.Total > 0).ToList();
+        return (shown, thin);
+    }
+
     public static string FormatMinutes(double min) =>
         min >= 60 ? $"{(int)(min / 60)}h{(int)min % 60:00}m" : $"{Math.Max(1, (int)min)}m";
 }
