@@ -33,10 +33,16 @@ public static class MoteFarm
     /// first drop → last drop, so AFK time never inflates a rate.</summary>
     public const double StintGapMin = 15;
 
-    /// <summary>A rate only prints at ≥30 min farmed or ≥8 motes — below
-    /// that the row says "small sample" instead of lying (house rule).</summary>
+    /// <summary>A rate only prints at ≥30 min farmed AND ≥8 motes — below
+    /// either, the row says "small sample" instead of lying (house rule;
+    /// the AND is deliberate: 8 lucky motes in 12 minutes is an anecdote,
+    /// not a rate).</summary>
     public const double RateMinMinutes = 30;
     public const int RateMinMotes = 8;
+
+    /// <summary>The "best farm" crown demands more than a rate: 45+ minutes
+    /// on the clock, so one hot half-hour can't outrank a proven grind.</summary>
+    public const double CrownMinMinutes = 45;
 
     public sealed record Stint(string Zone, DateTime Start, DateTime End, int[] ByGrade)
     {
@@ -55,10 +61,12 @@ public static class MoteFarm
         {
             int count = gradeIx < 0 ? Total : ByGrade[gradeIx];
             if (count == 0) return null;
-            if (Minutes < RateMinMinutes && Total < RateMinMotes) return null;
-            if (Minutes <= 0) return null;
+            if (Minutes < RateMinMinutes || Total < RateMinMotes) return null;
             return count * 60.0 / Minutes;
         }
+
+        /// <summary>Enough clock behind it to be crowned "your best farm".</summary>
+        public bool Proven => Minutes >= CrownMinMinutes;
 
         /// <summary>The grade this zone mostly pays (ladder index).</summary>
         public int DominantGrade
@@ -139,13 +147,20 @@ public static class MoteFarm
     {
         var v = new List<(string, bool)>();
         var ranked = Ranked(rows, gradeIx);
-        var best = ranked.FirstOrDefault(r => r.RateFor(gradeIx) is not null);
+        // The crown goes to the best PROVEN farm — a hot half-hour can lead
+        // the table, but only time on the clock earns the sentence.
+        var best = ranked.FirstOrDefault(r => r.RateFor(gradeIx) is not null && r.Proven);
         if (best is not null)
         {
             string lens = gradeIx >= 0 ? $" for {Grades[gradeIx]}" : "";
             v.Add(($"Your best farm{lens}: {best.Zone} — " +
                    $"{best.RateFor(gradeIx):0}/h over {FormatMinutes(best.Minutes)}.", false));
         }
+        var hot = ranked.FirstOrDefault(r => r.RateFor(gradeIx) is not null && !r.Proven);
+        if (hot is not null && (best is null || hot.RateFor(gradeIx) > best.RateFor(gradeIx)))
+            v.Add(($"{hot.Zone} shows {hot.RateFor(gradeIx):0}/h but only " +
+                   $"{FormatMinutes(hot.Minutes)} on the clock — a lucky window isn't a farm " +
+                   $"yet; it's crowned at {FormatMinutes(CrownMinMinutes)}+.", true));
 
         // The tier lever: the same base zone at different tiers paying
         // different dominant grades is the finding worth a sentence.
@@ -166,7 +181,7 @@ public static class MoteFarm
         var thin = rows.Where(r => r.Total > 0 && r.RateFor() is null).ToList();
         if (thin.Count > 0 && best is not null)
             v.Add(($"{thin.Count} zone(s) below the sample floor " +
-                   $"(≥{RateMinMinutes:0}m farmed or ≥{RateMinMotes} motes) — hints, not rates.", true));
+                   $"(≥{RateMinMinutes:0}m farmed and ≥{RateMinMotes} motes) — hints, not rates.", true));
         return v;
     }
 

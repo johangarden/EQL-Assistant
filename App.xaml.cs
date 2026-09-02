@@ -476,11 +476,17 @@ public partial class App : Application
                 && MoteFarm.GradeOf("Wind Rune Meda") == -1);
             var mb = new DateTime(2026, 9, 1, 20, 0, 0);
             var mEntries = new List<LootTracker.LootEntry>();
-            // Old Paineel T4: 9 Majors over 40 minutes — a real farm.
-            for (int i = 0; i < 9; i++)
-                mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(i * 5),
+            // Old Paineel T4: 10 Majors over 54 minutes — a PROVEN farm.
+            for (int i = 0; i < 10; i++)
+                mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(i * 6),
                     "Mote of Major Potential", "Master Yael",
                     "The Ruins of Old Paineel - Solo 4 (Refined)", LootTracker.LootKind.Currency));
+            // Plane of Hate: 8 motes in a hot ~32 minutes — rated, but too
+            // young for the crown (Johan's 12-minute-wonder objection).
+            for (int i = 0; i < 8; i++)
+                mEntries.Add(new LootTracker.LootEntry(mb.AddMinutes(500 + i * 4.5),
+                    "Mote of Major Potential", "an ashenbone drake",
+                    "The Plane of Hate - Solo 4 (Refined)", LootTracker.LootKind.Currency));
             // Old Paineel T3: 4 Greaters over 30 minutes — under the mote
             // floor but over the minutes floor.
             for (int i = 0; i < 4; i++)
@@ -497,20 +503,23 @@ public partial class App : Application
             var t4 = board.First(r => r.Zone.Contains("4 (Refined)"));
             var naj = board.First(r => r.Zone.StartsWith("Najena", StringComparison.Ordinal));
             Check("motes: a farmed zone rates in motes/hour",
-                t4.RateFor() is { } t4r && Math.Abs(t4r - 13.5) < 0.6 && t4.Tier == 4);
+                t4.RateFor() is { } t4r && Math.Abs(t4r - 11.1) < 0.6 && t4.Tier == 4);
             Check("motes: a gap over 15 minutes splits the stint and the clock stays honest",
                 naj.Stints.Count == 2 && naj.RateFor() is null);
             Check("motes: the grade lens ranks by that grade alone",
                 MoteFarm.Ranked(board, 4).All(r => r.ByGrade[4] > 0)
                 && MoteFarm.Ranked(board, 4)[0].Zone.Contains("3 (Fused)"));
             Check("motes: droppers name who actually paid",
-                t4.Droppers.Count == 1 && t4.Droppers[0] == ("Master Yael", 9));
+                t4.Droppers.Count == 1 && t4.Droppers[0] == ("Master Yael", 10));
             var mv = MoteFarm.Verdicts(board);
-            Check("motes: the verdicts crown the best farm and spot the tier lever",
+            Check("motes: the crown goes to the proven farm, and the tier lever speaks",
                 mv.Any(x => x.Text.StartsWith("Your best farm", StringComparison.Ordinal)
-                    && x.Text.Contains("4 (Refined)"))
+                    && x.Text.Contains("The Ruins of Old Paineel - Solo 4"))
                 && mv.Any(x => x.Text.Contains("Tier is the lever")
                     && x.Text.Contains("Greater") && x.Text.Contains("Major")));
+            Check("motes: a hotter but younger zone gets the lucky-window caveat, not the crown",
+                mv.Any(x => x.Caveat && x.Text.Contains("The Plane of Hate")
+                    && x.Text.Contains("lucky window")));
             Check("fight: stance change, cast and interrupt ride the timeline",
                 fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Stance, Ability: "offensive" })
                 && fdRec.Events.Any(e => e is { Stream: CombatParser.FightStream.Cast, Ability: "Drowsy", Miss: false })

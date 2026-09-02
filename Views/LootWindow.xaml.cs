@@ -143,7 +143,7 @@ public partial class LootWindow : Window
         ResultsList.Visibility = motes ? Visibility.Collapsed : Visibility.Visible;
         MoteScroll.Visibility = motes ? Visibility.Visible : Visibility.Collapsed;
         HintText.Text = motes
-            ? "Where an hour of farming actually pays, mined from this ledger: mote drops clustered into stints (≤15 min between drops, first→last drop on the clock, so AFK time never inflates a rate). A rate only prints at ≥30 min farmed or ≥8 motes; T3 and T4 of the same zone are separate farms. Fold a row out for the mobs that paid and the individual stints."
+            ? "Where an hour of farming actually pays, mined from this ledger: mote drops clustered into stints (≤15 min between drops, first→last drop on the clock, so AFK time never inflates a rate). A rate only prints at ≥30 min farmed AND ≥8 motes, and the 'best farm' crown needs 45+ min on the clock — one lucky window never outranks a proven grind; T3 and T4 of the same zone are separate farms. Fold a row out for the mobs that paid and the individual stints."
             : "Every item looted, from the log: upgrades applied to your gear, items kept in your bags, and auto-vendored drops with what they sold for.";
     }
 
