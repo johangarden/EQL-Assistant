@@ -20,6 +20,16 @@
 
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top">
+            <!-- Quest PACKS at the very top (owner ruling, 2 Sep — like the
+                 era row on Raid kills): Epics and more join as they're built. -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <Border Background="#232B40" BorderBrush="#5A6B8C" BorderThickness="1"
+                        CornerRadius="14" Padding="15,4" Margin="0,0,6,0"
+                        ToolTip="More quest packs (Epic quests…) join this row as they're added">
+                    <TextBlock Text="Plane of Sky class quests" FontSize="11.5" FontWeight="SemiBold"
+                               Foreground="#E8C15A"/>
+                </Border>
+            </StackPanel>
             <DockPanel>
                 <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.Gold}"
                            FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
@@ -64,18 +74,6 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-
-            <!-- Quest PACKS (owner ruling, 2 Sep): the parent window owns the
-                 domain, this row picks the content pack — Epics and more
-                 land here as they're built. -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                <Border Background="#232B40" BorderBrush="#5A6B8C" BorderThickness="1"
-                        CornerRadius="14" Padding="15,4" Margin="0,0,6,0"
-                        ToolTip="More quest packs (Epic quests…) join this row as they're added">
-                    <TextBlock Text="Plane of Sky" FontSize="11.5" FontWeight="SemiBold"
-                               Foreground="#E8C15A"/>
-                </Border>
-            </StackPanel>
 
             <!-- VIEW pills — what the window IS showing; the filters below
                  belong to the Quests view (search also serves the isle list). -->
