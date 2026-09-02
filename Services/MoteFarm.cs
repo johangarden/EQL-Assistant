@@ -77,6 +77,23 @@ public static class MoteFarm
         /// <summary>Enough clock behind it to be crowned "your best farm".</summary>
         public bool Proven => Minutes >= CrownMinMinutes;
 
+        /// <summary>Spell-upgrade points held here — each mote weighed by the
+        /// wiki's doubling values (one Greater = 32 Minors).</summary>
+        public int Points
+        {
+            get
+            {
+                int p = 0;
+                for (int i = 0; i < ByGrade.Length; i++) p += ByGrade[i] * SpellPoints[i];
+                return p;
+            }
+        }
+
+        /// <summary>Upgrade points per hour — the truer "is this farm worth
+        /// it" number; same sample floors as the mote rate.</summary>
+        public double? ValueRate() =>
+            RateFor() is null ? null : Points * 60.0 / Minutes;
+
         /// <summary>The grade this zone mostly pays (ladder index).</summary>
         public int DominantGrade
         {
@@ -142,12 +159,13 @@ public static class MoteFarm
         return rows;
     }
 
-    /// <summary>Sort for one grade lens (-1 = all): rated rows by rate, then
-    /// the small samples by their mote count.</summary>
+    /// <summary>Sort for one lens: the All view ranks by VALUE per hour (one
+    /// Greater outweighs a pile of Minors), a grade lens by that grade's own
+    /// rate; small samples sink to their counts.</summary>
     public static List<ZoneRow> Ranked(List<ZoneRow> rows, int gradeIx = -1) => rows
         .Where(r => gradeIx < 0 || r.ByGrade[gradeIx] > 0)
-        .OrderByDescending(r => r.RateFor(gradeIx) ?? -1)
-        .ThenByDescending(r => gradeIx < 0 ? r.Total : r.ByGrade[gradeIx])
+        .OrderByDescending(r => (gradeIx < 0 ? r.ValueRate() : r.RateFor(gradeIx)) ?? -1)
+        .ThenByDescending(r => gradeIx < 0 ? r.Points : r.ByGrade[gradeIx])
         .ToList();
 
     /// <summary>The analyst lines above the board — they speak only from
@@ -156,18 +174,24 @@ public static class MoteFarm
     {
         var v = new List<(string, bool)>();
         var ranked = Ranked(rows, gradeIx);
+        // The lens' metric: value/h on the All view, the grade's own rate
+        // under a grade lens.
+        double? Metric(ZoneRow r) => gradeIx < 0 ? r.ValueRate() : r.RateFor(gradeIx);
+        string MetricText(ZoneRow r) => gradeIx < 0
+            ? $"{r.ValueRate():0} pts/h ({r.RateFor():0} motes/h)"
+            : $"{r.RateFor(gradeIx):0}/h";
         // The crown goes to the best PROVEN farm — a hot half-hour can lead
         // the table, but only time on the clock earns the sentence.
-        var best = ranked.FirstOrDefault(r => r.RateFor(gradeIx) is not null && r.Proven);
+        var best = ranked.FirstOrDefault(r => Metric(r) is not null && r.Proven);
         if (best is not null)
         {
             string lens = gradeIx >= 0 ? $" for {Grades[gradeIx]}" : "";
             v.Add(($"Your best farm{lens}: {best.Zone} — " +
-                   $"{best.RateFor(gradeIx):0}/h over {FormatMinutes(best.Minutes)}.", false));
+                   $"{MetricText(best)} over {FormatMinutes(best.Minutes)}.", false));
         }
-        var hot = ranked.FirstOrDefault(r => r.RateFor(gradeIx) is not null && !r.Proven);
-        if (hot is not null && (best is null || hot.RateFor(gradeIx) > best.RateFor(gradeIx)))
-            v.Add(($"{hot.Zone} shows {hot.RateFor(gradeIx):0}/h but only " +
+        var hot = ranked.FirstOrDefault(r => Metric(r) is not null && !r.Proven);
+        if (hot is not null && (best is null || Metric(hot) > Metric(best)))
+            v.Add(($"{hot.Zone} shows {MetricText(hot)} but only " +
                    $"{FormatMinutes(hot.Minutes)} on the clock — a lucky window isn't a farm " +
                    $"yet; it's crowned at {FormatMinutes(CrownMinMinutes)}+.", true));
 

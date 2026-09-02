@@ -148,7 +148,7 @@ public partial class LootWindow : Window
         ResultsList.Visibility = motes ? Visibility.Collapsed : Visibility.Visible;
         MoteScroll.Visibility = motes ? Visibility.Visible : Visibility.Collapsed;
         HintText.Text = motes
-            ? "Where an hour of farming actually pays, mined from this ledger: mote drops clustered into stints (≤15 min between drops, first→last drop on the clock, so AFK time never inflates a rate). A rate only prints at ≥30 min farmed AND ≥8 motes, and the 'best farm' crown needs 45+ min on the clock — one lucky window never outranks a proven grind; T3 and T4 of the same zone are separate farms. Fold a row out for the mobs that paid and the individual stints."
+            ? "Where an hour of farming actually pays, mined from this ledger: mote drops clustered into stints (≤15 min between drops, first→last drop on the clock, so AFK time never inflates a rate). A rate only prints at ≥30 min farmed AND ≥8 motes, and the 'best farm' crown needs 45+ min on the clock — one lucky window never outranks a proven grind; T3 and T4 of the same zone are separate farms. VALUE/H weighs each mote by the wiki's spell-upgrade points (one Greater = 32 Minors) — the All view ranks by it; a grade pill ranks by that grade's own rate. Fold a row out for the mobs that paid and the individual stints."
             : "Every item looted, from the log: upgrades applied to your gear, items kept in your bags, and auto-vendored drops with what they sold for.";
     }
 
@@ -297,11 +297,11 @@ public partial class LootWindow : Window
             return;
         }
 
-        // ZONE · per-seen-grade columns · farmed · rate · last
+        // ZONE · per-seen-grade columns · farmed · rate · value · last
         int gradeCols = seen.Count;
         MoteTableHost.ColumnDefinitions.Add(new ColumnDefinition
         { Width = new GridLength(1, GridUnitType.Star) });
-        for (int i = 0; i < gradeCols + 3; i++)
+        for (int i = 0; i < gradeCols + 4; i++)
             MoteTableHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         int row = 0;
@@ -311,7 +311,8 @@ public partial class LootWindow : Window
             MCell(GradeShort[seen[c]], row, 1 + c, MoteHeadFg, right: true, size: 9.5, bold: true);
         MCell("FARMED", row, 1 + gradeCols, MoteHeadFg, right: true, size: 9.5, bold: true);
         MCell("MOTES/H", row, 2 + gradeCols, MoteHeadFg, right: true, size: 9.5, bold: true);
-        MCell("LAST", row, 3 + gradeCols, MoteHeadFg, right: true, size: 9.5, bold: true);
+        MCell("VALUE/H", row, 3 + gradeCols, MoteHeadFg, right: true, size: 9.5, bold: true);
+        MCell("LAST", row, 4 + gradeCols, MoteHeadFg, right: true, size: 9.5, bold: true);
         row++;
 
         void RenderZoneRow(MoteFarm.ZoneRow r, bool hint)
@@ -359,8 +360,14 @@ public partial class LootWindow : Window
             MCell(rate is { } rv ? $"{rv:0}/h" : "small sample", row, 2 + gradeCols,
                 rate is not null && !hint ? MoteRateFg : MoteDimmerFg, right: true,
                 size: rate is not null ? 12.5 : 10.5, bold: rate is not null && !hint, noLine: open);
+            // Each mote weighed by the wiki's spell-upgrade points — the
+            // truer "worth it" number (one Greater = 32 Minors).
+            double? value = r.ValueRate();
+            MCell(value is { } vv ? $"{vv:0} pts" : "—", row, 3 + gradeCols,
+                value is not null && !hint ? MoteGoldFg : MoteDimmerFg, right: true,
+                size: value is not null ? 12.5 : 11, bold: value is not null && !hint, noLine: open);
             MCell(r.Last.Date == DateTime.Today ? r.Last.ToString("HH:mm") : r.Last.ToString("dd MMM"),
-                row, 3 + gradeCols, MoteDimmerFg, right: true, noLine: open);
+                row, 4 + gradeCols, MoteDimmerFg, right: true, noLine: open);
             row++;
 
             if (open)
@@ -382,7 +389,7 @@ public partial class LootWindow : Window
                     Child = detail,
                 };
                 Grid.SetRow(host, row);
-                Grid.SetColumnSpan(host, 4 + gradeCols);
+                Grid.SetColumnSpan(host, 5 + gradeCols);
                 MoteTableHost.Children.Add(host);
                 row++;
             }
@@ -414,7 +421,7 @@ public partial class LootWindow : Window
                 RefreshMotes();
             };
             Grid.SetRow(thinToggle, row);
-            Grid.SetColumnSpan(thinToggle, 4 + gradeCols);
+            Grid.SetColumnSpan(thinToggle, 5 + gradeCols);
             MoteTableHost.Children.Add(thinToggle);
             row++;
 

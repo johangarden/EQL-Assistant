@@ -524,6 +524,10 @@ public partial class App : Application
             Check("motes: a hotter but younger zone gets the lucky-window caveat, not the crown",
                 mv.Any(x => x.Caveat && x.Text.Contains("The Plane of Hate")
                     && x.Text.Contains("lucky window")));
+            Check("motes: value/h weighs each mote by the wiki's spell points",
+                t4.Points == 10 * 32 // ten Greaters
+                && t4.ValueRate() is { } t4v && Math.Abs(t4v - 320 * 60.0 / 54) < 2
+                && naj.ValueRate() is null); // floors gate value like rate
             var (msShown, msThin) = MoteFarm.SplitByFarmed(board, 45);
             Check("motes: the strictness dial splits farms from hints",
                 msShown.Count == 1 && msShown[0].Zone.Contains("Old Paineel")
