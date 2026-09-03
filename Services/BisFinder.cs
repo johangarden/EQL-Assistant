@@ -155,23 +155,18 @@ public static class BisFinder
     public static bool IsOffhand(Candidate c) =>
         !IsWeapon(c) && c.Rec.Slot.Trim().Equals("SECONDARY", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>The armor question: every non-weapon slot, plus Range as a
-    /// STAT slot (brooches, idols — never bows; those are the weapon view's).</summary>
-    public static Result ArmorView(Result r)
-    {
-        var slots = r.Slots.Where(s => !WeaponSlotKeys.Contains(s.Key)).ToList();
-        var range = r.Slots.First(s => s.Key == "RANGE");
-        slots.Add(range with
-        {
-            Label = "Range (stat)",
-            Ranked = range.Ranked.Where(c => !IsWeapon(c)).ToList(),
-        });
-        return r with { Slots = slots };
-    }
+    /// <summary>The armor question: every non-weapon slot. Range lives in the
+    /// weapons view (owner ruling, 2 Sep) with its own DPS/stat toggle.</summary>
+    public static Result ArmorView(Result r) =>
+        r with { Slots = r.Slots.Where(s => !WeaponSlotKeys.Contains(s.Key)).ToList() };
 
-    /// <summary>Primary/Secondary filtered by fighting style; Range as a DPS
-    /// slot (bows, thrown) and Ammo always ride along.</summary>
-    public static Result WeaponView(Result r, WeaponStyle style)
+    /// <summary>What the range slot is FOR: a bow build ranks bows/thrown,
+    /// a stat build ranks brooches and idols.</summary>
+    public enum RangeMode { Dps, Stat }
+
+    /// <summary>Primary/Secondary filtered by fighting style; Range by its
+    /// mode (DPS = bows/thrown, stat = everything else) and Ammo always ride along.</summary>
+    public static Result WeaponView(Result r, WeaponStyle style, RangeMode range = RangeMode.Dps)
     {
         var prim = r.Slots.First(s => s.Key == "PRIMARY");
         var sec = r.Slots.First(s => s.Key == "SECONDARY");
@@ -199,8 +194,10 @@ public static class BisFinder
         }
         var slots = new List<SlotResult> { prim with { Ranked = p } };
         if (style != WeaponStyle.TwoHanded) slots.Add(sec with { Ranked = s });
-        var range = r.Slots.First(x => x.Key == "RANGE");
-        slots.Add(range with { Label = "Range (DPS)", Ranked = range.Ranked.Where(IsWeapon).ToList() });
+        var rangeSlot = r.Slots.First(x => x.Key == "RANGE");
+        slots.Add(range == RangeMode.Dps
+            ? rangeSlot with { Label = "Range (DPS)", Ranked = rangeSlot.Ranked.Where(IsWeapon).ToList() }
+            : rangeSlot with { Label = "Range (stat)", Ranked = rangeSlot.Ranked.Where(c => !IsWeapon(c)).ToList() });
         slots.AddRange(r.Slots.Where(x => x.Key == "AMMO"));
         return r with { Slots = slots };
     }

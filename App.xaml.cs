@@ -610,11 +610,11 @@ public partial class App : Application
                 && shield.Slots.First(s => s.Key == "SECONDARY").Ranked.Single().BaseName == "Buckler of Doom");
             Check("bis: dual wield never offers the weapon worn in Primary for the off-hand",
                 dual.Slots.First(s => s.Key == "SECONDARY").Ranked.Count == 0);
-            var armorView = BisFinder.ArmorView(wAll);
-            Check("bis: Range is a STAT slot in the armor view and a DPS slot in the weapons view",
-                armorView.Slots.First(s => s.Key == "RANGE").Ranked.Any(c => c.BaseName.StartsWith("Soldier's Brooch"))
-                && armorView.Slots.All(s => s.Key is not ("PRIMARY" or "SECONDARY" or "AMMO"))
-                && dual.Slots.First(s => s.Key == "RANGE").Ranked.Count == 0);
+            var rangeStat = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.DualWield, BisFinder.RangeMode.Stat);
+            Check("bis: Range lives in the weapons view, toggling DPS (bows) or stat (brooches)",
+                BisFinder.ArmorView(wAll).Slots.All(s => !BisFinder.WeaponSlotKeys.Contains(s.Key))
+                && dual.Slots.First(s => s.Key == "RANGE").Ranked.Count == 0
+                && rangeStat.Slots.First(s => s.Key == "RANGE").Ranked.Any(c => c.BaseName.StartsWith("Soldier's Brooch")));
             var bisBank = BisFinder.Build(bisRows, bisStats, new[] { "SHD" }, new[] { "AC", "STA", "INT" },
                 new[] { "bank" });
             Check("bis: the search-in lanes narrow the field",

@@ -30,6 +30,7 @@ public partial class BisFinderView : UserControl
     private string[] _prio;
     private bool _weapons; // false = Armor view
     private BisFinder.WeaponStyle _style = BisFinder.WeaponStyle.DualWield;
+    private BisFinder.RangeMode _range = BisFinder.RangeMode.Dps;
     private readonly HashSet<string> _lanes = new(BisFinder.SearchLanes, StringComparer.Ordinal);
     private readonly Dictionary<string, bool> _fold = new(StringComparer.Ordinal); // explicit toggles
 
@@ -114,6 +115,21 @@ public partial class BisFinderView : UserControl
             };
             ViewPills.Children.Add(pill);
         }
+        // What the range slot is for: a bow build or a stat brooch.
+        var gap2 = new TextBlock { Text = "· Range:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0) };
+        ViewPills.Children.Add(gap2);
+        foreach (var (mode, label) in new[] { (BisFinder.RangeMode.Dps, "DPS"), (BisFinder.RangeMode.Stat, "Stat") })
+        {
+            var pill = Chip(label, "range:" + mode);
+            var m = mode;
+            pill.MouseLeftButtonDown += (_, _) =>
+            {
+                _range = m;
+                SavePrefs();
+                Refresh();
+            };
+            ViewPills.Children.Add(pill);
+        }
     }
 
     private void StyleViewPills()
@@ -123,6 +139,11 @@ public partial class BisFinderView : UserControl
             if (child is not Border pill || pill.Tag is not string tag) continue;
             if (tag == "armor") Paint(pill, !_weapons, LaneOnFg, LaneOnLine);
             else if (tag == "weapons") Paint(pill, _weapons, LaneOnFg, LaneOnLine);
+            else if (tag.StartsWith("range:", StringComparison.Ordinal))
+            {
+                pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
+                Paint(pill, tag == "range:" + _range, ChipOnFg, ChipOnLine);
+            }
             else
             {
                 pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
@@ -151,6 +172,7 @@ public partial class BisFinderView : UserControl
         if (parts.Length > 1 && parts[1].Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: 3 } w)
             _prioWeapon = w;
         if (parts.Length > 2 && Enum.TryParse(parts[2], out BisFinder.WeaponStyle st)) _style = st;
+        if (parts.Length > 3 && Enum.TryParse(parts[3], out BisFinder.RangeMode rm)) _range = rm;
         _prio = _weapons ? _prioWeapon : _prioArmor;
         SyncPrioBoxes();
     }
@@ -250,7 +272,7 @@ public partial class BisFinderView : UserControl
 
     private void SavePrefs() =>
         _config?.SaveBisPrefs(_charKey, string.Join("/", _combo),
-            string.Join("/", _prioArmor) + ";" + string.Join("/", _prioWeapon) + ";" + _style);
+            string.Join("/", _prioArmor) + ";" + string.Join("/", _prioWeapon) + ";" + _style + ";" + _range);
 
     // ---- the board -----------------------------------------------------------------
 
@@ -271,7 +293,7 @@ public partial class BisFinderView : UserControl
 
         StyleViewPills();
         var all = BisFinder.Build(_rows, _stats, _combo, _prio, _lanes);
-        var result = _weapons ? BisFinder.WeaponView(all, _style) : BisFinder.ArmorView(all);
+        var result = _weapons ? BisFinder.WeaponView(all, _style, _range) : BisFinder.ArmorView(all);
         BuildVerdicts(result);
         BuildBoard(result);
     }
@@ -476,7 +498,8 @@ public partial class BisFinderView : UserControl
 
         void Emit((string Key, string Label, bool Upgrade, Action Render) e)
         {
-            bool open = _fold.TryGetValue(e.Key, out bool o) ? o : e.Upgrade;
+            // Weapons: three slots, room for all — open even when BiS (owner ruling).
+            bool open = _fold.TryGetValue(e.Key, out bool o) ? o : (e.Upgrade || _weapons);
             SlotHeader(e.Key, e.Label, open, e.Upgrade);
             if (open) e.Render();
         }
