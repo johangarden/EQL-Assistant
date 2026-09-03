@@ -504,6 +504,14 @@ public partial class BisFinderView : UserControl
             if (open) e.Render();
         }
 
+        // Weapons keep the hands' order - Primary, Secondary, Range, Ammo -
+        // no matter what's an upgrade (owner ruling). Armor sorts upgrades
+        // to the top, a divider, then the slots you already wear the best of.
+        if (_weapons)
+        {
+            foreach (var e in entries) Emit(e);
+            return;
+        }
         var withUpgrades = entries.Where(e => e.Upgrade).ToList();
         var solved = entries.Where(e => !e.Upgrade).ToList();
         foreach (var e in withUpgrades) Emit(e);
