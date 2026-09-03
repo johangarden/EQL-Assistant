@@ -193,9 +193,22 @@ public partial class App : Application
             var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
             invWin.Show();
             invWin.ShowFocusTab(); // instantiate the audit-board template
-            invWin.ShowTab("sets"); // and the armor-set board (owns a Valorium piece)
+            invWin.ShowTab("bis");  // and the best-in-slot board
             invWin.UpdateLayout();
             invWin.Close();
+
+            // The Loot window hosts the browser tabs of the same panel: the
+            // ledger list, exaltations and the armor-set board (owns a
+            // Valorium piece) must all render from the dump.
+            var lootItems = new Views.LootWindow(new LootTracker(new ConfigService()),
+                invDir, "Testchar", "paineel");
+            lootItems.Show();
+            foreach (var view in new[] { "items", "exalt", "sets" })
+            {
+                lootItems.ShowView(view);
+                lootItems.UpdateLayout();
+            }
+            lootItems.Close();
 
             // The Sky helper panel renders its line list (temp progress file).
             string helperProg = Path.Combine(Path.GetTempPath(), "eql_test_helper_prog.json");

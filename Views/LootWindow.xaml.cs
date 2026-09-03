@@ -19,7 +19,11 @@ public partial class LootWindow : Window
 
     public sealed record RowVm(string Item, string Detail, string ValueText, Brush ValueBrush);
 
-    public LootWindow(LootTracker loot)
+    /// <summary>The item-browser tabs this window hosts from the inventory panel.</summary>
+    public static readonly string[] HostedTabs = { "items", "exalt", "sets" };
+
+    public LootWindow(LootTracker loot, string eqRoot = "", string charName = "", string server = "",
+        SessionStats? session = null)
     {
         InitializeComponent();
         DialogPlacement.Persist(this, "loot");
@@ -27,7 +31,20 @@ public partial class LootWindow : Window
         _loot = loot;
         _loot.Changed += OnLootChanged;
         Closed += (_, _) => _loot.Changed -= OnLootChanged;
+        // The browser tabs read the game's inventory dump; the Loot title
+        // carries, so the panel's own header and tab row stay hidden.
+        ItemsPanel.Attach(eqRoot, charName, server, session, HostedTabs,
+            showHeader: false, showTabRow: false);
         BuildTimePills();
+        StylePills();
+        Refresh();
+    }
+
+    /// <summary>Open one of the views by id (drops · motes · items · exalt · sets).</summary>
+    public void ShowView(string id)
+    {
+        if (id == _view) return;
+        _view = id;
         StylePills();
         Refresh();
     }
@@ -40,6 +57,7 @@ public partial class LootWindow : Window
     {
         if (ResultsList is null) return; // fired during InitializeComponent
         if (_view == "motes") { RefreshMotes(); return; }
+        if (IsItemsView) { ItemsPanel.ShowTab(_view); return; } // the panel refreshes itself
 
         string search = SearchBox.Text.Trim();
         string kindTag = (KindBox.SelectedValue as string) ?? "";
@@ -133,20 +151,29 @@ public partial class LootWindow : Window
         Refresh();
     }
 
+    private bool IsItemsView => _view is "items" or "exalt" or "sets";
+
     private void StylePills()
     {
         bool motes = _view == "motes";
-        foreach (var (pill, on) in new[] { (DropPill, !motes), (MotePill, motes) })
+        bool items = IsItemsView;
+        foreach (var (pill, on) in new[]
+                 {
+                     (DropPill, _view == "drops"), (MotePill, motes),
+                     (ItemsPill, _view == "items"), (ExaltPill, _view == "exalt"), (SetsPill, _view == "sets"),
+                 })
         {
             pill.Background = on ? PillOnBg : PillOffBg;
             pill.BorderBrush = on ? PillOnLine : PillOffLine;
             if (pill.Child is TextBlock tb) tb.Foreground = on ? PillOnFg : PillOffFg;
         }
-        FiltersRow.Visibility = motes ? Visibility.Collapsed : Visibility.Visible;
+        FiltersRow.Visibility = _view == "drops" ? Visibility.Visible : Visibility.Collapsed;
         GradePills.Visibility = motes ? Visibility.Visible : Visibility.Collapsed;
         TimePills.Visibility = motes ? Visibility.Visible : Visibility.Collapsed;
-        ResultsList.Visibility = motes ? Visibility.Collapsed : Visibility.Visible;
+        ResultsList.Visibility = _view == "drops" ? Visibility.Visible : Visibility.Collapsed;
         MoteScroll.Visibility = motes ? Visibility.Visible : Visibility.Collapsed;
+        ItemsPanel.Visibility = items ? Visibility.Visible : Visibility.Collapsed;
+        HintText.Visibility = items ? Visibility.Collapsed : Visibility.Visible; // the panel carries its own
         HintText.Text = motes
             ? "Where an hour of farming actually pays, mined from this ledger: mote drops clustered into stints (≤15 min between drops, first→last drop on the clock, so AFK time never inflates a rate). A rate only prints at ≥30 min farmed AND ≥8 motes, and the 'best farm' crown needs 45+ min on the clock — one lucky window never outranks a proven grind; T3 and T4 of the same zone are separate farms. VALUE/H weighs each mote by the wiki's spell-upgrade points (one Greater = 32 Minors) — the All view ranks by it; a grade pill ranks by that grade's own rate. Fold a row out for the mobs that paid and the individual stints."
             : "Every item looted, from the log: upgrades applied to your gear, items kept in your bags, and auto-vendored drops with what they sold for.";

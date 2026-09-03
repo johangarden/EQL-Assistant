@@ -1759,7 +1759,13 @@ public partial class MainWindow : Window
     {
         if (_lootWindow is null)
         {
-            _lootWindow = new Views.LootWindow(_loot);
+            // The Loot window also hosts the item browser (All items ·
+            // Exaltations · Armor sets) over the same dump the Character
+            // window reads.
+            string logPath = _watcher?.CurrentPath ?? "";
+            var (name, server) = InventoryStore.ParseLogName(logPath);
+            _lootWindow = new Views.LootWindow(_loot,
+                InventoryStore.EqRootOf(logPath), name, server, _session);
             _lootWindow.Closed += (_, _) => _lootWindow = null;
             _lootWindow.Show();
         }

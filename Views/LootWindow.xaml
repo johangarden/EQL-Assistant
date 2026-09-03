@@ -1,9 +1,10 @@
 <Window x:Class="EQLOverlay.Views.LootWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="clr-namespace:EQLOverlay.Views"
         Title="EQL Assistant — Loot History"
-        Width="680" Height="560"
-        MinWidth="500" MinHeight="360"
+        Width="900" Height="620"
+        MinWidth="640" MinHeight="360"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Brush.Window}"
         Icon="/assets/eqloverlay.ico"
@@ -34,9 +35,26 @@
                     <TextBlock Text="Drop log" FontSize="11.5" FontWeight="SemiBold"/>
                 </Border>
                 <Border x:Name="MotePill" CornerRadius="14" BorderThickness="1" Padding="15,4"
-                        Cursor="Hand" MouseLeftButtonDown="View_Click" Tag="motes"
+                        Cursor="Hand" Margin="0,0,6,0" MouseLeftButtonDown="View_Click" Tag="motes"
                         ToolTip="Where an hour of farming actually pays — mote rates per zone and tier, mined from this loot ledger">
                     <TextBlock Text="Mote farming" FontSize="11.5" FontWeight="SemiBold"/>
+                </Border>
+                <!-- The item browser (moved here from the Character window,
+                     owner ruling 2 Sep): what you OWN, per the inventory dump. -->
+                <Border x:Name="ItemsPill" CornerRadius="14" BorderThickness="1" Padding="15,4"
+                        Cursor="Hand" Margin="0,0,6,0" MouseLeftButtonDown="View_Click" Tag="items"
+                        ToolTip="Every item you own, per the game's inventory dump — worn, bags, bank, depot, hoard">
+                    <TextBlock Text="All items" FontSize="11.5" FontWeight="SemiBold"/>
+                </Border>
+                <Border x:Name="ExaltPill" CornerRadius="14" BorderThickness="1" Padding="15,4"
+                        Cursor="Hand" Margin="0,0,6,0" MouseLeftButtonDown="View_Click" Tag="exalt"
+                        ToolTip="Your exaltations and their sockets">
+                    <TextBlock Text="Exaltations" FontSize="11.5" FontWeight="SemiBold"/>
+                </Border>
+                <Border x:Name="SetsPill" CornerRadius="14" BorderThickness="1" Padding="15,4"
+                        Cursor="Hand" MouseLeftButtonDown="View_Click" Tag="sets"
+                        ToolTip="Planar class armor sets — which pieces you hold, which you're missing">
+                    <TextBlock Text="Armor sets" FontSize="11.5" FontWeight="SemiBold"/>
                 </Border>
             </StackPanel>
 
@@ -89,6 +107,10 @@
                     <Grid x:Name="MoteTableHost" VerticalAlignment="Top"/>
                 </StackPanel>
             </ScrollViewer>
+
+            <!-- The inventory panel's browser tabs (All items · Exaltations ·
+                 Armor sets), driven by the pills above; its own tab row hides. -->
+            <v:InventoryPanel x:Name="ItemsPanel" Visibility="Collapsed"/>
         </Grid>
     </DockPanel>
 </Window>
