@@ -25,6 +25,7 @@ public partial class BisFinderView : UserControl
     private readonly List<string> _combo = new(); // insertion order: the 4th pick evicts the 1st
     private string[] _prio = { "AC", "STA", "INT" };
     private readonly HashSet<string> _lanes = new(BisFinder.SearchLanes, StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> _fold = new(StringComparer.Ordinal); // explicit toggles
 
     private static readonly Brush ChipOnBg = Freeze("#16283E");
     private static readonly Brush ChipOnFg = Freeze("#4FC3F7");
@@ -272,13 +273,41 @@ public partial class BisFinderView : UserControl
         // single slots the pick + two alternatives. Worn items always show,
         // even when they fell below the alternatives — you should see what
         // you're wearing against the winner.
-        void Header(string text)
+        // Slot headers fold (Johan, 2 Sep): a slot you already wear the best
+        // of collapses to "HEAD  BiS"; a slot with an upgrade in storage opens
+        // with "1 UPGRADE". Any header toggles on click.
+        void SlotHeader(BisFinder.SlotResult slot, bool open, int upgradeCount)
         {
             Board.RowDefinitions.Add(new RowDefinition());
             var head = new TextBlock
             {
-                Text = text, Foreground = SlotFg, FontSize = 10.5, FontWeight = FontWeights.Bold,
-                Margin = new Thickness(2, 12, 0, 3),
+                FontSize = 10.5, FontWeight = FontWeights.Bold,
+                Margin = new Thickness(2, open ? 12 : 7, 0, open ? 3 : 2),
+                Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            head.Inlines.Add(new Run(open ? "▾ " : "▸ ") { Foreground = SlotFg, FontSize = 9.5 });
+            head.Inlines.Add(new Run(slot.Label.ToUpperInvariant()) { Foreground = open ? SlotFg : DimFg });
+            if (upgradeCount > 0) Badge(head, upgradeCount == 1 ? "1 UPGRADE" : $"{upgradeCount} UPGRADES", UpFg);
+            else Badge(head, "BiS", WornFg);
+            string key = slot.Key;
+            head.MouseLeftButtonDown += (_, _) =>
+            {
+                _fold[key] = !open;
+                Refresh();
+            };
+            Grid.SetRow(head, row);
+            Grid.SetColumnSpan(head, 8);
+            Board.Children.Add(head);
+            row++;
+        }
+
+        void SubHeader(string text)
+        {
+            Board.RowDefinitions.Add(new RowDefinition());
+            var head = new TextBlock
+            {
+                Text = text, Foreground = DimFg, FontSize = 9.5, FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(14, 5, 0, 2),
             };
             Grid.SetRow(head, row);
             Grid.SetColumnSpan(head, 8);
@@ -316,9 +345,12 @@ public partial class BisFinderView : UserControl
             var upgrades = slot.Upgrades.ToHashSet();
             var picks = slot.Picks.ToList();
 
+            bool open = _fold.TryGetValue(slot.Key, out bool o) ? o : upgrades.Count > 0;
+            SlotHeader(slot, open, upgrades.Count);
+            if (!open) continue;
+
             if (slot.Count == 1)
             {
-                Header(slot.Label.ToUpperInvariant());
                 var shown = slot.Ranked.Take(3)
                     .Concat(slot.Ranked.Skip(3).Where(c => c.Worn));
                 foreach (var c in shown)
@@ -345,7 +377,7 @@ public partial class BisFinderView : UserControl
 
             for (int s = 0; s < subSlots.Count; s++)
             {
-                Header($"{slot.Label.ToUpperInvariant()} · SLOT {s + 1}");
+                SubHeader($"SLOT {s + 1}");
                 var (pick, replaces) = subSlots[s];
                 if (pick is not null) RenderRow(pick, true, upgrades.Contains(pick));
                 if (replaces is not null) RenderRow(replaces, false, false);
