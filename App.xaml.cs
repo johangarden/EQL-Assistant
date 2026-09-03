@@ -593,11 +593,12 @@ public partial class App : Application
             // Weapons by fighting style: a 1H stick, a 2H reaver, a shield.
             var wRows = new List<InventoryStore.CarryRow>
             {
-                new("Carved Walking Stick", "carved walking stick", "General 2-Slot1", 1, "bags", 10),
+                new("Carved Walking Stick", "carved walking stick", "Primary", 1, "worn", 10), // WORN in Primary
                 new("A Dark Reaver +2", "a dark reaver +2", "Bank1-Slot1", 1, "bank", 11),
                 new("Buckler of Doom", "buckler of doom", "Bank1-Slot2", 1, "bank", 12),
+                new("Soldier's Brooch of the Spirited +2", "soldier's brooch", "Range", 1, "worn", 13), // stat range item
             };
-            var wAll = BisFinder.Build(wRows, bisStats, new[] { "SHD" }, new[] { "DMG_DLY", "STR", "STA" });
+            var wAll = BisFinder.Build(wRows, bisStats, new[] { "SHD", "SHM" }, new[] { "DMG_DLY", "STR", "STA" });
             var twoH = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.TwoHanded);
             var shield = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.ShieldAndOne);
             var dual = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.DualWield);
@@ -607,9 +608,13 @@ public partial class App : Application
             Check("bis: 1H + shield pairs a one-hander with an off-hand",
                 shield.Slots.First(s => s.Key == "PRIMARY").Ranked.Single().BaseName == "Carved Walking Stick"
                 && shield.Slots.First(s => s.Key == "SECONDARY").Ranked.Single().BaseName == "Buckler of Doom");
-            Check("bis: dual wield never puts the one stick in both hands",
-                dual.Slots.First(s => s.Key == "SECONDARY").Ranked.Count == 0
-                && BisFinder.ArmorView(wAll).Slots.All(s => !BisFinder.WeaponSlotKeys.Contains(s.Key)));
+            Check("bis: dual wield never offers the weapon worn in Primary for the off-hand",
+                dual.Slots.First(s => s.Key == "SECONDARY").Ranked.Count == 0);
+            var armorView = BisFinder.ArmorView(wAll);
+            Check("bis: Range is a STAT slot in the armor view and a DPS slot in the weapons view",
+                armorView.Slots.First(s => s.Key == "RANGE").Ranked.Any(c => c.BaseName.StartsWith("Soldier's Brooch"))
+                && armorView.Slots.All(s => s.Key is not ("PRIMARY" or "SECONDARY" or "AMMO"))
+                && dual.Slots.First(s => s.Key == "RANGE").Ranked.Count == 0);
             var bisBank = BisFinder.Build(bisRows, bisStats, new[] { "SHD" }, new[] { "AC", "STA", "INT" },
                 new[] { "bank" });
             Check("bis: the search-in lanes narrow the field",

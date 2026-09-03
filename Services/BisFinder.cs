@@ -155,12 +155,22 @@ public static class BisFinder
     public static bool IsOffhand(Candidate c) =>
         !IsWeapon(c) && c.Rec.Slot.Trim().Equals("SECONDARY", StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Everything that isn't a weapon slot.</summary>
-    public static Result ArmorView(Result r) =>
-        r with { Slots = r.Slots.Where(s => !WeaponSlotKeys.Contains(s.Key)).ToList() };
+    /// <summary>The armor question: every non-weapon slot, plus Range as a
+    /// STAT slot (brooches, idols — never bows; those are the weapon view's).</summary>
+    public static Result ArmorView(Result r)
+    {
+        var slots = r.Slots.Where(s => !WeaponSlotKeys.Contains(s.Key)).ToList();
+        var range = r.Slots.First(s => s.Key == "RANGE");
+        slots.Add(range with
+        {
+            Label = "Range (stat)",
+            Ranked = range.Ranked.Where(c => !IsWeapon(c)).ToList(),
+        });
+        return r with { Slots = slots };
+    }
 
-    /// <summary>Primary/Secondary filtered by fighting style; Range and Ammo
-    /// always ride along (bow builds live there).</summary>
+    /// <summary>Primary/Secondary filtered by fighting style; Range as a DPS
+    /// slot (bows, thrown) and Ammo always ride along.</summary>
     public static Result WeaponView(Result r, WeaponStyle style)
     {
         var prim = r.Slots.First(s => s.Key == "PRIMARY");
@@ -179,15 +189,19 @@ public static class BisFinder
             default: // dual wield — the same physical weapon can't fill both hands
                 p = prim.Ranked.Where(c => IsWeapon(c) && !c.TwoHanded).ToList();
                 var main = p.FirstOrDefault();
+                // Identity = name + where it sits (the worn flag differs per
+                // slot: a blade worn in Primary is Worn there, not under Secondary).
                 s = sec.Ranked.Where(c => IsWeapon(c) && !c.TwoHanded
                                           && (main is null || c.Copies >= 2
-                                              || !(c.Name == main.Name && c.Worn == main.Worn)))
+                                              || !(c.Name == main.Name && c.Location == main.Location)))
                     .ToList();
                 break;
         }
         var slots = new List<SlotResult> { prim with { Ranked = p } };
         if (style != WeaponStyle.TwoHanded) slots.Add(sec with { Ranked = s });
-        slots.AddRange(r.Slots.Where(x => x.Key is "RANGE" or "AMMO"));
+        var range = r.Slots.First(x => x.Key == "RANGE");
+        slots.Add(range with { Label = "Range (DPS)", Ranked = range.Ranked.Where(IsWeapon).ToList() });
+        slots.AddRange(r.Slots.Where(x => x.Key == "AMMO"));
         return r with { Slots = slots };
     }
 
