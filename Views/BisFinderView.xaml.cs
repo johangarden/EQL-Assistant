@@ -267,74 +267,78 @@ public partial class BisFinderView : UserControl
         Cell("CLASSES", row, 7, HeadFg, right: false, size: 9.5, bold: true);
         row++;
 
-        foreach (var slot in result.Slots)
+        // Owner rulings (2 Sep): only what the combo can wear; two-slot
+        // slots split into SLOT 1 / SLOT 2, each its pick + ONE alternative;
+        // single slots the pick + two alternatives. Worn items always show,
+        // even when they fell below the alternatives — you should see what
+        // you're wearing against the winner.
+        void Header(string text)
         {
-            if (slot.Ranked.Count == 0 && slot.Foreign.Count == 0) continue;
-
             Board.RowDefinitions.Add(new RowDefinition());
             var head = new TextBlock
             {
-                Text = slot.Label.ToUpperInvariant() + (slot.Count > 1 ? " · TWO SLOTS" : ""),
-                Foreground = SlotFg, FontSize = 10.5, FontWeight = FontWeights.Bold,
+                Text = text, Foreground = SlotFg, FontSize = 10.5, FontWeight = FontWeights.Bold,
                 Margin = new Thickness(2, 12, 0, 3),
             };
             Grid.SetRow(head, row);
             Grid.SetColumnSpan(head, 8);
             Board.Children.Add(head);
             row++;
+        }
 
+        void RenderRow(BisFinder.Candidate c, bool pick, bool upgrade)
+        {
+            Board.RowDefinitions.Add(new RowDefinition());
+            var name = new TextBlock { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis };
+            name.Inlines.Add(new Run(c.BaseName) { Foreground = pick ? NameFg : DimFg, FontWeight = FontWeights.SemiBold });
+            if (c.Tier > 0) name.Inlines.Add(new Run($" +{c.Tier}") { Foreground = TierFg });
+            if (c.Copies > 1) name.Inlines.Add(new Run($" ×{c.Copies}") { Foreground = DimmerFg });
+            if (c.Worn) Badge(name, "WORN", WornFg);
+            if (upgrade) Badge(name, "UPGRADE", UpFg);
+            if (c.ClassesUnknown) Badge(name, "CLASSES UNKNOWN", DimmerFg);
+            CellHost(name, row, 0);
+            Cell($"{c.Score:0}", row, 1, pick ? ScoreFg : DimFg, right: true, size: 13, bold: pick);
+            for (int i = 0; i < 3; i++)
+            {
+                int v = c.Stats.GetValueOrDefault(_prio[i]);
+                Cell(v != 0 ? StatText(_prio[i], v) : "—", row, 2 + i,
+                    v != 0 ? (i == 0 ? Stat1Fg : NameFg) : DimmerFg, right: true);
+            }
+            Cell(OtherText(c), row, 5, DimFg, right: false, size: 11);
+            Cell(c.Location, row, 6, DimFg, right: false, size: 11);
+            Cell(c.Rec.Classes.Length > 0 ? c.Rec.Classes : "—", row, 7, DimmerFg, right: false, size: 10.5);
+            row++;
+        }
+
+        foreach (var slot in result.Slots)
+        {
+            if (slot.Ranked.Count == 0) continue;
             var upgrades = slot.Upgrades.ToHashSet();
-            // Top 3 by score, plus anything worn that fell outside them — you
-            // should always see what you're wearing against the winner.
-            var shown = slot.Ranked.Take(3)
-                .Concat(slot.Ranked.Skip(3).Where(c => c.Worn))
-                .ToList();
-            foreach (var c in shown)
+            var picks = slot.Picks.ToList();
+
+            if (slot.Count == 1)
             {
-                Board.RowDefinitions.Add(new RowDefinition());
-                bool pick = slot.Picks.Contains(c);
-                var name = new TextBlock { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis };
-                name.Inlines.Add(new Run(c.BaseName) { Foreground = pick ? NameFg : DimFg, FontWeight = FontWeights.SemiBold });
-                if (c.Tier > 0) name.Inlines.Add(new Run($" +{c.Tier}") { Foreground = TierFg });
-                if (c.Copies > 1) name.Inlines.Add(new Run($" ×{c.Copies}") { Foreground = DimmerFg });
-                if (c.Worn) Badge(name, "WORN", WornFg);
-                if (upgrades.Contains(c)) Badge(name, "UPGRADE", UpFg);
-                if (c.ClassesUnknown) Badge(name, "CLASSES UNKNOWN", DimmerFg);
-                CellHost(name, row, 0);
-                Cell($"{c.Score:0}", row, 1, pick ? ScoreFg : DimFg, right: true, size: 13, bold: pick);
-                for (int i = 0; i < 3; i++)
-                {
-                    int v = c.Stats.GetValueOrDefault(_prio[i]);
-                    Cell(v != 0 ? StatText(_prio[i], v) : "—", row, 2 + i,
-                        v != 0 ? (i == 0 ? Stat1Fg : NameFg) : DimmerFg, right: true);
-                }
-                Cell(OtherText(c), row, 5, DimFg, right: false, size: 11);
-                Cell(c.Location, row, 6, DimFg, right: false, size: 11);
-                Cell(c.Rec.Classes.Length > 0 ? c.Rec.Classes : "—", row, 7, DimmerFg, right: false, size: 10.5);
-                row++;
+                Header(slot.Label.ToUpperInvariant());
+                var shown = slot.Ranked.Take(3)
+                    .Concat(slot.Ranked.Skip(3).Where(c => c.Worn));
+                foreach (var c in shown)
+                    RenderRow(c, picks.Contains(c), upgrades.Contains(c));
+                continue;
             }
 
-            // The best item the combo CAN'T wear — visible, unranked, so the
-            // bank's robe isn't forgotten when the combo changes.
-            foreach (var f in slot.Foreign.Take(1))
+            // Two slots: pick #1 with alternative #3 under SLOT 1, pick #2
+            // with alternative #4 under SLOT 2; leftover worn items trail.
+            var placed = new HashSet<BisFinder.Candidate>();
+            for (int s = 0; s < slot.Count; s++)
             {
-                Board.RowDefinitions.Add(new RowDefinition());
-                var name = new TextBlock { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = 0.7 };
-                name.Inlines.Add(new Run(f.BaseName) { Foreground = DimFg, FontWeight = FontWeights.SemiBold });
-                if (f.Tier > 0) name.Inlines.Add(new Run($" +{f.Tier}") { Foreground = TierFg });
-                if (f.Worn) Badge(name, "WORN", WornFg);
-                CellHost(name, row, 0);
-                Cell("—", row, 1, DimmerFg, right: true);
-                for (int i = 0; i < 3; i++)
-                {
-                    int v = f.Stats.GetValueOrDefault(_prio[i]);
-                    Cell(v != 0 ? StatText(_prio[i], v) : "—", row, 2 + i, DimmerFg, right: true);
-                }
-                Cell(OtherText(f), row, 5, DimmerFg, right: false, size: 11);
-                Cell(f.Location, row, 6, DimmerFg, right: false, size: 11);
-                Cell(f.Rec.Classes + " — not this combo", row, 7, ForeignFg, right: false, size: 10.5);
-                row++;
+                Header($"{slot.Label.ToUpperInvariant()} · SLOT {s + 1}");
+                var pick = slot.Ranked.ElementAtOrDefault(s);
+                var alt = slot.Ranked.ElementAtOrDefault(slot.Count + s);
+                if (pick is not null) { RenderRow(pick, true, upgrades.Contains(pick)); placed.Add(pick); }
+                if (alt is not null) { RenderRow(alt, false, false); placed.Add(alt); }
             }
+            foreach (var c in slot.Ranked.Where(c => c.Worn && !placed.Contains(c)))
+                RenderRow(c, false, false);
         }
     }
 
