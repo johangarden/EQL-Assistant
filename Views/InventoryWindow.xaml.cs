@@ -62,6 +62,7 @@ public partial class InventoryWindow : Window
         ("exalt", "Exaltations"),
         ("focus", "Focus board"),
         ("sets", "Armor sets"),
+        ("bis", "Best in slot"),
     };
 
     private static readonly Brush SegOnBg = Freeze("#16283E");
@@ -128,6 +129,7 @@ public partial class InventoryWindow : Window
         _server = server;
         _session = session;
         SheetView.Init(_focus, _itemStats);
+        BisView.Init(_itemStats, SharedConfig.Value, CharKey);
         SheetView.FocusBoardRequested = () => ShowTab("focus");
         SheetView.DrawerExtendRequested = ExtendForDrawer;
         RefreshCharHeader();
@@ -186,6 +188,7 @@ public partial class InventoryWindow : Window
             ResultsList.Visibility = Visibility.Collapsed;
             FocusList.Visibility = Visibility.Collapsed;
             SheetView.Visibility = Visibility.Collapsed;
+            BisView.Visibility = Visibility.Collapsed;
             TabPanel.Children.Clear();
             LanePanel.Children.Clear();
             ParsedText.Visibility = Visibility.Collapsed;
@@ -249,6 +252,7 @@ public partial class InventoryWindow : Window
 
         // The Sheet tab renders from THIS parse — the dump is read once.
         SheetView.Update(_dump, _rows, _audit);
+        BisView.Update(_rows, _session?.WhoClasses ?? "", _dumpMtime.ToString("dd MMM HH:mm"));
 
         BuildTabs();
         BuildLaneChips();
@@ -338,7 +342,7 @@ public partial class InventoryWindow : Window
             var scored = _audit.Where(a => a.Family.Group != "summoned").ToList();
             string text = id switch
             {
-                "sheet" => label,
+                "sheet" or "bis" => label,
                 "focus" => $"{label}  {scored.Count(a => a.Status == 2)}/{scored.Count}",
                 _ => $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}",
             };
@@ -420,7 +424,7 @@ public partial class InventoryWindow : Window
     {
         // The audit boards are not row-backed (and the sheet is not
         // list-backed); place is spelled per family / per slot instead.
-        if (_tab is "focus" or "sheet" or "sets")
+        if (_tab is "focus" or "sheet" or "sets" or "bis")
         {
             LanePanel.Children.Clear();
             LanePanel.Visibility = Visibility.Collapsed;
@@ -572,11 +576,14 @@ public partial class InventoryWindow : Window
 
     private void ApplyFilters()
     {
-        // The Sheet tab is its own surface — no list, no search, no lanes.
+        // The Sheet and Best-in-slot tabs are their own surfaces — no list,
+        // no search, no lanes.
         bool sheet = _tab == "sheet" && _dump is not null;
+        bool bis = _tab == "bis" && _dump is not null;
         SheetView.Visibility = sheet ? Visibility.Visible : Visibility.Collapsed;
-        SearchRow.Visibility = sheet ? Visibility.Collapsed : Visibility.Visible;
-        if (sheet)
+        BisView.Visibility = bis ? Visibility.Visible : Visibility.Collapsed;
+        SearchRow.Visibility = sheet || bis ? Visibility.Collapsed : Visibility.Visible;
+        if (sheet || bis)
         {
             ResultsList.Visibility = Visibility.Collapsed;
             FocusList.Visibility = Visibility.Collapsed;

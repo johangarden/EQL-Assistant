@@ -93,6 +93,9 @@
                  parse (it never reads the dump itself). -->
             <v:CharacterSheetView x:Name="SheetView" Visibility="Collapsed"/>
 
+            <!-- Best in slot: what you OWN, ranked per slot for a class combo. -->
+            <v:BisFinderView x:Name="BisView" Visibility="Collapsed"/>
+
             <ListBox x:Name="ResultsList"
                      HorizontalContentAlignment="Stretch"
                      PreviewMouseLeftButtonUp="ResultsList_Click"
