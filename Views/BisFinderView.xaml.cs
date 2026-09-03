@@ -194,6 +194,9 @@ public partial class BisFinderView : UserControl
         foreach (var cls in BisFinder.AllClasses)
         {
             var chip = Chip(cls, cls);
+            chip.Width = 58; // equal cells — the grid stays put as the selection changes
+            chip.HorizontalAlignment = HorizontalAlignment.Left;
+            if (chip.Child is TextBlock tb) tb.HorizontalAlignment = HorizontalAlignment.Center;
             chip.MouseLeftButtonDown += (_, _) =>
             {
                 if (!_combo.Remove(cls))

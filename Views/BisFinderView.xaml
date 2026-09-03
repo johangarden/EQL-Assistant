@@ -5,9 +5,9 @@
         <StackPanel DockPanel.Dock="Top">
             <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="8"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Class combo -->
@@ -16,9 +16,10 @@
                     <StackPanel>
                         <TextBlock Text="CLASS COMBO · PICK UP TO 3" Foreground="#5C6B82" FontSize="9.5"
                                    FontWeight="SemiBold" Margin="0,0,0,6"/>
-                        <WrapPanel x:Name="ClassChips"/>
+                        <!-- A fixed 4×4 grid (owner ruling): the chips never reflow. -->
+                        <UniformGrid x:Name="ClassChips" Columns="4" Rows="4" HorizontalAlignment="Left"/>
                         <TextBlock x:Name="ClassHint" Foreground="#5C6B82" FontSize="10.5" Margin="0,5,0,0"
-                                   TextWrapping="Wrap"/>
+                                   TextWrapping="Wrap" MaxWidth="252" HorizontalAlignment="Left"/>
                     </StackPanel>
                 </Border>
 
