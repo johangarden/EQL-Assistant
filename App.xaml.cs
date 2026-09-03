@@ -590,6 +590,26 @@ public partial class App : Application
                 feet.Upgrades.Any(u => u.BaseName == "Golden Efreeti Boots" && u.Lane == "bank"));
             Check("bis: items the wiki doesn't know are named, never silently dropped",
                 bis.Unknown.Contains("Coin Purse of Nowhere"));
+            // Weapons by fighting style: a 1H stick, a 2H reaver, a shield.
+            var wRows = new List<InventoryStore.CarryRow>
+            {
+                new("Carved Walking Stick", "carved walking stick", "General 2-Slot1", 1, "bags", 10),
+                new("A Dark Reaver +2", "a dark reaver +2", "Bank1-Slot1", 1, "bank", 11),
+                new("Buckler of Doom", "buckler of doom", "Bank1-Slot2", 1, "bank", 12),
+            };
+            var wAll = BisFinder.Build(wRows, bisStats, new[] { "SHD" }, new[] { "DMG_DLY", "STR", "STA" });
+            var twoH = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.TwoHanded);
+            var shield = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.ShieldAndOne);
+            var dual = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.DualWield);
+            Check("bis: two-handed style keeps only 2H weapons and drops the secondary slot",
+                twoH.Slots.First(s => s.Key == "PRIMARY").Ranked.Select(c => c.BaseName).SequenceEqual(new[] { "A Dark Reaver" })
+                && twoH.Slots.All(s => s.Key != "SECONDARY"));
+            Check("bis: 1H + shield pairs a one-hander with an off-hand",
+                shield.Slots.First(s => s.Key == "PRIMARY").Ranked.Single().BaseName == "Carved Walking Stick"
+                && shield.Slots.First(s => s.Key == "SECONDARY").Ranked.Single().BaseName == "Buckler of Doom");
+            Check("bis: dual wield never puts the one stick in both hands",
+                dual.Slots.First(s => s.Key == "SECONDARY").Ranked.Count == 0
+                && BisFinder.ArmorView(wAll).Slots.All(s => !BisFinder.WeaponSlotKeys.Contains(s.Key)));
             var bisBank = BisFinder.Build(bisRows, bisStats, new[] { "SHD" }, new[] { "AC", "STA", "INT" },
                 new[] { "bank" });
             Check("bis: the search-in lanes narrow the field",

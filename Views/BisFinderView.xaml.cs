@@ -23,7 +23,13 @@ public partial class BisFinderView : UserControl
     private bool _building;
 
     private readonly List<string> _combo = new(); // insertion order: the 4th pick evicts the 1st
-    private string[] _prio = { "AC", "STA", "INT" };
+    // Armor and weapons score on different questions — each view keeps its
+    // own priorities; _prio points at whichever is active.
+    private string[] _prioArmor = { "AC", "STA", "INT" };
+    private string[] _prioWeapon = { "DMG_DLY", "STR", "STA" };
+    private string[] _prio;
+    private bool _weapons; // false = Armor view
+    private BisFinder.WeaponStyle _style = BisFinder.WeaponStyle.DualWield;
     private readonly HashSet<string> _lanes = new(BisFinder.SearchLanes, StringComparer.Ordinal);
     private readonly Dictionary<string, bool> _fold = new(StringComparer.Ordinal); // explicit toggles
 
@@ -52,10 +58,73 @@ public partial class BisFinderView : UserControl
     public BisFinderView()
     {
         InitializeComponent();
+        _prio = _prioArmor;
         foreach (var box in new[] { P1, P2, P3 })
             box.ItemsSource = BisFinder.Priorities.Select(p => p.Label).ToList();
         BuildClassChips();
         BuildLaneChips();
+        BuildViewPills();
+    }
+
+    // ---- Armor | Weapons, and the fighting style --------------------------------
+
+    private static readonly (BisFinder.WeaponStyle Style, string Label)[] Styles =
+    {
+        (BisFinder.WeaponStyle.DualWield, "Dual wield"),
+        (BisFinder.WeaponStyle.ShieldAndOne, "1H + Shield"),
+        (BisFinder.WeaponStyle.TwoHanded, "Two-handed"),
+    };
+
+    private void BuildViewPills()
+    {
+        ViewPills.Children.Clear();
+        foreach (var (tag, label) in new[] { ("armor", "Armor"), ("weapons", "Weapons") })
+        {
+            var pill = Chip(label, tag);
+            pill.Margin = new Thickness(0, 0, 6, 4);
+            pill.Padding = new Thickness(13, 3, 13, 4);
+            bool weapons = tag == "weapons";
+            pill.MouseLeftButtonDown += (_, _) =>
+            {
+                if (_weapons == weapons) return;
+                _weapons = weapons;
+                _prio = _weapons ? _prioWeapon : _prioArmor;
+                SyncPrioBoxes();
+                Refresh();
+            };
+            ViewPills.Children.Add(pill);
+        }
+        var gap = new TextBlock { Text = "·", Foreground = DimmerFg, Margin = new Thickness(6, 3, 12, 0) };
+        ViewPills.Children.Add(gap);
+        foreach (var (style, label) in Styles)
+        {
+            var pill = Chip(label, "style:" + style);
+            var s = style;
+            pill.MouseLeftButtonDown += (_, _) =>
+            {
+                _style = s;
+                SavePrefs();
+                Refresh();
+            };
+            ViewPills.Children.Add(pill);
+        }
+    }
+
+    private void StyleViewPills()
+    {
+        foreach (var child in ViewPills.Children)
+        {
+            if (child is not Border pill || pill.Tag is not string tag) continue;
+            if (tag == "armor") Paint(pill, !_weapons, LaneOnFg, LaneOnLine);
+            else if (tag == "weapons") Paint(pill, _weapons, LaneOnFg, LaneOnLine);
+            else
+            {
+                pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
+                Paint(pill, tag == "style:" + _style, ChipOnFg, ChipOnLine);
+            }
+        }
+        foreach (var child in ViewPills.Children)
+            if (child is TextBlock gap) gap.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public void Init(ItemStats stats, ConfigService? config, string charKey)
@@ -69,11 +138,14 @@ public partial class BisFinderView : UserControl
             _combo.Clear();
             _combo.AddRange(classes.Split('/', StringSplitOptions.RemoveEmptyEntries).Take(3));
         }
-        if (prio.Length > 0)
-        {
-            var p = prio.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (p.Length == 3) _prio = p;
-        }
+        // "AC/STA/INT;DMG_DLY/STR/STA;DualWield" — armor set, weapon set, style.
+        var parts = prio.Split(';');
+        if (parts.Length > 0 && parts[0].Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: 3 } a)
+            _prioArmor = a;
+        if (parts.Length > 1 && parts[1].Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: 3 } w)
+            _prioWeapon = w;
+        if (parts.Length > 2 && Enum.TryParse(parts[2], out BisFinder.WeaponStyle st)) _style = st;
+        _prio = _weapons ? _prioWeapon : _prioArmor;
         SyncPrioBoxes();
     }
 
@@ -167,7 +239,8 @@ public partial class BisFinderView : UserControl
     }
 
     private void SavePrefs() =>
-        _config?.SaveBisPrefs(_charKey, string.Join("/", _combo), string.Join("/", _prio));
+        _config?.SaveBisPrefs(_charKey, string.Join("/", _combo),
+            string.Join("/", _prioArmor) + ";" + string.Join("/", _prioWeapon) + ";" + _style);
 
     // ---- the board -----------------------------------------------------------------
 
@@ -186,7 +259,9 @@ public partial class BisFinderView : UserControl
             : $"Ranking for {string.Join("/", _combo)} — an item counts when ANY of these classes may wear it."
               + (_dumpStamp.Length > 0 ? $"  Snapshot {_dumpStamp}." : "");
 
-        var result = BisFinder.Build(_rows, _stats, _combo, _prio, _lanes);
+        StyleViewPills();
+        var all = BisFinder.Build(_rows, _stats, _combo, _prio, _lanes);
+        var result = _weapons ? BisFinder.WeaponView(all, _style) : BisFinder.ArmorView(all);
         BuildVerdicts(result);
         BuildBoard(result);
     }

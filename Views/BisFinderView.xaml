@@ -54,6 +54,9 @@
                 </Border>
             </Grid>
 
+            <!-- Armor | Weapons, and the fighting style for weapons (built in code). -->
+            <WrapPanel x:Name="ViewPills" Margin="2,0,0,8"/>
+
             <StackPanel x:Name="Verdicts" Margin="2,0,0,8"/>
         </StackPanel>
 

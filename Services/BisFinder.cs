@@ -143,6 +143,54 @@ public static class BisFinder
 
     public sealed record Result(List<SlotResult> Slots, List<string> Unknown, int Considered);
 
+    // ---- the two views: armor, and weapons by fighting style ------------------
+
+    public enum WeaponStyle { DualWield, ShieldAndOne, TwoHanded }
+
+    public static readonly string[] WeaponSlotKeys = { "PRIMARY", "SECONDARY", "RANGE", "AMMO" };
+
+    /// <summary>A weapon is anything with damage; an off-hand is a
+    /// SECONDARY-only item without it (shields, orbs, tomes).</summary>
+    public static bool IsWeapon(Candidate c) => c.Stats.ContainsKey("DMG");
+    public static bool IsOffhand(Candidate c) =>
+        !IsWeapon(c) && c.Rec.Slot.Trim().Equals("SECONDARY", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Everything that isn't a weapon slot.</summary>
+    public static Result ArmorView(Result r) =>
+        r with { Slots = r.Slots.Where(s => !WeaponSlotKeys.Contains(s.Key)).ToList() };
+
+    /// <summary>Primary/Secondary filtered by fighting style; Range and Ammo
+    /// always ride along (bow builds live there).</summary>
+    public static Result WeaponView(Result r, WeaponStyle style)
+    {
+        var prim = r.Slots.First(s => s.Key == "PRIMARY");
+        var sec = r.Slots.First(s => s.Key == "SECONDARY");
+        List<Candidate> p, s;
+        switch (style)
+        {
+            case WeaponStyle.TwoHanded:
+                p = prim.Ranked.Where(c => IsWeapon(c) && c.TwoHanded).ToList();
+                s = new List<Candidate>();
+                break;
+            case WeaponStyle.ShieldAndOne:
+                p = prim.Ranked.Where(c => IsWeapon(c) && !c.TwoHanded).ToList();
+                s = sec.Ranked.Where(IsOffhand).ToList();
+                break;
+            default: // dual wield — the same physical weapon can't fill both hands
+                p = prim.Ranked.Where(c => IsWeapon(c) && !c.TwoHanded).ToList();
+                var main = p.FirstOrDefault();
+                s = sec.Ranked.Where(c => IsWeapon(c) && !c.TwoHanded
+                                          && (main is null || c.Copies >= 2
+                                              || !(c.Name == main.Name && c.Worn == main.Worn)))
+                    .ToList();
+                break;
+        }
+        var slots = new List<SlotResult> { prim with { Ranked = p } };
+        if (style != WeaponStyle.TwoHanded) slots.Add(sec with { Ranked = s });
+        slots.AddRange(r.Slots.Where(x => x.Key is "RANGE" or "AMMO"));
+        return r with { Slots = slots };
+    }
+
     /// <summary>Worn dump locations → slot key ("Fingers" → FINGER, "Wrist 2" → WRIST).</summary>
     private static string WornSlotKey(string location)
     {
