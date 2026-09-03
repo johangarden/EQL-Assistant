@@ -387,6 +387,15 @@ public partial class App : Application
                 pe.Bars.Count == 1 && pe.Bars[0].Name == "Alacrity — Lonaner");
             pe.ProcessLine($"[{now}] Lonaner has been slain by a gnoll!");
             Check("pet buff: the pet's death takes its buffs with it", pe.Bars.Count == 0);
+            // Reminders: a pet trigger's REBUFF row says "Pet ·" (never a twin
+            // of yours), and a dead pet has nothing to rebuff.
+            petAlac.RemindWhenMissing = true;
+            pe.CheckMissing(DateTime.Now);
+            Check("pet buff: a dead pet raises no rebuff reminder", pe.Reminders.Count == 0);
+            pe.ProcessLine($"[{now}] Kibarn begins casting Shadow Vortex.");
+            pe.CheckMissing(DateTime.Now);
+            Check("pet buff: the next summon's first cast wakes the reminder, labeled as the pet's",
+                pe.Reminders.Count == 1 && pe.Reminders[0].Name == "Pet · Alacrity");
 
             // ---- fight details capture: damage schools from the log's own
             // words, debuff landings as timeline spans, and the analysis rules.
