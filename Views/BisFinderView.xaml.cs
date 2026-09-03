@@ -326,19 +326,31 @@ public partial class BisFinderView : UserControl
                 continue;
             }
 
-            // Two slots: pick #1 with alternative #3 under SLOT 1, pick #2
-            // with alternative #4 under SLOT 2; leftover worn items trail.
-            var placed = new HashSet<BisFinder.Candidate>();
-            for (int s = 0; s < slot.Count; s++)
+            // Two slots, one earring per ear (Johan, 2 Sep): a worn pick keeps
+            // its slot; a storage pick takes the slot of the WEAKEST worn item
+            // it displaces, which shows right under it as what it replaces.
+            // Then one alternative from storage per slot.
+            var wornPicks = picks.Where(c => c.Worn).ToList();
+            var freePicks = picks.Where(c => !c.Worn).ToList();
+            var displaced = slot.Ranked.Where(c => c.Worn && !picks.Contains(c))
+                .OrderBy(c => c.Score).ToList(); // weakest goes first
+            var alts = slot.Ranked.Where(c => !c.Worn && !picks.Contains(c)).ToList();
+            int altIx = 0, dispIx = 0;
+
+            var subSlots = new List<(BisFinder.Candidate? Pick, BisFinder.Candidate? Replaces)>();
+            foreach (var w in wornPicks) subSlots.Add((w, null));
+            foreach (var f in freePicks)
+                subSlots.Add((f, dispIx < displaced.Count ? displaced[dispIx++] : null));
+            while (subSlots.Count < slot.Count) subSlots.Add((null, null));
+
+            for (int s = 0; s < subSlots.Count; s++)
             {
                 Header($"{slot.Label.ToUpperInvariant()} · SLOT {s + 1}");
-                var pick = slot.Ranked.ElementAtOrDefault(s);
-                var alt = slot.Ranked.ElementAtOrDefault(slot.Count + s);
-                if (pick is not null) { RenderRow(pick, true, upgrades.Contains(pick)); placed.Add(pick); }
-                if (alt is not null) { RenderRow(alt, false, false); placed.Add(alt); }
+                var (pick, replaces) = subSlots[s];
+                if (pick is not null) RenderRow(pick, true, upgrades.Contains(pick));
+                if (replaces is not null) RenderRow(replaces, false, false);
+                if (altIx < alts.Count) RenderRow(alts[altIx++], false, false);
             }
-            foreach (var c in slot.Ranked.Where(c => c.Worn && !placed.Contains(c)))
-                RenderRow(c, false, false);
         }
     }
 
