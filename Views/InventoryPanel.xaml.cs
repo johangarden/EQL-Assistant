@@ -66,7 +66,7 @@ public partial class InventoryPanel : UserControl
         ("exalt", "Exaltations"),
         ("focus", "Focus board"),
         ("sets", "Armor sets"),
-        ("bis", "Best in slot"),
+        ("bis", "BiS Finder"),
     };
 
     private static readonly Brush SegOnBg = Freeze("#16283E");
@@ -282,7 +282,7 @@ public partial class InventoryPanel : UserControl
 
         // The Sheet tab renders from THIS parse — the dump is read once.
         SheetView.Update(_dump, _rows, _audit);
-        BisView.Update(_rows, _session?.WhoClasses ?? "", _dumpMtime.ToString("dd MMM HH:mm"));
+        BisView.Update(_rows, KnownClasses(), _dumpMtime.ToString("dd MMM HH:mm"));
 
         BuildTabs();
         BuildLaneChips();
@@ -1110,15 +1110,38 @@ public partial class InventoryPanel : UserControl
             LevelAge.Text = AgoText(DateTime.Now - s.Ts) + " ago";
             LevelAge.ToolTip = _session!.LevelInfo(DateTime.Now).Tip;
         }
+        // This session's /who first; otherwise the combo the parser SAVED
+        // from your last /who (char-state.json) — a restart must not forget
+        // who you are (Johan, 2 Sep).
         string classes = _session?.WhoClasses ?? "";
+        bool saved = false;
+        if (classes.Length == 0)
+        {
+            var (savedClasses, savedLevel) = SharedConfig.Value.LoadLastClasses(_charName);
+            if (savedClasses.Length > 0)
+            {
+                classes = savedClasses;
+                saved = true;
+                if (stmt is null && savedLevel > 0) LevelText.Text = "Level " + savedLevel;
+            }
+        }
         foreach (var cls in classes.Split('/', StringSplitOptions.RemoveEmptyEntries))
             ClassChips.Children.Add(HeaderChip(cls, HdrText, HdrBorder));
         if (stmt is { FromWho: true })
             ClassChips.Children.Add(HeaderChip("stated by /who", StatusFg[2], StatusFg[2]));
         else if (stmt is not null)
             ClassChips.Children.Add(HeaderChip("from your last ding", HdrDim, HdrBorder));
+        else if (saved)
+            ClassChips.Children.Add(HeaderChip("saved from your last /who", HdrDim, HdrBorder));
         if (stmt is null && classes.Length == 0)
             WhoHint.Text = "type /who in game for classes + level";
+    }
+
+    /// <summary>The class combo we know — this session's /who, else the saved one.</summary>
+    private string KnownClasses()
+    {
+        string live = _session?.WhoClasses ?? "";
+        return live.Length > 0 ? live : SharedConfig.Value.LoadLastClasses(_charName).Classes;
     }
 
     private static UIElement HeaderChip(string text, Brush fg, Brush border) => new Border
