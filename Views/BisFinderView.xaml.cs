@@ -31,7 +31,6 @@ public partial class BisFinderView : UserControl
     private bool _weapons; // false = Armor view
     private BisFinder.WeaponStyle _style = BisFinder.WeaponStyle.DualWield;
     private BisFinder.RangeMode _range = BisFinder.RangeMode.Dps;
-    private readonly HashSet<string> _lanes = new(BisFinder.SearchLanes, StringComparer.Ordinal);
     private readonly Dictionary<string, bool> _fold = new(StringComparer.Ordinal); // explicit toggles
 
     private static readonly Brush ChipOnBg = Freeze("#16283E");
@@ -61,7 +60,6 @@ public partial class BisFinderView : UserControl
         InitializeComponent();
         _prio = _prioArmor;
         BuildClassChips();
-        BuildLaneChips();
         BuildViewPills();
         SyncPrioBoxes();
     }
@@ -210,21 +208,6 @@ public partial class BisFinderView : UserControl
         }
     }
 
-    private void BuildLaneChips()
-    {
-        LaneChips.Children.Clear();
-        foreach (var lane in BisFinder.SearchLanes)
-        {
-            var chip = Chip(InventoryStore.LaneLabels.GetValueOrDefault(lane, lane), lane);
-            chip.MouseLeftButtonDown += (_, _) =>
-            {
-                if (!_lanes.Add(lane)) _lanes.Remove(lane);
-                Refresh();
-            };
-            LaneChips.Children.Add(chip);
-        }
-    }
-
     private static Border Chip(string text, string tag) => new()
     {
         Tag = tag,
@@ -283,16 +266,13 @@ public partial class BisFinderView : UserControl
         foreach (var child in ClassChips.Children)
             if (child is Border c && c.Tag is string cls)
                 Paint(c, _combo.Contains(cls), ChipOnFg, ChipOnLine);
-        foreach (var child in LaneChips.Children)
-            if (child is Border c && c.Tag is string lane)
-                Paint(c, _lanes.Contains(lane), LaneOnFg, LaneOnLine);
         ClassHint.Text = _combo.Count == 0
             ? "No combo picked — every wearable item counts. Run /who in game to prefill yours."
             : $"Ranking for {string.Join("/", _combo)} — an item counts when ANY of these classes may wear it."
               + (_dumpStamp.Length > 0 ? $"  Snapshot {_dumpStamp}." : "");
 
         StyleViewPills();
-        var all = BisFinder.Build(_rows, _stats, _combo, _prio, _lanes);
+        var all = BisFinder.Build(_rows, _stats, _combo, _prio);
         var result = _weapons ? BisFinder.WeaponView(all, _style, _range) : BisFinder.ArmorView(all);
         BuildVerdicts(result);
         BuildBoard(result);
