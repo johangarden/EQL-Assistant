@@ -59,12 +59,18 @@ public partial class BisFinderView : UserControl
     {
         InitializeComponent();
         _prio = _prioArmor;
-        foreach (var box in new[] { P1, P2, P3 })
-            box.ItemsSource = BisFinder.Priorities.Select(p => p.Label).ToList();
         BuildClassChips();
         BuildLaneChips();
         BuildViewPills();
+        SyncPrioBoxes();
     }
+
+    /// <summary>The priorities a view can pick from — DMG/DLY only means
+    /// something for weapons.</summary>
+    private (string Key, string Label)[] _options = Array.Empty<(string, string)>();
+
+    private (string Key, string Label)[] OptionsFor(bool weapons) =>
+        BisFinder.Priorities.Where(p => weapons || p.Key != "DMG_DLY").ToArray();
 
     // ---- Armor | Weapons, and the fighting style --------------------------------
 
@@ -218,11 +224,15 @@ public partial class BisFinderView : UserControl
     private void SyncPrioBoxes()
     {
         _building = true;
+        _options = OptionsFor(_weapons);
+        var labels = _options.Select(p => p.Label).ToList();
         var boxes = new[] { P1, P2, P3 };
         for (int i = 0; i < 3; i++)
         {
-            int ix = Array.FindIndex(BisFinder.Priorities, p => p.Key == _prio[i]);
-            boxes[i].SelectedIndex = ix < 0 ? 0 : ix;
+            boxes[i].ItemsSource = labels;
+            int ix = Array.FindIndex(_options, p => p.Key == _prio[i]);
+            if (ix < 0) { ix = 0; _prio[i] = _options[0].Key; } // a weapon-only key in armor view
+            boxes[i].SelectedIndex = ix;
         }
         _building = false;
     }
@@ -232,8 +242,8 @@ public partial class BisFinderView : UserControl
         if (_building) return;
         var boxes = new[] { P1, P2, P3 };
         for (int i = 0; i < 3; i++)
-            if (boxes[i].SelectedIndex >= 0)
-                _prio[i] = BisFinder.Priorities[boxes[i].SelectedIndex].Key;
+            if (boxes[i].SelectedIndex >= 0 && boxes[i].SelectedIndex < _options.Length)
+                _prio[i] = _options[boxes[i].SelectedIndex].Key;
         SavePrefs();
         Refresh();
     }
