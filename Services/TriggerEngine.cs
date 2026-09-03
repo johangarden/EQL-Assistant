@@ -62,6 +62,7 @@ public sealed class TriggerEngine
     private const double QuickBuffWindowSec = 8;     // activation -> burst (observed: 3s)
     private (string Key, DateTime At)? _lastOwnCast; // rank-stripped, from "You begin casting X."
     private (string Key, DateTime At)? _lastPetCast; // the pet's own "Lonaner begins casting X."
+    private bool _petDown; // slain, and no new summon has shown itself yet
     private DateTime _quickBuffAt = DateTime.MinValue;
     private readonly HashSet<string> _everCast = new(StringComparer.Ordinal); // session, rank-stripped
 
@@ -324,7 +325,10 @@ public sealed class TriggerEngine
         {
             var pc = PetCastRx.Match(body);
             if (pc.Success && IsPetName(pc.Groups["who"].Value))
+            {
                 _lastPetCast = (SpellDurations.BaseKey(pc.Groups["s"].Value), eventTime);
+                _petDown = false; // a casting pet is a living pet
+            }
         }
         else if (IsPetName is not null && body.Contains("slain", StringComparison.Ordinal))
         {
@@ -438,6 +442,7 @@ public sealed class TriggerEngine
     private void StartOrRefresh(TriggerDefinition trigger, Match match, DateTime eventTime)
     {
         _seen.Add(trigger.Id);
+        if (trigger.OnPet) _petDown = false; // a buff landing on it = a pet to buff
 
         string key = BuildKey(trigger, match);
         double duration = EffectiveDuration(trigger);
@@ -503,6 +508,7 @@ public sealed class TriggerEngine
     /// go too, since they can only mean the pet you had.</summary>
     private void StripPetBars(string pet)
     {
+        _petDown = true; // nothing to rebuff until the next summon speaks up
         var petIds = _triggers.Where(t => t.OnPet).Select(t => t.Id)
             .ToHashSet(StringComparer.Ordinal);
         if (petIds.Count == 0) return;
@@ -672,13 +678,20 @@ public sealed class TriggerEngine
             bool active = _active.Keys.Any(k =>
                 k == t.Id || k.StartsWith(t.Id + "|", StringComparison.Ordinal));
 
-            if (active)
+            // A dead pet has nothing to rebuff — pet reminders wait for the
+            // next summon to show itself (a cast or a landing on it).
+            if (active || (t.OnPet && _petDown))
             {
                 if (_missing.Remove(t.Id, out var mb)) Reminders.Remove(mb);
                 _lastRemind.Remove(t.Id);
                 _remindCount.Remove(t.Id); // rebuffed: the backoff resets
                 continue;
             }
+
+            // The pet's reminders say so — its row and its voice must never
+            // read as YOUR buff missing.
+            string label = t.OnPet ? "Pet · " + t.Name : t.Name;
+            string phrase = t.OnPet ? $"Your pet's {t.Name} missing" : $"{t.Name} missing";
 
             // Ignored nagging earns quieter nagging (owner ruling): after 5
             // spoken warnings the interval DOUBLES, and snaps back to the
@@ -690,17 +703,17 @@ public sealed class TriggerEngine
             if (!_missing.ContainsKey(t.Id))
             {
                 var mb = TimerBarViewModel.CreateMissing(
-                    "missing|" + t.Id, t.Name, t.Category, MakeBrush("#E53935"));
+                    "missing|" + t.Id, label, t.Category, MakeBrush("#E53935"));
                 _missing[t.Id] = mb;
                 Reminders.Add(mb);
-                _alerts.Speak($"{t.Name} missing");
+                _alerts.Speak(phrase);
                 _lastRemind[t.Id] = now;
                 _remindCount[t.Id] = 1;
             }
             else if (!_lastRemind.TryGetValue(t.Id, out var last) ||
                      (now - last).TotalSeconds >= interval)
             {
-                _alerts.Speak($"{t.Name} missing");
+                _alerts.Speak(phrase);
                 _lastRemind[t.Id] = now;
                 _remindCount[t.Id] = _remindCount.GetValueOrDefault(t.Id) + 1;
             }

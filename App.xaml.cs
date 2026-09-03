@@ -193,9 +193,22 @@ public partial class App : Application
             var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
             invWin.Show();
             invWin.ShowFocusTab(); // instantiate the audit-board template
-            invWin.ShowTab("sets"); // and the armor-set board (owns a Valorium piece)
+            invWin.ShowTab("bis");  // and the best-in-slot board
             invWin.UpdateLayout();
             invWin.Close();
+
+            // The Loot window hosts the browser tabs of the same panel: the
+            // ledger list, exaltations and the armor-set board (owns a
+            // Valorium piece) must all render from the dump.
+            var lootItems = new Views.LootWindow(new LootTracker(new ConfigService()),
+                invDir, "Testchar", "paineel");
+            lootItems.Show();
+            foreach (var view in new[] { "items", "exalt", "sets" })
+            {
+                lootItems.ShowView(view);
+                lootItems.UpdateLayout();
+            }
+            lootItems.Close();
 
             // The Sky helper panel renders its line list (temp progress file).
             string helperProg = Path.Combine(Path.GetTempPath(), "eql_test_helper_prog.json");
@@ -387,6 +400,15 @@ public partial class App : Application
                 pe.Bars.Count == 1 && pe.Bars[0].Name == "Alacrity — Lonaner");
             pe.ProcessLine($"[{now}] Lonaner has been slain by a gnoll!");
             Check("pet buff: the pet's death takes its buffs with it", pe.Bars.Count == 0);
+            // Reminders: a pet trigger's REBUFF row says "Pet ·" (never a twin
+            // of yours), and a dead pet has nothing to rebuff.
+            petAlac.RemindWhenMissing = true;
+            pe.CheckMissing(DateTime.Now);
+            Check("pet buff: a dead pet raises no rebuff reminder", pe.Reminders.Count == 0);
+            pe.ProcessLine($"[{now}] Kibarn begins casting Shadow Vortex.");
+            pe.CheckMissing(DateTime.Now);
+            Check("pet buff: the next summon's first cast wakes the reminder, labeled as the pet's",
+                pe.Reminders.Count == 1 && pe.Reminders[0].Name == "Pet · Alacrity");
 
             // ---- fight details capture: damage schools from the log's own
             // words, debuff landings as timeline spans, and the analysis rules.
@@ -534,6 +556,71 @@ public partial class App : Application
                 t4.Points == 10 * 32 // ten Greaters
                 && t4.ValueRate() is { } t4v && Math.Abs(t4v - 320 * 60.0 / 54) < 2
                 && naj.ValueRate() is null); // floors gate value like rate
+            // ---- best-in-slot finder: class rule, tier-scaled scoring, slots.
+            Check("bis: the wiki's class spellings all parse (ANY class in the combo)",
+                BisFinder.ClassAllowed("ALL", new[] { "SHD" })
+                && !BisFinder.ClassAllowed("NONE", new[] { "SHD" })
+                && BisFinder.ClassAllowed("ALL except NEC WIZ MAG ENC", new[] { "SHD", "NEC" })
+                && !BisFinder.ClassAllowed("ALL except NEC WIZ MAG ENC", new[] { "NEC", "WIZ" })
+                && BisFinder.ClassAllowed("WAR CLR PAL SHD BRD", new[] { "ROG", "SHD" })
+                && !BisFinder.ClassAllowed("NEC WIZ MAG ENC", new[] { "SHD", "ROG", "SHM" }));
+            var bisStats = new ItemStats();
+            var bisRows = new List<InventoryStore.CarryRow>
+            {
+                new("Wicked Sallet +5", "wicked sallet +5", "Head", 1, "worn", 1),
+                new("Woven Skull Cap", "woven skull cap", "General 3-Slot2", 1, "bags", 2),
+                new("Golden Efreeti Boots +3", "golden efreeti boots +3", "Bank5-Slot8", 1, "bank", 3),
+                new("Grimy Black Silk Robe +5", "grimy black silk robe +5", "Bank5-Slot6", 1, "bank", 4),
+                new("Coin Purse of Nowhere", "coin purse of nowhere", "General 1-Slot1", 1, "bags", 5),
+            };
+            var bis = BisFinder.Build(bisRows, bisStats, new[] { "SHD", "ROG", "SHM" },
+                new[] { "AC", "STA", "INT" });
+            var head = bis.Slots.First(s => s.Key == "HEAD");
+            var chest = bis.Slots.First(s => s.Key == "CHEST");
+            var feet = bis.Slots.First(s => s.Key == "FEET");
+            // Wicked Sallet +5: AC 10→15, STA 3→8, INT 2→7 ⇒ 45 + 16 + 7.
+            Check("bis: stats scale by the item's +N tier and score 3·2·1",
+                head.Ranked.Count > 0 && head.Ranked[0].BaseName == "Wicked Sallet"
+                && Math.Abs(head.Ranked[0].Score - 68) < 0.01 && head.Ranked[0].Worn);
+            Check("bis: the worn winner is no upgrade; a foreign-class robe stays visible but unranked",
+                !head.Upgrades.Any()
+                && chest.Ranked.Count == 0 && chest.Foreign.Count == 1
+                && chest.Foreign[0].BaseName == "Grimy Black Silk Robe");
+            Check("bis: an ALL-class item in the bank is an upgrade for an empty slot",
+                feet.Upgrades.Any(u => u.BaseName == "Golden Efreeti Boots" && u.Lane == "bank"));
+            Check("bis: items the wiki doesn't know are named, never silently dropped",
+                bis.Unknown.Contains("Coin Purse of Nowhere"));
+            // Weapons by fighting style: a 1H stick, a 2H reaver, a shield.
+            var wRows = new List<InventoryStore.CarryRow>
+            {
+                new("Carved Walking Stick", "carved walking stick", "Primary", 1, "worn", 10), // WORN in Primary
+                new("A Dark Reaver +2", "a dark reaver +2", "Bank1-Slot1", 1, "bank", 11),
+                new("Buckler of Doom", "buckler of doom", "Bank1-Slot2", 1, "bank", 12),
+                new("Soldier's Brooch of the Spirited +2", "soldier's brooch", "Range", 1, "worn", 13), // stat range item
+            };
+            var wAll = BisFinder.Build(wRows, bisStats, new[] { "SHD", "SHM" }, new[] { "DMG_DLY", "STR", "STA" });
+            var twoH = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.TwoHanded);
+            var shield = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.ShieldAndOne);
+            var dual = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.DualWield);
+            Check("bis: two-handed style keeps only 2H weapons and drops the secondary slot",
+                twoH.Slots.First(s => s.Key == "PRIMARY").Ranked.Select(c => c.BaseName).SequenceEqual(new[] { "A Dark Reaver" })
+                && twoH.Slots.All(s => s.Key != "SECONDARY"));
+            Check("bis: 1H + shield pairs a one-hander with an off-hand",
+                shield.Slots.First(s => s.Key == "PRIMARY").Ranked.Single().BaseName == "Carved Walking Stick"
+                && shield.Slots.First(s => s.Key == "SECONDARY").Ranked.Single().BaseName == "Buckler of Doom");
+            Check("bis: dual wield never offers the weapon worn in Primary for the off-hand",
+                dual.Slots.First(s => s.Key == "SECONDARY").Ranked.Count == 0);
+            var rangeStat = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.DualWield, BisFinder.RangeMode.Stat);
+            Check("bis: Range lives in the weapons view, toggling DPS (bows) or stat (brooches)",
+                BisFinder.ArmorView(wAll).Slots.All(s => !BisFinder.WeaponSlotKeys.Contains(s.Key))
+                && dual.Slots.First(s => s.Key == "RANGE").Ranked.Count == 0
+                && rangeStat.Slots.First(s => s.Key == "RANGE").Ranked.Any(c => c.BaseName.StartsWith("Soldier's Brooch")));
+            var bisBank = BisFinder.Build(bisRows, bisStats, new[] { "SHD" }, new[] { "AC", "STA", "INT" },
+                new[] { "bank" });
+            Check("bis: the search-in lanes narrow the field",
+                bisBank.Slots.First(s => s.Key == "HEAD").Ranked.Count == 0
+                && bisBank.Slots.First(s => s.Key == "FEET").Ranked.Count == 1);
+
             var (msShown, msThin) = MoteFarm.SplitByFarmed(board, 45);
             Check("motes: the strictness dial splits farms from hints",
                 msShown.Count == 1 && msShown[0].Zone.Contains("Old Paineel")

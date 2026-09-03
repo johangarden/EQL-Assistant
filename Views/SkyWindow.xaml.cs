@@ -386,8 +386,14 @@ public partial class SkyWindow : Window
         if (inv is null)
             return new List<string>
             { "Where it sits: no inventory snapshot found — run /outputfile inventory in game." };
-        var hits = inv.Where(r => r.Name.Equals(item, StringComparison.OrdinalIgnoreCase))
-            .Select(r => r.Count > 1 ? $"{r.Location} · ×{r.Count}" : r.Location)
+        // The dump spells tiers into names ("Golden Efreeti Boots +3") and
+        // the ledger doesn't always — match on the tier-stripped key, and
+        // skip the nested exaltation rows (they'd echo the parent's slot).
+        string key = FocusEffects.ItemKey(item);
+        var hits = inv.Where(r => FocusEffects.ItemKey(r.Name) == key
+                                  && !r.Name.EndsWith("(Exaltation)", StringComparison.Ordinal))
+            .Select(r => (r.Count > 1 ? $"{r.Location} · ×{r.Count}" : r.Location)
+                         + (r.Name.Equals(item, StringComparison.OrdinalIgnoreCase) ? "" : $"  ({r.Name})"))
             .ToList();
         if (hits.Count == 0)
             hits.Add(item.StartsWith("Wind Rune", StringComparison.OrdinalIgnoreCase)

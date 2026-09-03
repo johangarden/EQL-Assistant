@@ -353,6 +353,47 @@ public sealed class ConfigService
     // game — remember, per character, WHEN each storage was last captured so
     // the Inventory window can say how stale each one is.
 
+    // ---- best-in-slot preferences (per character) -------------------------------
+    // "<charKey>": "SHD/ROG/SHM|AC/STA/INT" — the combo and the three priorities.
+
+    private string BisPrefsPath => System.IO.Path.Combine(ConfigDirectory, "bis-prefs.json");
+
+    public (string Classes, string Priorities) LoadBisPrefs(string charKey)
+    {
+        try
+        {
+            if (File.Exists(BisPrefsPath)
+                && JsonSerializer.Deserialize<Dictionary<string, string>>(
+                    File.ReadAllText(BisPrefsPath), ReadOptions) is { } all
+                && all.TryGetValue(charKey, out var v))
+            {
+                int bar = v.IndexOf('|');
+                return bar < 0 ? (v, "") : (v[..bar], v[(bar + 1)..]);
+            }
+        }
+        catch { /* preferences are a convenience */ }
+        return ("", "");
+    }
+
+    public void SaveBisPrefs(string charKey, string classes, string priorities)
+    {
+        try
+        {
+            Dictionary<string, string> all;
+            try
+            {
+                all = File.Exists(BisPrefsPath)
+                    ? JsonSerializer.Deserialize<Dictionary<string, string>>(
+                        File.ReadAllText(BisPrefsPath), ReadOptions) ?? new()
+                    : new();
+            }
+            catch { all = new(); }
+            all[charKey] = classes + "|" + priorities;
+            File.WriteAllText(BisPrefsPath, JsonSerializer.Serialize(all, WriteOptions));
+        }
+        catch { /* best-effort */ }
+    }
+
     private string SectionTimesPath => System.IO.Path.Combine(ConfigDirectory, "inventory-sections.json");
 
     public Dictionary<string, DateTime> LoadSectionTimes(string charKey)
