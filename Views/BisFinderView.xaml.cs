@@ -116,8 +116,8 @@ public partial class BisFinderView : UserControl
         }
         // Armor only: the tail — every other stat at a small weight, so the
         // well-rounded piece isn't scored as nothing (owner request, 4 Sep).
-        var gap3 = new TextBlock { Text = "· Other stats:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0), Tag = "tail" };
-        ViewPills.Children.Add(gap3);
+        TailPills.Children.Clear();
+        TailPills.Children.Add(new TextBlock { Text = "Other stats:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(0, 3, 8, 0) });
         foreach (var (w, label) in new[] { (0.0, "Off"), (0.25, "×0.25"), (0.5, "×0.5") })
         {
             var pill = Chip(label, "tail:" + w.ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -129,7 +129,7 @@ public partial class BisFinderView : UserControl
                 SavePrefs();
                 Refresh();
             };
-            ViewPills.Children.Add(pill);
+            TailPills.Children.Add(pill);
         }
         // What the range slot is for: a bow build or a stat brooch.
         var gap2 = new TextBlock { Text = "· Range:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0) };
@@ -150,16 +150,14 @@ public partial class BisFinderView : UserControl
 
     private void StyleViewPills()
     {
-        foreach (var child in ViewPills.Children)
+        TailPills.Visibility = _weapons ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var child in ViewPills.Children.Cast<object>().Concat(TailPills.Children.Cast<object>()))
         {
             if (child is not Border pill || pill.Tag is not string tag) continue;
             if (tag == "armor") Paint(pill, !_weapons, LaneOnFg, LaneOnLine);
             else if (tag == "weapons") Paint(pill, _weapons, LaneOnFg, LaneOnLine);
             else if (tag.StartsWith("tail:", StringComparison.Ordinal))
-            {
-                pill.Visibility = _weapons ? Visibility.Collapsed : Visibility.Visible;
                 Paint(pill, tag == "tail:" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture), ChipOnFg, ChipOnLine);
-            }
             else if (tag.StartsWith("range:", StringComparison.Ordinal))
             {
                 pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
@@ -172,8 +170,7 @@ public partial class BisFinderView : UserControl
             }
         }
         foreach (var child in ViewPills.Children)
-            if (child is TextBlock gap)
-                gap.Visibility = (gap.Tag is "tail" ? !_weapons : _weapons) ? Visibility.Visible : Visibility.Collapsed;
+            if (child is TextBlock gap) gap.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public void Init(ItemStats stats, ConfigService? config, string charKey)
