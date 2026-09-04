@@ -20,17 +20,15 @@
     </Window.Resources>
 
     <DockPanel Margin="12">
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-            <Border x:Name="FightsPill" CornerRadius="14" BorderThickness="1" Padding="15,4"
-                    Cursor="Hand" Margin="0,0,6,0" MouseLeftButtonDown="View_Click" Tag="fights">
-                <TextBlock Text="Fights" FontSize="11.5" FontWeight="SemiBold"/>
-            </Border>
-            <Border x:Name="ParsesPill" CornerRadius="14" BorderThickness="1" Padding="15,4"
-                    Cursor="Hand" MouseLeftButtonDown="View_Click" Tag="parses"
-                    ToolTip="Every recorded fight grouped by mob — kill times, DPS and the class combo that did it, side by side">
-                <TextBlock Text="Parses" FontSize="11.5" FontWeight="SemiBold"/>
-            </Border>
-        </StackPanel>
+        <!-- Title → Menu → Pills (owner ruling, 4 Sep): Fights · Parses are
+             this window's sections. -->
+        <DockPanel DockPanel.Dock="Top">
+            <TextBlock x:Name="HeadSummary" DockPanel.Dock="Right" Foreground="#E8C15A"
+                       FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            <TextBlock Text="Fight history" FontSize="16" FontWeight="Bold" Foreground="White"
+                       VerticalAlignment="Center"/>
+        </DockPanel>
+        <StackPanel x:Name="MenuRow" DockPanel.Dock="Top" Margin="0,4,0,8"/>
         <TextBlock x:Name="HintText" DockPanel.Dock="Top" Foreground="#7F93AD" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"
                    Text="A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 50). Select one for details — the breakdown, the timeline and ⚡ Analyse. Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's."/>
 

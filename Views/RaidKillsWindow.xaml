@@ -20,19 +20,17 @@
 
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-            <!-- Content eras (owner ruling, 2 Sep): Kunark and beyond join
-                 this row when their raid targets are added. -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                <Border Background="#232B40" BorderBrush="#5A6B8C" BorderThickness="1"
-                        CornerRadius="14" Padding="15,4" Margin="0,0,6,0"
-                        ToolTip="More eras (Kunark…) join this row as their raid targets are added">
-                    <TextBlock Text="Classic" FontSize="11.5" FontWeight="SemiBold"
-                               Foreground="#E8C15A"/>
-                </Border>
-            </StackPanel>
+            <!-- Title → Menu → Pills (owner ruling, 4 Sep): the title row
+                 carries the one number that matters; the menu row is the
+                 eras — Kunark joins when its raid targets are added. -->
             <DockPanel>
                 <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="#FFD54F"
-                           FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                           FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                <TextBlock Text="Raid kills" FontSize="16" FontWeight="Bold" Foreground="White"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
+            <StackPanel x:Name="MenuRow" Margin="0,4,0,8"/>
+            <DockPanel>
                 <!-- This week / All time (the loot lockout is weekly) -->
                 <Border CornerRadius="15" BorderBrush="#3A4560" BorderThickness="1"
                         Padding="2" HorizontalAlignment="Left" VerticalAlignment="Center">

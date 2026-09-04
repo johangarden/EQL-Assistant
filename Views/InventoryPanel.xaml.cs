@@ -61,10 +61,10 @@ public partial class InventoryPanel : UserControl
 
     private static readonly (string Id, string Label)[] Tabs =
     {
-        ("sheet", "Sheet"),
+        ("sheet", "Character sheet"),
         ("items", "All items"),
         ("exalt", "Exaltations"),
-        ("focus", "Focus board"),
+        ("focus", "Focus effects"),
         ("sets", "Armor sets"),
         ("bis", "BiS Finder"),
     };
@@ -365,6 +365,9 @@ public partial class InventoryPanel : UserControl
     {
         TabPanel.Children.Clear();
         TabPanel.Visibility = _showTabRow ? Visibility.Visible : Visibility.Collapsed;
+        // Title → Menu → Pills (owner ruling, 4 Sep): the sections are
+        // MENU tabs; pills live inside a section (BiS Finder's Armor | Weapons).
+        var menu = new List<MenuTabs.Item>();
         foreach (var (id, label) in Tabs)
         {
             if (!_tabs.Contains(id)) continue; // this host's subset only
@@ -378,8 +381,9 @@ public partial class InventoryPanel : UserControl
                 "focus" => $"{label}  {scored.Count(a => a.Status == 2)}/{scored.Count}",
                 _ => $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}",
             };
-            AddPill(TabPanel, text, id, id == _tab, picked => ShowTab(picked!));
+            menu.Add(new MenuTabs.Item(id, text));
         }
+        MenuTabs.Render(TabPanel, menu, _tab, ShowTab);
     }
 
     /// <summary>Switch to a tab by id (sheet · items · exalt · focus) — the
@@ -389,7 +393,7 @@ public partial class InventoryPanel : UserControl
         if (id != "sheet") SheetView.CloseDrawer(); // the extension is sheet-only
         if (id == "bis") BisView.ResetCombo(KnownClasses()); // start from who you are
         _tab = id;
-        RepaintPills(TabPanel, _tab);
+        BuildTabs();
         _lane = null; // a lane picked on one tab means nothing on another
         BuildLaneChips();
         ApplyFilters();

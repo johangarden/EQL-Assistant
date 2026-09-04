@@ -153,10 +153,35 @@ public partial class LootWindow : Window
 
     private bool IsItemsView => _view is "items" or "exalt" or "sets";
 
+    // Each data source remembers its last lens, so the menu switches back
+    // to where you were.
+    private string _lastLedgerView = "drops", _lastInventoryView = "items";
+
+    private void RenderMenu()
+    {
+        MenuTabs.Render(MenuRow, new[]
+        {
+            new MenuTabs.Item("ledger", "Ledger · from the log", Tip: "Drops and mote farming — every loot line in your log"),
+            new MenuTabs.Item("inventory", "Inventory · from the dump", Tip: "What you own — the game's /outputfile inventory"),
+        }, IsItemsView ? "inventory" : "ledger", id =>
+        {
+            _view = id == "inventory" ? _lastInventoryView : _lastLedgerView;
+            StylePills();
+            Refresh();
+        });
+    }
+
     private void StylePills()
     {
         bool motes = _view == "motes";
         bool items = IsItemsView;
+        if (items) _lastInventoryView = _view; else _lastLedgerView = _view;
+        RenderMenu();
+        // Only the current source's lenses show.
+        foreach (var pill in new[] { DropPill, MotePill })
+            pill.Visibility = items ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var pill in new[] { ItemsPill, ExaltPill, SetsPill })
+            pill.Visibility = items ? Visibility.Visible : Visibility.Collapsed;
         foreach (var (pill, on) in new[]
                  {
                      (DropPill, _view == "drops"), (MotePill, motes),

@@ -27,9 +27,11 @@
                 <TextBlock Text="Loot &amp; Inventory" Style="{StaticResource PageTitle}"/>
             </DockPanel>
 
-            <!-- The sub-views (owner ruling, 2 Sep): the parent window owns
-                 the domain, pills pick the lens. -->
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,8">
+            <!-- Title → Menu → Pills (owner ruling, 4 Sep): the menu is the
+                 DATA SOURCE (the log's ledger · the game's inventory dump);
+                 the pills below are that source's lenses. -->
+            <StackPanel x:Name="MenuRow" Margin="0,4,0,8"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                 <Border x:Name="DropPill" CornerRadius="14" BorderThickness="1" Padding="15,4"
                         Cursor="Hand" Margin="0,0,6,0" MouseLeftButtonDown="View_Click" Tag="drops">
                     <TextBlock Text="Drop log" FontSize="11.5" FontWeight="SemiBold"/>

@@ -91,6 +91,7 @@ public partial class HistoryWindow : Window
             .ToList();
 
         EmptyHint.Visibility = entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        HeadSummary.Text = $"{_parser.History.Count} this session · {_saved.Count} kept";
         if (!force && entries.SequenceEqual(_shown))
             return;
 
@@ -408,13 +409,17 @@ public partial class HistoryWindow : Window
     private void StylePills()
     {
         bool parses = _view == "parses";
-        foreach (var (pill, on) in new[] { (FightsPill, !parses), (ParsesPill, parses) })
+        MenuTabs.Render(MenuRow, new[]
         {
-            pill.Background = on ? PillOnBg : PillOffBg;
-            pill.BorderBrush = on ? PillOnLine : PillOffLine;
-            if (pill.Child is System.Windows.Controls.TextBlock tb)
-                tb.Foreground = on ? PillOnFg : PillOffFg;
-        }
+            new MenuTabs.Item("fights", "Fights"),
+            new MenuTabs.Item("parses", "Parses",
+                Tip: "Every recorded fight grouped by mob — kill times, DPS and the class combo that did it, side by side"),
+        }, _view, id =>
+        {
+            _view = id;
+            StylePills();
+            if (_view == "parses") BuildParses();
+        });
         FightsView.Visibility = parses ? Visibility.Collapsed : Visibility.Visible;
         ParsesView.Visibility = parses ? Visibility.Visible : Visibility.Collapsed;
         HintText.Text = parses
