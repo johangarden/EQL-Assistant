@@ -157,12 +157,10 @@ public partial class BisFinderView : UserControl
         _stats = stats;
         _config = config;
         _charKey = charKey;
-        var (classes, prio) = _config?.LoadBisPrefs(_charKey) ?? ("", "");
-        if (classes.Length > 0)
-        {
-            _combo.Clear();
-            _combo.AddRange(classes.Split('/', StringSplitOptions.RemoveEmptyEntries).Take(3));
-        }
+        // Priorities and style persist; the combo does NOT — the tab always
+        // opens on the character's own /who classes (a saved what-if would
+        // only mislead a week later).
+        var (_, prio) = _config?.LoadBisPrefs(_charKey) ?? ("", "");
         // "AC/STA/INT;DMG_DLY/STR/STA;DualWield" — armor set, weapon set, style.
         var parts = prio.Split(';');
         if (parts.Length > 0 && parts[0].Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: 3 } a)
@@ -173,6 +171,17 @@ public partial class BisFinderView : UserControl
         if (parts.Length > 3 && Enum.TryParse(parts[3], out BisFinder.RangeMode rm)) _range = rm;
         _prio = _weapons ? _prioWeapon : _prioArmor;
         SyncPrioBoxes();
+    }
+
+    /// <summary>Entering the tab starts from who you ARE (owner ruling,
+    /// 3 Sep): the combo snaps back to the character's /who classes; the
+    /// chips are for what-if detours while you're on the page.</summary>
+    public void ResetCombo(string whoClasses)
+    {
+        if (whoClasses.Length == 0) return;
+        _combo.Clear();
+        _combo.AddRange(whoClasses.Split('/', StringSplitOptions.RemoveEmptyEntries).Take(3));
+        Refresh();
     }
 
     /// <summary>New dump rows (and the /who combo to prefill when nothing
