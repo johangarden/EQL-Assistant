@@ -36,8 +36,11 @@ public static class BisFinder
         ("AGI", "AGI"), ("DEX", "DEX"), ("WIS", "WIS"), ("INT", "INT"), ("CHA", "CHA"),
         ("SV_FIRE", "SV Fire"), ("SV_COLD", "SV Cold"), ("SV_MAGIC", "SV Magic"),
         ("SV_POISON", "SV Poison"), ("SV_DISEASE", "SV Disease"), ("RESISTS", "Resists (sum)"),
-        ("HASTE", "Haste"), ("DMG_DLY", "DMG/DLY (weapons)"),
+        ("HASTE", "Haste"), ("DMG_DLY", "DMG/DLY (weapons)"), ("BACKSTAB", "Backstab DMG (weapons)"),
     };
+
+    /// <summary>Priorities that only mean something on a weapon.</summary>
+    public static readonly string[] WeaponOnlyPriorities = { "DMG_DLY", "BACKSTAB" };
 
     public static readonly int[] Weights = { 3, 2, 1 };
 
@@ -98,6 +101,9 @@ public static class BisFinder
             d["DELAY"] = dly;
             d["DMG_DLY"] = (int)Math.Round(100.0 * d["DMG"] / dly);
         }
+        // The wiki's own backstab number (a handful of piercers carry one),
+        // tier-scaled like damage — the rogue's question.
+        if (rec.Backstab is { } bs && bs > 0) d["BACKSTAB"] = ItemUpgrade.ScaleDamage(bs, tier);
         return d;
     }
 
@@ -117,7 +123,7 @@ public static class BisFinder
         foreach (var (key, v) in stats)
         {
             if (v == 0 || prio.Contains(key)) continue;
-            if (key is "DMG" or "DELAY" or "DMG_DLY" or "RESISTS") continue;
+            if (key is "DMG" or "DELAY" or "DMG_DLY" or "BACKSTAB" or "RESISTS") continue;
             if (resistsPicked && key.StartsWith("SV_", StringComparison.Ordinal)) continue;
             double scale = key is "HP" or "MP" or "END" ? 0.2 : 1;
             s += tailWeight * v * scale;
@@ -182,7 +188,10 @@ public static class BisFinder
 
     /// <summary>Primary/Secondary filtered by fighting style; Range by its
     /// mode (DPS = bows/thrown, stat = everything else) and Ammo always ride along.</summary>
-    public static Result WeaponView(Result r, WeaponStyle style, RangeMode range = RangeMode.Dps)
+    public static bool HasBackstab(Candidate c) => c.Stats.GetValueOrDefault("BACKSTAB") > 0;
+
+    public static Result WeaponView(Result r, WeaponStyle style, RangeMode range = RangeMode.Dps,
+        bool backstabOnly = false)
     {
         var prim = r.Slots.First(s => s.Key == "PRIMARY");
         var sec = r.Slots.First(s => s.Key == "SECONDARY");
@@ -208,6 +217,8 @@ public static class BisFinder
                     .ToList();
                 break;
         }
+        // Backstab lives in the main hand: the filter narrows Primary only.
+        if (backstabOnly) p = p.Where(HasBackstab).ToList();
         var slots = new List<SlotResult> { prim with { Ranked = p } };
         if (style != WeaponStyle.TwoHanded) slots.Add(sec with { Ranked = s });
         var rangeSlot = r.Slots.First(x => x.Key == "RANGE");

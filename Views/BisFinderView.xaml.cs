@@ -32,6 +32,7 @@ public partial class BisFinderView : UserControl
     private BisFinder.WeaponStyle _style = BisFinder.WeaponStyle.DualWield;
     private BisFinder.RangeMode _range = BisFinder.RangeMode.Dps;
     private double _tail; // armor only: weight for every stat outside the three picks
+    private bool _backstab; // weapons: only main-hand weapons with a backstab number
     private readonly Dictionary<string, bool> _fold = new(StringComparer.Ordinal); // explicit toggles
 
     private static readonly Brush ChipOnBg = Freeze("#16283E");
@@ -70,7 +71,7 @@ public partial class BisFinderView : UserControl
     private (string Key, string Label)[] _options = Array.Empty<(string, string)>();
 
     private (string Key, string Label)[] OptionsFor(bool weapons) =>
-        BisFinder.Priorities.Where(p => weapons || p.Key != "DMG_DLY").ToArray();
+        BisFinder.Priorities.Where(p => weapons || !BisFinder.WeaponOnlyPriorities.Contains(p.Key)).ToArray();
 
     // ---- Armor | Weapons, and the fighting style --------------------------------
 
@@ -114,6 +115,17 @@ public partial class BisFinderView : UserControl
             };
             ViewPills.Children.Add(pill);
         }
+        // Weapons: the rogue's filter — main-hand weapons that carry a backstab number.
+        var bsPill = Chip("Backstab only", "bs");
+        bsPill.ToolTip = "Show only main-hand weapons the wiki lists with Backstab damage";
+        bsPill.Margin = new Thickness(10, 0, 5, 5);
+        bsPill.MouseLeftButtonDown += (_, _) =>
+        {
+            _backstab = !_backstab;
+            SavePrefs();
+            Refresh();
+        };
+        ViewPills.Children.Add(bsPill);
         // Armor only: the tail — every other stat at a small weight, so the
         // well-rounded piece isn't scored as nothing (owner request, 4 Sep).
         TailPills.Children.Clear();
@@ -158,6 +170,11 @@ public partial class BisFinderView : UserControl
             else if (tag == "weapons") Paint(pill, _weapons, LaneOnFg, LaneOnLine);
             else if (tag.StartsWith("tail:", StringComparison.Ordinal))
                 Paint(pill, tag == "tail:" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture), ChipOnFg, ChipOnLine);
+            else if (tag == "bs")
+            {
+                pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
+                Paint(pill, _backstab, ChipOnFg, ChipOnLine);
+            }
             else if (tag.StartsWith("range:", StringComparison.Ordinal))
             {
                 pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
@@ -192,6 +209,7 @@ public partial class BisFinderView : UserControl
         if (parts.Length > 3 && Enum.TryParse(parts[3], out BisFinder.RangeMode rm)) _range = rm;
         if (parts.Length > 4 && double.TryParse(parts[4], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out double tail)) _tail = tail;
+        if (parts.Length > 5) _backstab = parts[5] == "bs";
         _prio = _weapons ? _prioWeapon : _prioArmor;
         SyncPrioBoxes();
     }
@@ -291,7 +309,8 @@ public partial class BisFinderView : UserControl
     private void SavePrefs() =>
         _config?.SaveBisPrefs(_charKey, string.Join("/", _combo),
             string.Join("/", _prioArmor) + ";" + string.Join("/", _prioWeapon) + ";" + _style + ";" + _range
-            + ";" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            + ";" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            + ";" + (_backstab ? "bs" : ""));
 
     // ---- the board -----------------------------------------------------------------
 
@@ -309,7 +328,7 @@ public partial class BisFinderView : UserControl
 
         StyleViewPills();
         var all = BisFinder.Build(_rows, _stats, _combo, _prio, tailWeight: _weapons ? 0 : _tail);
-        var result = _weapons ? BisFinder.WeaponView(all, _style, _range) : BisFinder.ArmorView(all);
+        var result = _weapons ? BisFinder.WeaponView(all, _style, _range, _backstab) : BisFinder.ArmorView(all);
         BuildVerdicts(result);
         BuildBoard(result);
     }
@@ -550,8 +569,9 @@ public partial class BisFinderView : UserControl
         if (c.Stats.TryGetValue("DMG", out int dmg) && c.Stats.TryGetValue("DELAY", out int dly))
             parts.Add($"{dmg}/{dly}");
         if (c.TwoHanded) parts.Add("2H");
+        if (c.Stats.TryGetValue("BACKSTAB", out int bs)) parts.Add($"BS {bs}");
         var skip = new HashSet<string>(_prio, StringComparer.Ordinal)
-            { "DMG", "DELAY", "DMG_DLY", "RESISTS" };
+            { "DMG", "DELAY", "DMG_DLY", "BACKSTAB", "RESISTS" };
         parts.AddRange(c.Stats
             .Where(kv => !skip.Contains(kv.Key) && kv.Value != 0)
             .OrderByDescending(kv => Math.Abs(kv.Value))

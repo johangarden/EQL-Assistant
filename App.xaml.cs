@@ -603,6 +603,7 @@ public partial class App : Application
                 new("A Dark Reaver +2", "a dark reaver +2", "Bank1-Slot1", 1, "bank", 11),
                 new("Buckler of Doom", "buckler of doom", "Bank1-Slot2", 1, "bank", 12),
                 new("Soldier's Brooch of the Spirited +2", "soldier's brooch", "Range", 1, "worn", 13), // stat range item
+                new("Rib-bone Stiletto +1", "rib-bone stiletto +1", "General 3-Slot4", 1, "bags", 14), // backstab piercer
             };
             var wAll = BisFinder.Build(wRows, bisStats, new[] { "SHD", "SHM" }, new[] { "DMG_DLY", "STR", "STA" });
             var twoH = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.TwoHanded);
@@ -612,10 +613,15 @@ public partial class App : Application
                 twoH.Slots.First(s => s.Key == "PRIMARY").Ranked.Select(c => c.BaseName).SequenceEqual(new[] { "A Dark Reaver" })
                 && twoH.Slots.All(s => s.Key != "SECONDARY"));
             Check("bis: 1H + shield pairs a one-hander with an off-hand",
-                shield.Slots.First(s => s.Key == "PRIMARY").Ranked.Single().BaseName == "Carved Walking Stick"
+                shield.Slots.First(s => s.Key == "PRIMARY").Ranked[0].BaseName == "Carved Walking Stick"
                 && shield.Slots.First(s => s.Key == "SECONDARY").Ranked.Single().BaseName == "Buckler of Doom");
             Check("bis: dual wield never offers the weapon worn in Primary for the off-hand",
-                dual.Slots.First(s => s.Key == "SECONDARY").Ranked.Count == 0);
+                dual.Slots.First(s => s.Key == "SECONDARY").Ranked.All(c => c.BaseName != "Carved Walking Stick")
+                && dual.Slots.First(s => s.Key == "SECONDARY").Ranked.Any(c => c.BaseName == "Rib-bone Stiletto"));
+            var bsOnly = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.DualWield, backstabOnly: true);
+            Check("bis: the backstab filter keeps only main-hand weapons with a backstab number, tier-scaled",
+                bsOnly.Slots.First(s => s.Key == "PRIMARY").Ranked.Select(c => c.BaseName).SequenceEqual(new[] { "Rib-bone Stiletto" })
+                && bsOnly.Slots.First(s => s.Key == "PRIMARY").Ranked[0].Stats["BACKSTAB"] == 7);
             var rangeStat = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.DualWield, BisFinder.RangeMode.Stat);
             Check("bis: Range lives in the weapons view, toggling DPS (bows) or stat (brooches)",
                 BisFinder.ArmorView(wAll).Slots.All(s => !BisFinder.WeaponSlotKeys.Contains(s.Key))
