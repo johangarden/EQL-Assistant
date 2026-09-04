@@ -124,6 +124,7 @@ public sealed class SkyQuests
         {
             if (e.Kind is not (LootTracker.LootKind.Kept or LootTracker.LootKind.Currency)) continue;
             string key = LootTracker.ItemKey(e.Item);
+            if (e.Kind == LootTracker.LootKind.Currency) _currencyKeys.Add(key);
             if (_questItemKeys.Contains(key))
                 fromLoot[key] = fromLoot.GetValueOrDefault(key) + Math.Max(1, e.Count);
         }
@@ -135,6 +136,11 @@ public sealed class SkyQuests
         loot.Added += e => { if (CountLoot(e, save: true)) Changed?.Invoke(); };
     }
 
+    /// <summary>Items the ledger has seen arrive as CURRENCY (wind runes):
+    /// they stack in the currency tab and take no bag or bank space, so
+    /// housekeeping never lists them (owner ruling, 3 Sep).</summary>
+    private readonly HashSet<string> _currencyKeys = new(StringComparer.OrdinalIgnoreCase);
+
     private bool CountLoot(LootTracker.LootEntry e, bool save)
     {
         // Kept items AND currency pickups: the wind runes became currencies
@@ -142,6 +148,7 @@ public sealed class SkyQuests
         if (e.Kind is not (LootTracker.LootKind.Kept or LootTracker.LootKind.Currency))
             return false;
         string key = LootTracker.ItemKey(e.Item);
+        if (e.Kind == LootTracker.LootKind.Currency) _currencyKeys.Add(key);
         if (!_questItemKeys.Contains(key)) return false;
         _counts[key] = _counts.GetValueOrDefault(key) + Math.Max(1, e.Count);
         if (save) SaveProgress();
@@ -398,6 +405,7 @@ public sealed class SkyQuests
         var rows = new List<SurplusItem>();
         foreach (var key in _counts.Keys)
         {
+            if (_currencyKeys.Contains(key)) continue; // stacks in the currency tab — no space to free
             int surplus = HeldByKey(key) - needed.GetValueOrDefault(key);
             if (surplus > 0)
                 rows.Add(new SurplusItem(_keyToName.GetValueOrDefault(key, key), surplus));

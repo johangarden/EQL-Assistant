@@ -2080,13 +2080,14 @@ public partial class App : Application
                     medaNeed is { Missing: 5, Quests.Count: 5 });
 
                 // Housekeeping: complete every Ozah quest, then loot an Ozah —
-                // the ledger calls it spare.
+                // nothing wants it, yet it is CURRENCY (stacks in the tab, no
+                // bag space), so housekeeping never lists it (owner ruling, 3 Sep).
                 foreach (var q in sqAgain.Quests.Where(q =>
                              q.Items.Any(i => i.Name == "Wind Rune Ozah")))
                     sqAgain.SetCompleted(q, true);
                 skyLoot.ProcessLine("[Sat Aug 29 00:40:00 2026] You looted a Wind Rune Ozah from a selftest zephyr's corpse and stored it in your currency");
-                Check("sky: a rune nothing active wants shows as surplus",
-                    sqAgain.Surplus().Any(s => s.Item == "Wind Rune Ozah" && s.Surplus == 1)
+                Check("sky: a spare rune is tracked but never listed as housekeeping (currency takes no space)",
+                    sqAgain.Surplus().All(s => s.Item != "Wind Rune Ozah")
                     && sqAgain.MissingByIsle().All(r => r.Item != "Wind Rune Ozah"));
 
                 var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };
