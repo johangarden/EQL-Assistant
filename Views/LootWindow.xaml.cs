@@ -80,8 +80,8 @@ public partial class LootWindow : Window
         string vendored = LootTracker.FormatCoins(_loot.TotalVendorCopper);
         SummaryText.Text = $"{_loot.UpgradeCount} upgrades · vendored {vendored}";
         Title = matches > MaxRows
-            ? $"EQL Assistant — Loot History ({matches} matches, showing {MaxRows})"
-            : "EQL Assistant — Loot History";
+            ? $"EQL Assistant — Loot & Inventory ({matches} matches, showing {MaxRows})"
+            : "EQL Assistant — Loot & Inventory";
     }
 
     private static RowVm ToRow(LootTracker.LootEntry e)

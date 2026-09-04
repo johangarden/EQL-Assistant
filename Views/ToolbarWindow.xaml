@@ -89,7 +89,7 @@
                 <!-- feature shortcuts: the play-time windows, one click each -->
                 <Button DockPanel.Dock="Right" Click="OnLoot" Style="{StaticResource IconBtn}"
                         Margin="6,0,0,0" AutomationProperties.AutomationId="LootBtn"
-                        ToolTip="Loot history — upgrades, kept items, vendor income">
+                        ToolTip="Loot &amp; Inventory — drop log, mote farming, and everything you own">
                     <!-- A leather loot sack: tuft, cinch band, round body —
                          chunky enough to survive 14px. -->
                     <Path Fill="#C68B4F" Width="14" Height="14" Stretch="Uniform"
