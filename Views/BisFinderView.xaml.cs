@@ -101,8 +101,10 @@ public partial class BisFinderView : UserControl
             };
             ViewPills.Children.Add(pill);
         }
-        var gap = new TextBlock { Text = "·", Foreground = DimmerFg, Margin = new Thickness(6, 3, 12, 0) };
-        ViewPills.Children.Add(gap);
+        // Everything view-specific lives UNDER the three dropdowns (owner
+        // ruling, 4 Sep): the armor tail, or the weapon style + backstab +
+        // range pills — each row shows only for its view.
+        TailPills.Children.Clear();
         foreach (var (style, label) in Styles)
         {
             var pill = Chip(label, "style:" + style);
@@ -113,7 +115,7 @@ public partial class BisFinderView : UserControl
                 SavePrefs();
                 Refresh();
             };
-            ViewPills.Children.Add(pill);
+            TailPills.Children.Add(pill);
         }
         // Weapons: the rogue's filter — main-hand weapons that carry a backstab number.
         var bsPill = Chip("Backstab only", "bs");
@@ -125,11 +127,10 @@ public partial class BisFinderView : UserControl
             SavePrefs();
             Refresh();
         };
-        ViewPills.Children.Add(bsPill);
+        TailPills.Children.Add(bsPill);
         // Armor only: the tail — every other stat at a small weight, so the
         // well-rounded piece isn't scored as nothing (owner request, 4 Sep).
-        TailPills.Children.Clear();
-        TailPills.Children.Add(new TextBlock { Text = "Other stats:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(0, 3, 8, 0) });
+        TailPills.Children.Add(new TextBlock { Text = "Other stats:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(0, 3, 8, 0), Tag = "armor-gap" });
         foreach (var (w, label) in new[] { (0.0, "Off"), (0.25, "×0.25"), (0.5, "×0.5") })
         {
             var pill = Chip(label, "tail:" + w.ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -144,8 +145,8 @@ public partial class BisFinderView : UserControl
             TailPills.Children.Add(pill);
         }
         // What the range slot is for: a bow build or a stat brooch.
-        var gap2 = new TextBlock { Text = "· Range:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0) };
-        ViewPills.Children.Add(gap2);
+        var gap2 = new TextBlock { Text = "· Range:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0), Tag = "weapons-gap" };
+        TailPills.Children.Add(gap2);
         foreach (var (mode, label) in new[] { (BisFinder.RangeMode.Dps, "DPS"), (BisFinder.RangeMode.Stat, "Stat") })
         {
             var pill = Chip(label, "range:" + mode);
@@ -156,20 +157,22 @@ public partial class BisFinderView : UserControl
                 SavePrefs();
                 Refresh();
             };
-            ViewPills.Children.Add(pill);
+            TailPills.Children.Add(pill);
         }
     }
 
     private void StyleViewPills()
     {
-        TailPills.Visibility = _weapons ? Visibility.Collapsed : Visibility.Visible;
         foreach (var child in ViewPills.Children.Cast<object>().Concat(TailPills.Children.Cast<object>()))
         {
             if (child is not Border pill || pill.Tag is not string tag) continue;
             if (tag == "armor") Paint(pill, !_weapons, LaneOnFg, LaneOnLine);
             else if (tag == "weapons") Paint(pill, _weapons, LaneOnFg, LaneOnLine);
             else if (tag.StartsWith("tail:", StringComparison.Ordinal))
+            {
+                pill.Visibility = _weapons ? Visibility.Collapsed : Visibility.Visible;
                 Paint(pill, tag == "tail:" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture), ChipOnFg, ChipOnLine);
+            }
             else if (tag == "bs")
             {
                 pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
@@ -186,8 +189,9 @@ public partial class BisFinderView : UserControl
                 Paint(pill, tag == "style:" + _style, ChipOnFg, ChipOnLine);
             }
         }
-        foreach (var child in ViewPills.Children)
-            if (child is TextBlock gap) gap.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var child in TailPills.Children)
+            if (child is TextBlock gap)
+                gap.Visibility = (gap.Tag is "armor-gap" ? !_weapons : _weapons) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public void Init(ItemStats stats, ConfigService? config, string charKey)
