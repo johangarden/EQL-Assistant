@@ -36,8 +36,11 @@ public static class BisFinder
         ("AGI", "AGI"), ("DEX", "DEX"), ("WIS", "WIS"), ("INT", "INT"), ("CHA", "CHA"),
         ("SV_FIRE", "SV Fire"), ("SV_COLD", "SV Cold"), ("SV_MAGIC", "SV Magic"),
         ("SV_POISON", "SV Poison"), ("SV_DISEASE", "SV Disease"), ("RESISTS", "Resists (sum)"),
-        ("HASTE", "Haste"), ("DMG_DLY", "DMG/DLY (weapons)"),
+        ("HASTE", "Haste"), ("DMG_DLY", "DMG/DLY (weapons)"), ("BACKSTAB", "Backstab DMG (weapons)"),
     };
+
+    /// <summary>Priorities that only mean something on a weapon.</summary>
+    public static readonly string[] WeaponOnlyPriorities = { "DMG_DLY", "BACKSTAB" };
 
     public static readonly int[] Weights = { 3, 2, 1 };
 
@@ -98,14 +101,33 @@ public static class BisFinder
             d["DELAY"] = dly;
             d["DMG_DLY"] = (int)Math.Round(100.0 * d["DMG"] / dly);
         }
+        // The wiki's own backstab number (a handful of piercers carry one),
+        // tier-scaled like damage — the rogue's question.
+        if (rec.Backstab is { } bs && bs > 0) d["BACKSTAB"] = ItemUpgrade.ScaleDamage(bs, tier);
         return d;
     }
 
-    public static double Score(IReadOnlyDictionary<string, int> stats, IReadOnlyList<string> prio)
+    /// <summary>3·p1 + 2·p2 + 1·p3, plus (owner request, 4 Sep) a TAIL: every
+    /// other integer stat at tailWeight (0 = off), so a well-rounded "+7 of
+    /// everything" piece isn't scored as nothing. Pools (HP/Mana/End) count
+    /// at a fifth — 5 HP ≈ 1 stat point; weapon numbers and the Resists sum
+    /// never ride the tail (they'd double-count).</summary>
+    public static double Score(IReadOnlyDictionary<string, int> stats, IReadOnlyList<string> prio,
+        double tailWeight = 0)
     {
         double s = 0;
         for (int i = 0; i < prio.Count && i < Weights.Length; i++)
             if (prio[i].Length > 0) s += Weights[i] * stats.GetValueOrDefault(prio[i]);
+        if (tailWeight <= 0) return s;
+        bool resistsPicked = prio.Contains("RESISTS");
+        foreach (var (key, v) in stats)
+        {
+            if (v == 0 || prio.Contains(key)) continue;
+            if (key is "DMG" or "DELAY" or "DMG_DLY" or "BACKSTAB" or "RESISTS") continue;
+            if (resistsPicked && key.StartsWith("SV_", StringComparison.Ordinal)) continue;
+            double scale = key is "HP" or "MP" or "END" ? 0.2 : 1;
+            s += tailWeight * v * scale;
+        }
         return s;
     }
 
@@ -166,7 +188,10 @@ public static class BisFinder
 
     /// <summary>Primary/Secondary filtered by fighting style; Range by its
     /// mode (DPS = bows/thrown, stat = everything else) and Ammo always ride along.</summary>
-    public static Result WeaponView(Result r, WeaponStyle style, RangeMode range = RangeMode.Dps)
+    public static bool HasBackstab(Candidate c) => c.Stats.GetValueOrDefault("BACKSTAB") > 0;
+
+    public static Result WeaponView(Result r, WeaponStyle style, RangeMode range = RangeMode.Dps,
+        bool backstabOnly = false)
     {
         var prim = r.Slots.First(s => s.Key == "PRIMARY");
         var sec = r.Slots.First(s => s.Key == "SECONDARY");
@@ -192,6 +217,8 @@ public static class BisFinder
                     .ToList();
                 break;
         }
+        // Backstab lives in the main hand: the filter narrows Primary only.
+        if (backstabOnly) p = p.Where(HasBackstab).ToList();
         var slots = new List<SlotResult> { prim with { Ranked = p } };
         if (style != WeaponStyle.TwoHanded) slots.Add(sec with { Ranked = s });
         var rangeSlot = r.Slots.First(x => x.Key == "RANGE");
@@ -219,7 +246,7 @@ public static class BisFinder
     /// <summary>The board for one combo + priority set over the dump's rows.</summary>
     public static Result Build(IEnumerable<InventoryStore.CarryRow> rows, ItemStats stats,
         IReadOnlyCollection<string> combo, IReadOnlyList<string> prio,
-        IReadOnlyCollection<string>? lanes = null)
+        IReadOnlyCollection<string>? lanes = null, double tailWeight = 0)
     {
         var laneSet = new HashSet<string>(lanes ?? SearchLanes, StringComparer.Ordinal);
         var unknown = new List<string>();
@@ -250,7 +277,7 @@ public static class BisFinder
             bool worn = r.Lane == "worn";
             string wornKey = worn ? WornSlotKey(r.Location) : "";
             bool twoHanded = rec.Skill.StartsWith("2H", StringComparison.OrdinalIgnoreCase);
-            double score = Score(scaled, prio);
+            double score = Score(scaled, prio, tailWeight);
 
             foreach (var key in slotKeys)
             {

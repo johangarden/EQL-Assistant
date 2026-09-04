@@ -582,6 +582,12 @@ public partial class App : Application
             Check("bis: stats scale by the item's +N tier and score 3·2·1",
                 head.Ranked.Count > 0 && head.Ranked[0].BaseName == "Wicked Sallet"
                 && Math.Abs(head.Ranked[0].Score - 68) < 0.01 && head.Ranked[0].Worn);
+            // The tail: Wicked Sallet +5 also carries STR 3→8 — at ×0.5 the score
+            // grows by exactly 4; the three picks never count twice.
+            var tailed = BisFinder.Build(bisRows, bisStats, new[] { "SHD" }, new[] { "AC", "STA", "INT" },
+                tailWeight: 0.5);
+            Check("bis: the other-stats tail rewards the well-rounded piece without double-counting",
+                Math.Abs(tailed.Slots.First(s => s.Key == "HEAD").Ranked[0].Score - 72) < 0.01);
             Check("bis: the worn winner is no upgrade; a foreign-class robe stays visible but unranked",
                 !head.Upgrades.Any()
                 && chest.Ranked.Count == 0 && chest.Foreign.Count == 1
@@ -597,6 +603,7 @@ public partial class App : Application
                 new("A Dark Reaver +2", "a dark reaver +2", "Bank1-Slot1", 1, "bank", 11),
                 new("Buckler of Doom", "buckler of doom", "Bank1-Slot2", 1, "bank", 12),
                 new("Soldier's Brooch of the Spirited +2", "soldier's brooch", "Range", 1, "worn", 13), // stat range item
+                new("Rib-bone Stiletto +1", "rib-bone stiletto +1", "General 3-Slot4", 1, "bags", 14), // backstab piercer
             };
             var wAll = BisFinder.Build(wRows, bisStats, new[] { "SHD", "SHM" }, new[] { "DMG_DLY", "STR", "STA" });
             var twoH = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.TwoHanded);
@@ -606,10 +613,15 @@ public partial class App : Application
                 twoH.Slots.First(s => s.Key == "PRIMARY").Ranked.Select(c => c.BaseName).SequenceEqual(new[] { "A Dark Reaver" })
                 && twoH.Slots.All(s => s.Key != "SECONDARY"));
             Check("bis: 1H + shield pairs a one-hander with an off-hand",
-                shield.Slots.First(s => s.Key == "PRIMARY").Ranked.Single().BaseName == "Carved Walking Stick"
+                shield.Slots.First(s => s.Key == "PRIMARY").Ranked[0].BaseName == "Carved Walking Stick"
                 && shield.Slots.First(s => s.Key == "SECONDARY").Ranked.Single().BaseName == "Buckler of Doom");
             Check("bis: dual wield never offers the weapon worn in Primary for the off-hand",
-                dual.Slots.First(s => s.Key == "SECONDARY").Ranked.Count == 0);
+                dual.Slots.First(s => s.Key == "SECONDARY").Ranked.All(c => c.BaseName != "Carved Walking Stick")
+                && dual.Slots.First(s => s.Key == "SECONDARY").Ranked.Any(c => c.BaseName == "Rib-bone Stiletto"));
+            var bsOnly = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.DualWield, backstabOnly: true);
+            Check("bis: the backstab filter keeps only main-hand weapons with a backstab number, tier-scaled",
+                bsOnly.Slots.First(s => s.Key == "PRIMARY").Ranked.Select(c => c.BaseName).SequenceEqual(new[] { "Rib-bone Stiletto" })
+                && bsOnly.Slots.First(s => s.Key == "PRIMARY").Ranked[0].Stats["BACKSTAB"] == 7);
             var rangeStat = BisFinder.WeaponView(wAll, BisFinder.WeaponStyle.DualWield, BisFinder.RangeMode.Stat);
             Check("bis: Range lives in the weapons view, toggling DPS (bows) or stat (brooches)",
                 BisFinder.ArmorView(wAll).Slots.All(s => !BisFinder.WeaponSlotKeys.Contains(s.Key))
@@ -2080,13 +2092,14 @@ public partial class App : Application
                     medaNeed is { Missing: 5, Quests.Count: 5 });
 
                 // Housekeeping: complete every Ozah quest, then loot an Ozah —
-                // the ledger calls it spare.
+                // nothing wants it, yet it is CURRENCY (stacks in the tab, no
+                // bag space), so housekeeping never lists it (owner ruling, 3 Sep).
                 foreach (var q in sqAgain.Quests.Where(q =>
                              q.Items.Any(i => i.Name == "Wind Rune Ozah")))
                     sqAgain.SetCompleted(q, true);
                 skyLoot.ProcessLine("[Sat Aug 29 00:40:00 2026] You looted a Wind Rune Ozah from a selftest zephyr's corpse and stored it in your currency");
-                Check("sky: a rune nothing active wants shows as surplus",
-                    sqAgain.Surplus().Any(s => s.Item == "Wind Rune Ozah" && s.Surplus == 1)
+                Check("sky: a spare rune is tracked but never listed as housekeeping (currency takes no space)",
+                    sqAgain.Surplus().All(s => s.Item != "Wind Rune Ozah")
                     && sqAgain.MissingByIsle().All(r => r.Item != "Wind Rune Ozah"));
 
                 var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };

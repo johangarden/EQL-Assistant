@@ -387,6 +387,7 @@ public partial class InventoryPanel : UserControl
     public void ShowTab(string id)
     {
         if (id != "sheet") SheetView.CloseDrawer(); // the extension is sheet-only
+        if (id == "bis") BisView.ResetCombo(KnownClasses()); // start from who you are
         _tab = id;
         RepaintPills(TabPanel, _tab);
         _lane = null; // a lane picked on one tab means nothing on another

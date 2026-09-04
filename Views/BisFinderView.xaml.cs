@@ -31,6 +31,8 @@ public partial class BisFinderView : UserControl
     private bool _weapons; // false = Armor view
     private BisFinder.WeaponStyle _style = BisFinder.WeaponStyle.DualWield;
     private BisFinder.RangeMode _range = BisFinder.RangeMode.Dps;
+    private double _tail; // armor only: weight for every stat outside the three picks
+    private bool _backstab; // weapons: only main-hand weapons with a backstab number
     private readonly Dictionary<string, bool> _fold = new(StringComparer.Ordinal); // explicit toggles
 
     private static readonly Brush ChipOnBg = Freeze("#16283E");
@@ -69,7 +71,7 @@ public partial class BisFinderView : UserControl
     private (string Key, string Label)[] _options = Array.Empty<(string, string)>();
 
     private (string Key, string Label)[] OptionsFor(bool weapons) =>
-        BisFinder.Priorities.Where(p => weapons || p.Key != "DMG_DLY").ToArray();
+        BisFinder.Priorities.Where(p => weapons || !BisFinder.WeaponOnlyPriorities.Contains(p.Key)).ToArray();
 
     // ---- Armor | Weapons, and the fighting style --------------------------------
 
@@ -99,8 +101,10 @@ public partial class BisFinderView : UserControl
             };
             ViewPills.Children.Add(pill);
         }
-        var gap = new TextBlock { Text = "·", Foreground = DimmerFg, Margin = new Thickness(6, 3, 12, 0) };
-        ViewPills.Children.Add(gap);
+        // Everything view-specific lives UNDER the three dropdowns (owner
+        // ruling, 4 Sep): the armor tail, or the weapon style + backstab +
+        // range pills — each row shows only for its view.
+        TailPills.Children.Clear();
         foreach (var (style, label) in Styles)
         {
             var pill = Chip(label, "style:" + style);
@@ -111,11 +115,38 @@ public partial class BisFinderView : UserControl
                 SavePrefs();
                 Refresh();
             };
-            ViewPills.Children.Add(pill);
+            TailPills.Children.Add(pill);
+        }
+        // Weapons: the rogue's filter — main-hand weapons that carry a backstab number.
+        var bsPill = Chip("Backstab only", "bs");
+        bsPill.ToolTip = "Show only main-hand weapons the wiki lists with Backstab damage";
+        bsPill.Margin = new Thickness(10, 0, 5, 5);
+        bsPill.MouseLeftButtonDown += (_, _) =>
+        {
+            _backstab = !_backstab;
+            SavePrefs();
+            Refresh();
+        };
+        TailPills.Children.Add(bsPill);
+        // Armor only: the tail — every other stat at a small weight, so the
+        // well-rounded piece isn't scored as nothing (owner request, 4 Sep).
+        TailPills.Children.Add(new TextBlock { Text = "Other stats:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(0, 3, 8, 0), Tag = "armor-gap" });
+        foreach (var (w, label) in new[] { (0.0, "Off"), (0.25, "×0.25"), (0.5, "×0.5") })
+        {
+            var pill = Chip(label, "tail:" + w.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            pill.ToolTip = "Every stat outside your three picks counts at this weight (HP/Mana/End at a fifth) — rewards well-rounded pieces";
+            var tw = w;
+            pill.MouseLeftButtonDown += (_, _) =>
+            {
+                _tail = tw;
+                SavePrefs();
+                Refresh();
+            };
+            TailPills.Children.Add(pill);
         }
         // What the range slot is for: a bow build or a stat brooch.
-        var gap2 = new TextBlock { Text = "· Range:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0) };
-        ViewPills.Children.Add(gap2);
+        var gap2 = new TextBlock { Text = "· Range:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0), Tag = "weapons-gap" };
+        TailPills.Children.Add(gap2);
         foreach (var (mode, label) in new[] { (BisFinder.RangeMode.Dps, "DPS"), (BisFinder.RangeMode.Stat, "Stat") })
         {
             var pill = Chip(label, "range:" + mode);
@@ -126,17 +157,27 @@ public partial class BisFinderView : UserControl
                 SavePrefs();
                 Refresh();
             };
-            ViewPills.Children.Add(pill);
+            TailPills.Children.Add(pill);
         }
     }
 
     private void StyleViewPills()
     {
-        foreach (var child in ViewPills.Children)
+        foreach (var child in ViewPills.Children.Cast<object>().Concat(TailPills.Children.Cast<object>()))
         {
             if (child is not Border pill || pill.Tag is not string tag) continue;
             if (tag == "armor") Paint(pill, !_weapons, LaneOnFg, LaneOnLine);
             else if (tag == "weapons") Paint(pill, _weapons, LaneOnFg, LaneOnLine);
+            else if (tag.StartsWith("tail:", StringComparison.Ordinal))
+            {
+                pill.Visibility = _weapons ? Visibility.Collapsed : Visibility.Visible;
+                Paint(pill, tag == "tail:" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture), ChipOnFg, ChipOnLine);
+            }
+            else if (tag == "bs")
+            {
+                pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
+                Paint(pill, _backstab, ChipOnFg, ChipOnLine);
+            }
             else if (tag.StartsWith("range:", StringComparison.Ordinal))
             {
                 pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
@@ -148,8 +189,9 @@ public partial class BisFinderView : UserControl
                 Paint(pill, tag == "style:" + _style, ChipOnFg, ChipOnLine);
             }
         }
-        foreach (var child in ViewPills.Children)
-            if (child is TextBlock gap) gap.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var child in TailPills.Children)
+            if (child is TextBlock gap)
+                gap.Visibility = (gap.Tag is "armor-gap" ? !_weapons : _weapons) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public void Init(ItemStats stats, ConfigService? config, string charKey)
@@ -157,12 +199,10 @@ public partial class BisFinderView : UserControl
         _stats = stats;
         _config = config;
         _charKey = charKey;
-        var (classes, prio) = _config?.LoadBisPrefs(_charKey) ?? ("", "");
-        if (classes.Length > 0)
-        {
-            _combo.Clear();
-            _combo.AddRange(classes.Split('/', StringSplitOptions.RemoveEmptyEntries).Take(3));
-        }
+        // Priorities and style persist; the combo does NOT — the tab always
+        // opens on the character's own /who classes (a saved what-if would
+        // only mislead a week later).
+        var (_, prio) = _config?.LoadBisPrefs(_charKey) ?? ("", "");
         // "AC/STA/INT;DMG_DLY/STR/STA;DualWield" — armor set, weapon set, style.
         var parts = prio.Split(';');
         if (parts.Length > 0 && parts[0].Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: 3 } a)
@@ -171,8 +211,22 @@ public partial class BisFinderView : UserControl
             _prioWeapon = w;
         if (parts.Length > 2 && Enum.TryParse(parts[2], out BisFinder.WeaponStyle st)) _style = st;
         if (parts.Length > 3 && Enum.TryParse(parts[3], out BisFinder.RangeMode rm)) _range = rm;
+        if (parts.Length > 4 && double.TryParse(parts[4], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out double tail)) _tail = tail;
+        if (parts.Length > 5) _backstab = parts[5] == "bs";
         _prio = _weapons ? _prioWeapon : _prioArmor;
         SyncPrioBoxes();
+    }
+
+    /// <summary>Entering the tab starts from who you ARE (owner ruling,
+    /// 3 Sep): the combo snaps back to the character's /who classes; the
+    /// chips are for what-if detours while you're on the page.</summary>
+    public void ResetCombo(string whoClasses)
+    {
+        if (whoClasses.Length == 0) return;
+        _combo.Clear();
+        _combo.AddRange(whoClasses.Split('/', StringSplitOptions.RemoveEmptyEntries).Take(3));
+        Refresh();
     }
 
     /// <summary>New dump rows (and the /who combo to prefill when nothing
@@ -258,7 +312,9 @@ public partial class BisFinderView : UserControl
 
     private void SavePrefs() =>
         _config?.SaveBisPrefs(_charKey, string.Join("/", _combo),
-            string.Join("/", _prioArmor) + ";" + string.Join("/", _prioWeapon) + ";" + _style + ";" + _range);
+            string.Join("/", _prioArmor) + ";" + string.Join("/", _prioWeapon) + ";" + _style + ";" + _range
+            + ";" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            + ";" + (_backstab ? "bs" : ""));
 
     // ---- the board -----------------------------------------------------------------
 
@@ -275,8 +331,8 @@ public partial class BisFinderView : UserControl
               + (_dumpStamp.Length > 0 ? $"  Snapshot {_dumpStamp}." : "");
 
         StyleViewPills();
-        var all = BisFinder.Build(_rows, _stats, _combo, _prio);
-        var result = _weapons ? BisFinder.WeaponView(all, _style, _range) : BisFinder.ArmorView(all);
+        var all = BisFinder.Build(_rows, _stats, _combo, _prio, tailWeight: _weapons ? 0 : _tail);
+        var result = _weapons ? BisFinder.WeaponView(all, _style, _range, _backstab) : BisFinder.ArmorView(all);
         BuildVerdicts(result);
         BuildBoard(result);
     }
@@ -517,8 +573,9 @@ public partial class BisFinderView : UserControl
         if (c.Stats.TryGetValue("DMG", out int dmg) && c.Stats.TryGetValue("DELAY", out int dly))
             parts.Add($"{dmg}/{dly}");
         if (c.TwoHanded) parts.Add("2H");
+        if (c.Stats.TryGetValue("BACKSTAB", out int bs)) parts.Add($"BS {bs}");
         var skip = new HashSet<string>(_prio, StringComparer.Ordinal)
-            { "DMG", "DELAY", "DMG_DLY", "RESISTS" };
+            { "DMG", "DELAY", "DMG_DLY", "BACKSTAB", "RESISTS" };
         parts.AddRange(c.Stats
             .Where(kv => !skip.Contains(kv.Key) && kv.Value != 0)
             .OrderByDescending(kv => Math.Abs(kv.Value))

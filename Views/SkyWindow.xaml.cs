@@ -414,7 +414,7 @@ public partial class SkyWindow : Window
             .ToList();
         HouseControl.ItemsSource = rows;
         HouseHint.Text = rows.Count > 0
-            ? "Per the loot ledger (looted minus turned in): spare copies no ACTIVE Plane of Sky quest still needs — every quest wanting them is done, or you hold extras. Safe to hand to a guildie or clear out."
+            ? "Per the loot ledger (looted minus turned in): spare copies no ACTIVE Plane of Sky quest still needs — every quest wanting them is done, or you hold extras. Safe to hand to a guildie or clear out. Wind runes stay out: they stack in the currency tab and take no space."
             : "Nothing to clear out — everything you hold is still wanted by an open quest (per the loot ledger).";
         SummaryText.Text = $"{rows.Count} item(s) with spares";
     }
