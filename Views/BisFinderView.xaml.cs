@@ -31,6 +31,7 @@ public partial class BisFinderView : UserControl
     private bool _weapons; // false = Armor view
     private BisFinder.WeaponStyle _style = BisFinder.WeaponStyle.DualWield;
     private BisFinder.RangeMode _range = BisFinder.RangeMode.Dps;
+    private double _tail; // armor only: weight for every stat outside the three picks
     private readonly Dictionary<string, bool> _fold = new(StringComparer.Ordinal); // explicit toggles
 
     private static readonly Brush ChipOnBg = Freeze("#16283E");
@@ -113,6 +114,23 @@ public partial class BisFinderView : UserControl
             };
             ViewPills.Children.Add(pill);
         }
+        // Armor only: the tail — every other stat at a small weight, so the
+        // well-rounded piece isn't scored as nothing (owner request, 4 Sep).
+        var gap3 = new TextBlock { Text = "· Other stats:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0), Tag = "tail" };
+        ViewPills.Children.Add(gap3);
+        foreach (var (w, label) in new[] { (0.0, "Off"), (0.25, "×0.25"), (0.5, "×0.5") })
+        {
+            var pill = Chip(label, "tail:" + w.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            pill.ToolTip = "Every stat outside your three picks counts at this weight (HP/Mana/End at a fifth) — rewards well-rounded pieces";
+            var tw = w;
+            pill.MouseLeftButtonDown += (_, _) =>
+            {
+                _tail = tw;
+                SavePrefs();
+                Refresh();
+            };
+            ViewPills.Children.Add(pill);
+        }
         // What the range slot is for: a bow build or a stat brooch.
         var gap2 = new TextBlock { Text = "· Range:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0) };
         ViewPills.Children.Add(gap2);
@@ -137,6 +155,11 @@ public partial class BisFinderView : UserControl
             if (child is not Border pill || pill.Tag is not string tag) continue;
             if (tag == "armor") Paint(pill, !_weapons, LaneOnFg, LaneOnLine);
             else if (tag == "weapons") Paint(pill, _weapons, LaneOnFg, LaneOnLine);
+            else if (tag.StartsWith("tail:", StringComparison.Ordinal))
+            {
+                pill.Visibility = _weapons ? Visibility.Collapsed : Visibility.Visible;
+                Paint(pill, tag == "tail:" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture), ChipOnFg, ChipOnLine);
+            }
             else if (tag.StartsWith("range:", StringComparison.Ordinal))
             {
                 pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
@@ -149,7 +172,8 @@ public partial class BisFinderView : UserControl
             }
         }
         foreach (var child in ViewPills.Children)
-            if (child is TextBlock gap) gap.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
+            if (child is TextBlock gap)
+                gap.Visibility = (gap.Tag is "tail" ? !_weapons : _weapons) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public void Init(ItemStats stats, ConfigService? config, string charKey)
@@ -169,6 +193,8 @@ public partial class BisFinderView : UserControl
             _prioWeapon = w;
         if (parts.Length > 2 && Enum.TryParse(parts[2], out BisFinder.WeaponStyle st)) _style = st;
         if (parts.Length > 3 && Enum.TryParse(parts[3], out BisFinder.RangeMode rm)) _range = rm;
+        if (parts.Length > 4 && double.TryParse(parts[4], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out double tail)) _tail = tail;
         _prio = _weapons ? _prioWeapon : _prioArmor;
         SyncPrioBoxes();
     }
@@ -267,7 +293,8 @@ public partial class BisFinderView : UserControl
 
     private void SavePrefs() =>
         _config?.SaveBisPrefs(_charKey, string.Join("/", _combo),
-            string.Join("/", _prioArmor) + ";" + string.Join("/", _prioWeapon) + ";" + _style + ";" + _range);
+            string.Join("/", _prioArmor) + ";" + string.Join("/", _prioWeapon) + ";" + _style + ";" + _range
+            + ";" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     // ---- the board -----------------------------------------------------------------
 
@@ -284,7 +311,7 @@ public partial class BisFinderView : UserControl
               + (_dumpStamp.Length > 0 ? $"  Snapshot {_dumpStamp}." : "");
 
         StyleViewPills();
-        var all = BisFinder.Build(_rows, _stats, _combo, _prio);
+        var all = BisFinder.Build(_rows, _stats, _combo, _prio, tailWeight: _weapons ? 0 : _tail);
         var result = _weapons ? BisFinder.WeaponView(all, _style, _range) : BisFinder.ArmorView(all);
         BuildVerdicts(result);
         BuildBoard(result);

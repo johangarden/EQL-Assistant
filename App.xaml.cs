@@ -582,6 +582,12 @@ public partial class App : Application
             Check("bis: stats scale by the item's +N tier and score 3·2·1",
                 head.Ranked.Count > 0 && head.Ranked[0].BaseName == "Wicked Sallet"
                 && Math.Abs(head.Ranked[0].Score - 68) < 0.01 && head.Ranked[0].Worn);
+            // The tail: Wicked Sallet +5 also carries STR 3→8 — at ×0.5 the score
+            // grows by exactly 4; the three picks never count twice.
+            var tailed = BisFinder.Build(bisRows, bisStats, new[] { "SHD" }, new[] { "AC", "STA", "INT" },
+                tailWeight: 0.5);
+            Check("bis: the other-stats tail rewards the well-rounded piece without double-counting",
+                Math.Abs(tailed.Slots.First(s => s.Key == "HEAD").Ranked[0].Score - 72) < 0.01);
             Check("bis: the worn winner is no upgrade; a foreign-class robe stays visible but unranked",
                 !head.Upgrades.Any()
                 && chest.Ranked.Count == 0 && chest.Foreign.Count == 1

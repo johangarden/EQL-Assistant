@@ -101,11 +101,27 @@ public static class BisFinder
         return d;
     }
 
-    public static double Score(IReadOnlyDictionary<string, int> stats, IReadOnlyList<string> prio)
+    /// <summary>3·p1 + 2·p2 + 1·p3, plus (owner request, 4 Sep) a TAIL: every
+    /// other integer stat at tailWeight (0 = off), so a well-rounded "+7 of
+    /// everything" piece isn't scored as nothing. Pools (HP/Mana/End) count
+    /// at a fifth — 5 HP ≈ 1 stat point; weapon numbers and the Resists sum
+    /// never ride the tail (they'd double-count).</summary>
+    public static double Score(IReadOnlyDictionary<string, int> stats, IReadOnlyList<string> prio,
+        double tailWeight = 0)
     {
         double s = 0;
         for (int i = 0; i < prio.Count && i < Weights.Length; i++)
             if (prio[i].Length > 0) s += Weights[i] * stats.GetValueOrDefault(prio[i]);
+        if (tailWeight <= 0) return s;
+        bool resistsPicked = prio.Contains("RESISTS");
+        foreach (var (key, v) in stats)
+        {
+            if (v == 0 || prio.Contains(key)) continue;
+            if (key is "DMG" or "DELAY" or "DMG_DLY" or "RESISTS") continue;
+            if (resistsPicked && key.StartsWith("SV_", StringComparison.Ordinal)) continue;
+            double scale = key is "HP" or "MP" or "END" ? 0.2 : 1;
+            s += tailWeight * v * scale;
+        }
         return s;
     }
 
@@ -219,7 +235,7 @@ public static class BisFinder
     /// <summary>The board for one combo + priority set over the dump's rows.</summary>
     public static Result Build(IEnumerable<InventoryStore.CarryRow> rows, ItemStats stats,
         IReadOnlyCollection<string> combo, IReadOnlyList<string> prio,
-        IReadOnlyCollection<string>? lanes = null)
+        IReadOnlyCollection<string>? lanes = null, double tailWeight = 0)
     {
         var laneSet = new HashSet<string>(lanes ?? SearchLanes, StringComparer.Ordinal);
         var unknown = new List<string>();
@@ -250,7 +266,7 @@ public static class BisFinder
             bool worn = r.Lane == "worn";
             string wornKey = worn ? WornSlotKey(r.Location) : "";
             bool twoHanded = rec.Skill.StartsWith("2H", StringComparison.OrdinalIgnoreCase);
-            double score = Score(scaled, prio);
+            double score = Score(scaled, prio, tailWeight);
 
             foreach (var key in slotKeys)
             {
