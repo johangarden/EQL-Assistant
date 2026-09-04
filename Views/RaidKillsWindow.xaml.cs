@@ -55,6 +55,11 @@ public partial class RaidKillsWindow : Window
     public RaidKillsWindow(RaidKills raids)
     {
         InitializeComponent();
+        MenuTabs.Render(MenuRow, new[]
+        {
+            new MenuTabs.Item("classic", "Classic"),
+            new MenuTabs.Item("kunark", "Kunark · soon", Soon: true, Tip: "Joins when its raid targets are added"),
+        }, "classic", _ => { });
         DialogPlacement.Persist(this, "raidkills");
         WindowTheme.ApplyDark(this);
         _raids = raids;

@@ -103,6 +103,11 @@ public partial class SkyWindow : Window
     public SkyWindow(SkyQuests sky, Func<string?>? inventoryDumpFile = null)
     {
         InitializeComponent();
+        MenuTabs.Render(MenuRow, new[]
+        {
+            new MenuTabs.Item("sky", "Plane of Sky · class quests"),
+            new MenuTabs.Item("epics", "Epics · soon", Soon: true, Tip: "Joins when the epic quest data is built"),
+        }, "sky", _ => { });
         DialogPlacement.Persist(this, "sky");
         WindowTheme.ApplyDark(this);
         _sky = sky;
