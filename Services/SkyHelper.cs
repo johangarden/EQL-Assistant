@@ -135,7 +135,7 @@ public sealed class SkyHelper
             {
                 if (!it.Mobs.Contains(mob, StringComparer.OrdinalIgnoreCase)) continue;
                 items.Add(new CardItem(it.Name, q.Name, Abbr(q.Class), it.Where,
-                    Math.Min(it.Count, _sky.HeldCount(it)), it.Count, done));
+                    _sky.AllocatedHeld(q, it), it.Count, done)); // one copy serves one quest
             }
         }
         // Still-needed first, then ready-to-hand-in, then completed-quest info.

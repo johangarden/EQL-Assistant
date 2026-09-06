@@ -174,7 +174,7 @@ public partial class SkyHelperWindow : Window
                 FontWeights.SemiBold, 12, new Thickness(2, 1, 0, 0)));
             foreach (var it in q.Items)
             {
-                int held = Math.Min(it.Count, _sky.HeldCount(it));
+                int held = _sky.AllocatedHeld(q, it);
                 bool done = held >= it.Count;
                 string who = it.Mobs.Count > 0 ? string.Join(" / ", it.Mobs) : it.Who;
                 string count = it.Count > 1 ? $" {held}/{it.Count}" : "";

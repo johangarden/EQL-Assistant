@@ -454,10 +454,34 @@ public sealed class SkyQuests
         foreach (var it in q.Items)
         {
             need += it.Count;
-            have += Math.Min(it.Count, HeldCount(it));
+            have += AllocatedHeld(q, it);
         }
         return (have, need);
     }
+
+    /// <summary>Copies of an item credited to THIS quest once the quests
+    /// ahead of it that want the same item have taken theirs — one totem
+    /// can't be handed in twice (owner bug report, 6 Sep: the Beastlord AND
+    /// the Druid quest both read "HAVE" on a single Spiroc Elder's Totem).
+    /// Order: ★-tracked quests first, then the list order; completed quests
+    /// take nothing.</summary>
+    public int AllocatedHeld(SkyQuest q, SkyItem it)
+    {
+        string key = LootTracker.ItemKey(it.Name);
+        int remaining = HeldByKey(key);
+        foreach (var other in AllocationOrder())
+        {
+            if (ReferenceEquals(other, q)) break;
+            foreach (var oi in other.Items)
+                if (LootTracker.ItemKey(oi.Name) == key)
+                    remaining -= Math.Min(oi.Count, Math.Max(0, remaining));
+        }
+        return Math.Max(0, Math.Min(it.Count, remaining));
+    }
+
+    private IEnumerable<SkyQuest> AllocationOrder() =>
+        _quests.Where(x => !_completed.Contains(x.Key))
+            .OrderByDescending(x => _tracked.Contains(x.Key)); // stable: list order within
 
     // ---- persistence / data ---------------------------------------------------
 

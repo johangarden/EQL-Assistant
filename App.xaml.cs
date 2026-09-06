@@ -2059,6 +2059,14 @@ public partial class App : Application
                 skyLoot.ProcessLine("[Sat Aug 29 00:29:00 2026] You looted a Wind Rune Meda from a selftest zephyr's corpse and stored it in your currency");
                 Check("sky: one looted rune counts for every quest that wants it",
                     sqAgain.HeldCount(clericMeda) == 1 && sqAgain.HeldCount(shamanMeda) == 1);
+                // One rune, two quests: it is CREDITED to one of them only.
+                // (Meda serves 6-7 quests; whichever comes first in the order
+                // gets the rune, everyone else reads 0 - the total credit is ONE.)
+                int medaCredited = sqAgain.Quests.Where(q => !sqAgain.IsCompleted(q))
+                    .Sum(q => q.Items.Where(i => i.Name == "Wind Rune Meda").Sum(i => sqAgain.AllocatedHeld(q, i)));
+                Check("sky: a shared item is allocated to one quest, never counted twice",
+                    medaCredited == 1
+                    && sqAgain.AllocatedHeld(cleric, clericMeda) + sqAgain.AllocatedHeld(shaman, shamanMeda) <= 1);
 
                 string offer1 = "[Sat Aug 29 00:30:00 2026] You offered 1 Small Shield to Josin Faithbringer.";
                 string offer2 = "[Sat Aug 29 00:30:01 2026] You offered 1 Wind Rune Meda to Josin Faithbringer.";

@@ -556,7 +556,7 @@ public partial class SkyWindow : Window
         var (have, need) = _sky.Progress(q);
         var chips = q.Items.Select(it =>
         {
-            int held = Math.Min(it.Count, _sky.HeldCount(it));
+            int held = _sky.AllocatedHeld(q, it); // one copy serves one quest
             var (bg, fg) = held >= it.Count ? (HaveBg, HaveFg)
                 : held > 0 ? (PartBg, PartFg)
                 : (NeedBg, NeedFg);
