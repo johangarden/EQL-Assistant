@@ -2083,6 +2083,13 @@ public partial class App : Application
                 Check("sky: a replayed trade never double-counts",
                     sqAgain.HeldCount(clericMeda) == 0
                     && sqAgain.MissingByIsle().First(r => r.Item == "Wind Rune Meda").Missing == 5);
+                // The isle CHECKLIST carries held items at Missing 0 (with the held
+                // count); the plain shopping list still hides them.
+                var checklist = sqAgain.MissingByIsle(includeHeld: true);
+                Check("sky: the isle checklist keeps held items at zero missing, the shopping list hides them",
+                    checklist.Count >= sqAgain.MissingByIsle().Count
+                    && checklist.All(r => r.Missing == Math.Max(0, r.Needed - r.Held))
+                    && sqAgain.MissingByIsle().All(r => r.Missing > 0));
 
                 // The shopping list: Meda is spent, five quests still want one
                 // each — "need 5", aggregated, filed under the random-drop isle.
