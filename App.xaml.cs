@@ -2085,6 +2085,12 @@ public partial class App : Application
                     && sqAgain.MissingByIsle().First(r => r.Item == "Wind Rune Meda").Missing == 5);
                 // The isle CHECKLIST carries held items at Missing 0 (with the held
                 // count); the plain shopping list still hides them.
+                Check("sky: a class filter may name several classes (the MINE badge)",
+                    SkyQuests.ClassMatches("Shaman", "Shadow Knight|Shaman|Necromancer")
+                    && !SkyQuests.ClassMatches("Wizard", "Shadow Knight|Shaman|Necromancer")
+                    && SkyQuests.ClassMatches("Wizard", "")
+                    && sqAgain.MissingByIsle("Cleric|Shaman").All(r =>
+                        r.Quests.Any(q => q.StartsWith("Cleric") || q.StartsWith("Shaman"))));
                 var checklist = sqAgain.MissingByIsle(includeHeld: true);
                 Check("sky: the isle checklist keeps held items at zero missing, the shopping list hides them",
                     checklist.Count >= sqAgain.MissingByIsle().Count
@@ -2109,14 +2115,15 @@ public partial class App : Application
                     sqAgain.Surplus().All(s => s.Item != "Wind Rune Ozah")
                     && sqAgain.MissingByIsle().All(r => r.Item != "Wind Rune Ozah"));
 
-                var helper = new SkyHelper(sq) { ClassesProvider = () => new[] { "BRD" } };
+                var helper = new SkyHelper(sq); // never class-locked (owner ruling, 6 Sep)
                 var sighted = new List<string>();
                 helper.Sighted += m => sighted.Add(m);
                 helper.ProcessLine("[x] Keeper of Souls glowers at you dubiously -- it appears to be quite formidable. (Lvl: 60)");
-                Check("sky helper: a /con line sights the dropper",
+                Check("sky helper: a /con line sights the dropper, for EVERY class's quest",
                     sighted is ["Keeper of Souls"]
-                    && helper.ItemsFor("Keeper of Souls")
-                        is [{ Item: "Light Woolen Mantle", Class: "BRD", Held: 0, Need: 1 }]);
+                    && helper.ItemsFor("Keeper of Souls") is { Count: > 1 } keeperItems
+                    && keeperItems.Any(i => i is { Item: "Light Woolen Mantle", Class: "BRD", Held: 0, Need: 1 })
+                    && keeperItems.Any(i => i.Class == "NEC"));
                 helper.ProcessLine("[x] You slash Gorgalosk for 50 points of damage.");
                 Check("sky helper: a damage line sights the dropper",
                     sighted.Count == 2 && sighted[1] == "Gorgalosk");
@@ -2125,11 +2132,11 @@ public partial class App : Application
                 sq.SetCompleted(voice, true);
                 sighted.Clear();
                 helper.ProcessLine("[x] Keeper of Souls hits YOU for 120 points of damage.");
-                Check("sky helper: a completed quest's drop is silent by default",
-                    sighted.Count == 0 && helper.ItemsFor("Keeper of Souls").Count == 0);
+                Check("sky helper: a completed quest's drop leaves the card by default",
+                    helper.ItemsFor("Keeper of Souls").All(i => i.Class != "BRD"));
                 helper.ShowCompleted = true;
-                Check("sky helper: ...and speaks when configured to",
-                    helper.ItemsFor("Keeper of Souls") is [{ QuestDone: true }]);
+                Check("sky helper: ...and returns, marked done, when configured to",
+                    helper.ItemsFor("Keeper of Souls").Any(i => i is { Class: "BRD", QuestDone: true }));
 
                 // Tracking: ★ persists, completion un-tracks.
                 sq.SetCompleted(voice, false);
