@@ -420,6 +420,23 @@ public sealed class SkyQuests
             .ThenBy(r => r.Item, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
+    /// <summary>The ledger's word on one item: copies held (looted minus
+    /// turned in) and how many every ACTIVE quest still wants — the two
+    /// numbers behind a "spare" verdict, shown so nothing gets cleared out on
+    /// a stale count.</summary>
+    public (int Held, int Needed) LedgerFor(string item)
+    {
+        string key = LootTracker.ItemKey(item);
+        int needed = 0;
+        foreach (var q in _quests)
+        {
+            if (_completed.Contains(q.Key)) continue;
+            foreach (var it in q.Items)
+                if (LootTracker.ItemKey(it.Name) == key) needed += it.Count;
+        }
+        return (HeldByKey(key), needed);
+    }
+
     /// <summary>Items still owed for a quest (0 when ready to turn in).</summary>
     public (int Have, int Need) Progress(SkyQuest q)
     {

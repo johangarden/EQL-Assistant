@@ -215,7 +215,15 @@ public partial class SkyWindow : Window
     private static readonly Brush IsleNeedFg = Freeze(Color.FromRgb(0xFF, 0x8A, 0x80));
     /// <summary>Housekeeping row: the spare item, foldable to WHERE it sits
     /// (per the last /outputfile inventory snapshot).</summary>
-    public sealed record HouseVm(string Main, string Count, bool Open, List<string> Locations)
+    /// <summary>A storage section of the housekeeping view (bags, bank, …).</summary>
+    public sealed record HouseSectionVm(string Key, string Title, string CountText, bool Open,
+        List<HouseVm> Items)
+    {
+        public string Arrow => Open ? "▾" : "▸";
+        public Visibility RowsVisibility => Open ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public sealed record HouseVm(string Key, string Main, string Count, bool Open, List<string> Locations)
     {
         public string Arrow => Open ? "▾" : "▸";
         public Visibility RowsVisibility => Open ? Visibility.Visible : Visibility.Collapsed;
@@ -391,6 +399,15 @@ public partial class SkyWindow : Window
         return _dumpCache.Value.Rows;
     }
 
+    private readonly HashSet<string> _houseSectionOpen = new(StringComparer.OrdinalIgnoreCase);
+
+    private void HouseSection_Toggle(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string key) return;
+        if (!_houseSectionOpen.Add(key)) _houseSectionOpen.Remove(key);
+        RefreshHousekeeping();
+    }
+
     private void House_Toggle(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.Tag is not string item) return;
@@ -421,18 +438,95 @@ public partial class SkyWindow : Window
         return hits;
     }
 
+    // Storage order for the sections: what's on you, then what's stashed.
+    private static readonly string[] HouseLaneOrder = { "worn", "bags", "bank", "depot", "hoard" };
+
+    /// <summary>The ledger's reasoning for one spare, plus the dump's
+    /// cross-check — "spare" must never mean "safe to destroy" on a stale
+    /// count (owner, 6 Sep: "don't want to delete anything if it is in fact
+    /// needed").</summary>
+    private string LedgerLine(string item, int spare, int dumpCopies, bool haveDump)
+    {
+        var (held, needed) = _sky.LedgerFor(item);
+        string line = $"Ledger: held {held} · active quests still need {needed} → {spare} spare";
+        if (!haveDump) return line + ".";
+        if (dumpCopies < held)
+            return line + $" · ⚠ the snapshot shows only {dumpCopies} — the ledger may be stale (something left without a log line); trust your bags.";
+        if (dumpCopies > held)
+            return line + $" · the snapshot shows {dumpCopies} copies (more than the ledger knows) — even safer.";
+        return line + $" · the snapshot agrees ({dumpCopies} copies).";
+    }
+
     private void RefreshHousekeeping()
     {
         var inv = DumpRows(out string stamp);
-        var rows = _sky.Surplus()
-            .Select(s => new HouseVm(s.Item, $"×{s.Surplus} spare",
-                _houseOpen.Contains(s.Item),
-                _houseOpen.Contains(s.Item)
-                    ? HouseLocations(s.Item, inv, stamp) : new List<string>()))
-            .ToList();
-        HouseControl.ItemsSource = rows;
+        var spares = _sky.Surplus();
+        var sections = new List<HouseSectionVm>();
+
+        // Per item: its dump copies (tier-tolerant, exaltation rows skipped),
+        // grouped by the storage they sit in.
+        var byLane = new Dictionary<string, List<(SkyQuests.SurplusItem Spare, List<InventoryStore.CarryRow> Rows)>>(StringComparer.Ordinal);
+        var notInDump = new List<SkyQuests.SurplusItem>();
+        var copiesOf = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var s in spares)
+        {
+            string key = FocusEffects.ItemKey(s.Item);
+            var hits = inv?.Where(r => FocusEffects.ItemKey(r.Name) == key
+                                       && !r.Name.EndsWith("(Exaltation)", StringComparison.Ordinal))
+                .ToList() ?? new List<InventoryStore.CarryRow>();
+            copiesOf[s.Item] = hits.Sum(r => Math.Max(1, r.Count));
+            if (hits.Count == 0) { notInDump.Add(s); continue; }
+            foreach (var g in hits.GroupBy(r => r.Lane, StringComparer.Ordinal))
+            {
+                if (!byLane.TryGetValue(g.Key, out var list)) byLane[g.Key] = list = new();
+                list.Add((s, g.ToList()));
+            }
+        }
+
+        HouseVm Item(SkyQuests.SurplusItem s, string sectionKey, IEnumerable<string> slotLines)
+        {
+            string key = s.Item + "|" + sectionKey;
+            bool open = _houseOpen.Contains(key);
+            var lines = new List<string>();
+            if (open)
+            {
+                lines.AddRange(slotLines);
+                lines.Add(LedgerLine(s.Item, s.Surplus, copiesOf.GetValueOrDefault(s.Item), inv is not null));
+                lines.Add($"— snapshot from {(stamp.Length > 0 ? stamp : "?")}");
+            }
+            return new HouseVm(key, s.Item, $"×{s.Surplus} spare", open, lines);
+        }
+
+        foreach (var lane in HouseLaneOrder.Concat(byLane.Keys.Except(HouseLaneOrder, StringComparer.Ordinal).OrderBy(k => k)))
+        {
+            if (!byLane.TryGetValue(lane, out var list)) continue;
+            string title = InventoryStore.LaneLabels.GetValueOrDefault(lane, lane);
+            var items = list.Select(x => Item(x.Spare, lane, x.Rows.Select(r =>
+                    (r.Count > 1 ? $"{r.Location} · ×{r.Count}" : r.Location)
+                    + (r.Name.Equals(x.Spare.Item, StringComparison.OrdinalIgnoreCase) ? "" : $"  ({r.Name})"))))
+                .ToList();
+            sections.Add(new HouseSectionVm(lane, title,
+                $"{items.Count} item(s) · {list.Sum(x => x.Spare.Surplus)} spare",
+                _houseSectionOpen.Contains(lane), items));
+        }
+        if (notInDump.Count > 0)
+        {
+            string title = inv is null ? "No inventory snapshot" : "Not in the snapshot";
+            var items = notInDump.Select(s => Item(s, "none", new[]
+            {
+                inv is null
+                    ? "Run /outputfile inventory in game to see where it sits."
+                    : "Not in the inventory snapshot — looted after it, or already gone.",
+            })).ToList();
+            sections.Add(new HouseSectionVm("none", title,
+                $"{items.Count} item(s) · {notInDump.Sum(s => s.Surplus)} spare",
+                _houseSectionOpen.Contains("none"), items));
+        }
+
+        HouseControl.ItemsSource = sections;
+        var rows = spares;
         HouseHint.Text = rows.Count > 0
-            ? "Per the loot ledger (looted minus turned in): spare copies no ACTIVE Plane of Sky quest still needs — every quest wanting them is done, or you hold extras. Safe to hand to a guildie or clear out. Wind runes stay out: they stack in the currency tab and take no space."
+            ? "Per the loot ledger (looted minus turned in): spare copies no ACTIVE Plane of Sky quest still needs — every quest wanting them is done, or you hold extras. Grouped by where they sit; fold an item out for the ledger's reasoning and the snapshot's cross-check before you clear anything out. Wind runes stay out: they stack in the currency tab and take no space."
             : "Nothing to clear out — everything you hold is still wanted by an open quest (per the loot ledger).";
         SummaryText.Text = $"{rows.Count} item(s) with spares";
     }
