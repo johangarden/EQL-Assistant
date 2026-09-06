@@ -108,12 +108,7 @@ public partial class MainWindow : Window
         _loot.Added += e => _raids.AttributeLoot(e);   // pin drops to raid kills
         _raids.BackfillLoot(_loot.Entries);            // one-time: history -> past kills
         _skyQuests = new SkyQuests(_configService, _loot);
-        _skyHelper = new SkyHelper(_skyQuests)
-        {
-            // Lazy: a late /who updates the filter with no re-wiring.
-            ClassesProvider = () => (_session?.WhoClasses ?? "")
-                .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-        };
+        _skyHelper = new SkyHelper(_skyQuests); // never class-locked (owner ruling)
         _skyQuests.QuestCompleted += q =>
         {
             if (!_suppressSct) // replay/reparse re-completions shouldn't flash-spam
@@ -1831,6 +1826,14 @@ public partial class MainWindow : Window
 
     private Views.SkyWindow? _skyWindow;
 
+    /// <summary>Your class combo as /who prints it ("SHD/SHM/NEC"): this
+    /// session's /who first, else the combo the parser saved last time.</summary>
+    private string KnownClassesText()
+    {
+        string live = _session?.WhoClasses ?? "";
+        return live.Length > 0 ? live : _combat.CurrentClasses;
+    }
+
     private void OpenSkyQuests()
     {
         if (_skyWindow is null)
@@ -1845,7 +1848,7 @@ public partial class MainWindow : Window
                 var (name, server) = InventoryStore.ParseLogName(logPath);
                 return InventoryStore.FindDumpFile(
                     InventoryStore.EqRootOf(logPath), name, server);
-            });
+            }, KnownClassesText);
             _skyWindow.Closed += (_, _) => _skyWindow = null;
             _skyWindow.Show();
         }

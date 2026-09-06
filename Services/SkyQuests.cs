@@ -353,6 +353,17 @@ public sealed class SkyQuests
     /// counts everything an isle's active quests need, held or not (the
     /// helper said "Gorgon Head — HAVE" while Island 3 read "6 of 6": owner
     /// bug report, 6 Sep).</param>
+    /// <summary>Does a quest's class pass the filter? "" passes everything;
+    /// several classes may be joined with '|' — the MINE badge's
+    /// "Shadow Knight|Shaman|Necromancer".</summary>
+    public static bool ClassMatches(string questClass, string classFilter)
+    {
+        if (string.IsNullOrEmpty(classFilter)) return true;
+        foreach (var c in classFilter.Split('|', StringSplitOptions.RemoveEmptyEntries))
+            if (questClass.Equals(c.Trim(), StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
     public IReadOnlyList<IsleNeed> MissingByIsle(string classFilter = "", bool includeHeld = false)
     {
         var agg = new Dictionary<string, (int Needed, SkyItem Sample, SortedSet<string> Quests)>(
@@ -360,8 +371,7 @@ public sealed class SkyQuests
         foreach (var q in _quests)
         {
             if (_completed.Contains(q.Key)) continue;
-            if (classFilter.Length > 0
-                && !q.Class.Equals(classFilter, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!ClassMatches(q.Class, classFilter)) continue;
             foreach (var it in q.Items)
             {
                 if (!agg.TryGetValue(it.Name, out var a))

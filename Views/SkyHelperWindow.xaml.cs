@@ -142,7 +142,8 @@ public partial class SkyHelperWindow : Window
         double ago = (DateTime.Now - _cardAt).TotalSeconds;
         lines.Add(new LineVm($"{_cardMob}  ·  seen {ago:0}s ago", MobFg, FontWeights.Bold, 13,
             new Thickness(2, 0, 0, 2)));
-        foreach (var it in items)
+        const int maxCardItems = 6; // still-needed first, then hand-ins — the rest is a count
+        foreach (var it in items.Take(maxCardItems))
         {
             bool have = it.Held >= it.Need;
             string state = it.QuestDone ? "DONE"
@@ -154,6 +155,9 @@ public partial class SkyHelperWindow : Window
             lines.Add(new LineVm($"{it.Quest} · {it.Class}{(it.Island.Length > 0 ? $" · {it.Island}" : "")}",
                 HintFg, FontWeights.Normal, 10.5, new Thickness(10, 0, 0, 2)));
         }
+        if (items.Count > maxCardItems)
+            lines.Add(new LineVm($"+{items.Count - maxCardItems} more — see Needed by isle",
+                HintFg, FontWeights.Normal, 10.5, new Thickness(10, 1, 0, 2)));
     }
 
     private void BuildHunting(List<LineVm> lines)

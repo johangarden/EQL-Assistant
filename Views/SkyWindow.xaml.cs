@@ -100,7 +100,22 @@ public partial class SkyWindow : Window
             _sky.SetTracked(vm.Quest, !vm.Tracked);
     }
 
-    public SkyWindow(SkyQuests sky, Func<string?>? inventoryDumpFile = null)
+    /// <summary>Your /who class abbreviations ("SHD/SHM/NEC"), for the MINE badge.</summary>
+    private readonly Func<string>? _classesProvider;
+
+    /// <summary>The MINE filter: your /who classes as quest class names joined
+    /// with '|' — "" when no /who is known yet.</summary>
+    private string MineFilter()
+    {
+        string abbrs = _classesProvider?.Invoke() ?? "";
+        var names = abbrs.Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(a => ClassBadges.FirstOrDefault(b => b.Abbr.Equals(a.Trim(), StringComparison.OrdinalIgnoreCase)).Name)
+            .Where(n => !string.IsNullOrEmpty(n))
+            .ToList();
+        return string.Join("|", names);
+    }
+
+    public SkyWindow(SkyQuests sky, Func<string?>? inventoryDumpFile = null, Func<string>? classesProvider = null)
     {
         InitializeComponent();
         MenuTabs.Render(MenuRow, new[]
@@ -112,6 +127,7 @@ public partial class SkyWindow : Window
         WindowTheme.ApplyDark(this);
         _sky = sky;
         _dumpFile = inventoryDumpFile;
+        _classesProvider = classesProvider;
 
         // Slots split into tokens — "FACE BACK" filters under both FACE and BACK.
         SlotBox.ItemsSource = new[] { "All slots" }
@@ -180,16 +196,16 @@ public partial class SkyWindow : Window
     {
         var badges = new List<BadgeVm>();
 
-        void Add(string className, string abbr, Color tint)
+        void Add(string className, string abbr, Color tint, string? tipName = null)
         {
             var quests = className.Length == 0
                 ? (IReadOnlyList<SkyQuests.SkyQuest>)_sky.Quests
-                : _sky.Quests.Where(q => q.Class.Equals(className, StringComparison.OrdinalIgnoreCase)).ToList();
+                : _sky.Quests.Where(q => SkyQuests.ClassMatches(q.Class, className)).ToList();
             int done = quests.Count(_sky.IsCompleted);
             bool complete = quests.Count > 0 && done == quests.Count;
             bool selected = _selectedClass.Equals(className, StringComparison.OrdinalIgnoreCase);
             badges.Add(new BadgeVm(className, abbr, $"{done}/{quests.Count}",
-                $"{(className.Length == 0 ? "All quests" : className)} — {done} of {quests.Count} complete",
+                $"{tipName ?? (className.Length == 0 ? "All quests" : className)} — {done} of {quests.Count} complete",
                 complete ? Freeze(Color.FromRgb(0x81, 0xC7, 0x84)) : Freeze(tint),
                 selected ? Brushes.White : Freeze(Color.FromArgb(0xD8, tint.R, tint.G, tint.B)),
                 selected ? Freeze(Color.FromArgb(0x50, tint.R, tint.G, tint.B)) : Brushes.Transparent,
@@ -199,6 +215,10 @@ public partial class SkyWindow : Window
         }
 
         Add("", "ALL", Color.FromRgb(0xFF, 0xC1, 0x2E));
+        // MINE: the classes /who says you are — an opt-in lens, never a lock.
+        if (MineFilter() is { Length: > 0 } mine)
+            Add(mine, "MINE", Color.FromRgb(0x4F, 0xC3, 0xF7),
+                "Your classes (" + (_classesProvider?.Invoke() ?? "") + ")");
         foreach (var (name, abbr, hex) in ClassBadges)
             Add(name, abbr, (Color)ColorConverter.ConvertFromString(hex));
 
@@ -300,7 +320,7 @@ public partial class SkyWindow : Window
         var vms = new List<QuestVm>();
         foreach (var q in _sky.Quests)
         {
-            if (cls.Length > 0 && !q.Class.Equals(cls, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!SkyQuests.ClassMatches(q.Class, cls)) continue;
             if (slot.Length > 0 && !q.Slot.Split(' ', StringSplitOptions.RemoveEmptyEntries)
                     .Contains(slot, StringComparer.OrdinalIgnoreCase)) continue;
             bool done = _sky.IsCompleted(q);

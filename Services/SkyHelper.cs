@@ -21,10 +21,6 @@ public sealed class SkyHelper
 {
     private readonly SkyQuests _sky;
 
-    /// <summary>The player's classes from /who ("SHD/ROG/SHM" split); empty =
-    /// no filter. Supplied as a func so a late /who needs no re-wiring.</summary>
-    public Func<IReadOnlyList<string>>? ClassesProvider { get; set; }
-
     /// <summary>Admit items whose quest is already completed (config; default
     /// off — a done quest's drop is noise).</summary>
     public bool ShowCompleted { get; set; }
@@ -124,17 +120,15 @@ public sealed class SkyHelper
         }
     }
 
-    /// <summary>What this mob drops for the player's quests: class-filtered,
-    /// completed quests admitted only when configured. Empty = no card.</summary>
+    /// <summary>What this mob drops for ANY active quest — never locked to
+    /// your /who classes (owner ruling, 6 Sep: the class is a fact on each
+    /// line, not a gate). Completed quests admitted only when configured.
+    /// Empty = no card.</summary>
     public List<CardItem> ItemsFor(string mob)
     {
-        var classes = ClassesProvider?.Invoke() ?? Array.Empty<string>();
         var items = new List<CardItem>();
         foreach (var q in _sky.Quests)
         {
-            if (classes.Count > 0
-                && !classes.Contains(Abbr(q.Class), StringComparer.OrdinalIgnoreCase))
-                continue;
             bool done = _sky.IsCompleted(q);
             if (done && !ShowCompleted) continue;
             foreach (var it in q.Items)
