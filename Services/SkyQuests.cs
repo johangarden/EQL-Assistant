@@ -337,7 +337,7 @@ public sealed class SkyQuests
     /// <summary>One still-needed item, aggregated across ACTIVE quests: a
     /// shared rune needed by five open quests with none held is "missing 5".</summary>
     public sealed record IsleNeed(string Isle, string Item, int Missing, int Needed,
-        string Who, List<string> Quests);
+        string Who, List<string> Quests, int Held = 0);
 
     /// <summary>An item the ledger says nothing active still wants — spare
     /// copies safe to hand to a guildie (or the vendor).</summary>
@@ -348,7 +348,12 @@ public sealed class SkyQuests
 
     /// <summary>The per-isle shopping list: everything ACTIVE quests still
     /// need beyond what you hold, grouped by where it drops.</summary>
-    public IReadOnlyList<IsleNeed> MissingByIsle(string classFilter = "")
+    /// <param name="includeHeld">Also list items you already hold enough of
+    /// (Missing 0) — the isle CHECKLIST wants them, so the header's "of Y"
+    /// counts everything an isle's active quests need, held or not (the
+    /// helper said "Gorgon Head — HAVE" while Island 3 read "6 of 6": owner
+    /// bug report, 6 Sep).</param>
+    public IReadOnlyList<IsleNeed> MissingByIsle(string classFilter = "", bool includeHeld = false)
     {
         var agg = new Dictionary<string, (int Needed, SkyItem Sample, SortedSet<string> Quests)>(
             StringComparer.OrdinalIgnoreCase);
@@ -370,11 +375,12 @@ public sealed class SkyQuests
         var rows = new List<IsleNeed>();
         foreach (var (name, a) in agg)
         {
-            int missing = a.Needed - HeldByKey(LootTracker.ItemKey(name));
-            if (missing <= 0) continue;
+            int held = HeldByKey(LootTracker.ItemKey(name));
+            int missing = a.Needed - held;
+            if (missing <= 0 && !includeHeld) continue;
             string isle = a.Sample.Where.Length > 0 ? a.Sample.Where : "Any isle · random Sky drop";
             string who = a.Sample.Mobs.Count > 0 ? string.Join(", ", a.Sample.Mobs) : a.Sample.Who;
-            rows.Add(new IsleNeed(isle, name, missing, a.Needed, who, a.Quests.ToList()));
+            rows.Add(new IsleNeed(isle, name, Math.Max(0, missing), a.Needed, who, a.Quests.ToList(), held));
         }
         return rows.OrderBy(r => IsleOrder(r.Isle)).ThenBy(r => r.Isle, StringComparer.OrdinalIgnoreCase)
             .ThenByDescending(r => r.Missing).ThenBy(r => r.Item, StringComparer.OrdinalIgnoreCase)

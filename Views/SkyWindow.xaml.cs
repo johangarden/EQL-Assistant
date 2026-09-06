@@ -206,7 +206,13 @@ public partial class SkyWindow : Window
     }
 
     /// <summary>Isle/housekeeping row VMs (simple text rows).</summary>
-    public sealed record LineVm(string Main, string Count, string Sub = "");
+    public sealed record LineVm(string Main, string Count, string Sub = "", Brush? CountFg = null)
+    {
+        /// <summary>Red for "need N"; green once the isle's item is in hand.</summary>
+        public Brush CountBrush => CountFg ?? IsleNeedFg;
+    }
+
+    private static readonly Brush IsleNeedFg = Freeze(Color.FromRgb(0xFF, 0x8A, 0x80));
     /// <summary>Housekeeping row: the spare item, foldable to WHERE it sits
     /// (per the last /outputfile inventory snapshot).</summary>
     public sealed record HouseVm(string Main, string Count, bool Open, List<string> Locations)
@@ -328,7 +334,9 @@ public partial class SkyWindow : Window
     private void RefreshIsles()
     {
         string search = SearchBox.Text.Trim();
-        var rows = _sky.MissingByIsle(_selectedClass)
+        // Held items ride along (Missing 0): the isle is a CHECKLIST, and
+        // "need 6 of 7" must count the Gorgon Head you're carrying.
+        var rows = _sky.MissingByIsle(_selectedClass, includeHeld: true)
             .Where(r => search.Length == 0
                         || r.Item.Contains(search, StringComparison.OrdinalIgnoreCase)
                         || r.Quests.Any(q => q.Contains(search, StringComparison.OrdinalIgnoreCase)))
@@ -337,13 +345,18 @@ public partial class SkyWindow : Window
         var isles = rows.GroupBy(r => r.Isle)
             .Select(g => new IsleVm(
                 g.Key,
-                $"need {g.Sum(r => r.Missing)} of {g.Sum(r => r.Needed)}",
+                g.Sum(r => r.Missing) == 0
+                    ? $"all {g.Sum(r => r.Needed)} in hand — hand in"
+                    : $"need {g.Sum(r => r.Missing)} of {g.Sum(r => r.Needed)}",
                 _isleOpen.Contains(g.Key),
                 g.Select(r => new LineVm(
                     r.Item,
-                    $"need {r.Missing}",
+                    r.Missing > 0
+                        ? $"need {r.Missing}"
+                        : $"have {Math.Min(r.Held, r.Needed)} of {r.Needed} — hand in",
                     (r.Who.Length > 0 ? $"drops: {r.Who} · " : "") +
-                    $"for: {string.Join(", ", r.Quests.Take(4))}{(r.Quests.Count > 4 ? $" +{r.Quests.Count - 4}" : "")}"))
+                    $"for: {string.Join(", ", r.Quests.Take(4))}{(r.Quests.Count > 4 ? $" +{r.Quests.Count - 4}" : "")}",
+                    r.Missing > 0 ? null : DoneFg))
                     .ToList()))
             .ToList();
 
