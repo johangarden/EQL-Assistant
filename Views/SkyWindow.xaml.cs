@@ -124,6 +124,7 @@ public partial class SkyWindow : Window
             new MenuTabs.Item("epics", "Epics · soon", Soon: true, Tip: "Joins when the epic quest data is built"),
         }, "sky", _ => { });
         DialogPlacement.Persist(this, "sky");
+        TitleRow.Children.Insert(0, DialogPlacement.Pin(this, "sky"));
         WindowTheme.ApplyDark(this);
         _sky = sky;
         _dumpFile = inventoryDumpFile;

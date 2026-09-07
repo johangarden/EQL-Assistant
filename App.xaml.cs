@@ -210,6 +210,26 @@ public partial class App : Application
             }
             lootItems.Close();
 
+            // Pin above game (7 Sep): the title-row pin flips Topmost and
+            // BringToFront's bump must not knock it off again.
+            var pinHost = new Window { Width = 300, Height = 200, ShowInTaskbar = false, ShowActivated = false };
+            int pinSaves = 0;
+            var pin = new PagePin(pinHost, () => pinSaves++);
+            if (pin.IsPinned || pinHost.Topmost) throw new Exception("pin: a fresh window is unpinned");
+            pin.Toggle();
+            if (!pin.IsPinned || !pinHost.Topmost || pinSaves != 1) throw new Exception("pin: toggle on");
+            pin.Toggle();
+            if (pin.IsPinned || pinHost.Topmost || pinSaves != 2) throw new Exception("pin: toggle off");
+            pinHost.Close();
+            // A bounds file written before the pin existed reads as unpinned;
+            // one written since carries it.
+            var oldBounds = System.Text.Json.JsonSerializer.Deserialize<ConfigService.DialogBounds>(
+                "{\"Left\":10,\"Top\":20,\"Width\":800,\"Height\":600,\"Maximized\":false}");
+            if (oldBounds is null || oldBounds.Pinned) throw new Exception("pin: legacy bounds read pinned");
+            var newBounds = System.Text.Json.JsonSerializer.Deserialize<ConfigService.DialogBounds>(
+                System.Text.Json.JsonSerializer.Serialize(oldBounds with { Pinned = true }));
+            if (newBounds is null || !newBounds.Pinned) throw new Exception("pin: pinned bounds lost the pin");
+
             // The Sky helper panel renders its line list (temp progress file).
             string helperProg = Path.Combine(Path.GetTempPath(), "eql_test_helper_prog.json");
             try { File.Delete(helperProg); } catch { /* fresh */ }

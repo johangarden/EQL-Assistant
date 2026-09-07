@@ -1286,8 +1286,9 @@ public partial class MainWindow : Window
         if (w.WindowState == WindowState.Minimized) w.WindowState = WindowState.Normal;
         w.Show();
         w.Activate();
+        bool pinned = w.Topmost; // a pinned page (title-row pin) stays pinned
         w.Topmost = true;
-        w.Topmost = false;
+        w.Topmost = pinned;
         w.Focus();
     }
 

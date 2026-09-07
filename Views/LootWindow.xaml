@@ -21,7 +21,7 @@
 
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top">
-            <DockPanel>
+            <DockPanel x:Name="TitleRow">
                 <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.Gold}"
                            FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
                 <TextBlock Text="Loot &amp; Inventory" Style="{StaticResource PageTitle}"/>

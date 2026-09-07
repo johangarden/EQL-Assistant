@@ -27,6 +27,7 @@ public partial class LootWindow : Window
     {
         InitializeComponent();
         DialogPlacement.Persist(this, "loot");
+        TitleRow.Children.Insert(0, DialogPlacement.Pin(this, "loot"));
         WindowTheme.ApplyDark(this);
         _loot = loot;
         _loot.Changed += OnLootChanged;

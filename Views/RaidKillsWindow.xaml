@@ -23,7 +23,7 @@
             <!-- Title → Menu → Pills (owner ruling, 4 Sep): the title row
                  carries the one number that matters; the menu row is the
                  eras — Kunark joins when its raid targets are added. -->
-            <DockPanel>
+            <DockPanel x:Name="TitleRow">
                 <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="#FFD54F"
                            FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
                 <TextBlock Text="Raid kills" FontSize="16" FontWeight="Bold" Foreground="White"

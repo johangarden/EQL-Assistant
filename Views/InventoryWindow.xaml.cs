@@ -20,6 +20,7 @@ public partial class InventoryWindow : Window
         // "character": a fresh bounds key — the pre-merge Inventory sizes
         // don't fit the four-tab window.
         DialogPlacement.Persist(this, "character");
+        Panel.HeaderRow.Children.Insert(0, DialogPlacement.Pin(this, "character"));
         Panel.DrawerExtendRequested = ExtendForDrawer;
         Panel.Attach(eqRoot, charName, server, session, HostedTabs);
     }
