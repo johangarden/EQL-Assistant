@@ -29,10 +29,12 @@ public sealed class Segmented : Border
     private readonly TranslateTransform _shift = new();
     private readonly Brush _onFg;
     private bool _placed;
+    private readonly System.Windows.Threading.DispatcherTimer _after = new() { Interval = Slide + TimeSpan.FromMilliseconds(20) };
+    private string? _pending;
 
     public string Selected { get; private set; }
 
-    /// <summary>Fires on a click that changes the pick — never on <see cref="Select"/>.</summary>
+    /// <summary>Fires after a click's slide has landed — never on <see cref="Select"/>.</summary>
     public event Action<string>? Changed;
 
     /// <param name="accent">Text color of the picked segment; the thumb is a
@@ -93,7 +95,13 @@ public sealed class Segmented : Border
                 e.Handled = true;
                 if (id == Selected) return;
                 Select(id);
-                Changed?.Invoke(id);
+                // The pick's consequences (a board rebuild, say) can block
+                // the UI thread longer than the slide — so the slide goes
+                // first and the handler runs once it has landed. A second
+                // click inside that window just retargets.
+                _pending = id;
+                _after.Stop();
+                _after.Start();
             };
             cell.MouseEnter += (_, _) => { if (id != Selected) text.Foreground = _onFg; };
             cell.MouseLeave += (_, _) => { if (id != Selected) text.Foreground = OffFg; };
@@ -101,6 +109,11 @@ public sealed class Segmented : Border
             _cells.Add((cell, text, opt));
         }
         Selected = selected;
+        _after.Tick += (_, _) =>
+        {
+            _after.Stop();
+            if (_pending is { } id) { _pending = null; Changed?.Invoke(id); }
+        };
         Loaded += (_, _) => Place(animate: false);
         SizeChanged += (_, _) => Place(animate: false);
     }
