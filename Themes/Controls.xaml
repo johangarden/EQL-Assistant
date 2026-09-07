@@ -220,6 +220,9 @@
         </Setter>
     </Style>
 
+    <!-- CheckBox = a sliding switch (owner request, 7 Sep): every on/off in
+         the app is the same pill-and-knob, and the knob SLIDES. The content
+         sits to the right as before, so nothing else in a page moves. -->
     <Style TargetType="CheckBox">
         <Setter Property="Foreground" Value="{StaticResource Brush.Text}"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -228,25 +231,57 @@
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
                     <StackPanel Orientation="Horizontal" Background="Transparent">
-                        <Border x:Name="box" Width="15" Height="15" CornerRadius="3"
-                                Background="{StaticResource Brush.Field}"
-                                BorderBrush="{StaticResource Brush.BorderHover}" BorderThickness="1"
-                                VerticalAlignment="Center">
-                            <Path x:Name="check" Data="M1.5,5 L5,8.5 11,1.5" Stroke="White"
-                                  StrokeThickness="1.8" Visibility="Collapsed"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ContentPresenter Margin="7,0,0,0" VerticalAlignment="Center"
+                        <Grid Width="32" Height="18" VerticalAlignment="Center">
+                            <Border x:Name="track" CornerRadius="9"
+                                    Background="{StaticResource Brush.Field}"
+                                    BorderBrush="{StaticResource Brush.BorderHover}" BorderThickness="1"/>
+                            <Border x:Name="trackOn" CornerRadius="9" Opacity="0"
+                                    Background="{StaticResource Brush.Accent}"
+                                    BorderBrush="{StaticResource Brush.AccentBorder}" BorderThickness="1"/>
+                            <Ellipse x:Name="knob" Width="12" Height="12" Fill="#9FB6D4"
+                                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="3,0,0,0"/>
+                        </Grid>
+                        <ContentPresenter x:Name="content" Margin="8,0,0,0" VerticalAlignment="Center"
                                           RecognizesAccessKey="True"/>
                     </StackPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="box" Property="Background" Value="{StaticResource Brush.Accent}"/>
-                            <Setter TargetName="box" Property="BorderBrush" Value="{StaticResource Brush.AccentBorder}"/>
-                            <Setter TargetName="check" Property="Visibility" Value="Visible"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ThicknessAnimation Storyboard.TargetName="knob" Storyboard.TargetProperty="Margin"
+                                                            To="17,0,0,0" Duration="0:0:0.16">
+                                            <ThicknessAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></ThicknessAnimation.EasingFunction>
+                                        </ThicknessAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="trackOn" Storyboard.TargetProperty="Opacity"
+                                                         To="1" Duration="0:0:0.16"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ThicknessAnimation Storyboard.TargetName="knob" Storyboard.TargetProperty="Margin"
+                                                            To="3,0,0,0" Duration="0:0:0.16">
+                                            <ThicknessAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></ThicknessAnimation.EasingFunction>
+                                        </ThicknessAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="trackOn" Storyboard.TargetProperty="Opacity"
+                                                         To="0" Duration="0:0:0.16"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                            <!-- Base values: a switch that OPENS checked sits checked at
+                                 once; only a real flip slides (the animations hand off
+                                 from whatever value is current). -->
+                            <Setter TargetName="knob" Property="Margin" Value="17,0,0,0"/>
+                            <Setter TargetName="trackOn" Property="Opacity" Value="1"/>
+                            <Setter TargetName="knob" Property="Fill" Value="White"/>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="box" Property="BorderBrush" Value="{StaticResource Brush.AccentBorder}"/>
+                            <Setter TargetName="track" Property="BorderBrush" Value="{StaticResource Brush.AccentBorder}"/>
+                        </Trigger>
+                        <Trigger Property="Content" Value="{x:Null}">
+                            <Setter TargetName="content" Property="Margin" Value="0"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45"/>

@@ -302,6 +302,24 @@ public partial class App : Application
             invEmpty.ShowTab("sheet"); // the empty state must hold on every tab
             invEmpty.Close();
 
+            // Segmented control (7 Sep): a click moves the pick and fires once;
+            // Select() moves it silently; the thumb lands on the picked cell.
+            var seg = new Segmented(new[]
+            {
+                new Segmented.Option("a", "This week"),
+                new Segmented.Option("b", "All time"),
+            }, "a");
+            var segHost = new Window { Content = seg, Width = 300, Height = 100, Left = -9000, Top = -9000, ShowInTaskbar = false, ShowActivated = false };
+            segHost.Show();
+            segHost.UpdateLayout();
+            int fired = 0;
+            seg.Changed += _ => fired++;
+            seg.Select("b");
+            if (seg.Selected != "b" || fired != 0) throw new Exception("segmented: Select must be silent");
+            seg.Select("a");
+            segHost.UpdateLayout();
+            segHost.Close();
+
             // Cursor ring card (7 Sep): settings reach the ring window in place.
             var ringDefaults = new Models.AppConfig().Overlay;
             if (ringDefaults.CursorRingSize != 44 || ringDefaults.CursorRingThickness != 3 || ringDefaults.CursorRingColor != "#E8C15A")
@@ -3424,18 +3442,36 @@ public partial class App : Application
     /// save its client area as a PNG.</summary>
     private static void RenderManagerPage(string page, string outPath, bool bottom)
     {
-        var cs = new ConfigService();
-        var cfg = cs.LoadSettings();
-        var mgr = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(),
-            new RaidKills(cs), new SpellLibrary(cs), new CombatParser(), _ => { })
+        Window mgr;
+        // "character:<tab>" renders the Character window on a tab instead
+        // (the selftest's inventory fixture in %TEMP% feeds it when present).
+        if (page.StartsWith("character:", StringComparison.OrdinalIgnoreCase))
         {
-            WindowStartupLocation = WindowStartupLocation.Manual,
-            Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
-        };
-        mgr.Show();
-        mgr.SelectPage(page);
+            var inv = new Views.InventoryWindow(Path.Combine(Path.GetTempPath(), "eql_selftest_inv"), "Testchar", "paineel")
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            inv.Show();
+            inv.ShowTab(page.Substring("character:".Length));
+            mgr = inv;
+        }
+        else
+        {
+            var cs = new ConfigService();
+            var cfg = cs.LoadSettings();
+            var m = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(),
+                new RaidKills(cs), new SpellLibrary(cs), new CombatParser(), _ => { })
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            m.Show();
+            m.SelectPage(page);
+            mgr = m;
+        }
         mgr.UpdateLayout();
-        if (mgr.Content is not FrameworkElement root) throw new Exception("manager has no content");
+        if (mgr.Content is not FrameworkElement root) throw new Exception("window has no content");
         if (bottom)
         {
             foreach (var sv in Descendants(root).OfType<ScrollViewer>().Where(v => v.IsVisible))
