@@ -118,6 +118,13 @@ public sealed class OverlayConfig
     /// cursor is findable in the heat of battle. Off by default.</summary>
     public bool CursorRingVisible { get; set; }
 
+    /// <summary>Hide the whole overlay (HUD panels + pinned pages) while the
+    /// game isn't the foreground window — alt-tab to the wiki and the HUD
+    /// gets out of the way, click the game and it returns. Off by default;
+    /// the game is recognised by the followed log's install root
+    /// (<see cref="Services.GameFocus"/>).</summary>
+    public bool HideWhenGameAway { get; set; }
+
     /// <summary>Whether the Sky quest helper panel is enabled (materializes
     /// only when a dropper is sighted or quests are tracked).</summary>
     public bool SkyHelperVisible { get; set; } = true;

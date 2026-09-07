@@ -44,6 +44,7 @@ public partial class HistoryWindow : Window
     {
         InitializeComponent();
         DialogPlacement.Persist(this, "history");
+        TitleRow.Children.Insert(0, DialogPlacement.Pin(this, "history"));
         WindowTheme.ApplyDark(this);
         _parser = parser;
         _config = config;

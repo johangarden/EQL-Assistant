@@ -22,7 +22,7 @@
     <DockPanel Margin="12">
         <!-- Title → Menu → Pills (owner ruling, 4 Sep): Fights · Parses are
              this window's sections. -->
-        <DockPanel DockPanel.Dock="Top">
+        <DockPanel x:Name="TitleRow" DockPanel.Dock="Top">
             <TextBlock x:Name="HeadSummary" DockPanel.Dock="Right" Foreground="#E8C15A"
                        FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
             <TextBlock Text="Fight history" FontSize="16" FontWeight="Bold" Foreground="White"

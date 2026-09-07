@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using EQLOverlay.Services;
 
 namespace EQLOverlay.Views;
@@ -19,7 +20,9 @@ public static class DialogPlacement
     public static void Persist(Window window, string key, bool positionOnly = false)
     {
         var config = SharedConfig.Value;
-        if (config.LoadDialogBounds(key) is { } b && OnScreen(b))
+        var saved = config.LoadDialogBounds(key);
+        if (saved is { Pinned: true }) window.Topmost = true; // the pin outlives a lost monitor
+        if (saved is { } b && OnScreen(b))
         {
             window.WindowStartupLocation = WindowStartupLocation.Manual;
             window.Left = b.Left;
@@ -32,13 +35,35 @@ public static class DialogPlacement
             }
         }
 
-        window.Closing += (_, _) =>
+        window.Closing += (_, _) => Save(window, key);
+    }
+
+    /// <summary>Write the window's current restore bounds + pin state now.</summary>
+    public static void Save(Window window, string key)
+    {
+        var r = window.RestoreBounds;
+        if (r.Width < 100 || r.Height < 80)
         {
-            var r = window.RestoreBounds;
-            if (r.Width < 100 || r.Height < 80) return; // never persist a degenerate size
-            config.SaveDialogBounds(key, new ConfigService.DialogBounds(
-                r.Left, r.Top, r.Width, r.Height, window.WindowState == WindowState.Maximized));
-        };
+            // Never persist a degenerate size — but a pin flipped before the
+            // window has laid out still deserves remembering.
+            if (SharedConfig.Value.LoadDialogBounds(key) is { } old)
+                SharedConfig.Value.SaveDialogBounds(key, old with { Pinned = window.Topmost });
+            return;
+        }
+        SharedConfig.Value.SaveDialogBounds(key, new ConfigService.DialogBounds(
+            r.Left, r.Top, r.Width, r.Height, window.WindowState == WindowState.Maximized, window.Topmost));
+    }
+
+    /// <summary>The title-row pin for a page window (owner ruling, 7 Sep —
+    /// "each time I went to my bags the window disappeared behind the
+    /// game"): click toggles Topmost, the state rides in the same bounds
+    /// file as the window's position, so a page pinned once stays pinned.
+    /// Dock it Right as the title row's FIRST child so it sits outermost.</summary>
+    public static PagePin Pin(Window window, string key)
+    {
+        var pin = new PagePin(window, () => Save(window, key));
+        DockPanel.SetDock(pin, Dock.Right);
+        return pin;
     }
 
     /// <summary>A monitor may have left since last time — restore only when a

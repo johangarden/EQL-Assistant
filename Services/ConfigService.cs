@@ -323,7 +323,12 @@ public sealed class ConfigService
     // The info windows (Inventory, Loot, Raid kills…) remember the size and
     // position the player dragged them to — resizing every open is meh.
 
-    public sealed record DialogBounds(double Left, double Top, double Width, double Height, bool Maximized);
+    /// <param name="Pinned">The page window's "pin above game" (7 Sep):
+    /// pinned pages are Topmost like the HUD panels, so clicking the game's
+    /// bags no longer buries the housekeeping list. Missing in files written
+    /// before the pin existed — reads as unpinned.</param>
+    public sealed record DialogBounds(double Left, double Top, double Width, double Height, bool Maximized,
+        bool Pinned = false);
 
     public DialogBounds? LoadDialogBounds(string name)
     {

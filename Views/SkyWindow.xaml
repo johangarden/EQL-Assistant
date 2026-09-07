@@ -22,7 +22,7 @@
         <StackPanel DockPanel.Dock="Top">
             <!-- Title → Menu → Pills (owner ruling, 4 Sep): the menu row is
                  the quest PACKS — Epics join as they're built. -->
-            <DockPanel>
+            <DockPanel x:Name="TitleRow">
                 <TextBlock x:Name="SummaryText" DockPanel.Dock="Right" Foreground="{StaticResource Brush.Gold}"
                            FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0"/>
                 <TextBlock Text="Quests" Style="{StaticResource PageTitle}"/>

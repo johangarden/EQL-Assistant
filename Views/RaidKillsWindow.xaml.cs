@@ -61,6 +61,7 @@ public partial class RaidKillsWindow : Window
             new MenuTabs.Item("kunark", "Kunark · soon", Soon: true, Tip: "Joins when its raid targets are added"),
         }, "classic", _ => { });
         DialogPlacement.Persist(this, "raidkills");
+        TitleRow.Children.Insert(0, DialogPlacement.Pin(this, "raidkills"));
         WindowTheme.ApplyDark(this);
         _raids = raids;
 

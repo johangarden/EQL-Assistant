@@ -1141,6 +1141,7 @@ public partial class TriggerManagerWindow : Window
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
         CursorRingCheck.IsChecked = _config.Overlay.CursorRingVisible;
+        HideWhenGameAwayCheck.IsChecked = _config.Overlay.HideWhenGameAway;
         DeathRecapCheck.IsChecked = _config.Overlay.DeathRecapAuto;
         StartWithWindowsCheck.IsChecked = IsAutoStartEnabled();
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
@@ -1432,6 +1433,7 @@ public partial class TriggerManagerWindow : Window
                 ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
                 StartLocked = StartLockedCheck.IsChecked == true,
                 CursorRingVisible = CursorRingCheck.IsChecked == true,
+                HideWhenGameAway = HideWhenGameAwayCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
                 VoiceName = VoiceBox.SelectedItem as string is "(system default)" or null
                     ? "" : (string)VoiceBox.SelectedItem,

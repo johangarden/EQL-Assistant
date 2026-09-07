@@ -78,6 +78,38 @@ internal static class NativeMethods
         catch { /* best-effort */ }
     }
 
+    [DllImport("kernel32.dll", SetLastError = true)] private static extern nint OpenProcess(uint access, bool inherit, uint pid);
+    [DllImport("kernel32.dll", SetLastError = true)] private static extern bool CloseHandle(nint handle);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool QueryFullProcessImageName(nint process, uint flags, System.Text.StringBuilder exeName, ref uint size);
+
+    /// <summary>The foreground window's process id and exe path (null path
+    /// when the process refuses even limited queries).</summary>
+    public static (int Pid, string? ExePath) ForegroundProcess()
+    {
+        const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+        try
+        {
+            nint fg = GetForegroundWindow();
+            if (fg == 0) return (0, null);
+            GetWindowThreadProcessId(fg, out uint pid);
+            if (pid == 0) return (0, null);
+            nint h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+            if (h == 0) return ((int)pid, null);
+            try
+            {
+                var sb = new System.Text.StringBuilder(1024);
+                uint size = (uint)sb.Capacity;
+                return QueryFullProcessImageName(h, 0, sb, ref size) ? ((int)pid, sb.ToString(0, (int)size)) : ((int)pid, null);
+            }
+            finally { CloseHandle(h); }
+        }
+        catch
+        {
+            return (0, null);
+        }
+    }
+
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(nint hWnd, int attr, ref int value, int size);
 

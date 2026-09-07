@@ -210,6 +210,26 @@ public partial class App : Application
             }
             lootItems.Close();
 
+            // Pin above game (7 Sep): the title-row pin flips Topmost and
+            // BringToFront's bump must not knock it off again.
+            var pinHost = new Window { Width = 300, Height = 200, ShowInTaskbar = false, ShowActivated = false };
+            int pinSaves = 0;
+            var pin = new PagePin(pinHost, () => pinSaves++);
+            if (pin.IsPinned || pinHost.Topmost) throw new Exception("pin: a fresh window is unpinned");
+            pin.Toggle();
+            if (!pin.IsPinned || !pinHost.Topmost || pinSaves != 1) throw new Exception("pin: toggle on");
+            pin.Toggle();
+            if (pin.IsPinned || pinHost.Topmost || pinSaves != 2) throw new Exception("pin: toggle off");
+            pinHost.Close();
+            // A bounds file written before the pin existed reads as unpinned;
+            // one written since carries it.
+            var oldBounds = System.Text.Json.JsonSerializer.Deserialize<ConfigService.DialogBounds>(
+                "{\"Left\":10,\"Top\":20,\"Width\":800,\"Height\":600,\"Maximized\":false}");
+            if (oldBounds is null || oldBounds.Pinned) throw new Exception("pin: legacy bounds read pinned");
+            var newBounds = System.Text.Json.JsonSerializer.Deserialize<ConfigService.DialogBounds>(
+                System.Text.Json.JsonSerializer.Serialize(oldBounds with { Pinned = true }));
+            if (newBounds is null || !newBounds.Pinned) throw new Exception("pin: pinned bounds lost the pin");
+
             // The Sky helper panel renders its line list (temp progress file).
             string helperProg = Path.Combine(Path.GetTempPath(), "eql_test_helper_prog.json");
             try { File.Delete(helperProg); } catch { /* fresh */ }
@@ -2067,6 +2087,30 @@ public partial class App : Application
                 Check("sky: a shared item is allocated to one quest, never counted twice",
                     medaCredited == 1
                     && sqAgain.AllocatedHeld(cleric, clericMeda) + sqAgain.AllocatedHeld(shaman, shamanMeda) <= 1);
+
+                // Game-focus watch (7 Sep): the game is any exe under the log's
+                // install root; our own pid keeps the overlay; every doubt keeps it.
+                const string eqRoot = @"C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends";
+                Check("game focus: the game's exe under the install root keeps the overlay",
+                    GameFocus.Keep(eqRoot + @"\eqgame.exe", 4242, 100, eqRoot)
+                    && GameFocus.Keep(eqRoot.ToUpperInvariant() + @"\EQGAME.EXE", 4242, 100, eqRoot));
+                Check("game focus: a browser in front hides it",
+                    !GameFocus.Keep(@"C:\Program Files\Mozilla Firefox\firefox.exe", 777, 100, eqRoot));
+                Check("game focus: a sibling folder with the root as a prefix is NOT the game",
+                    !GameFocus.Keep(eqRoot + @" Beta\eqgame.exe", 777, 100, eqRoot));
+                Check("game focus: our own windows keep the overlay",
+                    GameFocus.Keep(@"C:\Tools\EQL_Assistant.exe", 100, 100, eqRoot));
+                Check("game focus: no install root or an unreadable process never hides",
+                    GameFocus.Keep(@"C:\Program Files\Mozilla Firefox\firefox.exe", 777, 100, "")
+                    && GameFocus.Keep(null, 777, 100, eqRoot));
+                var awayTracker = new GameAwayTracker();
+                var ga0 = new DateTime(2026, 9, 7, 20, 0, 0);
+                Check("game focus: a blink of the alt-tab switcher does not hide the overlay",
+                    !awayTracker.Update(false, ga0) && !awayTracker.Update(false, ga0.AddMilliseconds(500))
+                    && !awayTracker.Update(true, ga0.AddMilliseconds(1000)));
+                Check("game focus: away past the grace hides, the game's return unhides at once",
+                    !awayTracker.Update(false, ga0.AddSeconds(5)) && awayTracker.Update(false, ga0.AddSeconds(6.5))
+                    && awayTracker.Away && !awayTracker.Update(true, ga0.AddSeconds(7)));
 
                 string offer1 = "[Sat Aug 29 00:30:00 2026] You offered 1 Small Shield to Josin Faithbringer.";
                 string offer2 = "[Sat Aug 29 00:30:01 2026] You offered 1 Wind Rune Meda to Josin Faithbringer.";
