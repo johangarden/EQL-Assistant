@@ -2088,6 +2088,30 @@ public partial class App : Application
                     medaCredited == 1
                     && sqAgain.AllocatedHeld(cleric, clericMeda) + sqAgain.AllocatedHeld(shaman, shamanMeda) <= 1);
 
+                // Game-focus watch (7 Sep): the game is any exe under the log's
+                // install root; our own pid keeps the overlay; every doubt keeps it.
+                const string eqRoot = @"C:\Users\Public\Daybreak Game Company\Installed Games\EverQuest Legends";
+                Check("game focus: the game's exe under the install root keeps the overlay",
+                    GameFocus.Keep(eqRoot + @"\eqgame.exe", 4242, 100, eqRoot)
+                    && GameFocus.Keep(eqRoot.ToUpperInvariant() + @"\EQGAME.EXE", 4242, 100, eqRoot));
+                Check("game focus: a browser in front hides it",
+                    !GameFocus.Keep(@"C:\Program Files\Mozilla Firefox\firefox.exe", 777, 100, eqRoot));
+                Check("game focus: a sibling folder with the root as a prefix is NOT the game",
+                    !GameFocus.Keep(eqRoot + @" Beta\eqgame.exe", 777, 100, eqRoot));
+                Check("game focus: our own windows keep the overlay",
+                    GameFocus.Keep(@"C:\Tools\EQL_Assistant.exe", 100, 100, eqRoot));
+                Check("game focus: no install root or an unreadable process never hides",
+                    GameFocus.Keep(@"C:\Program Files\Mozilla Firefox\firefox.exe", 777, 100, "")
+                    && GameFocus.Keep(null, 777, 100, eqRoot));
+                var awayTracker = new GameAwayTracker();
+                var ga0 = new DateTime(2026, 9, 7, 20, 0, 0);
+                Check("game focus: a blink of the alt-tab switcher does not hide the overlay",
+                    !awayTracker.Update(false, ga0) && !awayTracker.Update(false, ga0.AddMilliseconds(500))
+                    && !awayTracker.Update(true, ga0.AddMilliseconds(1000)));
+                Check("game focus: away past the grace hides, the game's return unhides at once",
+                    !awayTracker.Update(false, ga0.AddSeconds(5)) && awayTracker.Update(false, ga0.AddSeconds(6.5))
+                    && awayTracker.Away && !awayTracker.Update(true, ga0.AddSeconds(7)));
+
                 string offer1 = "[Sat Aug 29 00:30:00 2026] You offered 1 Small Shield to Josin Faithbringer.";
                 string offer2 = "[Sat Aug 29 00:30:01 2026] You offered 1 Wind Rune Meda to Josin Faithbringer.";
                 string trade = "[Sat Aug 29 00:30:05 2026] You complete the trade with Josin Faithbringer.";

@@ -514,6 +514,10 @@
                                       Margin="0,10,0,0"/>
                             <CheckBox x:Name="CursorRingCheck" Content="Cursor ring (a gold circle follows your mouse — find it in the heat of battle)"
                                       Margin="0,6,0,0"/>
+                            <CheckBox x:Name="HideWhenGameAwayCheck" Content="Hide the overlay while the game isn't in front (panels and pinned pages return when you click back into the game)"
+                                      Margin="0,6,0,0"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="24,2,0,0"
+                                       Text="The game is recognised by the followed log's install folder — if the log lives somewhere unusual the overlay simply stays visible."/>
 
                         </StackPanel>
                     </ScrollViewer>

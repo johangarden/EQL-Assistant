@@ -46,7 +46,11 @@ public partial class MainWindow : Window
     private RaidKillsWindow? _raidsWindow;
     private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
     private PanelPlacement? _mainPlacement;
-    private bool _hidden;
+    private bool _userHidden;   // the toolbar's hide toggle
+    private bool _gameAway;     // the game-focus watch (Manager → General)
+    private bool _hidden => _userHidden || _gameAway; // what every panel reads
+    private readonly GameAwayTracker _gameAwayTracker = new();
+    private System.Windows.Threading.DispatcherTimer? _focusTimer;
     private bool _timerHidden;
     private bool _meterHidden;
     private bool _skillsHidden;
@@ -210,6 +214,7 @@ public partial class MainWindow : Window
         RebuildSctLanes();
         BuildToolbarWindow();
         UpdateBarsVisibility(); // bars may start hidden (Panels toggle persisted)
+        ApplyGameFocusWatch();
 
         // Crash-tolerant last-seen marker: persisted every minute while lines flow.
         var lastSeenTick = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
@@ -1179,7 +1184,19 @@ public partial class MainWindow : Window
 
     private void ToggleHide()
     {
-        _hidden = !_hidden;
+        _userHidden = !_userHidden;
+        ApplyHidden();
+    }
+
+    /// <summary>Push the effective hidden state (<see cref="_hidden"/>) to
+    /// every panel — and, for the game-focus watch only, to the pages pinned
+    /// above the game: a pinned Quests window follows the HUD out of the way
+    /// while you read the wiki, and comes back with it.</summary>
+    private void ApplyHidden()
+    {
+        foreach (var page in new Window?[] { _skyWindow, _lootWindow, _inventoryWindow, _historyWindow, _raidsWindow })
+            if (page is { Topmost: true })
+                page.Visibility = _gameAway ? Visibility.Hidden : Visibility.Visible;
         ApplyCursorRing(); // the ring hides with everything else
         _enemyDotsWin?.SetHidden(_hidden);
         _moteTickerWin?.SetHidden(_hidden);
@@ -1202,7 +1219,9 @@ public partial class MainWindow : Window
     /// </summary>
     private void ResetPosition()
     {
-        _hidden = false;
+        _userHidden = false;
+        _gameAway = false;
+        _gameAwayTracker.Reset();
         Visibility = Visibility.Visible;
         Topmost = true;
         Activate();
@@ -1274,6 +1293,44 @@ public partial class MainWindow : Window
         _manager.SetMode(page is "Triggers" or "Loadouts" ? "triggers" : "settings");
         if (page is not null) _manager.SelectPage(page);
         BringToFront(_manager);
+    }
+
+    /// <summary>Start or stop the game-focus watch per the General setting.
+    /// Twice a second: who owns the foreground window? Our own windows and
+    /// the game (any exe under the followed log's install root) keep the
+    /// overlay; anything else, after a short grace, hides it (see
+    /// <see cref="GameFocus"/>). Turning the setting off always unhides.</summary>
+    private void ApplyGameFocusWatch()
+    {
+        if (_config.Overlay.HideWhenGameAway)
+        {
+            if (_focusTimer is not null) return;
+            _focusTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            _focusTimer.Tick += (_, _) => PollGameFocus();
+            _focusTimer.Start();
+        }
+        else
+        {
+            _focusTimer?.Stop();
+            _focusTimer = null;
+            _gameAwayTracker.Reset();
+            if (_gameAway)
+            {
+                _gameAway = false;
+                ApplyHidden();
+            }
+        }
+    }
+
+    private void PollGameFocus()
+    {
+        var (pid, exe) = NativeMethods.ForegroundProcess();
+        string eqRoot = InventoryStore.EqRootOf(_watcher?.CurrentPath ?? "");
+        bool keep = GameFocus.Keep(exe, pid, Environment.ProcessId, eqRoot);
+        bool away = _gameAwayTracker.Update(keep, DateTime.Now);
+        if (away == _gameAway) return;
+        _gameAway = away;
+        ApplyHidden();
     }
 
     /// <summary>
@@ -1428,6 +1485,7 @@ public partial class MainWindow : Window
         RebuildConditionsWindow(); // its page owns visibility now
         RebuildSkyHelperWindow();  // ditto — the Sky helper page arrived
         ApplyCursorRing();
+        ApplyGameFocusWatch();
         if (_toolbarWin is not null)
         {
             _toolbarWin.DataContext = _vm; // rebound: the VM was rebuilt above
