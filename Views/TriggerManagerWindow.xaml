@@ -120,8 +120,10 @@
                     <ListBoxItem Content="Death recap"/>
                     <ListBoxItem Content="Condition badges"/>
                     <ListBoxItem Content="Sky droppers"/>
+                    <ListBoxItem Content="Cursor ring"/>
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
+                    <ListBoxItem Content="Log source"/>
                     <ListBoxItem Content="Sounds &amp; voices"/>
                     <ListBoxItem Content="Data"/>
                     <ListBoxItem Content="Shortcuts"/>
@@ -480,7 +482,7 @@
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="App-wide basics. Each overlay feature has its own page in the sidebar."/>
+                                       Text="App-wide basics: startup and the overlay as a whole. The log source, the cursor ring and every panel have their own page in the sidebar."/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Startup" Style="{StaticResource SectionTitle}"/>
@@ -489,20 +491,6 @@
 
                             <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows (this exe)" Margin="0,10,0,0"/>
 
-                            <Border Style="{StaticResource PageSep}"/>
-                            <TextBlock Text="Log source" Style="{StaticResource SectionTitle}"/>
-                            <TextBlock Style="{StaticResource Hint}"
-                                       Text="The newest eqlog_*.txt in the folder is followed — log into another character and the app hops to their file automatically. Your character name is read from that filename."/>
-
-                            <TextBlock Text="Log folder (newest eqlog_*.txt is followed)" Style="{StaticResource FieldLabel}"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBox x:Name="LogDirBox" Width="440"/>
-                                <Button Content="Browse" Click="BrowseLogDir_Click" Width="66" Margin="8,0,0,0"/>
-                            </StackPanel>
-
-                            <TextBlock Text="File pattern" Style="{StaticResource FieldLabel}"/>
-                            <TextBox x:Name="FilePatternBox" Width="220" HorizontalAlignment="Left"/>
-                            <TextBlock x:Name="FollowingText" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Overlay" Style="{StaticResource SectionTitle}"/>
@@ -516,52 +504,80 @@
                             <TextBlock Style="{StaticResource Hint}" Margin="24,2,0,0"
                                        Text="The game is recognised by the followed log's install folder — if the log lives somewhere unusual the overlay simply stays visible."/>
 
-                            <!-- Cursor ring card: toggle, live-labelled sliders,
-                                 color swatches and a preview that IS the ring. -->
-                            <Border Style="{StaticResource SectionCard}" Margin="0,14,0,0" Padding="12,10,12,12">
-                                <StackPanel>
-                                    <TextBlock Text="Cursor ring" FontSize="13" FontWeight="Bold"
-                                               Foreground="{StaticResource Brush.TextDim}"/>
-                                    <CheckBox x:Name="CursorRingCheck" Content="Show a ring around your mouse cursor"
-                                              Margin="0,8,0,0" Checked="CursorRingUi_Changed" Unchecked="CursorRingUi_Changed"/>
-                                    <TextBlock x:Name="CursorRingStatus" Style="{StaticResource Hint}" Margin="0,3,0,0"/>
-                                    <Grid x:Name="CursorRingControls" Margin="0,14,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <!-- Fits the page's 620px column: 140+16+140+16+~156+16+110. -->
-                                            <ColumnDefinition Width="140"/>
-                                            <ColumnDefinition Width="16"/>
-                                            <ColumnDefinition Width="140"/>
-                                            <ColumnDefinition Width="16"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="16"/>
-                                            <ColumnDefinition Width="110"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock x:Name="CursorRingSizeLabel" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
-                                            <Slider x:Name="CursorRingSizeSlider" Minimum="20" Maximum="120"
-                                                    TickFrequency="2" IsSnapToTickEnabled="True"
-                                                    ValueChanged="CursorRingUi_Changed"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock x:Name="CursorRingThicknessLabel" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
-                                            <Slider x:Name="CursorRingThicknessSlider" Minimum="1" Maximum="10"
-                                                    TickFrequency="0.5" IsSnapToTickEnabled="True"
-                                                    ValueChanged="CursorRingUi_Changed"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="4">
-                                            <TextBlock Text="Color" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                                            <StackPanel x:Name="CursorRingSwatches" Orientation="Horizontal"/>
-                                        </StackPanel>
-                                        <Grid Grid.Column="6" Height="110" Width="110">
-                                            <Ellipse x:Name="CursorRingPreviewHalo" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            <Ellipse x:Name="CursorRingPreview" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </Grid>
-                                    <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,0"
-                                               Text="The ring only appears while the game (or this app) is the window you're in. If the followed log lives outside the game's install folder it shows everywhere."/>
-                                </StackPanel>
-                            </Border>
 
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ========================== LOG SOURCE ========================== -->
+                    <ScrollViewer x:Name="LogSourcePage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Log source" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="The newest eqlog_*.txt in the folder is followed — log into another character and the app hops to their file automatically. Your character name is read from that filename."/>
+
+                            <TextBlock Text="Log folder (newest eqlog_*.txt is followed)" Style="{StaticResource FieldLabel}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="LogDirBox" Width="440"/>
+                                <Button Content="Browse" Click="BrowseLogDir_Click" Width="66" Margin="8,0,0,0"/>
+                            </StackPanel>
+
+                            <TextBlock Text="File pattern" Style="{StaticResource FieldLabel}"/>
+                            <TextBox x:Name="FilePatternBox" Width="220" HorizontalAlignment="Left"/>
+                            <TextBlock x:Name="FollowingText" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ========================== CURSOR RING ========================== -->
+                    <ScrollViewer x:Name="CursorRingPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Cursor ring" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A ring around the mouse so the cursor is findable in the heat of battle. Click-through, always on top, and drawn exactly as the preview shows."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                                <CheckBox x:Name="CursorRingCheck" Content="Show a ring around your mouse cursor"
+                                          Margin="0,8,0,0" Checked="CursorRingUi_Changed" Unchecked="CursorRingUi_Changed"/>
+                                <TextBlock x:Name="CursorRingStatus" Style="{StaticResource Hint}" Margin="0,3,0,0"/>
+                                <Grid x:Name="CursorRingControls" Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <!-- Fits the page's 620px column: 140+16+140+16+~156+16+110. -->
+                                        <ColumnDefinition Width="140"/>
+                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="140"/>
+                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="110"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock x:Name="CursorRingSizeLabel" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                                        <Slider x:Name="CursorRingSizeSlider" Minimum="20" Maximum="120"
+                                                TickFrequency="2" IsSnapToTickEnabled="True"
+                                                ValueChanged="CursorRingUi_Changed"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock x:Name="CursorRingThicknessLabel" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                                        <Slider x:Name="CursorRingThicknessSlider" Minimum="1" Maximum="10"
+                                                TickFrequency="0.5" IsSnapToTickEnabled="True"
+                                                ValueChanged="CursorRingUi_Changed"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Text="Color" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                                        <StackPanel x:Name="CursorRingSwatches" Orientation="Horizontal"/>
+                                    </StackPanel>
+                                    <Grid Grid.Column="6" Height="110" Width="110">
+                                        <Ellipse x:Name="CursorRingPreviewHalo" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <Ellipse x:Name="CursorRingPreview" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,0"
+                                           Text="The ring only appears while the game (or this app) is the window you're in. If the followed log lives outside the game's install folder it shows everywhere."/>
                         </StackPanel>
                     </ScrollViewer>
 
