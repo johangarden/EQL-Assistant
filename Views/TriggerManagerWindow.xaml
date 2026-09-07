@@ -123,7 +123,6 @@
                     <ListBoxItem Content="APP" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
                     <ListBoxItem Content="Sounds &amp; voices"/>
-                    <ListBoxItem Content="Durations"/>
                     <ListBoxItem Content="Data"/>
                     <ListBoxItem Content="Shortcuts"/>
                     </ListBox>
