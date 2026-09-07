@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private RaidKills _raids = null!;
     private LootTracker _loot = null!;
     private SkyQuests _skyQuests = null!;
+    private QuestLines _questLines = null!;
     private SpellLibrary _spellLib = null!;
     private SpellDurations _durations = null!;
     private RaidKillsWindow? _raidsWindow;
@@ -114,6 +115,15 @@ public partial class MainWindow : Window
         _loot.Added += e => _raids.AttributeLoot(e);   // pin drops to raid kills
         _raids.BackfillLoot(_loot.Entries);            // one-time: history -> past kills
         _skyQuests = new SkyQuests(_configService, _loot);
+        _questLines = new QuestLines(_configService, _loot);
+        _questLines.StepDone += (q, s) =>
+        {
+            if (_suppressSct) return; // replay/reparse re-proofs shouldn't flash-spam
+            int done = _questLines.DoneCount(q);
+            OnFlashRequested(done == q.Steps.Count
+                ? $"{q.Name} complete — {q.Reward}!"
+                : $"{q.Name} — step {done} of {q.Steps.Count} done", "#FFD54F");
+        };
         _skyHelper = new SkyHelper(_skyQuests); // never class-locked (owner ruling)
         _skyQuests.QuestCompleted += q =>
         {
@@ -388,6 +398,7 @@ public partial class MainWindow : Window
                 _raids.ProcessLine(line, t);
                 _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
                 _skyQuests.ProcessLine(line);
+                _questLines.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _session.ProcessLine(line);
@@ -455,6 +466,7 @@ public partial class MainWindow : Window
                 _raids.ProcessLine(line, t);
                 _loot.ProcessLine(line);
                 _skyQuests.ProcessLine(line);
+                _questLines.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 // Pet names ride the reparse: every "… Master." speech in the
@@ -515,6 +527,7 @@ public partial class MainWindow : Window
         _loot.ResetAll();
         _raids.ResetKills();
         _skyQuests.ResetProgress();
+        _questLines.ResetProgress();
         _spellLib.ResetSeen();
         _durations.ResetAll();
 
@@ -1048,6 +1061,7 @@ public partial class MainWindow : Window
                 _raids.ProcessLine(line);
                 _loot.ProcessLine(line);
                 _skyQuests.ProcessLine(line);
+                _questLines.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _conditions.ProcessLine(line); // live CC state — not fed on catch-up
@@ -1952,7 +1966,7 @@ public partial class MainWindow : Window
                 var (name, server) = InventoryStore.ParseLogName(logPath);
                 return InventoryStore.FindDumpFile(
                     InventoryStore.EqRootOf(logPath), name, server);
-            }, KnownClassesText);
+            }, KnownClassesText, _questLines);
             _skyWindow.Closed += (_, _) => _skyWindow = null;
             _skyWindow.Show();
         }

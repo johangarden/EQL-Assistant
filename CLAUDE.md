@@ -71,7 +71,11 @@ the affected suites (with `-Wait`) before committing.
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,
-  `SkyQuests`, `SpellLibrary` (embedded `data/spell-library.json`, 1438
+  `SkyQuests`, `QuestLines` (embedded `data/quest-lines.json`: multi-step
+  weapon quests tracked as proven-condition SETS — kills, loot, sealed
+  trades, said keywords; right-clicks are owner ticks; a later step implies
+  earlier ones; coins-only trades only count for a started line),
+  `SpellLibrary` (embedded `data/spell-library.json`, 1438
   spells), `SpellDurations` (observed-duration learner), `TriggerColors`
   (type→color), `ConfigService` (all persistence), `AlertService` (TTS/wav),
   `UpdateService` (GitHub-releases self-update).

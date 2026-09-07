@@ -1,0 +1,26 @@
+<UserControl x:Class="EQLOverlay.Views.QuestLinesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Notable quest lines (owner request, 7 Sep): the quest list on the
+         left, the chosen line's header, "Up next" card and step timeline on
+         the right — every piece built in code from the QuestLines service. -->
+    <DockPanel>
+        <DockPanel x:Name="PillRow" DockPanel.Dock="Top" Margin="0,0,0,10">
+            <StackPanel x:Name="ShowRow" DockPanel.Dock="Right" Orientation="Horizontal"/>
+            <StackPanel x:Name="Pills" Orientation="Horizontal"/>
+        </DockPanel>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="ListHost"/>
+            </ScrollViewer>
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="DetailHost"/>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</UserControl>
