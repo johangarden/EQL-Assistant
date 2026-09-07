@@ -230,6 +230,23 @@ public partial class App : Application
             }
             lootItems.Close();
 
+            // Notable quests view renders inside the Quests window.
+            {
+                string qlPath2 = Path.Combine(Path.GetTempPath(), "eql_test_questlines_view.json");
+                try { File.Delete(qlPath2); } catch { /* fresh */ }
+                var qlv = new QuestLines(new ConfigService(), null, qlPath2);
+                var skyLines = new Views.SkyWindow(new SkyQuests(new ConfigService(), new LootTracker(new ConfigService())), null, () => "SHD/SHM/NEC", qlv);
+                skyLines.Show();
+                skyLines.ShowPack("lines");
+                skyLines.UpdateLayout();
+                if (skyLines.Pack != "lines") throw new Exception("quest lines: pack did not switch");
+                qlv.ProcessLine("[Tue Sep 01 22:40:00 2026] You have slain Brother Hayle!");
+                skyLines.UpdateLayout();
+                skyLines.ShowPack("sky");
+                skyLines.Close();
+                try { File.Delete(qlPath2); } catch { /* temp */ }
+            }
+
             // Pin above game (7 Sep): the title-row pin flips Topmost and
             // BringToFront's bump must not knock it off again.
             var pinHost = new Window { Width = 300, Height = 200, ShowInTaskbar = false, ShowActivated = false };
@@ -2163,6 +2180,72 @@ public partial class App : Application
                     !awayTracker.Update(false, ga0.AddSeconds(5)) && awayTracker.Update(false, ga0.AddSeconds(6.5))
                     && awayTracker.Away && !awayTracker.Update(true, ga0.AddSeconds(7)));
 
+                // Notable quest lines (7 Sep): the Torrid Corruptor walked
+                // through the log — kills, loot, hand-ins, a said keyword;
+                // right-clicks are ticks; later steps imply earlier ones;
+                // replay never double-counts.
+                {
+                    string qlPath = Path.Combine(Path.GetTempPath(), "eql_test_questlines.json");
+                    try { File.Delete(qlPath); } catch { /* fresh */ }
+                    var ql = new QuestLines(new ConfigService(), null, qlPath);
+                    var torrid = ql.Quests.First(q => q.Key == "torrid-corruptor");
+                    var hayle = torrid.Steps[0]; var reaver = torrid.Steps[1]; var grimIn = torrid.Steps[2];
+                    var grimKill = torrid.Steps[3]; var dason = torrid.Steps[4]; var luxio = torrid.Steps[6];
+                    Check("lines: three lines load, Torrid Corruptor has seven steps",
+                        ql.Quests.Count == 3 && torrid.Steps.Count == 7 && ql.NextStep(torrid) == hayle);
+                    int fired = 0;
+                    ql.StepDone += (_, _) => fired++;
+                    ql.ProcessLine("[Tue Sep 01 22:40:00 2026] You have slain Brother Hayle!");
+                    ql.ProcessLine("[Tue Sep 01 22:40:10 2026] --You have looted Burning Soul of the Pious from Brother Hayle's corpse.--");
+                    Check("lines: kill + loot proven, the right-click still waits on the tick",
+                        !ql.IsDone(torrid, hayle) && ql.AwaitsClick(torrid, hayle) && fired == 0);
+                    ql.Tick(torrid, hayle, new DateTime(2026, 9, 1, 22, 41, 0));
+                    Check("lines: the tick finishes a click step (how = you)",
+                        ql.IsDone(torrid, hayle) && ql.MarkOf(torrid, hayle)!.How == "you" && ql.NextStep(torrid) == reaver);
+                    ql.ProcessLine("[Wed Sep 02 23:05:00 2026] --You have looted Dark Reaver from a ghoul cavalier's corpse.--");
+                    Check("lines: a plain loot step proves itself from the log", ql.IsDone(torrid, reaver) && ql.MarkOf(torrid, reaver)!.How == "auto" && fired == 1);
+                    ql.ProcessLine("[Thu Sep 03 21:13:50 2026] You offered 1 Burning Soul of the Pious to Lord Grimrot.");
+                    Check("lines: an offer alone proves nothing", !ql.IsDone(torrid, grimIn));
+                    ql.ProcessLine("[Thu Sep 03 21:13:55 2026] You offered 1 Dark Reaver to Lord Grimrot.");
+                    ql.ProcessLine("[Thu Sep 03 21:14:00 2026] You complete the trade with Lord Grimrot.");
+                    Check("lines: the completed trade seals the hand-in", ql.IsDone(torrid, grimIn) && ql.NextStep(torrid) == grimKill);
+                    // Replay of the same lines: nothing changes, nothing re-fires.
+                    int before = fired;
+                    ql.ProcessLine("[Thu Sep 03 21:14:00 2026] You complete the trade with Lord Grimrot.");
+                    ql.ProcessLine("[Wed Sep 02 23:05:00 2026] --You have looted Dark Reaver from a ghoul cavalier's corpse.--");
+                    Check("lines: replay is a no-op", fired == before && ql.DoneCount(torrid) == 3);
+                    // Coins-only step: the trade itself is the proof.
+                    ql.ProcessLine("[Fri Sep 04 20:00:00 2026] You complete the trade with Dason Goldblade.");
+                    Check("lines: a coins-only hand-in proves on the trade line and implies the kill before it",
+                        ql.IsDone(torrid, dason) && ql.IsDone(torrid, grimKill) && ql.MarkOf(torrid, grimKill)!.How == "implied");
+                    // The keyword + the final hand-in.
+                    ql.ProcessLine("[Sat Sep 05 21:00:00 2026] You say, 'I still seek guidance'");
+                    Check("lines: the said keyword is a partial proof", !ql.IsDone(torrid, luxio) && ql.PartialOf(torrid, luxio).Contains("say"));
+                    foreach (var it in new[] { "Burning Soul of the Pious", "Burning Soul of the Pestilent", "Burning Soul of the Virtuous", "SoulFire" })
+                        ql.ProcessLine($"[Sat Sep 05 21:01:00 2026] You offered 1 {it} to Luxio Nulsis.");
+                    ql.ProcessLine("[Sat Sep 05 21:01:30 2026] You complete the trade with Luxio Nulsis.");
+                    Check("lines: the line completes; every step done", ql.IsComplete(torrid) && ql.NextStep(torrid) is null);
+                    // Persistence round-trip.
+                    var ql2 = new QuestLines(new ConfigService(), null, qlPath);
+                    var torrid2 = ql2.Quests.First(q => q.Key == "torrid-corruptor");
+                    Check("lines: progress survives a reload", ql2.IsComplete(torrid2) && ql2.MarkOf(torrid2, torrid2.Steps[0])!.How == "you");
+                    // Untick: only the owner's marks come back off.
+                    Check("lines: the log's own marks can't be unticked, the owner's can",
+                        !ql2.Untick(torrid2, torrid2.Steps[1]) && ql2.Untick(torrid2, torrid2.Steps[0]) && !ql2.IsDone(torrid2, torrid2.Steps[0]));
+                    // Fiery Avenger: either NPC seals the books step; "has been slain by" counts a group kill.
+                    var fiery = ql.Quests.First(q => q.Key == "fiery-avenger");
+                    ql.ProcessLine("[Sun Sep 06 20:00:00 2026] You offered 1 Torn, burnt book to Rineval Talyas.");
+                    ql.ProcessLine("[Sun Sep 06 20:00:01 2026] You offered 1 Torn, Frost covered book to Rineval Talyas.");
+                    ql.ProcessLine("[Sun Sep 06 20:00:05 2026] You complete the trade with Rineval Talyas.");
+                    Check("lines: an alternative NPC seals the step", ql.IsDone(fiery, fiery.Steps[1]));
+                    ql.ProcessLine("[Sun Sep 06 21:00:00 2026] Miragul has been slain by Thorrak!");
+                    Check("lines: a group kill line counts", ql.PartialOf(fiery, fiery.Steps[3]).Contains("kill:miragul"));
+                    // The Torrid line's Dason trade (Sep 4) came before this line had any
+                    // progress — a coin hand-in never proves a quest you haven't started.
+                    Check("lines: a shared coins-only NPC can't prove an unstarted line", !ql.IsDone(fiery, fiery.Steps[4]));
+                    try { File.Delete(qlPath); } catch { /* temp */ }
+                }
+
                 string offer1 = "[Sat Aug 29 00:30:00 2026] You offered 1 Small Shield to Josin Faithbringer.";
                 string offer2 = "[Sat Aug 29 00:30:01 2026] You offered 1 Wind Rune Meda to Josin Faithbringer.";
                 string trade = "[Sat Aug 29 00:30:05 2026] You complete the trade with Josin Faithbringer.";
@@ -3464,6 +3547,18 @@ public partial class App : Application
             };
             tb.Show();
             mgr = tb;
+        }
+        else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase))
+        {
+            var csq = new ConfigService();
+            var sw = new Views.SkyWindow(new SkyQuests(csq, new LootTracker(csq)), null, () => "SHD/SHM/NEC", new QuestLines(csq, new LootTracker(csq)))
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            sw.Show();
+            sw.ShowPack("lines");
+            mgr = sw;
         }
         else if (page.StartsWith("character:", StringComparison.OrdinalIgnoreCase))
         {

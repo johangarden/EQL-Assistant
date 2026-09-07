@@ -115,14 +115,15 @@ public partial class SkyWindow : Window
         return string.Join("|", names);
     }
 
-    public SkyWindow(SkyQuests sky, Func<string?>? inventoryDumpFile = null, Func<string>? classesProvider = null)
+    private string _pack = "sky";
+    private readonly QuestLines? _lines;
+
+    public SkyWindow(SkyQuests sky, Func<string?>? inventoryDumpFile = null, Func<string>? classesProvider = null,
+        QuestLines? lines = null)
     {
         InitializeComponent();
-        MenuTabs.Render(MenuRow, new[]
-        {
-            new MenuTabs.Item("sky", "Plane of Sky · class quests"),
-            new MenuTabs.Item("epics", "Epics · soon", Soon: true, Tip: "Joins when the epic quest data is built"),
-        }, "sky", _ => { });
+        _lines = lines;
+        RenderMenu();
         DialogPlacement.Persist(this, "sky");
         TitleRow.Children.Insert(0, DialogPlacement.Pin(this, "sky"));
         WindowTheme.ApplyDark(this);
@@ -145,6 +146,45 @@ public partial class SkyWindow : Window
     }
 
     private void OnSkyChanged() => Dispatcher.BeginInvoke(Refresh);
+
+    private void RenderMenu()
+    {
+        var items = new List<MenuTabs.Item> { new("sky", "Plane of Sky · class quests") };
+        if (_lines is not null && _lines.Quests.Count > 0)
+            items.Add(new MenuTabs.Item("lines", "Notable quests", Tip: "Multi-step weapon quests from eqlwiki, tracked from your log"));
+        items.Add(new MenuTabs.Item("epics", "Epics · when the game gets them", Soon: true, Tip: "EQ Legends has no epic quests yet"));
+        MenuTabs.Render(MenuRow, items, _pack, ShowPack);
+    }
+
+    /// <summary>Switch the window between its packs: the Sky pieces or the
+    /// Notable quests view — one shows, the other collapses.</summary>
+    public void ShowPack(string pack)
+    {
+        if (pack == "lines" && _lines is null) return;
+        _pack = pack;
+        RenderMenu();
+        bool sky = pack == "sky";
+        var v = sky ? Visibility.Visible : Visibility.Collapsed;
+        SkyHint.Visibility = v;
+        BadgesControl.Visibility = v;
+        SkyPills.Visibility = v;
+        FiltersRow.Visibility = v;
+        if (sky)
+        {
+            LinesView.Visibility = Visibility.Collapsed;
+            Refresh();
+        }
+        else
+        {
+            QuestsScroll.Visibility = IsleScroll.Visibility = HouseScroll.Visibility = Visibility.Collapsed;
+            LinesView.Visibility = Visibility.Visible;
+            LinesView.Attach(_lines!, _dumpFile, _classesProvider);
+            int active = _lines!.Quests.Count(q => !_lines.IsComplete(q) && _lines.DoneCount(q) > 0);
+            SummaryText.Text = active > 0 ? $"{active} line{(active == 1 ? "" : "s")} in progress" : $"{_lines.Quests.Count} quest lines";
+        }
+    }
+
+    public string Pack => _pack;
 
     private void Filters_Changed(object sender, RoutedEventArgs e) => Refresh();
 

@@ -54,6 +54,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="data\sky-quests.json" />
+    <!-- Notable quest lines (eqlwiki transcriptions: SoulFire, Torrid Corruptor, Fiery Avenger). -->
+    <None Update="data\quest-lines.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <EmbeddedResource Include="data\quest-lines.json" />
     <!-- Focus-effect families (eqlwiki Category:Focus_Effects + Companion items.json, MIT). -->
     <None Update="data\focus-effects.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
