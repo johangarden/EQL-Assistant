@@ -55,6 +55,25 @@
                     </Button.Style>
                 </Button>
 
+                <Button DockPanel.Dock="Right" Click="OnPanels" Margin="6,0,0,0"
+                        FontFamily="Segoe MDL2 Assets"
+                        AutomationProperties.AutomationId="PanelsBtn"
+                        ToolTip="Hide / show every panel — the toolbar stays (Ctrl+Alt+P)">
+                    <Button.Style>
+                        <!-- Eye open = panels showing; eye struck = hidden, in the
+                             same amber the mute uses for "something is off". -->
+                        <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
+                            <Setter Property="Content" Value="&#xE7B3;"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PanelsHidden}" Value="True">
+                                    <Setter Property="Content" Value="&#xED1A;"/>
+                                    <Setter Property="Foreground" Value="#FFB74D"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
                 <Button DockPanel.Dock="Right" Click="OnMute" Margin="6,0,0,0"
                         FontFamily="Segoe MDL2 Assets"
                         AutomationProperties.AutomationId="MuteBtn"

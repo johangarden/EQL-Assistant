@@ -8,9 +8,10 @@
         UseLayoutRounding="True">
 
     <!-- A ring around the mouse so it's findable in the heat of battle:
-         a faint halo, a gold ring, and an open center for the cursor itself. -->
+         a faint halo, the ring itself, and an open center for the cursor.
+         Size, stroke and color come from the Manager's Cursor ring card. -->
     <Grid>
-        <Ellipse Width="44" Height="44" Stroke="#33E8C15A" StrokeThickness="7"/>
-        <Ellipse Width="36" Height="36" Stroke="#CCE8C15A" StrokeThickness="2.5"/>
+        <Ellipse x:Name="Halo" Width="44" Height="44" Stroke="#33E8C15A" StrokeThickness="7"/>
+        <Ellipse x:Name="Ring" Width="36" Height="36" Stroke="#CCE8C15A" StrokeThickness="2.5"/>
     </Grid>
 </Window>

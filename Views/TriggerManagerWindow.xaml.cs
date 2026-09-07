@@ -74,6 +74,90 @@ public partial class TriggerManagerWindow : Window
         }
     }
 
+    // ---- Cursor ring card (Companion's configurator, owner request 7 Sep) ----
+
+    private static readonly string[] RingPalette =
+        { "#E8C15A", "#FFFFFF", "#4FD1FF", "#7CE07C", "#FF5C5C", "#FF6BD6" };
+    private string _ringColor = "#E8C15A";
+    private bool _ringUiReady;
+
+    private void LoadCursorRingCard()
+    {
+        _ringUiReady = false;
+        var o = _config.Overlay;
+        CursorRingCheck.IsChecked = o.CursorRingVisible;
+        CursorRingSizeSlider.Value = Math.Clamp(o.CursorRingSize, CursorRingSizeSlider.Minimum, CursorRingSizeSlider.Maximum);
+        CursorRingThicknessSlider.Value = Math.Clamp(o.CursorRingThickness, CursorRingThicknessSlider.Minimum, CursorRingThicknessSlider.Maximum);
+        _ringColor = string.IsNullOrWhiteSpace(o.CursorRingColor) ? RingPalette[0] : o.CursorRingColor.Trim();
+        BuildRingSwatches();
+        _ringUiReady = true;
+        RefreshCursorRingCard();
+    }
+
+    private void BuildRingSwatches()
+    {
+        CursorRingSwatches.Children.Clear();
+        var colors = RingPalette.ToList();
+        if (!colors.Any(c => string.Equals(c, _ringColor, StringComparison.OrdinalIgnoreCase)))
+            colors.Add(_ringColor); // a hand-edited config color keeps its swatch
+        foreach (string hex in colors)
+        {
+            Color c;
+            try { c = (Color)ColorConverter.ConvertFromString(hex); } catch { continue; }
+            var swatch = new Border
+            {
+                Width = 20, Height = 20, CornerRadius = new CornerRadius(10),
+                Margin = new Thickness(0, 0, 6, 0),
+                Background = new SolidColorBrush(c),
+                BorderThickness = new Thickness(2),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                ToolTip = hex,
+                Tag = hex,
+            };
+            swatch.MouseLeftButtonDown += (_, _) => { _ringColor = hex; CursorRingUi_Changed(this, new RoutedEventArgs()); };
+            CursorRingSwatches.Children.Add(swatch);
+        }
+    }
+
+    private void CursorRingUi_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_ringUiReady) RefreshCursorRingCard();
+    }
+
+    /// <summary>Labels carry the live value ("Size (50px)"), the status line
+    /// says what the toggle means, the preview draws the ring exactly as the
+    /// overlay will, and the controls dim while the ring is off.</summary>
+    private void RefreshCursorRingCard()
+    {
+        bool on = CursorRingCheck.IsChecked == true;
+        int size = (int)Math.Round(CursorRingSizeSlider.Value);
+        double thick = Math.Round(CursorRingThicknessSlider.Value, 1);
+        CursorRingSizeLabel.Text = $"Size ({size}px)";
+        CursorRingThicknessLabel.Text = $"Thickness ({thick.ToString("0.#", CultureInfo.InvariantCulture)}px)";
+        CursorRingStatus.Text = on
+            ? "On. The ring follows your mouse while the game is the window you're in."
+            : "Off. Nothing is drawn and nothing is tracked.";
+        CursorRingControls.Opacity = on ? 1 : 0.45;
+
+        foreach (Border swatch in CursorRingSwatches.Children)
+        {
+            bool picked = string.Equals(swatch.Tag as string, _ringColor, StringComparison.OrdinalIgnoreCase);
+            swatch.BorderBrush = picked ? Brushes.White : (Brush)FindResource("Brush.Border");
+        }
+
+        Color c;
+        try { c = (Color)ColorConverter.ConvertFromString(_ringColor); }
+        catch { c = (Color)ColorConverter.ConvertFromString(RingPalette[0]); }
+        double haloStroke = Math.Max(4, thick * 2.5);
+        double shown = Math.Min(size, 96); // the preview box is 110px; the overlay draws the true size
+        CursorRingPreview.Width = CursorRingPreview.Height = shown;
+        CursorRingPreview.StrokeThickness = thick;
+        CursorRingPreview.Stroke = new SolidColorBrush(Color.FromArgb(0xCC, c.R, c.G, c.B));
+        CursorRingPreviewHalo.Width = CursorRingPreviewHalo.Height = shown + haloStroke;
+        CursorRingPreviewHalo.StrokeThickness = haloStroke;
+        CursorRingPreviewHalo.Stroke = new SolidColorBrush(Color.FromArgb(0x33, c.R, c.G, c.B));
+    }
+
     private void RefreshMergedLogs()
     {
         if (MergedLogsList is null) return;
@@ -1002,7 +1086,9 @@ public partial class TriggerManagerWindow : Window
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
             ["Sky droppers"] = SkyHelperPage,
+            ["Cursor ring"] = CursorRingPage,
             ["General"] = GeneralPage,
+            ["Log source"] = LogSourcePage,
             ["Sounds & voices"] = SoundsPage,
             ["Data"] = DataPage,
             ["Shortcuts"] = ShortcutsPage,
@@ -1140,8 +1226,8 @@ public partial class TriggerManagerWindow : Window
         MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
-        CursorRingCheck.IsChecked = _config.Overlay.CursorRingVisible;
         HideWhenGameAwayCheck.IsChecked = _config.Overlay.HideWhenGameAway;
+        LoadCursorRingCard();
         DeathRecapCheck.IsChecked = _config.Overlay.DeathRecapAuto;
         StartWithWindowsCheck.IsChecked = IsAutoStartEnabled();
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
@@ -1433,6 +1519,9 @@ public partial class TriggerManagerWindow : Window
                 ShowCategoryHeaders = ShowHeadersCheck.IsChecked == true,
                 StartLocked = StartLockedCheck.IsChecked == true,
                 CursorRingVisible = CursorRingCheck.IsChecked == true,
+                CursorRingSize = (int)Math.Round(CursorRingSizeSlider.Value),
+                CursorRingThickness = Math.Round(CursorRingThicknessSlider.Value, 1),
+                CursorRingColor = _ringColor,
                 HideWhenGameAway = HideWhenGameAwayCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
                 VoiceName = VoiceBox.SelectedItem as string is "(system default)" or null

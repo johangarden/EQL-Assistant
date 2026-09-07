@@ -118,6 +118,15 @@ public sealed class OverlayConfig
     /// cursor is findable in the heat of battle. Off by default.</summary>
     public bool CursorRingVisible { get; set; }
 
+    /// <summary>Cursor ring diameter in px (Manager → General card, 7 Sep).</summary>
+    public int CursorRingSize { get; set; } = 44;
+
+    /// <summary>Cursor ring stroke in px.</summary>
+    public double CursorRingThickness { get; set; } = 3;
+
+    /// <summary>Cursor ring color, "#RRGGBB".</summary>
+    public string CursorRingColor { get; set; } = "#E8C15A";
+
     /// <summary>Hide the whole overlay (HUD panels + pinned pages) while the
     /// game isn't the foreground window — alt-tab to the wiki and the HUD
     /// gets out of the way, click the game and it returns. Off by default;

@@ -82,113 +82,110 @@ public partial class BisFinderView : UserControl
         (BisFinder.WeaponStyle.TwoHanded, "Two-handed"),
     };
 
+    // Segmented controls (owner request, 7 Sep): every one-of-a-few pick is
+    // one sliding pill; "Backstab only" is the one true on/off — a switch.
+    private Segmented? _viewSeg, _styleSeg, _tailSeg, _rangeSeg;
+    private CheckBox? _bsSwitch;
+    private static string TailId(double w) => w.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
     private void BuildViewPills()
     {
         ViewPills.Children.Clear();
-        foreach (var (tag, label) in new[] { ("armor", "Armor"), ("weapons", "Weapons") })
+        _viewSeg = new Segmented(new[]
         {
-            var pill = Chip(label, tag);
-            pill.Margin = new Thickness(0, 0, 6, 4);
-            pill.Padding = new Thickness(13, 3, 13, 4);
-            bool weapons = tag == "weapons";
-            pill.MouseLeftButtonDown += (_, _) =>
-            {
-                if (_weapons == weapons) return;
-                _weapons = weapons;
-                _prio = _weapons ? _prioWeapon : _prioArmor;
-                SyncPrioBoxes();
-                Refresh();
-            };
-            ViewPills.Children.Add(pill);
-        }
+            new Segmented.Option("armor", "Armor"),
+            new Segmented.Option("weapons", "Weapons"),
+        }, _weapons ? "weapons" : "armor", "#E8C15A");
+        _viewSeg.Changed += id =>
+        {
+            _weapons = id == "weapons";
+            _prio = _weapons ? _prioWeapon : _prioArmor;
+            SyncPrioBoxes();
+            Refresh();
+        };
+        ViewPills.Children.Add(_viewSeg);
+
         // Everything view-specific lives UNDER the three dropdowns (owner
         // ruling, 4 Sep): the armor tail, or the weapon style + backstab +
-        // range pills — each row shows only for its view.
+        // range — each row shows only for its view.
         TailPills.Children.Clear();
-        foreach (var (style, label) in Styles)
+        _styleSeg = new Segmented(Styles.Select(x => new Segmented.Option(x.Style.ToString(), x.Label)), _style.ToString());
+        _styleSeg.Changed += id =>
         {
-            var pill = Chip(label, "style:" + style);
-            var s = style;
-            pill.MouseLeftButtonDown += (_, _) =>
-            {
-                _style = s;
-                SavePrefs();
-                Refresh();
-            };
-            TailPills.Children.Add(pill);
-        }
-        // Weapons: the rogue's filter — main-hand weapons that carry a backstab number.
-        var bsPill = Chip("Backstab only", "bs");
-        bsPill.ToolTip = "Show only main-hand weapons the wiki lists with Backstab damage";
-        bsPill.Margin = new Thickness(10, 0, 5, 5);
-        bsPill.MouseLeftButtonDown += (_, _) =>
-        {
-            _backstab = !_backstab;
+            _style = Enum.Parse<BisFinder.WeaponStyle>(id);
             SavePrefs();
             Refresh();
         };
-        TailPills.Children.Add(bsPill);
+        TailPills.Children.Add(_styleSeg);
+
+        // Weapons: the rogue's filter — main-hand weapons that carry a backstab number.
+        _bsSwitch = new CheckBox
+        {
+            Content = "Backstab only",
+            IsChecked = _backstab,
+            FontSize = 11,
+            Margin = new Thickness(8, 0, 10, 4),
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Show only main-hand weapons the wiki lists with Backstab damage",
+        };
+        _bsSwitch.Checked += (_, _) => { if (!_building) { _backstab = true; SavePrefs(); Refresh(); } };
+        _bsSwitch.Unchecked += (_, _) => { if (!_building) { _backstab = false; SavePrefs(); Refresh(); } };
+        TailPills.Children.Add(_bsSwitch);
+
+        // What the range slot is for: a bow build or a stat brooch.
+        TailPills.Children.Add(new TextBlock { Text = "Range:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(0, 3, 8, 0), Tag = "weapons-gap" });
+        _rangeSeg = new Segmented(new[]
+        {
+            new Segmented.Option(BisFinder.RangeMode.Dps.ToString(), "DPS", "The range slot fights: bows and throwers score by damage"),
+            new Segmented.Option(BisFinder.RangeMode.Stat.ToString(), "Stat", "The range slot is a stat slot: brooches and idols score by your priorities"),
+        }, _range.ToString());
+        _rangeSeg.Changed += id =>
+        {
+            _range = Enum.Parse<BisFinder.RangeMode>(id);
+            SavePrefs();
+            Refresh();
+        };
+        TailPills.Children.Add(_rangeSeg);
+
         // Armor only: the tail — every other stat at a small weight, so the
         // well-rounded piece isn't scored as nothing (owner request, 4 Sep).
         TailPills.Children.Add(new TextBlock { Text = "Other stats:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(0, 3, 8, 0), Tag = "armor-gap" });
-        foreach (var (w, label) in new[] { (0.0, "Off"), (0.25, "×0.25"), (0.5, "×0.5") })
+        _tailSeg = new Segmented(new[]
         {
-            var pill = Chip(label, "tail:" + w.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            pill.ToolTip = "Every stat outside your three picks counts at this weight (HP/Mana/End at a fifth) — rewards well-rounded pieces";
-            var tw = w;
-            pill.MouseLeftButtonDown += (_, _) =>
-            {
-                _tail = tw;
-                SavePrefs();
-                Refresh();
-            };
-            TailPills.Children.Add(pill);
-        }
-        // What the range slot is for: a bow build or a stat brooch.
-        var gap2 = new TextBlock { Text = "· Range:", Foreground = DimmerFg, FontSize = 11, Margin = new Thickness(6, 3, 8, 0), Tag = "weapons-gap" };
-        TailPills.Children.Add(gap2);
-        foreach (var (mode, label) in new[] { (BisFinder.RangeMode.Dps, "DPS"), (BisFinder.RangeMode.Stat, "Stat") })
+            new Segmented.Option(TailId(0), "Off"),
+            new Segmented.Option(TailId(0.25), "×0.25"),
+            new Segmented.Option(TailId(0.5), "×0.5"),
+        }, TailId(_tail));
+        _tailSeg.ToolTip = "Every stat outside your three picks counts at this weight (HP/Mana/End at a fifth) — rewards well-rounded pieces";
+        _tailSeg.Changed += id =>
         {
-            var pill = Chip(label, "range:" + mode);
-            var m = mode;
-            pill.MouseLeftButtonDown += (_, _) =>
-            {
-                _range = m;
-                SavePrefs();
-                Refresh();
-            };
-            TailPills.Children.Add(pill);
-        }
+            _tail = double.Parse(id, System.Globalization.CultureInfo.InvariantCulture);
+            SavePrefs();
+            Refresh();
+        };
+        TailPills.Children.Add(_tailSeg);
     }
 
+    /// <summary>Sync the segments and the switch to the fields (prefs load,
+    /// combo reset) and show only the active view's row.</summary>
     private void StyleViewPills()
     {
-        foreach (var child in ViewPills.Children.Cast<object>().Concat(TailPills.Children.Cast<object>()))
+        _viewSeg?.Select(_weapons ? "weapons" : "armor");
+        _styleSeg?.Select(_style.ToString());
+        _rangeSeg?.Select(_range.ToString());
+        _tailSeg?.Select(TailId(_tail));
+        if (_bsSwitch is not null && _bsSwitch.IsChecked != _backstab)
         {
-            if (child is not Border pill || pill.Tag is not string tag) continue;
-            if (tag == "armor") Paint(pill, !_weapons, LaneOnFg, LaneOnLine);
-            else if (tag == "weapons") Paint(pill, _weapons, LaneOnFg, LaneOnLine);
-            else if (tag.StartsWith("tail:", StringComparison.Ordinal))
-            {
-                pill.Visibility = _weapons ? Visibility.Collapsed : Visibility.Visible;
-                Paint(pill, tag == "tail:" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture), ChipOnFg, ChipOnLine);
-            }
-            else if (tag == "bs")
-            {
-                pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
-                Paint(pill, _backstab, ChipOnFg, ChipOnLine);
-            }
-            else if (tag.StartsWith("range:", StringComparison.Ordinal))
-            {
-                pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
-                Paint(pill, tag == "range:" + _range, ChipOnFg, ChipOnLine);
-            }
-            else
-            {
-                pill.Visibility = _weapons ? Visibility.Visible : Visibility.Collapsed;
-                Paint(pill, tag == "style:" + _style, ChipOnFg, ChipOnLine);
-            }
+            bool was = _building; _building = true;
+            _bsSwitch.IsChecked = _backstab;
+            _building = was;
         }
+        var weaponsRow = _weapons ? Visibility.Visible : Visibility.Collapsed;
+        var armorRow = _weapons ? Visibility.Collapsed : Visibility.Visible;
+        if (_styleSeg is not null) _styleSeg.Visibility = weaponsRow;
+        if (_bsSwitch is not null) _bsSwitch.Visibility = weaponsRow;
+        if (_rangeSeg is not null) _rangeSeg.Visibility = weaponsRow;
+        if (_tailSeg is not null) _tailSeg.Visibility = armorRow;
         foreach (var child in TailPills.Children)
             if (child is TextBlock gap)
                 gap.Visibility = (gap.Tag is "armor-gap" ? !_weapons : _weapons) ? Visibility.Visible : Visibility.Collapsed;

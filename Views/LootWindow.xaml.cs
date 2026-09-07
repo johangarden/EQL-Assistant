@@ -247,6 +247,8 @@ public partial class LootWindow : Window
     private double _minFarmed = 30;
     private bool _thinOpen;
 
+    private Segmented? _timeSeg;
+
     private void BuildTimePills()
     {
         TimePills.Children.Clear();
@@ -258,38 +260,19 @@ public partial class LootWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 8, 4),
         });
-        foreach (var (min, label) in TimeOptions)
+        _timeSeg = new Segmented(
+            TimeOptions.Select(t => new Segmented.Option(t.Min.ToString(System.Globalization.CultureInfo.InvariantCulture), t.Label)),
+            _minFarmed.ToString(System.Globalization.CultureInfo.InvariantCulture), "#E8C15A");
+        _timeSeg.Changed += id =>
         {
-            double m = min;
-            var pill = new Border
-            {
-                CornerRadius = new CornerRadius(10),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(11, 2, 11, 3),
-                Margin = new Thickness(0, 0, 6, 4),
-                Cursor = System.Windows.Input.Cursors.Hand,
-                Child = new TextBlock { Text = label, FontSize = 11, FontWeight = FontWeights.SemiBold },
-            };
-            pill.MouseLeftButtonDown += (_, _) =>
-            {
-                _minFarmed = m;
-                RefreshMotes();
-            };
-            TimePills.Children.Add(pill);
-        }
+            _minFarmed = double.Parse(id, System.Globalization.CultureInfo.InvariantCulture);
+            RefreshMotes();
+        };
+        TimePills.Children.Add(_timeSeg);
     }
 
-    private void StyleTimePills()
-    {
-        for (int i = 1; i < TimePills.Children.Count; i++) // 0 = the label
-        {
-            if (TimePills.Children[i] is not Border pill) continue;
-            bool on = Math.Abs(TimeOptions[i - 1].Min - _minFarmed) < 0.1;
-            pill.Background = on ? PillOnBg : PillOffBg;
-            pill.BorderBrush = on ? PillOnLine : PillOffLine;
-            if (pill.Child is TextBlock tb) tb.Foreground = on ? PillOnFg : PillOffFg;
-        }
-    }
+    private void StyleTimePills() =>
+        _timeSeg?.Select(_minFarmed.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     private void StyleGradePills()
     {
