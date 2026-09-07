@@ -32,7 +32,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--selftest-repop` | `eql_selftest_repop.txt` |
 | `--replay <log>` | `eql_replay.txt` (parser coverage report on a real log) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window instead |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` the toolbar |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous

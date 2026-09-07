@@ -3445,7 +3445,27 @@ public partial class App : Application
         Window mgr;
         // "character:<tab>" renders the Character window on a tab instead
         // (the selftest's inventory fixture in %TEMP% feeds it when present).
-        if (page.StartsWith("character:", StringComparison.OrdinalIgnoreCase))
+        if (page.Equals("toolbar", StringComparison.OrdinalIgnoreCase)
+            || page.Equals("toolbar:hidden", StringComparison.OrdinalIgnoreCase))
+        {
+            // The toolbar with a live view-model: "toolbar:hidden" shows the
+            // eye in its panels-hidden state.
+            var cs0 = new ConfigService();
+            var cfg0 = cs0.LoadSettings();
+            var vm = new ViewModels.OverlayViewModel(new TriggerEngine(cfg0, new AlertService()), cfg0)
+            {
+                PanelsHidden = page.EndsWith(":hidden", StringComparison.OrdinalIgnoreCase),
+            };
+            var tb = new Views.ToolbarWindow(cs0)
+            {
+                DataContext = vm,
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            tb.Show();
+            mgr = tb;
+        }
+        else if (page.StartsWith("character:", StringComparison.OrdinalIgnoreCase))
         {
             var inv = new Views.InventoryWindow(Path.Combine(Path.GetTempPath(), "eql_selftest_inv"), "Testchar", "paineel")
             {

@@ -102,6 +102,15 @@ public sealed class OverlayViewModel : ViewModelBase
         set => SetField(ref _loadoutName, value);
     }
 
+    private bool _panelsHidden;
+    /// <summary>Drives the toolbar's eye: every panel hidden, toolbar stays
+    /// (toolbar button or Ctrl+Alt+P) — owner request, 7 Sep.</summary>
+    public bool PanelsHidden
+    {
+        get => _panelsHidden;
+        set => SetField(ref _panelsHidden, value);
+    }
+
     private bool _muted;
     /// <summary>Drives the little 🔇 indicator (mute is hotkey-only, Ctrl+Alt+S).</summary>
     public bool Muted

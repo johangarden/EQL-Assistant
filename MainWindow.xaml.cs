@@ -46,9 +46,10 @@ public partial class MainWindow : Window
     private RaidKillsWindow? _raidsWindow;
     private readonly Dictionary<CombatParser.SctKind, SctLaneWindow> _sctLanes = new();
     private PanelPlacement? _mainPlacement;
-    private bool _userHidden;   // the toolbar's hide toggle
+    private bool _userHidden;   // the whole-overlay hide (Ctrl+Alt+H, tray)
     private bool _gameAway;     // the game-focus watch (Manager → General)
-    private bool _hidden => _userHidden || _gameAway; // what every panel reads
+    private bool _panelsHidden; // the toolbar's eye: panels off, toolbar stays
+    private bool _hidden => _userHidden || _gameAway || _panelsHidden; // what every panel reads
     private readonly GameAwayTracker _gameAwayTracker = new();
     private System.Windows.Threading.DispatcherTimer? _focusTimer;
     private bool _timerHidden;
@@ -73,6 +74,7 @@ public partial class MainWindow : Window
     private const int HK_REPOP   = 10;
     private const int HK_METER   = 11;
     private const int HK_SCT     = 12;
+    private const int HK_PANELS  = 13;
 
     private static readonly Brush UnlockedBackdrop =
         new SolidColorBrush(Color.FromArgb(0x30, 0x0A, 0x0E, 0x14));
@@ -635,7 +637,7 @@ public partial class MainWindow : Window
         _sctHidden = !_sctHidden;
         _config.Overlay.SctVisible = !_sctHidden;
         _configService.SaveSettings(_config);
-        if (_hidden && !_sctHidden) ToggleHide();
+        if (_hidden && !_sctHidden) UnhideAll();
         UpdateSctVisibility();
         _vm.Flash(_sctHidden ? "Combat text hidden." : "Combat text shown.");
     }
@@ -662,7 +664,7 @@ public partial class MainWindow : Window
         _flashHidden = !_flashHidden;
         _config.Overlay.FlashVisible = !_flashHidden;
         _configService.SaveSettings(_config);
-        if (_hidden && !_flashHidden) ToggleHide(); // unhide everything if it was globally hidden
+        if (_hidden && !_flashHidden) UnhideAll(); // unhide everything if it was globally hidden
         UpdateFlashVisibility();
         _vm.Flash(_flashHidden ? "Flash alerts hidden." : "Flash alerts shown.");
     }
@@ -738,7 +740,7 @@ public partial class MainWindow : Window
         _timerHidden = !_timerHidden;
         _config.Overlay.TimerVisible = !_timerHidden;
         _configService.SaveSettings(_config);
-        if (_hidden && !_timerHidden) ToggleHide(); // unhide everything if it was globally hidden
+        if (_hidden && !_timerHidden) UnhideAll(); // unhide everything if it was globally hidden
         UpdateTimerVisibility();
         _vm.Flash(_timerHidden ? "Spawn timer hidden." : "Spawn timer shown.");
     }
@@ -773,7 +775,7 @@ public partial class MainWindow : Window
         _meterHidden = !_meterHidden;
         _config.Overlay.MeterVisible = !_meterHidden;
         _configService.SaveSettings(_config);
-        if (_hidden && !_meterHidden) ToggleHide(); // unhide everything if it was globally hidden
+        if (_hidden && !_meterHidden) UnhideAll(); // unhide everything if it was globally hidden
         UpdateMeterVisibility();
         _vm.Flash(_meterHidden ? "DPS meter hidden." : "DPS meter shown.");
     }
@@ -783,7 +785,7 @@ public partial class MainWindow : Window
     {
         _config.Overlay.ProcWatcherVisible = !_config.Overlay.ProcWatcherVisible;
         _configService.SaveSettings(_config);
-        if (_hidden && _config.Overlay.ProcWatcherVisible) ToggleHide();
+        if (_hidden && _config.Overlay.ProcWatcherVisible) UnhideAll();
         _meter?.SetProcsVisible(_config.Overlay.ProcWatcherVisible);
         if (_config.Overlay.ProcWatcherVisible && _meterHidden) ToggleMeter(); // it lives on the meter
         _vm.Flash(_config.Overlay.ProcWatcherVisible ? "Proc watcher shown." : "Proc watcher hidden.");
@@ -795,7 +797,7 @@ public partial class MainWindow : Window
         _skillsHidden = !_skillsHidden;
         _config.Overlay.SkillTrackerVisible = !_skillsHidden;
         _configService.SaveSettings(_config);
-        if (_hidden && !_skillsHidden) ToggleHide(); // unhide everything if it was globally hidden
+        if (_hidden && !_skillsHidden) UnhideAll(); // unhide everything if it was globally hidden
         _meter?.SetSkillsVisible(!_skillsHidden);
         if (!_skillsHidden && _meterHidden) ToggleMeter(); // the section lives on the meter
         _vm.Flash(_skillsHidden ? "Skill tracker hidden." : "Skill tracker shown.");
@@ -1108,11 +1110,12 @@ public partial class MainWindow : Window
         NativeMethods.RegisterHotKey(_hwnd, HK_REPOP,  mods, 0x52); // R
         NativeMethods.RegisterHotKey(_hwnd, HK_METER,  mods, 0x44); // D
         NativeMethods.RegisterHotKey(_hwnd, HK_SCT,    mods, 0x43); // C
+        NativeMethods.RegisterHotKey(_hwnd, HK_PANELS, mods, 0x50); // P
     }
 
     private void UnregisterHotKeys()
     {
-        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT, HK_REPOP, HK_METER, HK_SCT })
+        foreach (int id in new[] { HK_LOCK, HK_TEST, HK_HIDE, HK_MUTE, HK_QUIT, HK_REPOP, HK_METER, HK_SCT, HK_PANELS })
             NativeMethods.UnregisterHotKey(_hwnd, id);
     }
 
@@ -1142,6 +1145,7 @@ public partial class MainWindow : Window
                             else lane.SpawnDemo();
                     handled = true; break;
                 case HK_HIDE:   ToggleHide();       handled = true; break;
+                case HK_PANELS: TogglePanels();     handled = true; break;
                 case HK_MUTE:   ToggleMute();       handled = true; break;
                 case HK_QUIT:   Close();            handled = true; break;
                 case HK_REPOP:  ToggleTimer();      handled = true; break;
@@ -1204,6 +1208,28 @@ public partial class MainWindow : Window
         ApplyHidden();
     }
 
+    /// <summary>The toolbar's eye (owner request, 7 Sep): every panel hides,
+    /// the toolbar stays so the eye is still there to click. Like mute, a
+    /// state the toolbar glyph mirrors.</summary>
+    private void TogglePanels()
+    {
+        _panelsHidden = !_panelsHidden;
+        _vm.PanelsHidden = _panelsHidden;
+        ApplyHidden();
+        _vm.Flash(_panelsHidden ? "Panels hidden — toolbar stays." : "Panels back.");
+    }
+
+    /// <summary>Showing a specific panel while everything is hidden means
+    /// "bring the overlay back" — every user-made hide clears (the game-focus
+    /// watch is not the user's and keeps its say).</summary>
+    private void UnhideAll()
+    {
+        _userHidden = false;
+        _panelsHidden = false;
+        _vm.PanelsHidden = false;
+        ApplyHidden();
+    }
+
     /// <summary>Push the effective hidden state (<see cref="_hidden"/>) to
     /// every panel — and, for the game-focus watch only, to the pages pinned
     /// above the game: a pinned Quests window follows the HUD out of the way
@@ -1236,6 +1262,8 @@ public partial class MainWindow : Window
     private void ResetPosition()
     {
         _userHidden = false;
+        _panelsHidden = false;
+        _vm.PanelsHidden = false;
         _gameAway = false;
         _gameAwayTracker.Reset();
         Visibility = Visibility.Visible;
@@ -1552,6 +1580,7 @@ public partial class MainWindow : Window
             QuitRequested = Close,
             LockRequested = ToggleLock,
             MuteRequested = ToggleMute,
+            PanelsRequested = TogglePanels,
             ManageRequested = () => OpenManager(),
             TriggerRequested = () => OpenManager("Triggers"),
             MenuRequested = el => ShowMainMenu(el as UIElement),
@@ -1567,8 +1596,8 @@ public partial class MainWindow : Window
     private void UpdateToolbarVisibility()
     {
         if (_toolbarWin is not null)
-            _toolbarWin.Visibility = !_hidden && !_toolbarHidden
-                ? Visibility.Visible : Visibility.Hidden;
+            _toolbarWin.Visibility = !_userHidden && !_gameAway && !_toolbarHidden
+                ? Visibility.Visible : Visibility.Hidden; // the eye's hide spares the toolbar
     }
 
     private void ToggleToolbar()
@@ -1736,7 +1765,7 @@ public partial class MainWindow : Window
             _config.Overlay.TimerVisible = true;
             _configService.SaveSettings(_config);
         }
-        if (_hidden) ToggleHide();
+        if (_hidden) UnhideAll();
         UpdateTimerVisibility();
         _timer?.StartWith(seconds, name);
         _vm.Flash($"{name} down — spawn timer started.");
