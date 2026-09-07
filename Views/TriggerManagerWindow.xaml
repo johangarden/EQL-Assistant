@@ -512,12 +512,56 @@
                             <TextBox x:Name="OpacityBox" Width="120" HorizontalAlignment="Left"/>
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
-                            <CheckBox x:Name="CursorRingCheck" Content="Cursor ring (a gold circle follows your mouse — find it in the heat of battle)"
-                                      Margin="0,6,0,0"/>
                             <CheckBox x:Name="HideWhenGameAwayCheck" Content="Hide the overlay while the game isn't in front (panels and pinned pages return when you click back into the game)"
                                       Margin="0,6,0,0"/>
                             <TextBlock Style="{StaticResource Hint}" Margin="24,2,0,0"
                                        Text="The game is recognised by the followed log's install folder — if the log lives somewhere unusual the overlay simply stays visible."/>
+
+                            <!-- Cursor ring card: toggle, live-labelled sliders,
+                                 color swatches and a preview that IS the ring. -->
+                            <Border Style="{StaticResource SectionCard}" Margin="0,14,0,0" Padding="12,10,12,12">
+                                <StackPanel>
+                                    <TextBlock Text="Cursor ring" FontSize="13" FontWeight="Bold"
+                                               Foreground="{StaticResource Brush.TextDim}"/>
+                                    <CheckBox x:Name="CursorRingCheck" Content="Show a ring around your mouse cursor"
+                                              Margin="0,8,0,0" Checked="CursorRingUi_Changed" Unchecked="CursorRingUi_Changed"/>
+                                    <TextBlock x:Name="CursorRingStatus" Style="{StaticResource Hint}" Margin="0,3,0,0"/>
+                                    <Grid x:Name="CursorRingControls" Margin="0,14,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <!-- Fits the page's 620px column: 140+16+140+16+~156+16+110. -->
+                                            <ColumnDefinition Width="140"/>
+                                            <ColumnDefinition Width="16"/>
+                                            <ColumnDefinition Width="140"/>
+                                            <ColumnDefinition Width="16"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="16"/>
+                                            <ColumnDefinition Width="110"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock x:Name="CursorRingSizeLabel" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                                            <Slider x:Name="CursorRingSizeSlider" Minimum="20" Maximum="120"
+                                                    TickFrequency="2" IsSnapToTickEnabled="True"
+                                                    ValueChanged="CursorRingUi_Changed"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock x:Name="CursorRingThicknessLabel" Style="{StaticResource FieldLabel}" Margin="0,0,0,4"/>
+                                            <Slider x:Name="CursorRingThicknessSlider" Minimum="1" Maximum="10"
+                                                    TickFrequency="0.5" IsSnapToTickEnabled="True"
+                                                    ValueChanged="CursorRingUi_Changed"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="4">
+                                            <TextBlock Text="Color" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                                            <StackPanel x:Name="CursorRingSwatches" Orientation="Horizontal"/>
+                                        </StackPanel>
+                                        <Grid Grid.Column="6" Height="110" Width="110">
+                                            <Ellipse x:Name="CursorRingPreviewHalo" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <Ellipse x:Name="CursorRingPreview" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,0"
+                                               Text="The ring only appears while the game (or this app) is the window you're in. If the followed log lives outside the game's install folder it shows everywhere."/>
+                                </StackPanel>
+                            </Border>
 
                         </StackPanel>
                     </ScrollViewer>

@@ -831,8 +831,24 @@ public partial class MainWindow : Window
             if (_cursorRing is not null) { try { _cursorRing.Close(); } catch { /* ignore */ } _cursorRing = null; }
             return;
         }
-        if (_cursorRing is not null) return;
+        var o = _config.Overlay;
+        // Over the game (or this app) only — the watch's own rule. With no
+        // recognisable install root the ring shows everywhere, as before.
+        Func<bool>? overGame = null;
+        string eqRoot = InventoryStore.EqRootOf(_watcher?.CurrentPath ?? "");
+        if (eqRoot.Length > 0)
+            overGame = () =>
+            {
+                var (pid, exe) = NativeMethods.ForegroundProcess();
+                return GameFocus.Keep(exe, pid, Environment.ProcessId, eqRoot);
+            };
+        if (_cursorRing is not null)
+        {
+            _cursorRing.ApplySettings(o.CursorRingSize, o.CursorRingThickness, o.CursorRingColor, overGame);
+            return;
+        }
         _cursorRing = new CursorRingWindow();
+        _cursorRing.ApplySettings(o.CursorRingSize, o.CursorRingThickness, o.CursorRingColor, overGame);
         _cursorRing.Closed += (_, _) => _cursorRing = null;
         _cursorRing.Show();
     }

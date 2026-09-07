@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -46,6 +47,25 @@ public partial class App : Application
             catch (Exception ex)
             {
                 File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_glyphs_error.txt"), ex.ToString());
+            }
+            Shutdown();
+            return;
+        }
+
+        // Gated: render one Manager page to a PNG (`--render-manager <page> <out.png>`)
+        // — lets a build be eyeballed against a design mock without a human.
+        int rm = Array.IndexOf(e.Args, "--render-manager");
+        if (rm >= 0)
+        {
+            try
+            {
+                RenderManagerPage(rm + 1 < e.Args.Length ? e.Args[rm + 1] : "General",
+                    rm + 2 < e.Args.Length ? e.Args[rm + 2] : Path.Combine(Path.GetTempPath(), "eql_manager.png"),
+                    e.Args.Contains("--bottom"));
+            }
+            catch (Exception ex)
+            {
+                File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_manager_error.txt"), ex.ToString());
             }
             Shutdown();
             return;
@@ -281,6 +301,19 @@ public partial class App : Application
             invEmpty.Show();
             invEmpty.ShowTab("sheet"); // the empty state must hold on every tab
             invEmpty.Close();
+
+            // Cursor ring card (7 Sep): settings reach the ring window in place.
+            var ringDefaults = new Models.AppConfig().Overlay;
+            if (ringDefaults.CursorRingSize != 44 || ringDefaults.CursorRingThickness != 3 || ringDefaults.CursorRingColor != "#E8C15A")
+                throw new Exception("ring: defaults drifted");
+            var ringWin = new CursorRingWindow();
+            ringWin.ApplySettings(60, 4, "#4FD1FF", null);
+            if (ringWin.RingSize != 60 || ringWin.RingThickness != 4 || ringWin.RingColor.B != 0xFF || ringWin.RingColor.R != 0x4F)
+                throw new Exception("ring: ApplySettings did not reach the ellipses");
+            if (ringWin.Width <= 60 + 8) throw new Exception("ring: the window must have room for the halo");
+            ringWin.ApplySettings(30, 2, "not a color", null); // junk color falls back to gold, never throws
+            if (ringWin.RingColor.R != 0xE8) throw new Exception("ring: junk color should fall back to gold");
+            ringWin.Close();
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest.txt"), "OK");
             Environment.ExitCode = 0;
         }
@@ -3385,6 +3418,54 @@ public partial class App : Application
         enc.Frames.Add(BitmapFrame.Create(bmp));
         using var fs = File.Create(outPath);
         enc.Save(fs);
+    }
+
+    /// <summary>Open the Manager on <paramref name="page"/> off-screen and
+    /// save its client area as a PNG.</summary>
+    private static void RenderManagerPage(string page, string outPath, bool bottom)
+    {
+        var cs = new ConfigService();
+        var cfg = cs.LoadSettings();
+        var mgr = new TriggerManagerWindow(cs, cfg, new LogBus(), new AlertService(),
+            new RaidKills(cs), new SpellLibrary(cs), new CombatParser(), _ => { })
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+        };
+        mgr.Show();
+        mgr.SelectPage(page);
+        mgr.UpdateLayout();
+        if (mgr.Content is not FrameworkElement root) throw new Exception("manager has no content");
+        if (bottom)
+        {
+            foreach (var sv in Descendants(root).OfType<ScrollViewer>().Where(v => v.IsVisible))
+                sv.ScrollToBottom();
+            mgr.UpdateLayout();
+        }
+        int w = (int)Math.Ceiling(root.ActualWidth), h = (int)Math.Ceiling(root.ActualHeight);
+        var bmp = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
+        var dv = new DrawingVisual();
+        using (var dc = dv.RenderOpen())
+        {
+            dc.DrawRectangle(new SolidColorBrush(((SolidColorBrush)mgr.Background).Color), null, new Rect(0, 0, w, h));
+            dc.DrawRectangle(new VisualBrush(root), null, new Rect(0, 0, w, h));
+        }
+        bmp.Render(dv);
+        var enc = new PngBitmapEncoder();
+        enc.Frames.Add(BitmapFrame.Create(bmp));
+        using (var fs = File.Create(outPath)) enc.Save(fs);
+        mgr.Close();
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject d)
+    {
+        int n = VisualTreeHelper.GetChildrenCount(d);
+        for (int i = 0; i < n; i++)
+        {
+            var c = VisualTreeHelper.GetChild(d, i);
+            yield return c;
+            foreach (var g in Descendants(c)) yield return g;
+        }
     }
 
     /// <summary>The badge exactly as the Raid Kills window draws it: tinted
