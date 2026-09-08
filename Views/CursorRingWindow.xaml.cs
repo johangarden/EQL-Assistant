@@ -19,6 +19,7 @@ public partial class CursorRingWindow : Window
     private Matrix _fromDevice = Matrix.Identity;
     private Func<bool>? _overGame;
     private int _frame;
+    private bool _closed;
 
     public CursorRingWindow()
     {
@@ -40,7 +41,7 @@ public partial class CursorRingWindow : Window
             Follow();
             _tick.Start();
         };
-        Closed += (_, _) => _tick.Stop(); // panel law: timers die with the window
+        Closed += (_, _) => { _closed = true; _tick.Stop(); }; // panel law: timers die with the window
     }
 
     /// <summary>Size = ring diameter in px; the halo sits just outside it.
@@ -75,6 +76,7 @@ public partial class CursorRingWindow : Window
 
     private void Follow()
     {
+        if (_closed) return; // a stray tick after Close() must not touch the window
         // The foreground check costs a process query — twice a second is plenty.
         if (_overGame is not null && (_frame++ % 30) == 0)
         {

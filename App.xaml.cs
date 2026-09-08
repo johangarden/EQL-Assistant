@@ -3933,15 +3933,36 @@ public partial class App : Application
         Shutdown();
     }
 
+    private string _lastFault = "";
+    private DateTime _lastFaultAt = DateTime.MinValue;
+    private int _faultRepeats;
+
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         Log.Error("Unhandled dispatcher exception", e.Exception);
+        e.Handled = true;
+        // A fault on a timer re-fires while its dialog is still open, and
+        // each firing stacked another dialog until the owner killed the
+        // process (8 Sep). The same message within a minute is logged, not
+        // shown — the first dialog already said it.
+        string msg = e.Exception.Message;
+        var now = DateTime.Now;
+        if (msg == _lastFault && (now - _lastFaultAt).TotalSeconds < 60)
+        {
+            _faultRepeats++;
+            if (_faultRepeats is 1 or 10 or 100 or 1000)
+                Log.Warn($"Same fault repeated {_faultRepeats}x - dialog suppressed: {msg}");
+            _lastFaultAt = now;
+            return;
+        }
+        _lastFault = msg;
+        _lastFaultAt = now;
+        _faultRepeats = 0;
         MessageBox.Show(
             "EQL Assistant hit an unexpected error:\n\n" + e.Exception.Message +
             "\n\n(The overlay will keep running. Check your config.json if this repeats.)",
             "EQL Assistant",
             MessageBoxButton.OK,
             MessageBoxImage.Warning);
-        e.Handled = true;
     }
 }
