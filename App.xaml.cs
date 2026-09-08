@@ -286,6 +286,22 @@ public partial class App : Application
                 meter.Close();
             }
 
+            // The Resists view renders inside Fight history.
+            {
+                string rbPath2 = Path.Combine(Path.GetTempPath(), "eql_test_resists_view.json");
+                try { File.Delete(rbPath2); } catch { /* fresh */ }
+                var rpv = new CombatParser { SelfName = "Thorrak" };
+                var rbv = new ResistBook(new ConfigService(), rpv, rbPath2);
+                rpv.ProcessLine("[Tue Sep 08 20:00:02 2026] A greater sphinx resisted your Envenomed Breath!");
+                var hw = new Views.HistoryWindow(rpv, new ConfigService(), new LootTracker(new ConfigService()), null, rbv);
+                hw.Show();
+                hw.ShowView("resists");
+                hw.UpdateLayout();
+                hw.ShowView("fights");
+                hw.Close();
+                try { File.Delete(rbPath2); } catch { /* temp */ }
+            }
+
             // The level-up card renders and reports its rows.
             {
                 var libC = new SpellLibrary(new ConfigService());
@@ -2255,6 +2271,44 @@ public partial class App : Application
 
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
+
+            // Per-mob resist table (8 Sep): landings and resists from the parser's
+            // own lines, keyed so replay never double-counts; verdicts past 5 casts.
+            {
+                string rbPath = Path.Combine(Path.GetTempPath(), "eql_test_resists.json");
+                try { File.Delete(rbPath); } catch { /* fresh */ }
+                var rp = new CombatParser { SelfName = "Thorrak" };
+                var rb = new ResistBook(new ConfigService(), rp, rbPath);
+                rp.ProcessLine("[Tue Sep 08 20:00:00 2026] You have entered Eye of Veeshan.");
+                rp.ProcessLine("[Tue Sep 08 20:00:01 2026] A greater sphinx scowls at you, ready to attack -- it appears to be quite formidable. (Lvl: 52)");
+                rb.ProcessLine("[Tue Sep 08 20:00:01 2026] A greater sphinx scowls at you, ready to attack -- it appears to be quite formidable. (Lvl: 52)");
+                rp.ProcessLine("[Tue Sep 08 20:00:02 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:05 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:08 2026] Thorrak hit a greater sphinx for 178 points of poison damage by Envenomed Breath.");
+                rp.ProcessLine("[Tue Sep 08 20:00:12 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:15 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:20 2026] Thorrak hit a greater sphinx for 310 points of magic damage by Siphon Life.");
+                var sphinx = rb.ForMob("a greater sphinx");
+                var breath = sphinx.FirstOrDefault(c => c.Spell == "Envenomed Breath");
+                Check("resists: resists and a landing count per mob per spell, article-insensitive",
+                    breath is { Resisted: 4, Landed: 1 } && breath.School == "poison" && breath.Level == 52 && breath.Zone == "Eye of Veeshan");
+                Check("resists: past 5 casts, 80% resisted reads nearly immune; 1 cast is no verdict",
+                    rb.Notable("A greater sphinx") is { Count: 1 } nv && nv[0].Spell == "Envenomed Breath" && nv[0].Severity == "immune"
+                    && ResistBook.Severity(0, 1) == "" && ResistBook.Severity(0.4, 5) == "resistant" && ResistBook.Severity(0.1, 5) == "fine");
+                // Replay of the same lines changes nothing.
+                rp.ProcessLine("[Tue Sep 08 20:00:12 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:08 2026] Thorrak hit a greater sphinx for 178 points of poison damage by Envenomed Breath.");
+                Check("resists: replay is a no-op", rb.ForMob("a greater sphinx").First(c => c.Spell == "Envenomed Breath") is { Resisted: 4, Landed: 1 });
+                // Your own damage on yourself or your pet never counts; a stranger's spell never counts.
+                rp.PetName = "Jobaner";
+                rp.ProcessLine("[Tue Sep 08 20:01:00 2026] Cognitive hit a greater sphinx for 90 points of fire damage by Ignite.");
+                rp.ProcessLine("[Tue Sep 08 20:01:01 2026] Thorrak hit Jobaner for 5 points of magic damage by Siphon Life.");
+                Check("resists: only YOUR casts on mobs are counted",
+                    rb.ForMob("a greater sphinx").All(c => c.Spell != "Ignite") && rb.ForMob("Jobaner").Count == 0);
+                var rb2 = new ResistBook(new ConfigService(), null, rbPath);
+                Check("resists: the book survives a reload", rb2.ForMob("a greater sphinx").First(c => c.Spell == "Envenomed Breath").Resisted == 4);
+                try { File.Delete(rbPath); } catch { /* temp */ }
+            }
 
             // New at this level (8 Sep): unlocks by combo from the library's class levels.
             {

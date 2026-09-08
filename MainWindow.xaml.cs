@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     private LootTracker _loot = null!;
     private SkyQuests _skyQuests = null!;
     private QuestLines _questLines = null!;
+    private ResistBook _resists = null!;
     private SpellLibrary _spellLib = null!;
     private SpellDurations _durations = null!;
     private RaidKillsWindow? _raidsWindow;
@@ -116,6 +117,7 @@ public partial class MainWindow : Window
         _raids.BackfillLoot(_loot.Entries);            // one-time: history -> past kills
         _skyQuests = new SkyQuests(_configService, _loot);
         _questLines = new QuestLines(_configService, _loot);
+        _resists = new ResistBook(_configService, _combat);
         _questLines.StepDone += (q, s) =>
         {
             if (_suppressSct) return; // replay/reparse re-proofs shouldn't flash-spam
@@ -404,6 +406,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
                 _skyQuests.ProcessLine(line);
                 _questLines.ProcessLine(line);
+                _resists.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _session.ProcessLine(line);
@@ -472,6 +475,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line);
                 _skyQuests.ProcessLine(line);
                 _questLines.ProcessLine(line);
+                _resists.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 // Pet names ride the reparse: every "… Master." speech in the
@@ -533,6 +537,7 @@ public partial class MainWindow : Window
         _raids.ResetKills();
         _skyQuests.ResetProgress();
         _questLines.ResetProgress();
+        _resists.ResetAll();
         _spellLib.ResetSeen();
         _durations.ResetAll();
 
@@ -788,6 +793,7 @@ public partial class MainWindow : Window
             _config.Overlay.Opacity,
             _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible,
             _config.Overlay.ProcWatcherVisible, _config.Overlay.MeterSoloMode);
+        _meter.Resists = _resists;
         _meter.SoloModeChanged += solo =>
         {
             _config.Overlay.MeterSoloMode = solo;
@@ -1083,6 +1089,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line);
                 _skyQuests.ProcessLine(line);
                 _questLines.ProcessLine(line);
+                _resists.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _conditions.ProcessLine(line); // live CC state — not fed on catch-up
@@ -1883,7 +1890,7 @@ public partial class MainWindow : Window
         if (_historyWindow is null)
         {
             _historyWindow = new HistoryWindow(_combat, _configService, _loot,
-                () => _config.Overlay.MeterSoloMode);
+                () => _config.Overlay.MeterSoloMode, _resists);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

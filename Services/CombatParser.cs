@@ -722,6 +722,17 @@ public sealed class CombatParser
     /// swap invalidation (persist it).</summary>
     public event Action<string, int>? ClassesChanged;
 
+    /// <summary>One of YOUR spells landed on a mob: (spell base name, target,
+    /// school or "", time) — from a DD line of yours, or the debuff landing
+    /// suffix after your cast. The resist book counts these.</summary>
+    public event Action<string, string, string, DateTime>? OwnSpellLanded;
+
+    /// <summary>"X resisted your Y!" — (spell, target, time).</summary>
+    public event Action<string, string, DateTime>? OwnSpellResisted;
+
+    /// <summary>The damage school the log printed for one of your spells ("" unknown).</summary>
+    public string SchoolOf(string spell) => _spellSchools.GetValueOrDefault(PoolSpell(spell), "");
+
     /// <summary>"You have gained a level! Welcome to level N!" — the new level,
     /// whether or not the combo is known (the level-up card wants it either way).</summary>
     public event Action<int>? LeveledUp;
@@ -1277,6 +1288,7 @@ public sealed class CombatParser
                      && body.EndsWith(pe.Suffix, StringComparison.Ordinal))
             {
                 NoteDotLanding(pe.Spell, body[..^pe.Suffix.Length].Trim(), time);
+                OwnSpellLanded?.Invoke(PoolSpell(pe.Spell), body[..^pe.Suffix.Length].Trim(), "", time);
                 // The fight timeline keeps the landing too: amount = the known
                 // duration, so the drill-down can draw "the slow was UP here".
                 Note(time, SpellDurations.BaseName(pe.Spell),
@@ -1302,6 +1314,12 @@ public sealed class CombatParser
             // what you took was cold" from the fight's own words, no guessing.
             _spellSchools[pooled] = m.Groups["school"].Value.ToLowerInvariant();
             AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, pooled, Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true);
+            if (OwnSpellLanded is not null)
+            {
+                string ddTgt = Normalize(m.Groups["tgt"].Value);
+                if (IsSelf(Normalize(m.Groups["att"].Value)) && !IsSelf(ddTgt) && !IsPet(ddTgt))
+                    OwnSpellLanded.Invoke(pooled, m.Groups["tgt"].Value, m.Groups["school"].Value.ToLowerInvariant(), time);
+            }
             return;
         }
 
@@ -1382,7 +1400,12 @@ public sealed class CombatParser
         }
 
         m = ResistOtherRx.Match(body);
-        if (m.Success) { AddOutgoingResist(m.Groups["spell"].Value, time); return; }
+        if (m.Success)
+        {
+            AddOutgoingResist(m.Groups["spell"].Value, time);
+            OwnSpellResisted?.Invoke(PoolSpell(m.Groups["spell"].Value), m.Groups["tgt"].Value, time);
+            return;
+        }
 
         m = SkillUpRx.Match(body);
         if (m.Success)
