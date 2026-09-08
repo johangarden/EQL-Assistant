@@ -137,6 +137,11 @@ public sealed class OverlayConfig
     /// (<see cref="Services.GameFocus"/>).</summary>
     public bool HideWhenGameAway { get; set; }
 
+    /// <summary>The con card (8 Sep): /con a mob and what it shrugs off, from
+    /// your resist history, appears at the top of the screen for a moment.
+    /// Only for mobs the book has met past its sample floor.</summary>
+    public bool ConCardVisible { get; set; } = true;
+
     /// <summary>Whether the Sky quest helper panel is enabled (materializes
     /// only when a dropper is sighted or quests are tracked).</summary>
     public bool SkyHelperVisible { get; set; } = true;

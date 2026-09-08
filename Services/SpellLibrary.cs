@@ -51,6 +51,31 @@ public sealed class SpellLibrary
     private bool _seenDirty;
 
     public IReadOnlyList<Spell> Spells { get; }
+
+    private static readonly System.Text.RegularExpressions.Regex ClassLevelRx =
+        new(@"(?<cls>[A-Z]{2,3}) (?<lvl>\d+)", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>The spells that unlock at exactly <paramref name="level"/>
+    /// for any class in <paramref name="classes"/> (empty = every class),
+    /// from the "RNG 28 · DRU 10" class strings. Owner pick, 8 Sep — the
+    /// level-up card ("New at this level").</summary>
+    public IReadOnlyList<(Spell Spell, string Cls)> UnlocksAt(int level, IReadOnlyCollection<string> classes)
+    {
+        var want = new HashSet<string>(classes, StringComparer.OrdinalIgnoreCase);
+        var rows = new List<(Spell, string)>();
+        foreach (var s in Spells)
+        {
+            if (s.Classes.Length == 0) continue;
+            foreach (System.Text.RegularExpressions.Match m in ClassLevelRx.Matches(s.Classes))
+            {
+                if (int.Parse(m.Groups["lvl"].Value) != level) continue;
+                string cls = m.Groups["cls"].Value;
+                if (want.Count > 0 && !want.Contains(cls)) continue;
+                rows.Add((s, cls));
+            }
+        }
+        return rows;
+    }
     public int SeenCount => _seen.Count;
 
     // ---- library corrections ---------------------------------------------------

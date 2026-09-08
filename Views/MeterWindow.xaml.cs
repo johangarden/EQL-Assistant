@@ -48,6 +48,9 @@ public partial class MeterWindow : Window
 
     private const int MaxSoloRows = 10; // a dot build runs more lanes than a group does players
 
+    /// <summary>The resist book, so the meter's own Fight history carries the Resists view.</summary>
+    public ResistBook? Resists { get; set; }
+
     /// <summary>Raised when the SOLO/GROUP button flips, so the choice persists.</summary>
     public event Action<bool>? SoloModeChanged;
 
@@ -215,7 +218,7 @@ public partial class MeterWindow : Window
     {
         if (_historyWindow is null)
         {
-            _historyWindow = new HistoryWindow(_parser, _config, _loot, () => _soloMode);
+            _historyWindow = new HistoryWindow(_parser, _config, _loot, () => _soloMode, Resists);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

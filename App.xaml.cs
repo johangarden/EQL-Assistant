@@ -286,6 +286,49 @@ public partial class App : Application
                 meter.Close();
             }
 
+            // The Resists view renders inside Fight history.
+            {
+                string rbPath2 = Path.Combine(Path.GetTempPath(), "eql_test_resists_view.json");
+                try { File.Delete(rbPath2); } catch { /* fresh */ }
+                var rpv = new CombatParser { SelfName = "Thorrak" };
+                var rbv = new ResistBook(new ConfigService(), rpv, rbPath2);
+                rpv.ProcessLine("[Tue Sep 08 20:00:02 2026] A greater sphinx resisted your Envenomed Breath!");
+                var hw = new Views.HistoryWindow(rpv, new ConfigService(), new LootTracker(new ConfigService()), null, rbv);
+                hw.Show();
+                hw.ShowView("resists");
+                hw.UpdateLayout();
+                hw.ShowView("fights");
+                hw.Close();
+                try { File.Delete(rbPath2); } catch { /* temp */ }
+            }
+
+            // The con card renders verdicts and the honest empty line.
+            {
+                var cc = new Views.ConCardWindow { Left = -9000, Top = -9000 };
+                cc.Show("a greater sphinx", 52, 21, new[]
+                {
+                    new ResistBook.Verdict("a greater sphinx", "Envenomed Breath", "poison", 0.62, 21, "immune"),
+                    new ResistBook.Verdict("a greater sphinx", "Ignite", "fire", 0.35, 8, "resistant"),
+                });
+                cc.UpdateLayout();
+                if (cc.RowCount != 2 || cc.Mob != "a greater sphinx") throw new Exception("con card: expected 2 verdict rows");
+                cc.Show("a rat", 1, 6, Array.Empty<ResistBook.Verdict>());
+                if (cc.RowCount != 0) throw new Exception("con card: the empty state renders no verdict rows");
+                cc.Close();
+            }
+
+            // The level-up card renders and reports its rows.
+            {
+                var libC = new SpellLibrary(new ConfigService());
+                var card = new Views.LevelUpWindow { Left = -9000, Top = -9000 };
+                card.Show(46, new[] { "SHD", "SHM", "NEC" }, libC.UnlocksAt(46, new[] { "SHD", "SHM", "NEC" }));
+                card.UpdateLayout();
+                if (card.RowCount != 5) throw new Exception($"level-up card: expected 5 rows, got {card.RowCount}");
+                card.Show(46, Array.Empty<string>(), Array.Empty<(SpellLibrary.Spell, string)>());
+                if (card.RowCount != 0) throw new Exception("level-up card: the empty state must render zero rows");
+                card.Close();
+            }
+
             // Pin above game (7 Sep): the title-row pin flips Topmost and
             // BringToFront's bump must not knock it off again.
             var pinHost = new Window { Width = 300, Height = 200, ShowInTaskbar = false, ShowActivated = false };
@@ -2243,6 +2286,164 @@ public partial class App : Application
 
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
+
+            // Attack rounds (8 Sep): the annotation rides every melee event; the
+            // avoid word rides every miss; RoundStats reads them honestly.
+            {
+                var ap = new CombatParser { SelfName = "Thorrak" };
+                string RoundTs(int s) => $"[Tue Sep 08 22:00:{s:00} 2026]";
+                ap.ProcessLine($"{RoundTs(0)} Thorrak slashes a wan ghoul knight for 120 points of damage.");
+                ap.ProcessLine($"{RoundTs(0)} Thorrak slashes a wan ghoul knight for 130 points of damage. (Critical)");
+                ap.ProcessLine($"{RoundTs(1)} Thorrak slashes a wan ghoul knight for 110 points of damage. (Riposte)");
+                ap.ProcessLine($"{RoundTs(2)} Thorrak slashes a wan ghoul knight for 115 points of damage. (Flurry)");
+                ap.ProcessLine($"{RoundTs(2)} Thorrak slashes a wan ghoul knight for 100 points of damage.");
+                ap.ProcessLine($"{RoundTs(3)} A wan ghoul knight tries to hit YOU, but YOU riposte!");
+                ap.ProcessLine($"{RoundTs(3)} A wan ghoul knight tries to hit YOU, but YOU dodge!");
+                ap.ProcessLine($"{RoundTs(4)} A wan ghoul knight tries to hit YOU, but misses!");
+                ap.ProcessLine($"{RoundTs(4)} A wan ghoul knight hits YOU for 90 points of damage. (Riposte)");
+                ap.ProcessLine($"{RoundTs(5)} A wan ghoul knight hits YOU for 70 points of damage. (Rampage)");
+                for (int i = 6; i < 14; i++) ap.ProcessLine($"{RoundTs(i)} Thorrak slashes a wan ghoul knight for 100 points of damage.");
+                ap.ProcessLine($"{RoundTs(14)} Thorrak slashes a wan ghoul knight for 300 points of damage. (Slay Undead)");
+                ap.ProcessLine($"{RoundTs(15)} You have slain a wan ghoul knight!");
+                ap.Tick(new DateTime(2026, 9, 8, 22, 5, 0));
+                var arec = ap.History.FirstOrDefault();
+                Check("rounds: the fight recorded with tagged events",
+                    arec is not null && arec.Events.Any(e => e.Tag == "riposte" && e.Stream == CombatParser.FightStream.SelfOut)
+                    && arec.Events.Any(e => e.Tag == "riposte" && e.Miss && e.Stream == CombatParser.FightStream.SelfIn)
+                    && arec.Events.Any(e => e.Tag == "dodge" && e.Miss)
+                    && arec.Events.Any(e => e.Tag == "miss" && e.Miss)
+                    && arec.Events.Any(e => e.Tag == "rampage" && !e.Miss && e.Stream == CombatParser.FightStream.SelfIn)
+                    && arec.Events.Any(e => e.Tag == "slay undead")
+                    && arec.Events.First(e => e.Crit && e.Stream == CombatParser.FightStream.SelfOut).Tag == "");
+                if (arec is not null)
+                {
+                    var rs = RoundStats.Compute(arec);
+                    Check("rounds: defence counts — 5 swings at you: 1 riposted, 1 dodged, 1 missed, 1 mob riposte, 1 rampage",
+                        rs.SwingsOnYou == 5 && rs.YouRiposted == 1 && rs.YouDodged == 1 && rs.MissedYou == 1
+                        && rs.MobRipostesTaken == 1 && rs.MobRiposteDamage == 90 && rs.RampagesTaken == 1);
+                    Check("rounds: offence counts — 1 riposte swing for 110, 1 flurry, 1 Slay Undead",
+                        rs.YourRipostes == 1 && rs.YourRiposteHits == 1 && rs.YourRiposteDamage == 110 && rs.Flurries == 1 && rs.SlayUndead == 1);
+                    var slash = rs.Skills.FirstOrDefault(s => s.Ability == "slash");
+                    Check("rounds: multi-swing rounds — plain slashes cluster by second; ripostes and flurries don't count",
+                        slash is not null && slash.Rounds == 11 && slash.Swings == 12 && slash.Multi2 == 1 && slash.Multi3 == 0);
+                    Check("rounds: the card's rows carry denominators and the dual-wield caveat",
+                        Views.TimelineView.RoundsOffenceRows(rs).Any(r => r.Tail.Contains("11 rounds"))
+                        && Views.TimelineView.RoundsOffenceRows(rs).Any(r => r.Tail.Contains("dual wield"))
+                        && Views.TimelineView.RoundsDefenceRows(rs).First().Val == "5");
+                }
+                // A kept fight from before the tag reads as untagged, never as a crash.
+                var legacyEv = System.Text.Json.JsonSerializer.Deserialize<CombatParser.FightEvent>("{\"t\":1,\"a\":\"slash\",\"v\":10,\"s\":0}");
+                Check("rounds: pre-tag fight events load with an empty tag", legacyEv is not null && legacyEv.Tag == "");
+            }
+
+            // Per-mob resist table (8 Sep): landings and resists from the parser's
+            // own lines, keyed so replay never double-counts; verdicts past 5 casts.
+            {
+                string rbPath = Path.Combine(Path.GetTempPath(), "eql_test_resists.json");
+                try { File.Delete(rbPath); } catch { /* fresh */ }
+                var rp = new CombatParser { SelfName = "Thorrak" };
+                var rb = new ResistBook(new ConfigService(), rp, rbPath);
+                rp.ProcessLine("[Tue Sep 08 20:00:00 2026] You have entered Eye of Veeshan.");
+                rp.ProcessLine("[Tue Sep 08 20:00:01 2026] A greater sphinx scowls at you, ready to attack -- it appears to be quite formidable. (Lvl: 52)");
+                rb.ProcessLine("[Tue Sep 08 20:00:01 2026] A greater sphinx scowls at you, ready to attack -- it appears to be quite formidable. (Lvl: 52)");
+                rp.ProcessLine("[Tue Sep 08 20:00:02 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:05 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:08 2026] Thorrak hit a greater sphinx for 178 points of poison damage by Envenomed Breath.");
+                rp.ProcessLine("[Tue Sep 08 20:00:12 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:15 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:20 2026] Thorrak hit a greater sphinx for 310 points of magic damage by Siphon Life.");
+                var sphinx = rb.ForMob("a greater sphinx");
+                var breath = sphinx.FirstOrDefault(c => c.Spell == "Envenomed Breath");
+                Check("resists: resists and a landing count per mob per spell, article-insensitive",
+                    breath is { Resisted: 4, Landed: 1 } && breath.School == "poison" && breath.Level == 52 && breath.Zone == "Eye of Veeshan");
+                Check("resists: past 5 casts, 80% resisted reads nearly immune; 1 cast is no verdict",
+                    rb.Notable("A greater sphinx") is { Count: 1 } nv && nv[0].Spell == "Envenomed Breath" && nv[0].Severity == "immune"
+                    && ResistBook.Severity(0, 1) == "" && ResistBook.Severity(0.4, 5) == "resistant" && ResistBook.Severity(0.1, 5) == "fine");
+                // Replay of the same lines changes nothing.
+                rp.ProcessLine("[Tue Sep 08 20:00:12 2026] A greater sphinx resisted your Envenomed Breath!");
+                rp.ProcessLine("[Tue Sep 08 20:00:08 2026] Thorrak hit a greater sphinx for 178 points of poison damage by Envenomed Breath.");
+                Check("resists: replay is a no-op", rb.ForMob("a greater sphinx").First(c => c.Spell == "Envenomed Breath") is { Resisted: 4, Landed: 1 });
+                // Your own damage on yourself or your pet never counts; a stranger's spell never counts.
+                rp.PetName = "Jobaner";
+                rp.ProcessLine("[Tue Sep 08 20:01:00 2026] Cognitive hit a greater sphinx for 90 points of fire damage by Ignite.");
+                rp.ProcessLine("[Tue Sep 08 20:01:01 2026] Thorrak hit Jobaner for 5 points of magic damage by Siphon Life.");
+                Check("resists: only YOUR casts on mobs are counted",
+                    rb.ForMob("a greater sphinx").All(c => c.Spell != "Ignite") && rb.ForMob("Jobaner").Count == 0);
+                string connedMob = ""; int connedLvl = 0;
+                rb.Conned += (mm, ll) => { connedMob = mm; connedLvl = ll; };
+                rb.ProcessLine("[Tue Sep 08 20:02:00 2026] A greater sphinx scowls at you, ready to attack -- it appears to be quite formidable. (Lvl: 52)");
+                Check("con card: every /con announces the mob and level, even one already known",
+                    connedMob == "a greater sphinx" && connedLvl == 52 && rb.CastsOn("A greater sphinx") == 6);
+                var rb2 = new ResistBook(new ConfigService(), null, rbPath);
+                Check("resists: the book survives a reload", rb2.ForMob("a greater sphinx").First(c => c.Spell == "Envenomed Breath").Resisted == 4);
+                try { File.Delete(rbPath); } catch { /* temp */ }
+            }
+
+            // New at this level (8 Sep): unlocks by combo from the library's class levels.
+            {
+                var libL = new SpellLibrary(new ConfigService());
+                var shd46 = libL.UnlocksAt(46, new[] { "SHD" });
+                var combo46 = libL.UnlocksAt(46, new[] { "SHD", "SHM", "NEC" });
+                var all46 = libL.UnlocksAt(46, Array.Empty<string>());
+                Check("levelup: SHD unlocks Voice of Shadows at 46 and nothing at 47 reads as 46",
+                    shd46.Count == 1 && shd46[0].Spell.Name == "Voice of Shadows" && shd46[0].Cls == "SHD"
+                    && libL.UnlocksAt(47, new[] { "SHD" }).All(u => u.Spell.Name != "Voice of Shadows"));
+                Check("levelup: a three-class combo pools every class's unlocks",
+                    combo46.Count == 5 && combo46.Any(u => u.Spell.Name == "Paralyzing Earth" && u.Cls == "NEC")
+                    && combo46.Any(u => u.Spell.Name == "Strength" && u.Cls == "SHM"));
+                Check("levelup: no combo = every class, never nothing", all46.Count > combo46.Count);
+                var lp = new CombatParser();
+                int dinged = 0;
+                lp.LeveledUp += l => dinged = l;
+                lp.ProcessLine("[Tue Sep 08 21:00:00 2026] You have gained a level! Welcome to level 46!");
+                Check("levelup: the ding fires its own event even with the combo unknown", dinged == 46 && lp.CurrentClasses.Length == 0);
+            }
+
+            // Diagnostics bundle (8 Sep): chat and tells go, everything the
+            // parser reads stays; the slice is the last N minutes of the FILE.
+            Check("diag: tells, channels, says and shouts between players are chat",
+                Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Gorby tells General:1, 'why when i swapp loadout'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Cognitive tells you, 'inc'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You told Cognitive, 'ok'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You tell General:1, 'hi'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Sycopata tells the group, 'pull'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You say, 'I still seek guidance'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Bob says, 'lol'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Bob shouts, 'train'"));
+            Check("diag: NPC speech, combat, loot and casts are not chat",
+                !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Klok Lagnoz says, 'Welcome to my shop, Baskit.'")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] The Kerran Sha`rr says, 'Something is wrrrong.'")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] a rat says, 'squeak'")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] A zol ghoul knight hits YOU for 42 points of damage.")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] --You have looted Dark Reaver from a ghoul cavalier's corpse.--")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You begin casting Drain Soul VI.")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You assume a defensive stance."));
+            {
+                var diagLines = new List<string>
+                {
+                    "[Tue Sep 08 19:00:00 2026] You have entered Lower Guk.",
+                    "[Tue Sep 08 19:40:00 2026] Bob tells you, 'old chat'",
+                    "[Tue Sep 08 19:50:00 2026] A froglok hits YOU for 10 points of damage.",
+                    "[Tue Sep 08 19:55:00 2026] Bob tells you, 'recent chat'",
+                    "[Tue Sep 08 20:00:00 2026] You have slain a froglok!",
+                };
+                var slice = Diagnostics.Slice(diagLines, 15);
+                Check("diag: the slice keeps the last 15 minutes of the file minus chat, and says so",
+                    slice.Count == 3 && slice[0].StartsWith("# last 15 min") && slice[0].Contains("1 chat lines removed")
+                    && slice[1].Contains("hits YOU") && slice[2].Contains("slain"));
+                string zipPath = Path.Combine(Path.GetTempPath(), "eql_test_diag.zip");
+                string fakeLog = Path.Combine(Path.GetTempPath(), "eqlog_Test_paineel.txt");
+                File.WriteAllLines(fakeLog, diagLines);
+                var dcs = new ConfigService();
+                string summary = Diagnostics.BuildBundle(zipPath, dcs, fakeLog, 15, Diagnostics.About(dcs, new Models.AppConfig(), fakeLog, "selftest"));
+                using (var z = System.IO.Compression.ZipFile.OpenRead(zipPath))
+                {
+                    var names = z.Entries.Select(x => x.FullName).ToList();
+                    Check("diag: the bundle carries about.txt and the scrubbed game-log slice",
+                        names.Contains("about.txt") && names.Contains("game-log-last-15min.txt") && summary.Contains("chat removed"));
+                }
+                try { File.Delete(zipPath); File.Delete(fakeLog); } catch { /* temp */ }
+            }
             Check("voices: an Online natural voice is flagged, an offline one is not",
                 TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny Online (Natural) - English (United States)")
                 && !TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny (Natural) - English (United States)")

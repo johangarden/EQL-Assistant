@@ -194,6 +194,11 @@ public sealed class CombatParser
     /// amount (0 for misses/resists) and flags. JSON names are single letters —
     /// kept fights persist thousands of these.
     /// </summary>
+    /// <param name="Tag">The log's own annotation on a melee line, lower-case:
+    /// "riposte", "flurry", "rampage", "slay undead", "finishing blow",
+    /// "strikethrough" (combined as printed: "riposte flurry"); on a miss the
+    /// avoid word — "riposte" / "dodge" / "parry" / "block" / "miss". "" on
+    /// everything else and on fights kept before 8 Sep.</param>
     public sealed record FightEvent(
         [property: JsonPropertyName("t")] double T,
         [property: JsonPropertyName("a")] string Ability,
@@ -202,7 +207,8 @@ public sealed class CombatParser
         [property: JsonPropertyName("c")] bool Crit = false,
         [property: JsonPropertyName("m")] bool Miss = false,
         [property: JsonPropertyName("r")] bool Resist = false,
-        [property: JsonPropertyName("d")] bool Dot = false);
+        [property: JsonPropertyName("d")] bool Dot = false,
+        [property: JsonPropertyName("g")] string Tag = "");
 
     /// <summary>A finished fight, frozen for the history/compare window.</summary>
     public sealed class FightRecord
@@ -672,7 +678,7 @@ public sealed class CombatParser
     public const int MaxFightEvents = 4000;
 
     private readonly record struct PendingEvent(DateTime When, string Ability, double Amount,
-        FightStream Stream, bool Crit, bool Miss, bool Resist, bool Dot);
+        FightStream Stream, bool Crit, bool Miss, bool Resist, bool Dot, string Tag = "");
     private readonly List<PendingEvent> _events = new();
     private bool _eventsTruncated;
 
@@ -682,10 +688,42 @@ public sealed class CombatParser
 
     /// <summary>Record a timeline event for the current fight (drops past the cap).</summary>
     private void Note(DateTime time, string ability, double amount, FightStream stream,
-        bool crit = false, bool miss = false, bool resist = false, bool dot = false)
+        bool crit = false, bool miss = false, bool resist = false, bool dot = false, string tag = "")
     {
         if (_events.Count >= MaxFightEvents) { _eventsTruncated = true; return; }
-        _events.Add(new PendingEvent(time, ability, amount, stream, crit, miss, resist, dot));
+        _events.Add(new PendingEvent(time, ability, amount, stream, crit, miss, resist, dot, tag));
+    }
+
+    // The trailing "(Riposte Critical)" of a melee line, lower-case, minus the
+    // crit word (Crit is its own flag): "riposte". Nothing → "".
+    private static readonly Regex AnnotationRx = new(@"\((?<a>[A-Za-z ]+)\)\s*$", RegexOptions.Compiled);
+    private static string Annotation(string body)
+    {
+        var m = AnnotationRx.Match(body);
+        if (!m.Success) return "";
+        var words = m.Groups["a"].Value.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w != "critical").ToList();
+        return string.Join(" ", words);
+    }
+
+    // The avoid word of a miss line: "but YOU riposte!" → "riposte", "but
+    // misses!" → "miss", "but a rat dodges!" → "dodge"; "(Riposte)"-tagged
+    // misses (your riposte that missed) keep the annotation instead.
+    private static readonly Regex AvoidRx = new(@", but (?:.+? )?(?<how>riposte|ripostes|dodge|dodges|parry|parries|block|blocks|misses|miss)!", RegexOptions.Compiled);
+    private static string AvoidWord(string body)
+    {
+        string ann = Annotation(body);
+        if (ann.Length > 0) return ann;
+        var m = AvoidRx.Match(body);
+        if (!m.Success) return "";
+        return m.Groups["how"].Value switch
+        {
+            "riposte" or "ripostes" => "riposte",
+            "dodge" or "dodges" => "dodge",
+            "parry" or "parries" => "parry",
+            "block" or "blocks" => "block",
+            _ => "miss",
+        };
     }
 
     // ---- fight context ---------------------------------------------------------
@@ -721,6 +759,21 @@ public sealed class CombatParser
     /// <summary>Raised when the class picture changes — /who, level-up, or a
     /// swap invalidation (persist it).</summary>
     public event Action<string, int>? ClassesChanged;
+
+    /// <summary>One of YOUR spells landed on a mob: (spell base name, target,
+    /// school or "", time) — from a DD line of yours, or the debuff landing
+    /// suffix after your cast. The resist book counts these.</summary>
+    public event Action<string, string, string, DateTime>? OwnSpellLanded;
+
+    /// <summary>"X resisted your Y!" — (spell, target, time).</summary>
+    public event Action<string, string, DateTime>? OwnSpellResisted;
+
+    /// <summary>The damage school the log printed for one of your spells ("" unknown).</summary>
+    public string SchoolOf(string spell) => _spellSchools.GetValueOrDefault(PoolSpell(spell), "");
+
+    /// <summary>"You have gained a level! Welcome to level N!" — the new level,
+    /// whether or not the combo is known (the level-up card wants it either way).</summary>
+    public event Action<int>? LeveledUp;
 
     /// <summary>Raised when a LOADOUT SWAP was detected (grant burst or
     /// spellbook refresh with no level-up to explain it) — the cue to remind
@@ -1125,10 +1178,15 @@ public sealed class CombatParser
         if (body.StartsWith("You have gained a level!", StringComparison.Ordinal))
         {
             _swapSuspectAt = DateTime.MinValue; // the burst was the level-up's
-            if (LevelUpRx.Match(body) is { Success: true } lvl && CurrentClasses.Length > 0)
+            if (LevelUpRx.Match(body) is { Success: true } lvl)
             {
-                CurrentLevel = (int)Amount(lvl, "lvl");
-                ClassesChanged?.Invoke(CurrentClasses, CurrentLevel);
+                int newLevel = (int)Amount(lvl, "lvl");
+                if (CurrentClasses.Length > 0)
+                {
+                    CurrentLevel = newLevel;
+                    ClassesChanged?.Invoke(CurrentClasses, CurrentLevel);
+                }
+                LeveledUp?.Invoke(newLevel);
             }
             return;
         }
@@ -1268,6 +1326,7 @@ public sealed class CombatParser
                      && body.EndsWith(pe.Suffix, StringComparison.Ordinal))
             {
                 NoteDotLanding(pe.Spell, body[..^pe.Suffix.Length].Trim(), time);
+                OwnSpellLanded?.Invoke(PoolSpell(pe.Spell), body[..^pe.Suffix.Length].Trim(), "", time);
                 // The fight timeline keeps the landing too: amount = the known
                 // duration, so the drill-down can draw "the slow was UP here".
                 Note(time, SpellDurations.BaseName(pe.Spell),
@@ -1293,6 +1352,12 @@ public sealed class CombatParser
             // what you took was cold" from the fight's own words, no guessing.
             _spellSchools[pooled] = m.Groups["school"].Value.ToLowerInvariant();
             AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, pooled, Amount(m, "dmg"), time, SctFlavor.Spell, crit, procCandidate: true);
+            if (OwnSpellLanded is not null)
+            {
+                string ddTgt = Normalize(m.Groups["tgt"].Value);
+                if (IsSelf(Normalize(m.Groups["att"].Value)) && !IsSelf(ddTgt) && !IsPet(ddTgt))
+                    OwnSpellLanded.Invoke(pooled, m.Groups["tgt"].Value, m.Groups["school"].Value.ToLowerInvariant(), time);
+            }
             return;
         }
 
@@ -1335,7 +1400,7 @@ public sealed class CombatParser
         {
             string verb = m.Groups["verb"].Value;
             string ability = VerbBase.TryGetValue(verb, out var baseForm) ? baseForm : verb.ToLowerInvariant();
-            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, ability, Amount(m, "dmg"), time, SctFlavor.Melee, crit);
+            AddDamage(m.Groups["att"].Value, m.Groups["tgt"].Value, ability, Amount(m, "dmg"), time, SctFlavor.Melee, crit, tag: Annotation(body));
             return;
         }
 
@@ -1356,7 +1421,7 @@ public sealed class CombatParser
         {
             string verb = m.Groups["verb"].Value;
             string ability = VerbBase.TryGetValue(verb, out var baseForm) ? baseForm : verb.ToLowerInvariant();
-            AddMiss(m.Groups["att"].Value, m.Groups["tgt"].Value, ability, time);
+            AddMiss(m.Groups["att"].Value, m.Groups["tgt"].Value, ability, time, AvoidWord(body));
             return;
         }
 
@@ -1373,7 +1438,12 @@ public sealed class CombatParser
         }
 
         m = ResistOtherRx.Match(body);
-        if (m.Success) { AddOutgoingResist(m.Groups["spell"].Value, time); return; }
+        if (m.Success)
+        {
+            AddOutgoingResist(m.Groups["spell"].Value, time);
+            OwnSpellResisted?.Invoke(PoolSpell(m.Groups["spell"].Value), m.Groups["tgt"].Value, time);
+            return;
+        }
 
         m = SkillUpRx.Match(body);
         if (m.Success)
@@ -1485,7 +1555,7 @@ public sealed class CombatParser
             IncomingPetAbilities = GetIncomingAbilityRows(pet: true),
             Events = _events
                 .Select(e => new FightEvent(Math.Max(0, (e.When - _start).TotalSeconds),
-                    e.Ability, e.Amount, e.Stream, e.Crit, e.Miss, e.Resist, e.Dot))
+                    e.Ability, e.Amount, e.Stream, e.Crit, e.Miss, e.Resist, e.Dot, e.Tag))
                 .ToList(),
             EventsTruncated = _eventsTruncated,
             Schools = new Dictionary<string, string>(_spellSchools, StringComparer.OrdinalIgnoreCase),
@@ -1659,7 +1729,7 @@ public sealed class CombatParser
 
     private void AddDamage(string attacker, string target, string ability, double amount, DateTime time,
         SctFlavor flavor = SctFlavor.Melee, bool crit = false, bool procCandidate = false,
-        bool dot = false)
+        bool dot = false, string tag = "")
     {
         attacker = Normalize(attacker);
         target = Normalize(target);
@@ -1675,7 +1745,7 @@ public sealed class CombatParser
         {
             _incomingSelf += amount;
             StatIn(_incomingSelfAbility, ability).Land(amount, crit);
-            Note(time, ability, amount, FightStream.SelfIn, crit, dot: dot);
+            Note(time, ability, amount, FightStream.SelfIn, crit, dot: dot, tag: tag);
             RecapNote(time, attacker, ability, amount, heal: false, crit, flavor: dot ? SctFlavor.Spell : flavor);
             SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, flavor, crit));
         }
@@ -1683,7 +1753,7 @@ public sealed class CombatParser
         {
             _incomingPet += amount;
             StatIn(_incomingPetAbility, ability).Land(amount, crit);
-            Note(time, ability, amount, FightStream.PetIn, crit, dot: dot);
+            Note(time, ability, amount, FightStream.PetIn, crit, dot: dot, tag: tag);
             SctEvent?.Invoke(new SctHit(SctKind.IncomingPet, ability, amount, flavor, crit));
         }
 
@@ -1695,12 +1765,12 @@ public sealed class CombatParser
             if (crit) skill.Crits++;
             if (amount > skill.Max) skill.Max = amount;
             if (procCandidate) NoteProc(ability, amount, heal: false, time, crit);
-            Note(time, ability, amount, FightStream.SelfOut, crit, dot: dot);
+            Note(time, ability, amount, FightStream.SelfOut, crit, dot: dot, tag: tag);
             SctEvent?.Invoke(new SctHit(SctKind.OutgoingSelf, ability, amount, flavor, crit));
         }
         else if (IsPet(attacker))
         {
-            Note(time, ability, amount, FightStream.PetOut, crit, dot: dot);
+            Note(time, ability, amount, FightStream.PetOut, crit, dot: dot, tag: tag);
             SctEvent?.Invoke(new SctHit(SctKind.OutgoingPet, ability, amount, flavor, crit));
         }
     }
@@ -1717,7 +1787,7 @@ public sealed class CombatParser
     }
 
     /// <summary>An avoided melee attempt (miss/dodge/parry/riposte/block).</summary>
-    private void AddMiss(string attacker, string target, string ability, DateTime time)
+    private void AddMiss(string attacker, string target, string ability, DateTime time, string tag = "")
     {
         attacker = Normalize(attacker);
         target = Normalize(target);
@@ -1734,11 +1804,11 @@ public sealed class CombatParser
         if (IsSelf(attacker))
         {
             SessionSkill(ability).Misses++;
-            Note(time, ability, 0, FightStream.SelfOut, miss: true);
+            Note(time, ability, 0, FightStream.SelfOut, miss: true, tag: tag);
         }
-        else if (IsPet(attacker)) Note(time, ability, 0, FightStream.PetOut, miss: true);
-        if (IsSelf(target)) Note(time, ability, 0, FightStream.SelfIn, miss: true);
-        else if (IsPet(target)) Note(time, ability, 0, FightStream.PetIn, miss: true);
+        else if (IsPet(attacker)) Note(time, ability, 0, FightStream.PetOut, miss: true, tag: tag);
+        if (IsSelf(target)) Note(time, ability, 0, FightStream.SelfIn, miss: true, tag: tag);
+        else if (IsPet(target)) Note(time, ability, 0, FightStream.PetIn, miss: true, tag: tag);
     }
 
     /// <summary>One of YOUR spells got resisted.</summary>

@@ -33,6 +33,18 @@
                    Text="A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 50). Select one for details — the breakdown, the timeline and ⚡ Analyse. Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's."/>
 
         <Grid>
+        <!-- RESISTS (owner pick, 8 Sep): per mob, per spell, landed vs resisted
+             from the log's own resist and landing lines. -->
+        <DockPanel x:Name="ResistsView" Visibility="Collapsed">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <StackPanel x:Name="ResistZoneHost" DockPanel.Dock="Right" Orientation="Horizontal" Margin="10,0,0,0"/>
+                <TextBox x:Name="ResistSearch" TextChanged="ResistSearch_Changed"
+                         ToolTip="Filter by mob or spell name"/>
+            </DockPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="ResistsHost"/>
+            </ScrollViewer>
+        </DockPanel>
         <DockPanel x:Name="ParsesView" Visibility="Collapsed">
             <TextBox x:Name="ParseSearch" DockPanel.Dock="Top" Margin="0,0,0,8"
                      TextChanged="ParseSearch_Changed"

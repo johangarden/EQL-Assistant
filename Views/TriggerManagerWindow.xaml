@@ -503,6 +503,10 @@
                                       Margin="0,6,0,0"/>
                             <TextBlock Style="{StaticResource Hint}" Margin="24,2,0,0"
                                        Text="The game is recognised by the followed log's install folder — if the log lives somewhere unusual the overlay simply stays visible."/>
+                            <CheckBox x:Name="ConCardCheck" Content="Con card — /con a mob and see what it shrugs off (from your own resist history)"
+                                      Margin="0,6,0,0"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="24,2,0,0"
+                                       Text="Appears only for mobs you have cast on at least 5 times; Fight history → Resists holds the full table."/>
 
 
                         </StackPanel>
@@ -590,6 +594,18 @@
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="Everything the app knows — loot history, raid kills + drops, Sky progress, seen spells, learned durations — is DERIVED from your log file and stored as JSON in the config folder. These tools rebuild that data from the source."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Diagnostics bundle" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Something odd happened? Save one zip with the app's own log, your config and window placements, and the last minutes of the game log with chat and tells removed (combat, spells, loot and NPC speech stay) — then attach it in the chat. Nothing is sent anywhere by itself."/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <TextBlock Text="Game log slice:" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <StackPanel x:Name="DiagMinutesHost" Orientation="Horizontal" VerticalAlignment="Center"/>
+                                <Button Content="Save diagnostics bundle…" Width="190" Margin="10,0,0,0"
+                                        Style="{StaticResource PrimaryBtn}" Click="SaveDiagnostics_Click"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DiagResult" Style="{StaticResource Hint}" Margin="0,6,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Reparse entire log file" Style="{StaticResource SectionTitle}"/>

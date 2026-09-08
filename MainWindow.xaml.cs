@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     private LootTracker _loot = null!;
     private SkyQuests _skyQuests = null!;
     private QuestLines _questLines = null!;
+    private ResistBook _resists = null!;
     private SpellLibrary _spellLib = null!;
     private SpellDurations _durations = null!;
     private RaidKillsWindow? _raidsWindow;
@@ -116,6 +117,12 @@ public partial class MainWindow : Window
         _raids.BackfillLoot(_loot.Entries);            // one-time: history -> past kills
         _skyQuests = new SkyQuests(_configService, _loot);
         _questLines = new QuestLines(_configService, _loot);
+        _resists = new ResistBook(_configService, _combat);
+        _resists.Conned += (mob, lvl) =>
+        {
+            if (_suppressSct || _hidden || !_config.Overlay.ConCardVisible) return; // replays, hidden overlay, switched off
+            ShowConCard(mob, lvl);
+        };
         _questLines.StepDone += (q, s) =>
         {
             if (_suppressSct) return; // replay/reparse re-proofs shouldn't flash-spam
@@ -157,6 +164,11 @@ public partial class MainWindow : Window
         _combat.LoadoutLookup = () => _config.ActiveLoadout;
         _combat.StanceChanged += s => _configService.SaveLastStance(_combat.SelfName, s);
         _combat.ClassesChanged += (c, l) => _configService.SaveLastClasses(_combat.SelfName, c, l);
+        _combat.LeveledUp += lvl =>
+        {
+            if (_suppressSct) return; // catch-up/reparse replays old dings
+            ShowLevelUp(lvl);
+        };
         _combat.SwapDetected += () =>
         {
             if (_suppressSct) return; // catch-up/reparse replays old swaps
@@ -399,6 +411,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line); // uses the line's own timestamp; exact dedupe
                 _skyQuests.ProcessLine(line);
                 _questLines.ProcessLine(line);
+                _resists.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _session.ProcessLine(line);
@@ -467,6 +480,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line);
                 _skyQuests.ProcessLine(line);
                 _questLines.ProcessLine(line);
+                _resists.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 // Pet names ride the reparse: every "… Master." speech in the
@@ -528,6 +542,7 @@ public partial class MainWindow : Window
         _raids.ResetKills();
         _skyQuests.ResetProgress();
         _questLines.ResetProgress();
+        _resists.ResetAll();
         _spellLib.ResetSeen();
         _durations.ResetAll();
 
@@ -783,6 +798,7 @@ public partial class MainWindow : Window
             _config.Overlay.Opacity,
             _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible,
             _config.Overlay.ProcWatcherVisible, _config.Overlay.MeterSoloMode);
+        _meter.Resists = _resists;
         _meter.SoloModeChanged += solo =>
         {
             _config.Overlay.MeterSoloMode = solo;
@@ -1078,6 +1094,7 @@ public partial class MainWindow : Window
                 _loot.ProcessLine(line);
                 _skyQuests.ProcessLine(line);
                 _questLines.ProcessLine(line);
+                _resists.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _conditions.ProcessLine(line); // live CC state — not fed on catch-up
@@ -1716,6 +1733,16 @@ public partial class MainWindow : Window
         };
         menu.Items.Add(panels);
 
+        int knownLevel = KnownLevel();
+        var whatsNew = new MenuItem
+        {
+            Header = knownLevel > 0 ? $"What's new at level {knownLevel}…" : "What's new at your level… (type /who first)",
+            IsEnabled = knownLevel > 0,
+            ToolTip = "The spells your combo unlocks at your current level — the card that shows on a ding",
+        };
+        whatsNew.Click += (_, _) => ShowLevelUp(KnownLevel());
+        menu.Items.Add(whatsNew);
+
         var loadout = new MenuItem { Header = "Loadout" };
         loadout.Items.Add(new MenuItem { Header = "…" }); // arrow seed; replaced on open
         loadout.SubmenuOpened += (_, _) =>
@@ -1868,7 +1895,7 @@ public partial class MainWindow : Window
         if (_historyWindow is null)
         {
             _historyWindow = new HistoryWindow(_combat, _configService, _loot,
-                () => _config.Overlay.MeterSoloMode);
+                () => _config.Overlay.MeterSoloMode, _resists);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }
@@ -1971,6 +1998,49 @@ public partial class MainWindow : Window
     {
         string live = _session?.WhoClasses ?? "";
         return live.Length > 0 ? live : _combat.CurrentClasses;
+    }
+
+    // ---- the con card (owner pick, 8 Sep) ------------------------------------------
+
+    private Views.ConCardWindow? _conCard;
+
+    private void ShowConCard(string mob, int level)
+    {
+        int casts = _resists.CastsOn(mob);
+        if (casts < ResistBook.SampleFloor) return; // the book doesn't know this mob yet
+        if (_conCard is null)
+        {
+            _conCard = new Views.ConCardWindow();
+            _conCard.Closed += (_, _) => _conCard = null;
+        }
+        _conCard.Show(mob, level, casts, _resists.Notable(mob));
+    }
+
+    // ---- "New at this level" (owner pick, 8 Sep) ---------------------------------
+
+    private Views.LevelUpWindow? _levelUpWin;
+
+    /// <summary>The level the card should speak about: the live one, else the
+    /// last /who saved for this character, else 0 (unknown).</summary>
+    private int KnownLevel()
+    {
+        if (_combat.CurrentLevel > 0) return _combat.CurrentLevel;
+        var saved = _configService.LoadLastClasses(_combat.SelfName);
+        return saved.Level;
+    }
+
+    private void ShowLevelUp(int level)
+    {
+        if (level <= 0) return;
+        var classes = KnownClassesText().Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var unlocks = _spellLib.UnlocksAt(level, classes);
+        if (_levelUpWin is null)
+        {
+            _levelUpWin = new Views.LevelUpWindow();
+            _levelUpWin.Closed += (_, _) => _levelUpWin = null;
+        }
+        _levelUpWin.Show(level, classes, unlocks);
+        Log.Info($"Level-up card: level {level}, combo '{string.Join("/", classes)}', {unlocks.Count} spells");
     }
 
     private void OpenSkyQuests()

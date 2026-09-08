@@ -39,10 +39,20 @@ public partial class HistoryWindow : Window
     }
 
 
+    private readonly ResistBook? _resists;
+    private bool _resistThisZone;
+    private Segmented? _resistZoneSeg;
+
     public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot,
-        Func<bool>? soloMode = null)
+        Func<bool>? soloMode = null, ResistBook? resists = null)
     {
         InitializeComponent();
+        _resists = resists;
+        if (_resists is not null)
+        {
+            _resists.Changed += OnResistsChanged;
+            Closed += (_, _) => _resists.Changed -= OnResistsChanged;
+        }
         DialogPlacement.Persist(this, "history");
         TitleRow.Children.Insert(0, DialogPlacement.Pin(this, "history"));
         WindowTheme.ApplyDark(this);
@@ -405,25 +415,54 @@ public partial class HistoryWindow : Window
         _view = v;
         StylePills();
         if (_view == "parses") BuildParses();
+        if (_view == "resists") BuildResists();
+    }
+
+    /// <summary>Selftest + deep links: switch to a view by id.</summary>
+    public void ShowView(string id)
+    {
+        _view = id;
+        StylePills();
+        if (_view == "parses") BuildParses();
+        if (_view == "resists") BuildResists();
+    }
+
+    private void OnResistsChanged()
+    {
+        if (_view == "resists") Dispatcher.BeginInvoke(BuildResists);
+    }
+
+    private void ResistSearch_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_view == "resists") BuildResists();
     }
 
     private void StylePills()
     {
         bool parses = _view == "parses";
-        MenuTabs.Render(MenuRow, new[]
+        bool resists = _view == "resists";
+        var items = new List<MenuTabs.Item>
         {
-            new MenuTabs.Item("fights", "Fights"),
-            new MenuTabs.Item("parses", "Parses",
+            new("fights", "Fights"),
+            new("parses", "Parses",
                 Tip: "Every recorded fight grouped by mob — kill times, DPS and the class combo that did it, side by side"),
-        }, _view, id =>
+        };
+        if (_resists is not null)
+            items.Add(new MenuTabs.Item("resists", "Resists",
+                Tip: "Per mob, per spell: how many of your casts landed and how many were resisted — from the log's own words"));
+        MenuTabs.Render(MenuRow, items, _view, id =>
         {
             _view = id;
             StylePills();
             if (_view == "parses") BuildParses();
+            if (_view == "resists") BuildResists();
         });
-        FightsView.Visibility = parses ? Visibility.Collapsed : Visibility.Visible;
+        FightsView.Visibility = parses || resists ? Visibility.Collapsed : Visibility.Visible;
         ParsesView.Visibility = parses ? Visibility.Visible : Visibility.Collapsed;
-        HintText.Text = parses
+        ResistsView.Visibility = resists ? Visibility.Visible : Visibility.Collapsed;
+        HintText.Text = resists
+            ? "Every mob you have cast on, per spell: casts that landed against casts it resisted, from \"X resisted your Y!\" and your own damage and landing lines. A verdict only past 5 casts — ≥30% resisted reads resistant, ≥60% nearly immune. Levels come from /con, the school from the damage line. Reparse fills it from your whole log."
+            : parses
             ? "Every recorded fight (kept + this session) grouped by mob and instance tier (a T4 kill never compares against a T0 one), newest first. Δ compares each row to the one before it on the same mob — DPS for target dummies, kill time for everything else; the best value per mob reads green. Click a row to open that fight's report."
             : "A fight lands here ~10 seconds after combat goes quiet (the session keeps the last 50). Select one for details — the breakdown, the timeline and ⚡ Analyse. Ctrl-click more to compare side by side. ★ Keep saves a fight permanently, so you can compare this week's kill against last week's.";
     }
@@ -443,6 +482,88 @@ public partial class HistoryWindow : Window
         r.Classes.Length > 0
             ? (r.Level > 0 ? $"{r.Level} {r.Classes}" : r.Classes)
             : "";
+
+    // ---- the Resists view ------------------------------------------------------
+
+    private static readonly Brush ResistImmune = Freeze(Color.FromRgb(0xFF, 0x5C, 0x5C));
+    private static readonly Brush ResistAmber = Freeze(Color.FromRgb(0xFF, 0xB7, 0x4D));
+    private static readonly Brush SchoolFg = Freeze(Color.FromRgb(0xB3, 0x9D, 0xDB));
+
+    private void BuildResists()
+    {
+        if (_resists is null) return;
+        ResistsHost.Children.Clear();
+        if (_resistZoneSeg is null)
+        {
+            _resistZoneSeg = new Segmented(new[]
+            {
+                new Segmented.Option("zone", "This zone"),
+                new Segmented.Option("all", "All zones"),
+            }, _resistThisZone ? "zone" : "all", "#E8C15A");
+            _resistZoneSeg.Margin = new Thickness(0);
+            _resistZoneSeg.Changed += id => { _resistThisZone = id == "zone"; BuildResists(); };
+            ResistZoneHost.Children.Add(_resistZoneSeg);
+        }
+        string zone = _resistThisZone ? _parser.CurrentZone : "";
+        var groups = _resists.ByMob(zone, ResistSearch.Text.Trim());
+        if (groups.Count == 0)
+        {
+            ResistsHost.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = _resistThisZone && _parser.CurrentZone.Length == 0
+                    ? "No zone known yet — zone once, or pick All zones."
+                    : ResistSearch.Text.Trim().Length > 0 ? "Nothing matches the filter."
+                    : "No casts recorded yet — Data → Reparse fills this from your whole log.",
+                Foreground = ParseDimFg, FontSize = 12, Margin = new Thickness(2, 6, 0, 0),
+            });
+            return;
+        }
+
+        foreach (var (mob, level, mobZone, cells) in groups)
+        {
+            var head = new System.Windows.Controls.TextBlock
+            {
+                FontSize = 10.5, FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(2, 12, 0, 3), TextWrapping = TextWrapping.Wrap,
+            };
+            head.Inlines.Add(new System.Windows.Documents.Run(mob.ToUpperInvariant()) { Foreground = ParseGroupFg });
+            head.Inlines.Add(new System.Windows.Documents.Run(
+                (level > 0 ? $"   Lvl {level}" : "") + (mobZone.Length > 0 ? $"   {mobZone}" : "") + $"   {cells.Sum(c => c.N)} casts")
+            { Foreground = ParseHeadFg, FontWeight = FontWeights.Normal });
+            foreach (var v in _resists.Notable(mob))
+                head.Inlines.Add(new System.Windows.Documents.Run(
+                    $"   {(v.Severity == "immune" ? "shrugs off" : "resists")} {v.Spell}{(v.School.Length > 0 ? $" ({v.School})" : "")} {v.Rate * 100:0}% · n {v.N}")
+                { Foreground = v.Severity == "immune" ? ResistImmune : ResistAmber, FontWeight = FontWeights.Normal });
+            ResistsHost.Children.Add(head);
+
+            var grid = new System.Windows.Controls.Grid();
+            double[] widths = { 0, 80, 72, 78, 84, 110 };
+            foreach (double w in widths)
+                grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition
+                { Width = w > 0 ? new GridLength(w) : new GridLength(1, GridUnitType.Star) });
+            string[] heads = { "SPELL", "SCHOOL", "LANDED", "RESISTED", "RESIST %", "LAST" };
+            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+            for (int c = 0; c < heads.Length; c++)
+                PCell(grid, heads[c], 0, c, ParseHeadFg, size: 9.5, bold: true, right: c is 2 or 3 or 4);
+
+            int row = 1;
+            foreach (var cell in cells)
+            {
+                grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+                string sev = ResistBook.Severity(cell.Rate, cell.N);
+                Brush rateFg = sev == "immune" ? ResistImmune : sev == "resistant" ? ResistAmber : sev == "fine" ? ParseBest : ParseDimFg;
+                PCell(grid, cell.Spell, row, 0, ParseValFg);
+                PCell(grid, cell.School.Length > 0 ? cell.School : "—", row, 1, cell.School.Length > 0 ? SchoolFg : ParseDimFg);
+                PCell(grid, cell.Landed.ToString(), row, 2, ParseValFg, right: true);
+                PCell(grid, cell.Resisted.ToString(), row, 3, cell.Resisted > 0 ? ParseValFg : ParseDimFg, right: true);
+                PCell(grid, cell.N < ResistBook.SampleFloor ? $"{cell.Rate * 100:0}% · n {cell.N}" : $"{cell.Rate * 100:0}%",
+                    row, 4, rateFg, right: true, bold: sev is "immune" or "resistant");
+                PCell(grid, cell.Last == default ? "" : cell.Last.ToString("dd MMM HH:mm"), row, 5, ParseDimFg);
+                row++;
+            }
+            ResistsHost.Children.Add(grid);
+        }
+    }
 
     private void BuildParses()
     {
