@@ -823,10 +823,19 @@ public sealed class CombatParser
     // Rolling window of the last hits/heals on YOU, snapshotted when a death
     // line appears so the recap window can show what killed you.
 
+    /// <param name="Flavor">Melee or Spell (DoT ticks, procs and "non-melee"
+    /// count as Spell) — the recap splits the damage by it, because EQL's
+    /// stances mitigate ONE kind: defensive halves melee, mage hunter halves
+    /// spells (owner, 8 Sep).</param>
     public sealed record RecapEntry(DateTime When, string Source, string Ability,
-        double Amount, bool Heal, bool Crit, bool Miss = false);
+        double Amount, bool Heal, bool Crit, bool Miss = false, SctFlavor Flavor = SctFlavor.Melee);
 
-    public sealed record DeathEvent(DateTime When, string Killer, IReadOnlyList<RecapEntry> Events);
+    /// <param name="Stance">The stance you were in ("defensive", "mage hunter",
+    /// "striker" …) — <see cref="CurrentStance"/>, which persists across
+    /// sessions; "" when the log never said.</param>
+    public sealed record DeathEvent(DateTime When, string Killer, IReadOnlyList<RecapEntry> Events,
+        string Stance = "");
+
 
     /// <summary>Raised on "You died." / "You have been slain by X!" (caller's thread).</summary>
     public event Action<DeathEvent>? PlayerDied;
@@ -840,9 +849,10 @@ public sealed class CombatParser
     private DateTime _lastDeathAt = DateTime.MinValue;
 
     private void RecapNote(DateTime when, string source, string ability, double amount,
-        bool heal, bool crit, bool miss = false)
+        bool heal, bool crit, bool miss = false, SctFlavor flavor = SctFlavor.Melee)
     {
-        _recap.Add(new RecapEntry(when, source, ability, amount, heal, crit, miss));
+        _recap.Add(new RecapEntry(when, source, ability, amount, heal, crit, miss,
+            heal ? SctFlavor.Heal : flavor == SctFlavor.Proc ? SctFlavor.Spell : flavor));
         if (_recap.Count > RecapCapacity) _recap.RemoveAt(0);
     }
 
@@ -855,7 +865,7 @@ public sealed class CombatParser
         _enemyDots.Clear(); // your death strips your DoTs' bookkeeping too
         var snapshot = _recap.ToList();
         _recap.Clear();
-        PlayerDied?.Invoke(new DeathEvent(time, killer, snapshot));
+        PlayerDied?.Invoke(new DeathEvent(time, killer, snapshot, CurrentStance));
     }
 
     /// <summary>The zone we're in, from "You have entered <zone>." lines.</summary>
@@ -1666,7 +1676,7 @@ public sealed class CombatParser
             _incomingSelf += amount;
             StatIn(_incomingSelfAbility, ability).Land(amount, crit);
             Note(time, ability, amount, FightStream.SelfIn, crit, dot: dot);
-            RecapNote(time, attacker, ability, amount, heal: false, crit);
+            RecapNote(time, attacker, ability, amount, heal: false, crit, flavor: dot ? SctFlavor.Spell : flavor);
             SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, flavor, crit));
         }
         else if (IsPet(target))
@@ -1702,7 +1712,7 @@ public sealed class CombatParser
         _incomingSelf += amount;
         StatIn(_incomingSelfAbility, ability).Land(amount, crit);
         Note(time, ability, amount, FightStream.SelfIn, crit);
-        RecapNote(time, "", ability, amount, heal: false, crit);
+        RecapNote(time, "", ability, amount, heal: false, crit, flavor: SctFlavor.Spell);
         SctEvent?.Invoke(new SctHit(SctKind.IncomingSelf, ability, amount, SctFlavor.Spell, crit));
     }
 

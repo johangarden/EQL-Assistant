@@ -1004,6 +1004,7 @@ public partial class App : Application
             var cp = new CombatParser();
             var deaths = new List<CombatParser.DeathEvent>();
             cp.PlayerDied += d => deaths.Add(d);
+            cp.ProcessLine("[Sat Aug 08 23:21:30 2026] You assume a defensive stance.");
             cp.ProcessLine("[Sat Aug 08 23:21:34 2026] A zol ghoul knight hits YOU for 42 points of damage.");
             cp.ProcessLine("[Sat Aug 08 23:21:34 2026] A zol ghoul knight tries to hit YOU, but misses!");
             cp.ProcessLine("[Sat Aug 08 23:21:35 2026] Nurse heals you for 50 hit points by Minor Healing.");
@@ -1011,6 +1012,12 @@ public partial class App : Application
             cp.ProcessLine("[Sat Aug 08 23:21:37 2026] You have been slain by a bok ghoul knight!");
             Check("recap: slain line fires with killer",
                 deaths.Count == 1 && deaths[0].Killer == "a bok ghoul knight");
+            Check("recap: the stance rides the death (8 Sep) and melee hits carry the Melee flavor",
+                deaths.Count == 1 && deaths[0].Stance == "defensive" && cp.CurrentStance == "defensive"
+                && deaths[0].Events[0].Flavor == CombatParser.SctFlavor.Melee
+                && deaths[0].Events[2].Flavor == CombatParser.SctFlavor.Heal);
+            cp.ProcessLine("[Sat Aug 08 23:21:37 2026] You assume a mage hunter stance.");
+            Check("recap: a two-word stance parses", cp.CurrentStance == "mage hunter");
             Check("recap: events captured in order",
                 deaths.Count == 1 && deaths[0].Events.Count == 4
                 && deaths[0].Events[0] is { Amount: 42, Heal: false, Source: "A zol ghoul knight" }
@@ -1050,6 +1057,21 @@ public partial class App : Application
                 taken: 780, healed: 163, span: 14);
             Check("recap: the story names the killing burst",
                 story.Contains("595") && story.Contains("Harm Touch"));
+            // Melee vs spell + the stance verdict (owner, 8 Sep).
+            Check("recap: the split line carries both numbers and shares",
+                Views.DeathRecapWindow.SplitLine(1200, 2800) is { } sl && sl.StartsWith("Melee −") && sl.Contains("(30%)") && sl.Contains("Spells −") && sl.Contains("(70%)"));
+            Check("recap: defensive stance under spell damage points at mage hunter",
+                Views.DeathRecapWindow.StanceVerdict("defensive", 1235, 2685).Contains("mage hunter stance would have halved"));
+            Check("recap: mage hunter under melee damage points at defensive",
+                Views.DeathRecapWindow.StanceVerdict("mage hunter", 3000, 500).Contains("defensive stance would have halved"));
+            Check("recap: the right stance reads as a numbers problem",
+                Views.DeathRecapWindow.StanceVerdict("defensive", 3000, 500).Contains("numbers problem")
+                && Views.DeathRecapWindow.StanceVerdict("mage hunter", 100, 900).Contains("numbers problem"));
+            Check("recap: an unknown stance still names the halving stance",
+                Views.DeathRecapWindow.StanceVerdict("", 100, 900).Contains("No stance change seen")
+                && Views.DeathRecapWindow.StanceVerdict("", 100, 900).Contains("mage hunter"));
+            Check("recap: mixed damage says no stance halves both",
+                Views.DeathRecapWindow.StanceVerdict("striker", 1000, 1100).Contains("no stance halves both"));
             var slow = rev.Where(e => (RD(0) - e.When).TotalSeconds > 2).ToList();
             Check("recap: no burst reads as worn down",
                 Views.DeathRecapWindow.BuildStory(new CombatParser.DeathEvent(RD(0), "x", slow),
@@ -3547,6 +3569,34 @@ public partial class App : Application
             };
             tb.Show();
             mgr = tb;
+        }
+        else if (page.Equals("recap", StringComparison.OrdinalIgnoreCase))
+        {
+            // A synthetic death in a defensive stance, killed mostly by spells.
+            DateTime at = new(2026, 9, 8, 16, 35, 5);
+            var ev = new List<CombatParser.RecapEntry>
+            {
+                new(at.AddSeconds(-15), "a windrider drake", "flames", 77, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-15), "Sister of the Spire", "hit", 344, false, false),
+                new(at.AddSeconds(-14), "A greater sphinx", "claw", 744, false, false),
+                new(at.AddSeconds(-13), "a windrider drake", "Thunderbolt", 480, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-11), "Thorrak", "Slugs Healing", 518, true, false),
+                new(at.AddSeconds(-10), "Sister of the Spire", "bash", 69, false, false),
+                new(at.AddSeconds(-9), "a windrider drake", "Draught of Fire", 498, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-7), "Thorrak", "Drain Soul", 699, true, false),
+                new(at.AddSeconds(-6), "A windrider drake", "bite", 228, false, false),
+                new(at.AddSeconds(-5), "a windrider drake", "Whirlwind", 80, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-4), "Sister of the Spire", "kick", 0, false, false, Miss: true),
+                new(at.AddSeconds(-2), "a windrider drake", "Mana Detonation", 640, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-1), "a windrider drake", "Mana Detonation", 640, false, false, Flavor: CombatParser.SctFlavor.Spell),
+            };
+            var recap = new Views.DeathRecapWindow(new CombatParser.DeathEvent(at, "a windrider drake", ev, "defensive"))
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            recap.Show();
+            mgr = recap;
         }
         else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase))
         {

@@ -31,11 +31,18 @@ public partial class DeathRecapWindow : Window
     private static readonly Brush AxisFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
 
     public sealed record RowVm(string T, string Text, string AmountText,
-        Brush AmountBrush, Brush TextBrush, Brush RowBg);
+        Brush AmountBrush, Brush TextBrush, Brush RowBg, string Kind, Brush KindBrush);
 
     /// <summary>One merged ledger row: every event of (source, ability, heal) in the window.</summary>
     public sealed record RecapGroup(string Source, string Ability, bool Heal,
-        int Count, double Total, DateTime First, bool HasBiggestHit);
+        int Count, double Total, DateTime First, bool HasBiggestHit,
+        CombatParser.SctFlavor Flavor = CombatParser.SctFlavor.Melee);
+
+    private static readonly Brush BarSpell = Freeze(Color.FromRgb(0x95, 0x75, 0xCD));
+    private static readonly Brush BarSpellKill = Freeze(Color.FromRgb(0xB3, 0x9D, 0xDB));
+    private static readonly Brush MeleeTag = Freeze(Color.FromRgb(0xC9, 0x6B, 0x6B));
+    private static readonly Brush SpellTag = Freeze(Color.FromRgb(0x95, 0x75, 0xCD));
+    private static readonly Brush HealTag = Freeze(Color.FromRgb(0x5E, 0x8F, 0x62));
 
     public DeathRecapWindow(CombatParser.DeathEvent death)
     {
@@ -75,6 +82,20 @@ public partial class DeathRecapWindow : Window
         StoryBorder.Visibility = story.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         StoryText.Text = story;
 
+        // ---- melee vs spell + the stance verdict ------------------------------
+        double melee = events.Where(e => !e.Heal && !e.Miss && e.Flavor != CombatParser.SctFlavor.Spell).Sum(e => e.Amount);
+        double spell = events.Where(e => !e.Heal && !e.Miss && e.Flavor == CombatParser.SctFlavor.Spell).Sum(e => e.Amount);
+        SplitSection.Visibility = melee + spell > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (melee + spell > 0)
+        {
+            MeleeCol.Width = new GridLength(Math.Max(0, melee), GridUnitType.Star);
+            SpellCol.Width = new GridLength(Math.Max(0, spell), GridUnitType.Star);
+            MeleeBar.Visibility = melee > 0 ? Visibility.Visible : Visibility.Collapsed;
+            SpellBar.Visibility = spell > 0 ? Visibility.Visible : Visibility.Collapsed;
+            SplitText.Text = SplitLine(melee, spell);
+            StanceText.Text = StanceVerdict(death.Stance, melee, spell);
+        }
+
         // ---- the death graph ------------------------------------------------
         bool burst = HasKillingBurst(death, events, taken);
         BuildGraph(death, events, burst);
@@ -97,7 +118,9 @@ public partial class DeathRecapWindow : Window
                 g.Heal ? $"+{g.Total:N0}" : $"-{g.Total:N0}",
                 g.Heal ? HealFg : DamageFg,
                 TextFg,
-                g.HasBiggestHit ? RowBig : i % 2 == 0 ? RowEven : RowOdd));
+                g.HasBiggestHit ? RowBig : i % 2 == 0 ? RowEven : RowOdd,
+                g.Heal ? "HEAL" : g.Flavor == CombatParser.SctFlavor.Spell ? "SPELL" : "MELEE",
+                g.Heal ? HealTag : g.Flavor == CombatParser.SctFlavor.Spell ? SpellTag : MeleeTag));
         }
         RowsControl.ItemsSource = rows;
 
@@ -123,9 +146,53 @@ public partial class DeathRecapWindow : Window
             .Select(g => new RecapGroup(
                 g.First().Source, g.First().Ability, g.Key.Heal,
                 g.Count(), g.Sum(e => e.Amount), g.Min(e => e.When),
-                biggest is not null && g.Contains(biggest)))
+                biggest is not null && g.Contains(biggest),
+                g.First().Flavor))
             .OrderBy(g => g.First)
             .ToList();
+    }
+
+    /// <summary>"Melee −1,235 (31%) · Spells −2,685 (69%)".</summary>
+    public static string SplitLine(double melee, double spell)
+    {
+        double total = melee + spell;
+        if (total <= 0) return "";
+        return $"Melee −{melee:N0} ({Pct(melee / total)}) · Spells −{spell:N0} ({Pct(spell / total)})";
+    }
+
+    private static string Pct(double f) => $"{Math.Round(f * 100):0}%";
+
+    /// <summary>The stance lesson (owner, 8 Sep): defensive halves melee,
+    /// mage hunter halves spells. Named against the stance the log last saw
+    /// you assume; when one kind carried ≥60% of the damage, say which
+    /// stance would have halved it — or that the stance was right and the
+    /// death was a numbers problem.</summary>
+    public static string StanceVerdict(string stance, double melee, double spell)
+    {
+        double total = melee + spell;
+        if (total <= 0) return "";
+        double mp = melee / total, sp = spell / total;
+        string kind = sp >= 0.6 ? "spell" : mp >= 0.6 ? "melee" : "mixed";
+        string st = (stance ?? "").Trim().ToLowerInvariant();
+        bool defensive = st == "defensive", hunter = st == "mage hunter";
+
+        if (kind == "mixed")
+            return (st.Length > 0 ? $"You were in a {st} stance. " : "")
+                 + $"Melee and spells split the damage {Pct(mp)} / {Pct(sp)} — no stance halves both; "
+                 + "defensive covers the melee half, mage hunter the spell half.";
+
+        if (kind == "spell")
+        {
+            if (hunter) return $"Mage hunter was the right stance: {Pct(sp)} of the damage was spells, already halved. This death was a numbers problem, not a stance problem.";
+            if (defensive) return $"You were in a defensive stance (halves melee) but {Pct(sp)} of the damage was spells — a mage hunter stance would have halved that instead. Engage this one in mage hunter.";
+            if (st.Length > 0) return $"You were in a {st} stance. {Pct(sp)} of the damage was spells — a mage hunter stance would have halved it.";
+            return $"No stance change seen in the log this session. {Pct(sp)} of the damage was spells — a mage hunter stance halves spell damage.";
+        }
+
+        if (defensive) return $"Defensive was the right stance: {Pct(mp)} of the damage was melee, already halved. This death was a numbers problem, not a stance problem.";
+        if (hunter) return $"You were in a mage hunter stance (halves spells) but {Pct(mp)} of the damage was melee — a defensive stance would have halved that instead. Engage this one in defensive.";
+        if (st.Length > 0) return $"You were in a {st} stance. {Pct(mp)} of the damage was melee — a defensive stance would have halved it.";
+        return $"No stance change seen in the log this session. {Pct(mp)} of the damage was melee — a defensive stance halves melee damage.";
     }
 
     /// <summary>Did a final-2s spike carry ≥40% of the window's damage?</summary>
@@ -186,6 +253,7 @@ public partial class DeathRecapWindow : Window
         int cols = (int)CombatParser.RecapWindowSec + 1; // −15 … 0
 
         var dmg = new double[cols];
+        var spellDmg = new double[cols];
         var heal = new double[cols];
         var perSecond = new List<CombatParser.RecapEntry>[cols];
         foreach (var e in events)
@@ -193,7 +261,12 @@ public partial class DeathRecapWindow : Window
             if (e.Miss) continue;
             int back = (int)Math.Clamp((death.When - e.When).TotalSeconds, 0, cols - 1);
             int col = cols - 1 - back;
-            if (e.Heal) heal[col] += e.Amount; else dmg[col] += e.Amount;
+            if (e.Heal) heal[col] += e.Amount;
+            else
+            {
+                dmg[col] += e.Amount;
+                if (e.Flavor == CombatParser.SctFlavor.Spell) spellDmg[col] += e.Amount;
+            }
             (perSecond[col] ??= new()).Add(e);
         }
         double max = Math.Max(1, Math.Max(dmg.Max(), heal.Max()));
@@ -232,14 +305,25 @@ public partial class DeathRecapWindow : Window
             }
             if (dmg[i] > 0)
             {
-                var down = new Border
-                {
-                    Background = inBurst ? BarKill : BarDmg,
-                    CornerRadius = new CornerRadius(0, 0, 2, 2),
-                    Height = Math.Max(2, dmg[i] / max * halfHeight),
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Margin = new Thickness(1.5, 0, 1.5, 0), Opacity = 0.9,
-                };
+                // Stacked: melee hangs from the axis, spells beneath it —
+                // the split reads second by second, not just in the total.
+                double meleePart = dmg[i] - spellDmg[i];
+                double total = Math.Max(2, dmg[i] / max * halfHeight);
+                double meleeH = dmg[i] > 0 ? total * meleePart / dmg[i] : 0;
+                double spellH = total - meleeH;
+                var down = new StackPanel { VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(1.5, 0, 1.5, 0), Opacity = 0.9 };
+                if (meleeH > 0.5)
+                    down.Children.Add(new Border
+                    {
+                        Background = inBurst ? BarKill : BarDmg, Height = meleeH,
+                        CornerRadius = spellH > 0.5 ? new CornerRadius(0) : new CornerRadius(0, 0, 2, 2),
+                    });
+                if (spellH > 0.5)
+                    down.Children.Add(new Border
+                    {
+                        Background = inBurst ? BarSpellKill : BarSpell, Height = spellH,
+                        CornerRadius = new CornerRadius(0, 0, 2, 2),
+                    });
                 Grid.SetRow(down, 1);
                 cell.Children.Add(down);
             }

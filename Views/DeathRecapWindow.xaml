@@ -33,6 +33,26 @@
             </Border>
         </StackPanel>
 
+        <!-- Melee vs spell (owner, 8 Sep): EQL's stances halve ONE kind —
+             defensive melee, mage hunter spells — so the split is the
+             lesson. A two-tone bar, the numbers, and the stance verdict. -->
+        <StackPanel x:Name="SplitSection" DockPanel.Dock="Top" Margin="0,0,0,10" Visibility="Collapsed">
+            <Grid Height="9" Margin="0,2,0,5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="MeleeCol" Width="1*"/>
+                    <ColumnDefinition x:Name="SpellCol" Width="1*"/>
+                </Grid.ColumnDefinitions>
+                <Border x:Name="MeleeBar" Grid.Column="0" Background="#E57373" CornerRadius="3,0,0,3" Margin="0,0,1,0"/>
+                <Border x:Name="SpellBar" Grid.Column="1" Background="#9575CD" CornerRadius="0,3,3,0"/>
+            </Grid>
+            <TextBlock x:Name="SplitText" Foreground="{StaticResource Brush.TextDim}" FontSize="12" TextWrapping="Wrap"/>
+            <Border x:Name="StanceBorder" BorderThickness="3,0,0,0" BorderBrush="#9575CD"
+                    Padding="10,2,0,2" Margin="0,6,0,0">
+                <TextBlock x:Name="StanceText" Foreground="{StaticResource Brush.TextDim}"
+                           FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+        </StackPanel>
+
         <!-- The death graph: one column per second, damage down / healing up,
              the zero axis through the middle. Hover a column for its events. -->
         <StackPanel x:Name="GraphSection" DockPanel.Dock="Top" Margin="0,2,0,10">
@@ -44,7 +64,10 @@
             <UniformGrid x:Name="AxisGrid" Rows="1" Margin="0,2,0,0"/>
             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                 <Border Width="8" Height="8" CornerRadius="2" Background="#E57373" VerticalAlignment="Center"/>
-                <TextBlock Text="damage / s" Foreground="{StaticResource Brush.TextFaint}"
+                <TextBlock Text="melee / s" Foreground="{StaticResource Brush.TextFaint}"
+                           FontSize="10" Margin="4,0,14,0" VerticalAlignment="Center"/>
+                <Border Width="8" Height="8" CornerRadius="2" Background="#9575CD" VerticalAlignment="Center"/>
+                <TextBlock Text="spells / s" Foreground="{StaticResource Brush.TextFaint}"
                            FontSize="10" Margin="4,0,14,0" VerticalAlignment="Center"/>
                 <Border Width="8" Height="8" CornerRadius="2" Background="#81C784" VerticalAlignment="Center"/>
                 <TextBlock Text="healing / s" Foreground="{StaticResource Brush.TextFaint}"
@@ -91,6 +114,9 @@
                                 <TextBlock DockPanel.Dock="Left" Text="{Binding T}" Width="52"
                                            Foreground="{StaticResource Brush.TextFaint}"
                                            FontFamily="Consolas" FontSize="11"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Kind}" Width="44"
+                                           Foreground="{Binding KindBrush}" FontSize="9" FontWeight="Bold"
                                            VerticalAlignment="Center"/>
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding AmountText}"
                                            Foreground="{Binding AmountBrush}" FontWeight="Bold"
