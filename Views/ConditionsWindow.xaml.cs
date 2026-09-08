@@ -73,6 +73,12 @@ public partial class ConditionsWindow : Window
             Interval = TimeSpan.FromMilliseconds(300)
         };
         _tick.Tick += (_, _) => Refresh();
+        // The badge must land the moment the line lands: the watcher's
+        // state change repaints at once (owner, 8 Sep — "the badge felt
+        // late"; the 300 ms Background-priority tick alone could sit a
+        // frame or two behind under combat load). The tick keeps the clock.
+        _watcher.StateChanged += OnStateChanged;
+        Closed += (_, _) => _watcher.StateChanged -= OnStateChanged;
 
         Loaded += (_, _) => { _placement.Attach(); ApplyLockVisual(); Refresh(); _tick.Start(); };
         SourceInitialized += (_, _) =>
@@ -84,6 +90,12 @@ public partial class ConditionsWindow : Window
     }
 
     /// <summary>Global show/hide (tray Panels toggle / hide-all).</summary>
+    private void OnStateChanged(string condition, bool active, DateTime at)
+    {
+        if (Dispatcher.CheckAccess()) Refresh();
+        else Dispatcher.BeginInvoke(Refresh, System.Windows.Threading.DispatcherPriority.Send);
+    }
+
     public void SetHidden(bool hidden)
     {
         _hidden = hidden;

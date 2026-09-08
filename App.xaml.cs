@@ -2243,6 +2243,10 @@ public partial class App : Application
 
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
+            Check("voices: an Online natural voice is flagged, an offline one is not",
+                TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny Online (Natural) - English (United States)")
+                && !TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny (Natural) - English (United States)")
+                && !TriggerManagerWindow.IsOnlineVoice(""));
 
             // Notable quest lines (7 Sep): the Torrid Corruptor walked
                 // through the log — kills, loot, hand-ins, a said keyword;
