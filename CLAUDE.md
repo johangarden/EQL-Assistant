@@ -31,6 +31,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--selftest-loadout` | `eql_selftest_loadout.txt` |
 | `--selftest-repop` | `eql_selftest_repop.txt` |
 | `--replay <log>` | `eql_replay.txt` (parser coverage report on a real log) |
+| `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
 | `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` the toolbar, `quests:lines` the Notable quests pack, `recap` a synthetic death recap |
 

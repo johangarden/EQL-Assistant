@@ -18,6 +18,9 @@ public sealed class TriggerEngine
 {
     private readonly AlertService _alerts;
     private readonly DispatcherTimer _tick;
+    private Action? BenchTick;
+    /// <summary>One bar-refresh tick, for the --bench harness.</summary>
+    public void TickForBench() => BenchTick?.Invoke();
 
     private readonly Dictionary<string, TimerBarViewModel> _active = new();
     private readonly Dictionary<string, TimerBarViewModel> _missing = new(); // keyed by trigger id
@@ -186,6 +189,7 @@ public sealed class TriggerEngine
             Interval = TimeSpan.FromMilliseconds(66) // ~15 fps
         };
         _tick.Tick += (_, _) => Tick();
+        BenchTick = Tick;
         _tick.Start();
 
         BuildMatrices();

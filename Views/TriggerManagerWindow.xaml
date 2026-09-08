@@ -924,6 +924,21 @@
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="The voices Windows has installed (Settings → Time &amp; language → Speech adds more languages). Test applies the pick right away; Save keeps it."/>
+                            <!-- An "Online" natural voice is synthesized in the cloud: every
+                                 alert waits for a network round trip (~0.4 s cold here, more on a
+                                 gaming rig). The app can't install voices — Windows does that from
+                                 the Narrator page — so it says so and opens the page. -->
+                            <Border x:Name="VoiceOnlineWarn" Style="{StaticResource SectionCard}" Margin="0,8,0,0" Visibility="Collapsed"
+                                    BorderBrush="#5A4A2E" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Foreground="#FFB74D" FontWeight="SemiBold" FontSize="12"
+                                               Text="This is an Online voice — every alert is synthesized in the cloud first."/>
+                                    <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0"
+                                               Text="That's a network round trip per alert (a second or two on a busy connection). Windows can install the same natural voices offline: Settings → Accessibility → Narrator → Add natural voices. They then appear in the list above without the word Online. Apps can't install voices themselves — only open the page."/>
+                                    <Button Content="Open Narrator voice settings" Width="200" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                            Click="OpenNarratorVoices_Click"/>
+                                </StackPanel>
+                            </Border>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Nicer voices, free" Style="{StaticResource SectionTitle}"/>

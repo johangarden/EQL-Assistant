@@ -75,6 +75,7 @@ public sealed class AlertService
                         StringComparison.OrdinalIgnoreCase))
                 {
                     _voice.Voice = tokens.Item(i);
+                    WarmVoice();
                     return;
                 }
             }
@@ -92,6 +93,28 @@ public sealed class AlertService
         if (Muted) return;
         if (!string.IsNullOrWhiteSpace(sound)) PlayFile(sound!);
         if (!string.IsNullOrWhiteSpace(speak)) Speak(speak!);
+    }
+
+    /// <summary>The first utterance of a natural voice (especially an
+    /// "Online" one) pays a cold start — ~400 ms before audio here, ~130 ms
+    /// once warm (measured 8 Sep). Speak a silent dot after selecting the
+    /// voice so the first real alert is the warm one. Purge-before-speak so
+    /// a warm-up never queues ahead of a real alert.</summary>
+    private void WarmVoice()
+    {
+        if (_voice is null || Silenced) return;
+        try
+        {
+            int vol = (int)_voice.Volume;
+            _voice.Volume = 0;
+            _voice.Speak(".", 1u /* async */);
+            _voice.WaitUntilDone(1500);
+            _voice.Volume = vol;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Voice warm-up skipped: " + ex.Message);
+        }
     }
 
     public void Speak(string text)

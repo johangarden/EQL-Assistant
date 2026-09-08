@@ -110,6 +110,10 @@ public sealed class ConfigService
             config.Log.ExplicitFile = "";
         }
 
+        // 200 was the default until 2.53 — a config still carrying it never
+        // chose it; it moves to the new default (an explicit other value stays).
+        if (config.Log.PollIntervalMs == 200) config.Log.PollIntervalMs = 100;
+
         ApplyWindowState(config.Overlay);
         return config;
     }

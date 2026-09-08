@@ -158,6 +158,22 @@ public partial class TriggerManagerWindow : Window
         CursorRingPreviewHalo.Stroke = new SolidColorBrush(Color.FromArgb(0x33, c.R, c.G, c.B));
     }
 
+    /// <summary>"Online" in a natural voice's name = cloud synthesis per alert.</summary>
+    public static bool IsOnlineVoice(string? name) =>
+        !string.IsNullOrWhiteSpace(name) && name.Contains("Online", StringComparison.OrdinalIgnoreCase);
+
+    private void VoiceBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (VoiceOnlineWarn is null) return;
+        VoiceOnlineWarn.Visibility = IsOnlineVoice(VoiceBox.SelectedItem as string) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OpenNarratorVoices_Click(object sender, RoutedEventArgs e)
+    {
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:easeofaccess-narrator") { UseShellExecute = true }); }
+        catch (Exception ex) { Log.Warn("Narrator settings page failed to open: " + ex.Message); }
+    }
+
     private void RefreshMergedLogs()
     {
         if (MergedLogsList is null) return;
@@ -1186,6 +1202,8 @@ public partial class TriggerManagerWindow : Window
         UpdateMomentNoticeUx();
 
         // Sounds & voices: the one speaking voice for every spoken alert.
+        VoiceBox.SelectionChanged -= VoiceBox_SelectionChanged;
+        VoiceBox.SelectionChanged += VoiceBox_SelectionChanged;
         VoiceBox.ItemsSource = new[] { "(system default)" }
             .Concat(_alerts.InstalledVoices()).ToList();
         VoiceBox.SelectedItem = string.IsNullOrWhiteSpace(_config.Overlay.VoiceName)
