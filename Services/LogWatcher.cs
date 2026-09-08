@@ -126,22 +126,29 @@ public sealed class LogWatcher : IDisposable
 
     private void ReadNewData()
     {
-        long length;
-        try { length = new FileInfo(_currentPath!).Length; }
+        // The directory entry's size (FileInfo.Length) trails the writer by a
+        // line for ~100 ms while the game holds the file open (measured 8 Sep):
+        // gating on it added that lag to every alert. Open the stream and read
+        // to its own end instead — the handle sees the bytes the moment they
+        // are written.
+        FileStream fs;
+        try
+        {
+            fs = new FileStream(_currentPath!, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.SequentialScan);
+        }
         catch { return; }
+        using var _ = fs;
 
-        if (length < _position)
+        if (fs.Length < _position)
         {
             // File shrank => truncated or rotated. Restart from the top.
             _position = 0;
             _lineBuffer.Clear();
             _decoder.Reset();
         }
+        if (fs.Length == _position) return;
 
-        if (length == _position) return;
-
-        using var fs = new FileStream(_currentPath!, FileMode.Open, FileAccess.Read,
-            FileShare.ReadWrite | FileShare.Delete);
         fs.Seek(_position, SeekOrigin.Begin);
 
         byte[] buffer = new byte[8192];

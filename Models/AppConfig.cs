@@ -40,7 +40,10 @@ public sealed class LogConfig
     public string ExplicitFile { get; set; } = "";
 
     /// <summary>How often to poll the log for new lines.</summary>
-    public int PollIntervalMs { get; set; } = 200;
+    /// <summary>How often the tailer looks for new lines. 100 ms (8 Sep;
+    /// was 200): the read costs nothing when nothing changed, and the poll
+    /// is the largest fixed slice of alert latency.</summary>
+    public int PollIntervalMs { get; set; } = 100;
 }
 
 /// <summary>App-managed window state, persisted separately in window-state.json.</summary>

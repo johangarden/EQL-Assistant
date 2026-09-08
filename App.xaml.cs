@@ -116,6 +116,17 @@ public partial class App : Application
 
         // Gated: replay a whole log file through the combat parser and dump a
         // coverage report — used to validate parsing against real gameplay.
+        // Gated: time every live-line consumer on a real log with the real
+        // loadout (`--bench <log>`): the answer to "is the pipeline keeping up".
+        int benchIdx = Array.IndexOf(e.Args, "--bench");
+        if (benchIdx >= 0 && benchIdx + 1 < e.Args.Length)
+        {
+            try { RunBench(e.Args[benchIdx + 1]); }
+            catch (Exception ex) { File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_bench.txt"), "FAIL\n" + ex); }
+            Shutdown();
+            return;
+        }
+
         int replayIdx = Array.IndexOf(e.Args, "--replay");
         if (replayIdx >= 0 && replayIdx + 1 < e.Args.Length)
         {
@@ -2231,6 +2242,7 @@ public partial class App : Application
                     && awayTracker.Away && !awayTracker.Update(true, ga0.AddSeconds(7)));
 
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
+            Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
 
             // Notable quest lines (7 Sep): the Torrid Corruptor walked
                 // through the log — kills, loot, hand-ins, a said keyword;
@@ -3404,6 +3416,97 @@ public partial class App : Application
         Environment.ExitCode = failures == 0 ? 0 : 1;
         Shutdown();
     }
+
+    /// <summary>Feed the log's last 60k lines through each live consumer on
+    /// its own, timing per line; then all of them in the live order. Reports
+    /// µs/line, the worst single line, and lines/s headroom against the log's
+    /// own peak rate (65/s observed). Alerts are gagged.</summary>
+    private void RunBench(string path)
+    {
+        AlertService.Silenced = true;
+        var report = new System.Text.StringBuilder();
+        var all = File.ReadLines(path).ToList();
+        var lines = all.Count > 60000 ? all.Skip(all.Count - 60000).ToList() : all;
+        report.AppendLine($"bench: {Path.GetFileName(path)} — {lines.Count} lines (of {all.Count})");
+
+        var cs = new ConfigService();
+        var cfg = cs.LoadSettings();
+        Models.Loadout? lo = null;
+        try { lo = cs.LoadLoadout(cfg.ActiveLoadout); } catch { /* broken loadout */ }
+        if (lo is not null) { cfg.Triggers = lo.Triggers; cfg.ActiveLoadout = lo.Name; }
+        cfg.Triggers.RemoveAll(t => t.Panel == Models.Panels.TimerAuto);
+        cfg.Triggers.AddRange(cs.BuildRespawnTriggers());
+        report.AppendLine($"loadout: {cfg.ActiveLoadout} — {cfg.Triggers.Count} triggers ({cfg.Triggers.Count(t => t.Enabled)} enabled)");
+
+        var alerts = new AlertService();
+        var engine = new TriggerEngine(cfg, alerts);
+        var combat = new CombatParser { SelfName = "Thorrak", PetName = "Jobaner" };
+        var raids = new RaidKills(cs, Path.Combine(Path.GetTempPath(), "eql_bench_raids.json"));
+        var loot = new LootTracker(cs, Path.Combine(Path.GetTempPath(), "eql_bench_loot.json"));
+        var sky = new SkyQuests(cs, loot, Path.Combine(Path.GetTempPath(), "eql_bench_sky.json"));
+        var quests = new QuestLines(cs, loot, Path.Combine(Path.GetTempPath(), "eql_bench_lines.json"));
+        var lib = new SpellLibrary(cs);
+        var dur = new SpellDurations(cs, lib, Path.Combine(Path.GetTempPath(), "eql_bench_dur.json"));
+        var cond = new ConditionWatcher(lib);
+        var learner = new Services.RespawnLearner();
+        var helper = new SkyHelper(sky);
+        var session = new SessionStats();
+
+        var consumers = new (string Name, Action<string> Feed)[]
+        {
+            ("TriggerEngine", engine.ProcessLine),
+            ("CombatParser", combat.ProcessLine),
+            ("RaidKills", l => raids.ProcessLine(l)),
+            ("LootTracker", loot.ProcessLine),
+            ("SkyQuests", sky.ProcessLine),
+            ("QuestLines", quests.ProcessLine),
+            ("SpellLibrary.MarkSeen", lib.MarkSeenFromLine),
+            ("SpellDurations", dur.ProcessLine),
+            ("ConditionWatcher", cond.ProcessLine),
+            ("RespawnLearner", learner.ProcessLine),
+            ("SkyHelper", helper.ProcessLine),
+            ("SessionStats", session.ProcessLine),
+        };
+
+        report.AppendLine();
+        report.AppendLine($"{"consumer",-24} {"µs/line",10} {"worst ms",10} {"total ms",10}   worst line");
+        double totalUs = 0;
+        var sw = new System.Diagnostics.Stopwatch();
+        foreach (var (name, feed) in consumers)
+        {
+            long worstTicks = 0; string worstLine = "";
+            long sum = 0;
+            foreach (var line in lines)
+            {
+                sw.Restart();
+                try { feed(line); } catch (Exception ex) { report.AppendLine($"  !! {name} threw on: {line}\n     {ex.Message}"); }
+                sw.Stop();
+                sum += sw.ElapsedTicks;
+                if (sw.ElapsedTicks > worstTicks) { worstTicks = sw.ElapsedTicks; worstLine = line; }
+            }
+            double us = sum * 1e6 / System.Diagnostics.Stopwatch.Frequency / lines.Count;
+            double worstMs = worstTicks * 1e3 / System.Diagnostics.Stopwatch.Frequency;
+            double totalMs = sum * 1e3 / System.Diagnostics.Stopwatch.Frequency;
+            totalUs += us;
+            report.AppendLine($"{name,-24} {us,10:0.0} {worstMs,10:0.00} {totalMs,10:0}   {Trunc(worstLine, 90)}");
+        }
+        report.AppendLine($"{"ALL (sum)",-24} {totalUs,10:0.0}");
+        report.AppendLine();
+        report.AppendLine($"per-line budget at the log's peak (65 lines/s): {1e6 / 65:0} µs — headroom ×{1e6 / 65 / Math.Max(1, totalUs):0}");
+        report.AppendLine($"at p99 (26 lines/s): {1e6 / 26:0} µs — headroom ×{1e6 / 26 / Math.Max(1, totalUs):0}");
+
+        // The engine's bar tick — what the UI thread pays 15× a second.
+        sw.Restart();
+        for (int i = 0; i < 200; i++) engine.TickForBench();
+        sw.Stop();
+        report.AppendLine($"TriggerEngine.Tick: {sw.Elapsed.TotalMilliseconds / 200:0.000} ms per tick with {engine.Bars.Count} bars live");
+
+        foreach (var f in new[] { "eql_bench_raids.json", "eql_bench_loot.json", "eql_bench_sky.json", "eql_bench_lines.json", "eql_bench_dur.json" })
+            try { File.Delete(Path.Combine(Path.GetTempPath(), f)); } catch { /* temp */ }
+        File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_bench.txt"), report.ToString());
+    }
+
+    private static string Trunc(string s, int n) => s.Length <= n ? s : s[..n] + "…";
 
     private void RunReplay(string path)
     {
