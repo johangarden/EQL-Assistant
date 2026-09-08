@@ -174,6 +174,53 @@ public partial class TriggerManagerWindow : Window
         catch (Exception ex) { Log.Warn("Narrator settings page failed to open: " + ex.Message); }
     }
 
+    // ---- Diagnostics bundle (8 Sep) -------------------------------------------
+
+    private int _diagMinutes = 30;
+    private Segmented? _diagSeg;
+
+    private void BuildDiagMinutes()
+    {
+        if (_diagSeg is not null) return;
+        _diagSeg = new Segmented(new[]
+        {
+            new Segmented.Option("15", "15 min"),
+            new Segmented.Option("30", "30 min"),
+            new Segmented.Option("60", "60 min"),
+        }, _diagMinutes.ToString());
+        _diagSeg.Margin = new Thickness(0);
+        _diagSeg.Changed += id => _diagMinutes = int.Parse(id);
+        DiagMinutesHost.Children.Add(_diagSeg);
+    }
+
+    private void SaveDiagnostics_Click(object sender, RoutedEventArgs e)
+    {
+        string? gameLog = Services.Diagnostics.NewestGameLog(LogDirBox.Text.Trim(), FilePatternBox.Text.Trim());
+        var dlg = new SaveFileDialog
+        {
+            Title = "Save diagnostics bundle",
+            Filter = "Zip archive (*.zip)|*.zip",
+            FileName = $"EQL_Assistant_diag_{DateTime.Now:yyyyMMdd_HHmm}.zip",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        try
+        {
+            string about = Services.Diagnostics.About(_configService, _config, gameLog,
+                $"log status: {_logStatus?.Invoke() ?? ""}");
+            string summary = Services.Diagnostics.BuildBundle(dlg.FileName, _configService, gameLog, _diagMinutes, about);
+            DiagResult.Text = $"Saved {System.IO.Path.GetFileName(dlg.FileName)} — {summary}.";
+            Log.Info($"Diagnostics bundle saved: {dlg.FileName} ({summary})");
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"/select,\"{dlg.FileName}\"") { UseShellExecute = true }); }
+            catch { /* the path is in the status line anyway */ }
+        }
+        catch (Exception ex)
+        {
+            DiagResult.Text = "Couldn't write the bundle: " + ex.Message;
+            Log.Error("Diagnostics bundle failed", ex);
+        }
+    }
+
     private void RefreshMergedLogs()
     {
         if (MergedLogsList is null) return;
@@ -1230,6 +1277,7 @@ public partial class TriggerManagerWindow : Window
         UpdateRespawnNoticeUx();
 
         LogDirBox.Text = _config.Log.Directory;
+        BuildDiagMinutes();
         FilePatternBox.Text = _config.Log.FilePattern;
         // The live "Following eqlog_…" line moved here from the toolbar —
         // it's diagnostics, not play-time information.

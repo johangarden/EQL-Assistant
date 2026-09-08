@@ -592,6 +592,18 @@
                                        Text="Everything the app knows — loot history, raid kills + drops, Sky progress, seen spells, learned durations — is DERIVED from your log file and stored as JSON in the config folder. These tools rebuild that data from the source."/>
 
                             <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Diagnostics bundle" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Something odd happened? Save one zip with the app's own log, your config and window placements, and the last minutes of the game log with chat and tells removed (combat, spells, loot and NPC speech stay) — then attach it in the chat. Nothing is sent anywhere by itself."/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <TextBlock Text="Game log slice:" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <StackPanel x:Name="DiagMinutesHost" Orientation="Horizontal" VerticalAlignment="Center"/>
+                                <Button Content="Save diagnostics bundle…" Width="190" Margin="10,0,0,0"
+                                        Style="{StaticResource PrimaryBtn}" Click="SaveDiagnostics_Click"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DiagResult" Style="{StaticResource Hint}" Margin="0,6,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Reparse entire log file" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="ADDITIVE: replays the whole followed log (not just today) through loot history, raid kills + their drops, Sky quests, seen spells and duration learning. Run it after an update adds a new log-based feature — history is picked up retroactively. Everything dedupes, so it never double-counts. A typical log takes a few seconds."/>

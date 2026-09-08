@@ -2243,6 +2243,52 @@ public partial class App : Application
 
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
+
+            // Diagnostics bundle (8 Sep): chat and tells go, everything the
+            // parser reads stays; the slice is the last N minutes of the FILE.
+            Check("diag: tells, channels, says and shouts between players are chat",
+                Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Gorby tells General:1, 'why when i swapp loadout'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Cognitive tells you, 'inc'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You told Cognitive, 'ok'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You tell General:1, 'hi'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Sycopata tells the group, 'pull'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You say, 'I still seek guidance'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Bob says, 'lol'")
+                && Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Bob shouts, 'train'"));
+            Check("diag: NPC speech, combat, loot and casts are not chat",
+                !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] Klok Lagnoz says, 'Welcome to my shop, Baskit.'")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] The Kerran Sha`rr says, 'Something is wrrrong.'")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] a rat says, 'squeak'")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] A zol ghoul knight hits YOU for 42 points of damage.")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] --You have looted Dark Reaver from a ghoul cavalier's corpse.--")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You begin casting Drain Soul VI.")
+                && !Diagnostics.IsChat("[Tue Sep 08 20:00:00 2026] You assume a defensive stance."));
+            {
+                var diagLines = new List<string>
+                {
+                    "[Tue Sep 08 19:00:00 2026] You have entered Lower Guk.",
+                    "[Tue Sep 08 19:40:00 2026] Bob tells you, 'old chat'",
+                    "[Tue Sep 08 19:50:00 2026] A froglok hits YOU for 10 points of damage.",
+                    "[Tue Sep 08 19:55:00 2026] Bob tells you, 'recent chat'",
+                    "[Tue Sep 08 20:00:00 2026] You have slain a froglok!",
+                };
+                var slice = Diagnostics.Slice(diagLines, 15);
+                Check("diag: the slice keeps the last 15 minutes of the file minus chat, and says so",
+                    slice.Count == 3 && slice[0].StartsWith("# last 15 min") && slice[0].Contains("1 chat lines removed")
+                    && slice[1].Contains("hits YOU") && slice[2].Contains("slain"));
+                string zipPath = Path.Combine(Path.GetTempPath(), "eql_test_diag.zip");
+                string fakeLog = Path.Combine(Path.GetTempPath(), "eqlog_Test_paineel.txt");
+                File.WriteAllLines(fakeLog, diagLines);
+                var dcs = new ConfigService();
+                string summary = Diagnostics.BuildBundle(zipPath, dcs, fakeLog, 15, Diagnostics.About(dcs, new Models.AppConfig(), fakeLog, "selftest"));
+                using (var z = System.IO.Compression.ZipFile.OpenRead(zipPath))
+                {
+                    var names = z.Entries.Select(x => x.FullName).ToList();
+                    Check("diag: the bundle carries about.txt and the scrubbed game-log slice",
+                        names.Contains("about.txt") && names.Contains("game-log-last-15min.txt") && summary.Contains("chat removed"));
+                }
+                try { File.Delete(zipPath); File.Delete(fakeLog); } catch { /* temp */ }
+            }
             Check("voices: an Online natural voice is flagged, an offline one is not",
                 TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny Online (Natural) - English (United States)")
                 && !TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny (Natural) - English (United States)")
