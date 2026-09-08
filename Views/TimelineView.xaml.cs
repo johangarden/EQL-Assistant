@@ -283,6 +283,19 @@ public partial class TimelineView : UserControl
             }
         }
 
+        // Attack rounds (8 Sep): the log's own annotations, plus one honest
+        // inference — several swings of one skill in one second.
+        var rounds = RoundStats.Compute(rec);
+        if (rounds.HasAnything)
+        {
+            var row4 = new WrapPanel { Margin = new Thickness(0, 0, -8, 0) };
+            var offence = RoundsOffenceRows(rounds).ToList();
+            var defence = RoundsDefenceRows(rounds).ToList();
+            if (offence.Count > 0) row4.Children.Add(ListCard("ROUNDS · YOUR SWINGS", offence));
+            if (defence.Count > 0) row4.Children.Add(ListCard("ROUNDS · ON YOU", defence));
+            if (row4.Children.Count > 0) TilesPanel.Children.Add(row4);
+        }
+
         BuildTrend(rec);
     }
 
@@ -528,6 +541,34 @@ public partial class TimelineView : UserControl
 
     /// <summary>The fight's heartbeat in miniature: dealt (gold), taken (red)
     /// and healing (green) as 5s-rolling curves — fills the leftover width.</summary>
+    /// <summary>Offence lines: multi-swing rounds per skill, ripostes, flurries, slays.</summary>
+    public static IEnumerable<(string Val, string Tail)> RoundsOffenceRows(RoundStats.Result r)
+    {
+        foreach (var s in r.Skills)
+            yield return ($"{s.Multi2Rate * 100:0}%", $"{s.Ability} rounds with 2+ swings · {s.Rounds} rounds, {s.Swings} swings"
+                                                    + (s.Multi3 > 0 ? $" · 3+ in {s.Multi3Rate * 100:0}%" : ""));
+        if (r.YourRipostes > 0)
+            yield return (r.YourRipostes.ToString(), $"riposte swings · {r.YourRiposteHits} hit for {FormatNum(r.YourRiposteDamage)}");
+        if (r.Flurries > 0) yield return (r.Flurries.ToString(), "flurry swings");
+        if (r.SlayUndead > 0) yield return (r.SlayUndead.ToString(), "Slay Undead");
+        if (r.FinishingBlows > 0) yield return (r.FinishingBlows.ToString(), "Finishing Blow");
+        if (r.Skills.Count > 0) yield return ("", "2+ swings in a second = double attack or dual wield — the log doesn't say which");
+    }
+
+    /// <summary>Defence lines: what you did with the swings that came at you.</summary>
+    public static IEnumerable<(string Val, string Tail)> RoundsDefenceRows(RoundStats.Result r)
+    {
+        if (r.SwingsOnYou == 0) yield break;
+        yield return (r.SwingsOnYou.ToString(), "swings at you");
+        if (r.YouRiposted > 0) yield return ($"{100.0 * r.YouRiposted / r.SwingsOnYou:0}%", $"riposted · {r.YouRiposted}");
+        if (r.YouParried > 0) yield return ($"{100.0 * r.YouParried / r.SwingsOnYou:0}%", $"parried · {r.YouParried}");
+        if (r.YouDodged > 0) yield return ($"{100.0 * r.YouDodged / r.SwingsOnYou:0}%", $"dodged · {r.YouDodged}");
+        if (r.YouBlocked > 0) yield return ($"{100.0 * r.YouBlocked / r.SwingsOnYou:0}%", $"blocked · {r.YouBlocked}");
+        if (r.MissedYou > 0) yield return ($"{100.0 * r.MissedYou / r.SwingsOnYou:0}%", $"plain misses · {r.MissedYou}");
+        if (r.MobRipostesTaken > 0) yield return (r.MobRipostesTaken.ToString(), $"mob ripostes hit you for {FormatNum(r.MobRiposteDamage)}");
+        if (r.RampagesTaken > 0) yield return (r.RampagesTaken.ToString(), "rampage hits on you");
+    }
+
     private static Border PulseCard(FightRecord rec)
     {
         var stack = new StackPanel();

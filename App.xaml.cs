@@ -2272,6 +2272,55 @@ public partial class App : Application
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
 
+            // Attack rounds (8 Sep): the annotation rides every melee event; the
+            // avoid word rides every miss; RoundStats reads them honestly.
+            {
+                var ap = new CombatParser { SelfName = "Thorrak" };
+                string T(int s) => $"[Tue Sep 08 22:00:{s:00} 2026]";
+                ap.ProcessLine($"{T(0)} Thorrak slashes a wan ghoul knight for 120 points of damage.");
+                ap.ProcessLine($"{T(0)} Thorrak slashes a wan ghoul knight for 130 points of damage. (Critical)");
+                ap.ProcessLine($"{T(1)} Thorrak slashes a wan ghoul knight for 110 points of damage. (Riposte)");
+                ap.ProcessLine($"{T(2)} Thorrak slashes a wan ghoul knight for 115 points of damage. (Flurry)");
+                ap.ProcessLine($"{T(2)} Thorrak slashes a wan ghoul knight for 100 points of damage.");
+                ap.ProcessLine($"{T(3)} A wan ghoul knight tries to hit YOU, but YOU riposte!");
+                ap.ProcessLine($"{T(3)} A wan ghoul knight tries to hit YOU, but YOU dodge!");
+                ap.ProcessLine($"{T(4)} A wan ghoul knight tries to hit YOU, but misses!");
+                ap.ProcessLine($"{T(4)} A wan ghoul knight hits YOU for 90 points of damage. (Riposte)");
+                ap.ProcessLine($"{T(5)} A wan ghoul knight hits YOU for 70 points of damage. (Rampage)");
+                for (int i = 6; i < 14; i++) ap.ProcessLine($"{T(i)} Thorrak slashes a wan ghoul knight for 100 points of damage.");
+                ap.ProcessLine($"{T(14)} Thorrak slashes a wan ghoul knight for 300 points of damage. (Slay Undead)");
+                ap.ProcessLine($"{T(15)} You have slain a wan ghoul knight!");
+                ap.Tick(new DateTime(2026, 9, 8, 22, 5, 0));
+                var arec = ap.History.FirstOrDefault();
+                Check("rounds: the fight recorded with tagged events",
+                    arec is not null && arec.Events.Any(e => e.Tag == "riposte" && e.Stream == CombatParser.FightStream.SelfOut)
+                    && arec.Events.Any(e => e.Tag == "riposte" && e.Miss && e.Stream == CombatParser.FightStream.SelfIn)
+                    && arec.Events.Any(e => e.Tag == "dodge" && e.Miss)
+                    && arec.Events.Any(e => e.Tag == "miss" && e.Miss)
+                    && arec.Events.Any(e => e.Tag == "rampage" && !e.Miss && e.Stream == CombatParser.FightStream.SelfIn)
+                    && arec.Events.Any(e => e.Tag == "slay undead")
+                    && arec.Events.First(e => e.Crit && e.Stream == CombatParser.FightStream.SelfOut).Tag == "");
+                if (arec is not null)
+                {
+                    var rs = RoundStats.Compute(arec);
+                    Check("rounds: defence counts — 5 swings at you: 1 riposted, 1 dodged, 1 missed, 1 mob riposte, 1 rampage",
+                        rs.SwingsOnYou == 5 && rs.YouRiposted == 1 && rs.YouDodged == 1 && rs.MissedYou == 1
+                        && rs.MobRipostesTaken == 1 && rs.MobRiposteDamage == 90 && rs.RampagesTaken == 1);
+                    Check("rounds: offence counts — 1 riposte swing for 110, 1 flurry, 1 Slay Undead",
+                        rs.YourRipostes == 1 && rs.YourRiposteHits == 1 && rs.YourRiposteDamage == 110 && rs.Flurries == 1 && rs.SlayUndead == 1);
+                    var slash = rs.Skills.FirstOrDefault(s => s.Ability == "slash");
+                    Check("rounds: multi-swing rounds — plain slashes cluster by second; ripostes and flurries don't count",
+                        slash is not null && slash.Rounds == 11 && slash.Swings == 12 && slash.Multi2 == 1 && slash.Multi3 == 0);
+                    Check("rounds: the card's rows carry denominators and the dual-wield caveat",
+                        Views.TimelineView.RoundsOffenceRows(rs).Any(r => r.Tail.Contains("11 rounds"))
+                        && Views.TimelineView.RoundsOffenceRows(rs).Any(r => r.Tail.Contains("dual wield"))
+                        && Views.TimelineView.RoundsDefenceRows(rs).First().Val == "5");
+                }
+                // A kept fight from before the tag reads as untagged, never as a crash.
+                var legacy = System.Text.Json.JsonSerializer.Deserialize<CombatParser.FightEvent>("{\"t\":1,\"a\":\"slash\",\"v\":10,\"s\":0}");
+                Check("rounds: pre-tag fight events load with an empty tag", legacy is not null && legacy.Tag == "");
+            }
+
             // Per-mob resist table (8 Sep): landings and resists from the parser's
             // own lines, keyed so replay never double-counts; verdicts past 5 casts.
             {
