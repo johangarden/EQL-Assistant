@@ -33,6 +33,13 @@ public partial class App : Application
             return;
         }
 
+        // Every headless mode runs gagged: no TTS, no wav — a background
+        // selftest must never speak into the owner's meeting (8 Sep).
+        if (e.Args.Any(a => a.StartsWith("--selftest", StringComparison.Ordinal)
+                            || a.StartsWith("--render", StringComparison.Ordinal)
+                            || a == "--replay"))
+            AlertService.Silenced = true;
+
         // Gated smoke test: construct the manager window (forces XAML parse) and
         // exit. Used to verify the build without a human clicking. Not user-facing.
         int rg = Array.IndexOf(e.Args, "--render-glyphs");
@@ -245,6 +252,27 @@ public partial class App : Application
                 skyLines.ShowPack("sky");
                 skyLines.Close();
                 try { File.Delete(qlPath2); } catch { /* temp */ }
+            }
+
+            // DPS meter, SOLO, folded with a pet (8 Sep): the header keeps the
+            // combined number and two total bars beneath it split you / pet.
+            {
+                var mp = new CombatParser { SelfName = "Thorrak", PetName = "Jobaner" };
+                mp.ProcessLine("[Tue Sep 08 20:00:00 2026] Thorrak slashes a rat for 300 points of damage.");
+                mp.ProcessLine("[Tue Sep 08 20:00:01 2026] Jobaner bites a rat for 100 points of damage.");
+                mp.ProcessLine("[Tue Sep 08 20:00:02 2026] Thorrak slashes a rat for 300 points of damage.");
+                var meter = new Views.MeterWindow(new ConfigService(), mp, new LootTracker(new ConfigService()), 1.0,
+                    Array.Empty<string>(), false, false, soloMode: true);
+                meter.Show();
+                meter.SetSelfExpandedForTest(false);
+                var folded = meter.RowsForTest;
+                if (folded.Count != 2 || folded[0].Name != "Thorrak" || folded[1].Name != "Jobaner (pet)"
+                    || !folded[0].ValueText.Contains("86%") || !folded[1].ValueText.Contains("14%") || folded[0].IsFold)
+                    throw new Exception("meter solo folded: expected [Thorrak, Jobaner (pet)] total bars, got "
+                        + string.Join(" | ", folded.Select(r => $"{r.Name} {r.ValueText}")));
+                meter.SetSelfExpandedForTest(true);
+                if (meter.RowsForTest.All(r => !r.IsFold)) throw new Exception("meter solo expanded: the pet fold row is gone");
+                meter.Close();
             }
 
             // Pin above game (7 Sep): the title-row pin flips Topmost and
@@ -1004,6 +1032,7 @@ public partial class App : Application
             var cp = new CombatParser();
             var deaths = new List<CombatParser.DeathEvent>();
             cp.PlayerDied += d => deaths.Add(d);
+            cp.ProcessLine("[Sat Aug 08 23:21:30 2026] You assume a defensive stance.");
             cp.ProcessLine("[Sat Aug 08 23:21:34 2026] A zol ghoul knight hits YOU for 42 points of damage.");
             cp.ProcessLine("[Sat Aug 08 23:21:34 2026] A zol ghoul knight tries to hit YOU, but misses!");
             cp.ProcessLine("[Sat Aug 08 23:21:35 2026] Nurse heals you for 50 hit points by Minor Healing.");
@@ -1011,6 +1040,12 @@ public partial class App : Application
             cp.ProcessLine("[Sat Aug 08 23:21:37 2026] You have been slain by a bok ghoul knight!");
             Check("recap: slain line fires with killer",
                 deaths.Count == 1 && deaths[0].Killer == "a bok ghoul knight");
+            Check("recap: the stance rides the death (8 Sep) and melee hits carry the Melee flavor",
+                deaths.Count == 1 && deaths[0].Stance == "defensive" && cp.CurrentStance == "defensive"
+                && deaths[0].Events[0].Flavor == CombatParser.SctFlavor.Melee
+                && deaths[0].Events[2].Flavor == CombatParser.SctFlavor.Heal);
+            cp.ProcessLine("[Sat Aug 08 23:21:37 2026] You assume a mage hunter stance.");
+            Check("recap: a two-word stance parses", cp.CurrentStance == "mage hunter");
             Check("recap: events captured in order",
                 deaths.Count == 1 && deaths[0].Events.Count == 4
                 && deaths[0].Events[0] is { Amount: 42, Heal: false, Source: "A zol ghoul knight" }
@@ -1050,6 +1085,21 @@ public partial class App : Application
                 taken: 780, healed: 163, span: 14);
             Check("recap: the story names the killing burst",
                 story.Contains("595") && story.Contains("Harm Touch"));
+            // Melee vs spell + the stance verdict (owner, 8 Sep).
+            Check("recap: the split line carries both numbers and shares",
+                Views.DeathRecapWindow.SplitLine(1200, 2800) is { } sl && sl.StartsWith("Melee −") && sl.Contains("(30%)") && sl.Contains("Spells −") && sl.Contains("(70%)"));
+            Check("recap: defensive stance under spell damage points at mage hunter",
+                Views.DeathRecapWindow.StanceVerdict("defensive", 1235, 2685).Contains("mage hunter stance would have halved"));
+            Check("recap: mage hunter under melee damage points at defensive",
+                Views.DeathRecapWindow.StanceVerdict("mage hunter", 3000, 500).Contains("defensive stance would have halved"));
+            Check("recap: the right stance reads as a numbers problem",
+                Views.DeathRecapWindow.StanceVerdict("defensive", 3000, 500).Contains("numbers problem")
+                && Views.DeathRecapWindow.StanceVerdict("mage hunter", 100, 900).Contains("numbers problem"));
+            Check("recap: an unknown stance still names the halving stance",
+                Views.DeathRecapWindow.StanceVerdict("", 100, 900).Contains("No stance change seen")
+                && Views.DeathRecapWindow.StanceVerdict("", 100, 900).Contains("mage hunter"));
+            Check("recap: mixed damage says no stance halves both",
+                Views.DeathRecapWindow.StanceVerdict("striker", 1000, 1100).Contains("no stance halves both"));
             var slow = rev.Where(e => (RD(0) - e.When).TotalSeconds > 2).ToList();
             Check("recap: no burst reads as worn down",
                 Views.DeathRecapWindow.BuildStory(new CombatParser.DeathEvent(RD(0), "x", slow),
@@ -2180,7 +2230,9 @@ public partial class App : Application
                     !awayTracker.Update(false, ga0.AddSeconds(5)) && awayTracker.Update(false, ga0.AddSeconds(6.5))
                     && awayTracker.Away && !awayTracker.Update(true, ga0.AddSeconds(7)));
 
-                // Notable quest lines (7 Sep): the Torrid Corruptor walked
+                Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
+
+            // Notable quest lines (7 Sep): the Torrid Corruptor walked
                 // through the log — kills, loot, hand-ins, a said keyword;
                 // right-clicks are ticks; later steps imply earlier ones;
                 // replay never double-counts.
@@ -3548,6 +3600,34 @@ public partial class App : Application
             tb.Show();
             mgr = tb;
         }
+        else if (page.Equals("recap", StringComparison.OrdinalIgnoreCase))
+        {
+            // A synthetic death in a defensive stance, killed mostly by spells.
+            DateTime at = new(2026, 9, 8, 16, 35, 5);
+            var ev = new List<CombatParser.RecapEntry>
+            {
+                new(at.AddSeconds(-15), "a windrider drake", "flames", 77, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-15), "Sister of the Spire", "hit", 344, false, false),
+                new(at.AddSeconds(-14), "A greater sphinx", "claw", 744, false, false),
+                new(at.AddSeconds(-13), "a windrider drake", "Thunderbolt", 480, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-11), "Thorrak", "Slugs Healing", 518, true, false),
+                new(at.AddSeconds(-10), "Sister of the Spire", "bash", 69, false, false),
+                new(at.AddSeconds(-9), "a windrider drake", "Draught of Fire", 498, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-7), "Thorrak", "Drain Soul", 699, true, false),
+                new(at.AddSeconds(-6), "A windrider drake", "bite", 228, false, false),
+                new(at.AddSeconds(-5), "a windrider drake", "Whirlwind", 80, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-4), "Sister of the Spire", "kick", 0, false, false, Miss: true),
+                new(at.AddSeconds(-2), "a windrider drake", "Mana Detonation", 640, false, false, Flavor: CombatParser.SctFlavor.Spell),
+                new(at.AddSeconds(-1), "a windrider drake", "Mana Detonation", 640, false, false, Flavor: CombatParser.SctFlavor.Spell),
+            };
+            var recap = new Views.DeathRecapWindow(new CombatParser.DeathEvent(at, "a windrider drake", ev, "defensive"))
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            recap.Show();
+            mgr = recap;
+        }
         else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase))
         {
             var csq = new ConfigService();
@@ -3853,15 +3933,36 @@ public partial class App : Application
         Shutdown();
     }
 
+    private string _lastFault = "";
+    private DateTime _lastFaultAt = DateTime.MinValue;
+    private int _faultRepeats;
+
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         Log.Error("Unhandled dispatcher exception", e.Exception);
+        e.Handled = true;
+        // A fault on a timer re-fires while its dialog is still open, and
+        // each firing stacked another dialog until the owner killed the
+        // process (8 Sep). The same message within a minute is logged, not
+        // shown — the first dialog already said it.
+        string msg = e.Exception.Message;
+        var now = DateTime.Now;
+        if (msg == _lastFault && (now - _lastFaultAt).TotalSeconds < 60)
+        {
+            _faultRepeats++;
+            if (_faultRepeats is 1 or 10 or 100 or 1000)
+                Log.Warn($"Same fault repeated {_faultRepeats}x - dialog suppressed: {msg}");
+            _lastFaultAt = now;
+            return;
+        }
+        _lastFault = msg;
+        _lastFaultAt = now;
+        _faultRepeats = 0;
         MessageBox.Show(
             "EQL Assistant hit an unexpected error:\n\n" + e.Exception.Message +
             "\n\n(The overlay will keep running. Check your config.json if this repeats.)",
             "EQL Assistant",
             MessageBoxButton.OK,
             MessageBoxImage.Warning);
-        e.Handled = true;
     }
 }

@@ -14,6 +14,13 @@ public sealed class AlertService
 
     public bool Muted { get; set; }
 
+    /// <summary>Process-wide gag for the headless runs — selftests, renders,
+    /// replays. The engine suite exercises the pet reminder, and "Your pet's
+    /// Alacrity is fading" spoken from a background build scared the owner
+    /// mid-meeting (8 Sep). Set once in App.OnStartup; nothing speaks or
+    /// plays while it is on.</summary>
+    public static bool Silenced { get; set; }
+
     public AlertService()
     {
         try
@@ -90,6 +97,7 @@ public sealed class AlertService
     public void Speak(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
+        if (Silenced) return; // headless run — never a sound
         if (Muted) { Log.Info($"Speak suppressed (muted): '{text}'"); return; }
         if (_voice is null) { Log.Warn($"Speak skipped (no TTS voice): '{text}'"); return; }
         try
@@ -105,6 +113,7 @@ public sealed class AlertService
 
     private void PlayFile(string path)
     {
+        if (Silenced) return; // headless run — never a sound
         try
         {
             if (!File.Exists(path)) return;

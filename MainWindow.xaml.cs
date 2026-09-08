@@ -641,7 +641,23 @@ public partial class MainWindow : Window
     private void UpdateSctVisibility()
     {
         foreach (var lane in _sctLanes.Values)
-            lane.Visibility = (_hidden || _sctHidden) ? Visibility.Hidden : Visibility.Visible;
+            SetWindowVisibility(lane, (_hidden || _sctHidden) ? Visibility.Hidden : Visibility.Visible, "SCT lane");
+    }
+
+    /// <summary>WPF throws "Cannot set Visibility ... after a Window has
+    /// closed" — and a fault on a timer becomes a dialog flood. A window we
+    /// still hold that has already closed is a bookkeeping slip, logged
+    /// with its name so the log names the culprit; never a dialog.</summary>
+    private static void SetWindowVisibility(Window w, Visibility v, string what)
+    {
+        try
+        {
+            if (w.Visibility != v) w.Visibility = v;
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Warn($"{what} ({w.GetType().Name}) is closed but still referenced - visibility skipped: {ex.Message}");
+        }
     }
 
     /// <summary>Master SCT toggle (toolbar ⚡ / tray / Ctrl+Alt+C), remembered.</summary>
@@ -668,7 +684,7 @@ public partial class MainWindow : Window
     private void UpdateFlashVisibility()
     {
         if (_flash is not null)
-            _flash.Visibility = (_hidden || _flashHidden) ? Visibility.Hidden : Visibility.Visible;
+            SetWindowVisibility(_flash, (_hidden || _flashHidden) ? Visibility.Hidden : Visibility.Visible, "flash area");
     }
 
     /// <summary>Show/hide the flash-alert area (tray / Manager page), and remember it.</summary>
@@ -744,7 +760,7 @@ public partial class MainWindow : Window
     private void UpdateTimerVisibility()
     {
         if (_timer is not null)
-            _timer.Visibility = (_hidden || _timerHidden) ? Visibility.Hidden : Visibility.Visible;
+            SetWindowVisibility(_timer, (_hidden || _timerHidden) ? Visibility.Hidden : Visibility.Visible, "spawn timer");
     }
 
     /// <summary>Show/hide the repop timer watch (⏱ button / tray / Ctrl+Alt+R), and remember it.</summary>
@@ -779,7 +795,7 @@ public partial class MainWindow : Window
     private void UpdateMeterVisibility()
     {
         if (_meter is not null)
-            _meter.Visibility = (_hidden || _meterHidden) ? Visibility.Hidden : Visibility.Visible;
+            SetWindowVisibility(_meter, (_hidden || _meterHidden) ? Visibility.Hidden : Visibility.Visible, "DPS meter");
     }
 
     /// <summary>Show/hide the DPS meter (toolbar button / tray / Ctrl+Alt+D), and remember it.</summary>
@@ -1252,7 +1268,7 @@ public partial class MainWindow : Window
     {
         foreach (var page in new Window?[] { _skyWindow, _lootWindow, _inventoryWindow, _historyWindow, _raidsWindow })
             if (page is { Topmost: true })
-                page.Visibility = _gameAway ? Visibility.Hidden : Visibility.Visible;
+                SetWindowVisibility(page, _gameAway ? Visibility.Hidden : Visibility.Visible, "pinned page");
         ApplyCursorRing(); // the ring hides with everything else
         _enemyDotsWin?.SetHidden(_hidden);
         _moteTickerWin?.SetHidden(_hidden);
@@ -1399,7 +1415,12 @@ public partial class MainWindow : Window
     private static void BringToFront(Window w)
     {
         if (w.WindowState == WindowState.Minimized) w.WindowState = WindowState.Normal;
-        w.Show();
+        try { w.Show(); }
+        catch (InvalidOperationException ex)
+        {
+            Log.Warn($"BringToFront: {w.GetType().Name} is already closed - {ex.Message}");
+            return;
+        }
         w.Activate();
         bool pinned = w.Topmost; // a pinned page (title-row pin) stays pinned
         w.Topmost = true;
@@ -1610,8 +1631,8 @@ public partial class MainWindow : Window
     private void UpdateToolbarVisibility()
     {
         if (_toolbarWin is not null)
-            _toolbarWin.Visibility = !_userHidden && !_gameAway && !_toolbarHidden
-                ? Visibility.Visible : Visibility.Hidden; // the eye's hide spares the toolbar
+            SetWindowVisibility(_toolbarWin, !_userHidden && !_gameAway && !_toolbarHidden
+                ? Visibility.Visible : Visibility.Hidden, "toolbar"); // the eye's hide spares the toolbar
     }
 
     private void ToggleToolbar()
