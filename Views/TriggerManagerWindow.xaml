@@ -503,6 +503,10 @@
                                       Margin="0,6,0,0"/>
                             <TextBlock Style="{StaticResource Hint}" Margin="24,2,0,0"
                                        Text="The game is recognised by the followed log's install folder — if the log lives somewhere unusual the overlay simply stays visible."/>
+                            <CheckBox x:Name="ConCardCheck" Content="Con card — /con a mob and see what it shrugs off (from your own resist history)"
+                                      Margin="0,6,0,0"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="24,2,0,0"
+                                       Text="Appears only for mobs you have cast on at least 5 times; Fight history → Resists holds the full table."/>
 
 
                         </StackPanel>

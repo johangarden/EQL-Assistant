@@ -302,6 +302,21 @@ public partial class App : Application
                 try { File.Delete(rbPath2); } catch { /* temp */ }
             }
 
+            // The con card renders verdicts and the honest empty line.
+            {
+                var cc = new Views.ConCardWindow { Left = -9000, Top = -9000 };
+                cc.Show("a greater sphinx", 52, 21, new[]
+                {
+                    new ResistBook.Verdict("a greater sphinx", "Envenomed Breath", "poison", 0.62, 21, "immune"),
+                    new ResistBook.Verdict("a greater sphinx", "Ignite", "fire", 0.35, 8, "resistant"),
+                });
+                cc.UpdateLayout();
+                if (cc.RowCount != 2 || cc.Mob != "a greater sphinx") throw new Exception("con card: expected 2 verdict rows");
+                cc.Show("a rat", 1, 6, Array.Empty<ResistBook.Verdict>());
+                if (cc.RowCount != 0) throw new Exception("con card: the empty state renders no verdict rows");
+                cc.Close();
+            }
+
             // The level-up card renders and reports its rows.
             {
                 var libC = new SpellLibrary(new ConfigService());
@@ -2354,6 +2369,11 @@ public partial class App : Application
                 rp.ProcessLine("[Tue Sep 08 20:01:01 2026] Thorrak hit Jobaner for 5 points of magic damage by Siphon Life.");
                 Check("resists: only YOUR casts on mobs are counted",
                     rb.ForMob("a greater sphinx").All(c => c.Spell != "Ignite") && rb.ForMob("Jobaner").Count == 0);
+                string connedMob = ""; int connedLvl = 0;
+                rb.Conned += (mm, ll) => { connedMob = mm; connedLvl = ll; };
+                rb.ProcessLine("[Tue Sep 08 20:02:00 2026] A greater sphinx scowls at you, ready to attack -- it appears to be quite formidable. (Lvl: 52)");
+                Check("con card: every /con announces the mob and level, even one already known",
+                    connedMob == "a greater sphinx" && connedLvl == 52 && rb.CastsOn("A greater sphinx") == 6);
                 var rb2 = new ResistBook(new ConfigService(), null, rbPath);
                 Check("resists: the book survives a reload", rb2.ForMob("a greater sphinx").First(c => c.Spell == "Envenomed Breath").Resisted == 4);
                 try { File.Delete(rbPath); } catch { /* temp */ }

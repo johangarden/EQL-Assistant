@@ -64,6 +64,12 @@ public sealed class ResistBook
 
     public event Action? Changed;
 
+    /// <summary>A /con line went by: (mob, level). The con card listens.</summary>
+    public event Action<string, int>? Conned;
+
+    /// <summary>Every cast the book holds on a mob.</summary>
+    public int CastsOn(string mob) => ForMob(mob).Sum(c => c.N);
+
     public ResistBook(ConfigService config, CombatParser? parser = null, string? pathOverride = null)
     {
         _path = pathOverride ?? Path.Combine(config.ConfigDirectory, "resists.json");
@@ -88,6 +94,7 @@ public sealed class ResistBook
         if (!m.Success) return;
         string mob = MobKey(m.Groups["mob"].Value);
         int lvl = int.Parse(m.Groups["lvl"].Value);
+        Conned?.Invoke(mob, lvl);
         if (_levels.GetValueOrDefault(mob) == lvl) return;
         _levels[mob] = lvl;
         foreach (var c in _cells.Values)

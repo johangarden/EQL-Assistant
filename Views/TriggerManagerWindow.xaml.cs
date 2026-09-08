@@ -1293,6 +1293,7 @@ public partial class TriggerManagerWindow : Window
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
         HideWhenGameAwayCheck.IsChecked = _config.Overlay.HideWhenGameAway;
+        ConCardCheck.IsChecked = _config.Overlay.ConCardVisible;
         LoadCursorRingCard();
         DeathRecapCheck.IsChecked = _config.Overlay.DeathRecapAuto;
         StartWithWindowsCheck.IsChecked = IsAutoStartEnabled();
@@ -1589,6 +1590,7 @@ public partial class TriggerManagerWindow : Window
                 CursorRingThickness = Math.Round(CursorRingThicknessSlider.Value, 1),
                 CursorRingColor = _ringColor,
                 HideWhenGameAway = HideWhenGameAwayCheck.IsChecked == true,
+                ConCardVisible = ConCardCheck.IsChecked == true,
                 Muted = MuteCheck.IsChecked == true,
                 VoiceName = VoiceBox.SelectedItem as string is "(system default)" or null
                     ? "" : (string)VoiceBox.SelectedItem,

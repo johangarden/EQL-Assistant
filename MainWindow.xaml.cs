@@ -118,6 +118,11 @@ public partial class MainWindow : Window
         _skyQuests = new SkyQuests(_configService, _loot);
         _questLines = new QuestLines(_configService, _loot);
         _resists = new ResistBook(_configService, _combat);
+        _resists.Conned += (mob, lvl) =>
+        {
+            if (_suppressSct || _hidden || !_config.Overlay.ConCardVisible) return; // replays, hidden overlay, switched off
+            ShowConCard(mob, lvl);
+        };
         _questLines.StepDone += (q, s) =>
         {
             if (_suppressSct) return; // replay/reparse re-proofs shouldn't flash-spam
@@ -1993,6 +1998,22 @@ public partial class MainWindow : Window
     {
         string live = _session?.WhoClasses ?? "";
         return live.Length > 0 ? live : _combat.CurrentClasses;
+    }
+
+    // ---- the con card (owner pick, 8 Sep) ------------------------------------------
+
+    private Views.ConCardWindow? _conCard;
+
+    private void ShowConCard(string mob, int level)
+    {
+        int casts = _resists.CastsOn(mob);
+        if (casts < ResistBook.SampleFloor) return; // the book doesn't know this mob yet
+        if (_conCard is null)
+        {
+            _conCard = new Views.ConCardWindow();
+            _conCard.Closed += (_, _) => _conCard = null;
+        }
+        _conCard.Show(mob, level, casts, _resists.Notable(mob));
     }
 
     // ---- "New at this level" (owner pick, 8 Sep) ---------------------------------
