@@ -185,6 +185,10 @@ public partial class MeterWindow : Window
         }
     }
 
+    /// <summary>Selftest hooks: fold/unfold the solo header and read the rows.</summary>
+    internal void SetSelfExpandedForTest(bool expanded) { _selfExpanded = expanded; Refresh(); }
+    internal IReadOnlyList<MeterRowViewModel> RowsForTest => _rows;
+
     private void SelfHeader_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true; // don't start a window drag
@@ -314,7 +318,8 @@ public partial class MeterWindow : Window
     /// <summary>SOLO scope: ONE header bar for your whole output (you + pet —
     /// the same number the summary calls total), and the pet ranked INSIDE
     /// the ability list as a green foldable row, so "how much is the pet"
-    /// reads directly against melee, spells and procs.</summary>
+    /// reads directly against melee, spells and procs. Folded, the header
+    /// splits into two total bars — you and the pet (owner, 8 Sep).</summary>
     private void RefreshSoloRows()
     {
         var mine = _showHealing
@@ -388,6 +393,34 @@ public partial class MeterWindow : Window
                     foreach (var pr in pet.Take(MaxSoloRows))
                         fills.Add(vm => FillAbilityVm(vm, pr, petTop, petTotal, new Thickness(16, 0, 0, 3)));
                 }
+            }
+        }
+        else if (petTotal > 0)
+        {
+            // Folded with a pet in play (owner, 8 Sep): the header keeps the
+            // combined number, and two total bars beneath it split it — you
+            // and the pet, ranked, each a share of the combined total — so
+            // "how much is the pet" still reads at a glance without the
+            // ability list.
+            double top = Math.Max(1, Math.Max(selfTotal, petTotal));
+            var pair = new List<(double Total, bool IsPet)> { (selfTotal, false), (petTotal, true) };
+            pair.Sort((a, b) => b.Total.CompareTo(a.Total));
+            foreach (var (t, isPet) in pair)
+            {
+                double total = t;
+                bool pet2 = isPet;
+                fills.Add(vm =>
+                {
+                    vm.Name = pet2 ? $"{_parser.PetName.Trim()} (pet)" : _parser.SelfName.Trim();
+                    vm.Fraction = total / top;
+                    double pct = combined > 0 ? total / combined * 100 : 0;
+                    vm.ValueText = $"{FormatDps(dur > 0 ? total / dur : 0)}  ({FormatNum(total)}, {pct:0}%)";
+                    vm.Fill = pet2 ? PetBarFill : SelfBarFill;
+                    vm.Detail = "expand the header for the per-ability split";
+                    vm.IsFold = false;
+                    vm.Margin = new Thickness(0, 0, 0, 3);
+                    vm.BarHeight = 22; // TOTAL bars, like the header
+                });
             }
         }
 

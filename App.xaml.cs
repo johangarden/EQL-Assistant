@@ -254,6 +254,27 @@ public partial class App : Application
                 try { File.Delete(qlPath2); } catch { /* temp */ }
             }
 
+            // DPS meter, SOLO, folded with a pet (8 Sep): the header keeps the
+            // combined number and two total bars beneath it split you / pet.
+            {
+                var mp = new CombatParser { SelfName = "Thorrak", PetName = "Jobaner" };
+                mp.ProcessLine("[Tue Sep 08 20:00:00 2026] Thorrak slashes a rat for 300 points of damage.");
+                mp.ProcessLine("[Tue Sep 08 20:00:01 2026] Jobaner bites a rat for 100 points of damage.");
+                mp.ProcessLine("[Tue Sep 08 20:00:02 2026] Thorrak slashes a rat for 300 points of damage.");
+                var meter = new Views.MeterWindow(new ConfigService(), mp, new LootTracker(new ConfigService()), 1.0,
+                    Array.Empty<string>(), false, false, soloMode: true);
+                meter.Show();
+                meter.SetSelfExpandedForTest(false);
+                var folded = meter.RowsForTest;
+                if (folded.Count != 2 || folded[0].Name != "Thorrak" || folded[1].Name != "Jobaner (pet)"
+                    || !folded[0].ValueText.Contains("86%") || !folded[1].ValueText.Contains("14%") || folded[0].IsFold)
+                    throw new Exception("meter solo folded: expected [Thorrak, Jobaner (pet)] total bars, got "
+                        + string.Join(" | ", folded.Select(r => $"{r.Name} {r.ValueText}")));
+                meter.SetSelfExpandedForTest(true);
+                if (meter.RowsForTest.All(r => !r.IsFold)) throw new Exception("meter solo expanded: the pet fold row is gone");
+                meter.Close();
+            }
+
             // Pin above game (7 Sep): the title-row pin flips Topmost and
             // BringToFront's bump must not knock it off again.
             var pinHost = new Window { Width = 300, Height = 200, ShowInTaskbar = false, ShowActivated = false };
