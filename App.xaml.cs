@@ -2276,20 +2276,20 @@ public partial class App : Application
             // avoid word rides every miss; RoundStats reads them honestly.
             {
                 var ap = new CombatParser { SelfName = "Thorrak" };
-                string T(int s) => $"[Tue Sep 08 22:00:{s:00} 2026]";
-                ap.ProcessLine($"{T(0)} Thorrak slashes a wan ghoul knight for 120 points of damage.");
-                ap.ProcessLine($"{T(0)} Thorrak slashes a wan ghoul knight for 130 points of damage. (Critical)");
-                ap.ProcessLine($"{T(1)} Thorrak slashes a wan ghoul knight for 110 points of damage. (Riposte)");
-                ap.ProcessLine($"{T(2)} Thorrak slashes a wan ghoul knight for 115 points of damage. (Flurry)");
-                ap.ProcessLine($"{T(2)} Thorrak slashes a wan ghoul knight for 100 points of damage.");
-                ap.ProcessLine($"{T(3)} A wan ghoul knight tries to hit YOU, but YOU riposte!");
-                ap.ProcessLine($"{T(3)} A wan ghoul knight tries to hit YOU, but YOU dodge!");
-                ap.ProcessLine($"{T(4)} A wan ghoul knight tries to hit YOU, but misses!");
-                ap.ProcessLine($"{T(4)} A wan ghoul knight hits YOU for 90 points of damage. (Riposte)");
-                ap.ProcessLine($"{T(5)} A wan ghoul knight hits YOU for 70 points of damage. (Rampage)");
-                for (int i = 6; i < 14; i++) ap.ProcessLine($"{T(i)} Thorrak slashes a wan ghoul knight for 100 points of damage.");
-                ap.ProcessLine($"{T(14)} Thorrak slashes a wan ghoul knight for 300 points of damage. (Slay Undead)");
-                ap.ProcessLine($"{T(15)} You have slain a wan ghoul knight!");
+                string RoundTs(int s) => $"[Tue Sep 08 22:00:{s:00} 2026]";
+                ap.ProcessLine($"{RoundTs(0)} Thorrak slashes a wan ghoul knight for 120 points of damage.");
+                ap.ProcessLine($"{RoundTs(0)} Thorrak slashes a wan ghoul knight for 130 points of damage. (Critical)");
+                ap.ProcessLine($"{RoundTs(1)} Thorrak slashes a wan ghoul knight for 110 points of damage. (Riposte)");
+                ap.ProcessLine($"{RoundTs(2)} Thorrak slashes a wan ghoul knight for 115 points of damage. (Flurry)");
+                ap.ProcessLine($"{RoundTs(2)} Thorrak slashes a wan ghoul knight for 100 points of damage.");
+                ap.ProcessLine($"{RoundTs(3)} A wan ghoul knight tries to hit YOU, but YOU riposte!");
+                ap.ProcessLine($"{RoundTs(3)} A wan ghoul knight tries to hit YOU, but YOU dodge!");
+                ap.ProcessLine($"{RoundTs(4)} A wan ghoul knight tries to hit YOU, but misses!");
+                ap.ProcessLine($"{RoundTs(4)} A wan ghoul knight hits YOU for 90 points of damage. (Riposte)");
+                ap.ProcessLine($"{RoundTs(5)} A wan ghoul knight hits YOU for 70 points of damage. (Rampage)");
+                for (int i = 6; i < 14; i++) ap.ProcessLine($"{RoundTs(i)} Thorrak slashes a wan ghoul knight for 100 points of damage.");
+                ap.ProcessLine($"{RoundTs(14)} Thorrak slashes a wan ghoul knight for 300 points of damage. (Slay Undead)");
+                ap.ProcessLine($"{RoundTs(15)} You have slain a wan ghoul knight!");
                 ap.Tick(new DateTime(2026, 9, 8, 22, 5, 0));
                 var arec = ap.History.FirstOrDefault();
                 Check("rounds: the fight recorded with tagged events",
@@ -2317,8 +2317,8 @@ public partial class App : Application
                         && Views.TimelineView.RoundsDefenceRows(rs).First().Val == "5");
                 }
                 // A kept fight from before the tag reads as untagged, never as a crash.
-                var legacy = System.Text.Json.JsonSerializer.Deserialize<CombatParser.FightEvent>("{\"t\":1,\"a\":\"slash\",\"v\":10,\"s\":0}");
-                Check("rounds: pre-tag fight events load with an empty tag", legacy is not null && legacy.Tag == "");
+                var legacyEv = System.Text.Json.JsonSerializer.Deserialize<CombatParser.FightEvent>("{\"t\":1,\"a\":\"slash\",\"v\":10,\"s\":0}");
+                Check("rounds: pre-tag fight events load with an empty tag", legacyEv is not null && legacyEv.Tag == "");
             }
 
             // Per-mob resist table (8 Sep): landings and resists from the parser's
