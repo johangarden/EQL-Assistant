@@ -286,6 +286,18 @@ public partial class App : Application
                 meter.Close();
             }
 
+            // The level-up card renders and reports its rows.
+            {
+                var libC = new SpellLibrary(new ConfigService());
+                var card = new Views.LevelUpWindow { Left = -9000, Top = -9000 };
+                card.Show(46, new[] { "SHD", "SHM", "NEC" }, libC.UnlocksAt(46, new[] { "SHD", "SHM", "NEC" }));
+                card.UpdateLayout();
+                if (card.RowCount != 5) throw new Exception($"level-up card: expected 5 rows, got {card.RowCount}");
+                card.Show(46, Array.Empty<string>(), Array.Empty<(SpellLibrary.Spell, string)>());
+                if (card.RowCount != 0) throw new Exception("level-up card: the empty state must render zero rows");
+                card.Close();
+            }
+
             // Pin above game (7 Sep): the title-row pin flips Topmost and
             // BringToFront's bump must not knock it off again.
             var pinHost = new Window { Width = 300, Height = 200, ShowInTaskbar = false, ShowActivated = false };
@@ -2243,6 +2255,26 @@ public partial class App : Application
 
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
+
+            // New at this level (8 Sep): unlocks by combo from the library's class levels.
+            {
+                var libL = new SpellLibrary(new ConfigService());
+                var shd46 = libL.UnlocksAt(46, new[] { "SHD" });
+                var combo46 = libL.UnlocksAt(46, new[] { "SHD", "SHM", "NEC" });
+                var all46 = libL.UnlocksAt(46, Array.Empty<string>());
+                Check("levelup: SHD unlocks Voice of Shadows at 46 and nothing at 47 reads as 46",
+                    shd46.Count == 1 && shd46[0].Spell.Name == "Voice of Shadows" && shd46[0].Cls == "SHD"
+                    && libL.UnlocksAt(47, new[] { "SHD" }).All(u => u.Spell.Name != "Voice of Shadows"));
+                Check("levelup: a three-class combo pools every class's unlocks",
+                    combo46.Count == 5 && combo46.Any(u => u.Spell.Name == "Paralyzing Earth" && u.Cls == "NEC")
+                    && combo46.Any(u => u.Spell.Name == "Strength" && u.Cls == "SHM"));
+                Check("levelup: no combo = every class, never nothing", all46.Count > combo46.Count);
+                var lp = new CombatParser();
+                int dinged = 0;
+                lp.LeveledUp += l => dinged = l;
+                lp.ProcessLine("[Tue Sep 08 21:00:00 2026] You have gained a level! Welcome to level 46!");
+                Check("levelup: the ding fires its own event even with the combo unknown", dinged == 46 && lp.CurrentClasses.Length == 0);
+            }
 
             // Diagnostics bundle (8 Sep): chat and tells go, everything the
             // parser reads stays; the slice is the last N minutes of the FILE.

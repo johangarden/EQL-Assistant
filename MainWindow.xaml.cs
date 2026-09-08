@@ -157,6 +157,11 @@ public partial class MainWindow : Window
         _combat.LoadoutLookup = () => _config.ActiveLoadout;
         _combat.StanceChanged += s => _configService.SaveLastStance(_combat.SelfName, s);
         _combat.ClassesChanged += (c, l) => _configService.SaveLastClasses(_combat.SelfName, c, l);
+        _combat.LeveledUp += lvl =>
+        {
+            if (_suppressSct) return; // catch-up/reparse replays old dings
+            ShowLevelUp(lvl);
+        };
         _combat.SwapDetected += () =>
         {
             if (_suppressSct) return; // catch-up/reparse replays old swaps
@@ -1716,6 +1721,16 @@ public partial class MainWindow : Window
         };
         menu.Items.Add(panels);
 
+        int knownLevel = KnownLevel();
+        var whatsNew = new MenuItem
+        {
+            Header = knownLevel > 0 ? $"What's new at level {knownLevel}…" : "What's new at your level… (type /who first)",
+            IsEnabled = knownLevel > 0,
+            ToolTip = "The spells your combo unlocks at your current level — the card that shows on a ding",
+        };
+        whatsNew.Click += (_, _) => ShowLevelUp(KnownLevel());
+        menu.Items.Add(whatsNew);
+
         var loadout = new MenuItem { Header = "Loadout" };
         loadout.Items.Add(new MenuItem { Header = "…" }); // arrow seed; replaced on open
         loadout.SubmenuOpened += (_, _) =>
@@ -1971,6 +1986,33 @@ public partial class MainWindow : Window
     {
         string live = _session?.WhoClasses ?? "";
         return live.Length > 0 ? live : _combat.CurrentClasses;
+    }
+
+    // ---- "New at this level" (owner pick, 8 Sep) ---------------------------------
+
+    private Views.LevelUpWindow? _levelUpWin;
+
+    /// <summary>The level the card should speak about: the live one, else the
+    /// last /who saved for this character, else 0 (unknown).</summary>
+    private int KnownLevel()
+    {
+        if (_combat.CurrentLevel > 0) return _combat.CurrentLevel;
+        var saved = _configService.LoadLastClasses(_combat.SelfName);
+        return saved.Level;
+    }
+
+    private void ShowLevelUp(int level)
+    {
+        if (level <= 0) return;
+        var classes = KnownClassesText().Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var unlocks = _spellLib.UnlocksAt(level, classes);
+        if (_levelUpWin is null)
+        {
+            _levelUpWin = new Views.LevelUpWindow();
+            _levelUpWin.Closed += (_, _) => _levelUpWin = null;
+        }
+        _levelUpWin.Show(level, classes, unlocks);
+        Log.Info($"Level-up card: level {level}, combo '{string.Join("/", classes)}', {unlocks.Count} spells");
     }
 
     private void OpenSkyQuests()

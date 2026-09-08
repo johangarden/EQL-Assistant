@@ -722,6 +722,10 @@ public sealed class CombatParser
     /// swap invalidation (persist it).</summary>
     public event Action<string, int>? ClassesChanged;
 
+    /// <summary>"You have gained a level! Welcome to level N!" — the new level,
+    /// whether or not the combo is known (the level-up card wants it either way).</summary>
+    public event Action<int>? LeveledUp;
+
     /// <summary>Raised when a LOADOUT SWAP was detected (grant burst or
     /// spellbook refresh with no level-up to explain it) — the cue to remind
     /// the player to /who so their parses stay labeled. Live-only concern:
@@ -1125,10 +1129,15 @@ public sealed class CombatParser
         if (body.StartsWith("You have gained a level!", StringComparison.Ordinal))
         {
             _swapSuspectAt = DateTime.MinValue; // the burst was the level-up's
-            if (LevelUpRx.Match(body) is { Success: true } lvl && CurrentClasses.Length > 0)
+            if (LevelUpRx.Match(body) is { Success: true } lvl)
             {
-                CurrentLevel = (int)Amount(lvl, "lvl");
-                ClassesChanged?.Invoke(CurrentClasses, CurrentLevel);
+                int newLevel = (int)Amount(lvl, "lvl");
+                if (CurrentClasses.Length > 0)
+                {
+                    CurrentLevel = newLevel;
+                    ClassesChanged?.Invoke(CurrentClasses, CurrentLevel);
+                }
+                LeveledUp?.Invoke(newLevel);
             }
             return;
         }
