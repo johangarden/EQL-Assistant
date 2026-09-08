@@ -33,6 +33,13 @@ public partial class App : Application
             return;
         }
 
+        // Every headless mode runs gagged: no TTS, no wav — a background
+        // selftest must never speak into the owner's meeting (8 Sep).
+        if (e.Args.Any(a => a.StartsWith("--selftest", StringComparison.Ordinal)
+                            || a.StartsWith("--render", StringComparison.Ordinal)
+                            || a == "--replay"))
+            AlertService.Silenced = true;
+
         // Gated smoke test: construct the manager window (forces XAML parse) and
         // exit. Used to verify the build without a human clicking. Not user-facing.
         int rg = Array.IndexOf(e.Args, "--render-glyphs");
@@ -2202,7 +2209,9 @@ public partial class App : Application
                     !awayTracker.Update(false, ga0.AddSeconds(5)) && awayTracker.Update(false, ga0.AddSeconds(6.5))
                     && awayTracker.Away && !awayTracker.Update(true, ga0.AddSeconds(7)));
 
-                // Notable quest lines (7 Sep): the Torrid Corruptor walked
+                Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
+
+            // Notable quest lines (7 Sep): the Torrid Corruptor walked
                 // through the log — kills, loot, hand-ins, a said keyword;
                 // right-clicks are ticks; later steps imply earlier ones;
                 // replay never double-counts.
