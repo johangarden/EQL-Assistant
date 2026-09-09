@@ -172,7 +172,9 @@ public partial class TriggerManagerWindow : Window
 
     private void LoadVoicePacks()
     {
-        VoicePackBox.ItemsSource = VoicePacks.Catalog;
+        // Labels, not records: the themed ComboBox template shows the item's
+        // own text and ignores DisplayMemberPath.
+        VoicePackBox.ItemsSource = VoicePacks.Catalog.Select(p => p.Label).ToList();
         if (VoicePackBox.SelectedIndex < 0) VoicePackBox.SelectedIndex = 0;
         var installed = VoicePacks.Installed(_configService);
         if (!VoicePacks.AdapterPresent())
@@ -186,7 +188,8 @@ public partial class TriggerManagerWindow : Window
 
     private async void InstallVoicePack_Click(object sender, RoutedEventArgs e)
     {
-        if (VoicePackBox.SelectedItem is not VoicePacks.Pack pack) return;
+        if (VoicePackBox.SelectedIndex < 0 || VoicePackBox.SelectedIndex >= VoicePacks.Catalog.Count) return;
+        var pack = VoicePacks.Catalog[VoicePackBox.SelectedIndex];
         if (!VoicePacks.AdapterPresent())
         {
             VoicePackStatus.Text = "The voice adapter isn't installed yet — use 'Download & set up natural voices' below first.";

@@ -959,7 +959,7 @@
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="A natural voice that speaks on this machine — no network round trip per alert. Windows 11's own Narrator voice packs stopped working with the adapter (their decryption key changed), so this installs the last working pack from the adapter maintainer's list: 12–25 MB downloaded, unzipped into the config folder, and the adapter pointed at it. No admin. Restart EQL Assistant afterwards and pick the voice without 'Online' in its name."/>
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <ComboBox x:Name="VoicePackBox" Width="300" MinHeight="30" DisplayMemberPath="Label"/>
+                                <ComboBox x:Name="VoicePackBox" Width="300" MinHeight="30"/>
                                 <Button x:Name="VoicePackInstallBtn" Content="Install offline voice" Width="160" Margin="8,0,0,0"
                                         Style="{StaticResource PrimaryBtn}" Click="InstallVoicePack_Click"/>
                             </StackPanel>
