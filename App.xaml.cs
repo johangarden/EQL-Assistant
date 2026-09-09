@@ -2444,6 +2444,41 @@ public partial class App : Application
                 }
                 try { File.Delete(zipPath); File.Delete(fakeLog); } catch { /* temp */ }
             }
+            // Offline voice packs (9 Sep): catalog, unzip, and the adapter pointer.
+            {
+                Check("voice packs: the catalog names distinct https packs with distinct folders",
+                    VoicePacks.Catalog.Count >= 4
+                    && VoicePacks.Catalog.All(p => p.Url.StartsWith("https://", StringComparison.Ordinal) && p.Url.EndsWith(".Msix", StringComparison.Ordinal))
+                    && VoicePacks.Catalog.Select(p => p.Folder).Distinct().Count() == VoicePacks.Catalog.Count);
+                Check("voice packs: the expected picker name drops 'Online'",
+                    VoicePacks.ExpectedVoiceName(VoicePacks.Catalog[0]) == "Microsoft Sonia (Natural) - English (United Kingdom)");
+                string vpTmp = Path.Combine(Path.GetTempPath(), "eql_test_voicepack");
+                try { Directory.Delete(vpTmp, true); } catch { /* fresh */ }
+                Directory.CreateDirectory(vpTmp);
+                string fakeMsix = Path.Combine(vpTmp, "fake.Msix");
+                using (var z = System.IO.Compression.ZipFile.Open(fakeMsix, System.IO.Compression.ZipArchiveMode.Create))
+                {
+                    var en = z.CreateEntry("AppxManifest.xml");
+                    using var w = new StreamWriter(en.Open()); w.Write("<Package/>");
+                }
+                string outDir = Path.Combine(vpTmp, "MicrosoftWindows.Voice.en-GB.Sonia.1");
+                VoicePacks.Extract(fakeMsix, outDir);
+                Check("voice packs: an MSIX unzips like a zip into the pack folder", File.Exists(Path.Combine(outDir, "AppxManifest.xml")));
+                string realKey = VoicePacks.EnumeratorKey;
+                VoicePacks.EnumeratorKey = @"Software\EQL_Assistant_Selftest\Enumerator";
+                try
+                {
+                    VoicePacks.PointAdapterAt(vpTmp);
+                    Check("voice packs: the adapter pointer lands in the user hive with local voices enabled",
+                        VoicePacks.CurrentPath() == vpTmp);
+                }
+                finally
+                {
+                    VoicePacks.EnumeratorKey = realKey;
+                    try { Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(@"Software\EQL_Assistant_Selftest", false); } catch { /* test key */ }
+                }
+                try { Directory.Delete(vpTmp, true); } catch { /* temp */ }
+            }
             Check("voices: an Online natural voice is flagged, an offline one is not",
                 TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny Online (Natural) - English (United States)")
                 && !TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny (Natural) - English (United States)")

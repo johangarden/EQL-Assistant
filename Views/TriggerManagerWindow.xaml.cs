@@ -168,10 +168,43 @@ public partial class TriggerManagerWindow : Window
         VoiceOnlineWarn.Visibility = IsOnlineVoice(VoiceBox.SelectedItem as string) ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void OpenNarratorVoices_Click(object sender, RoutedEventArgs e)
+    // ---- Offline voice packs (9 Sep) ------------------------------------------
+
+    private void LoadVoicePacks()
     {
-        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:easeofaccess-narrator") { UseShellExecute = true }); }
-        catch (Exception ex) { Log.Warn("Narrator settings page failed to open: " + ex.Message); }
+        VoicePackBox.ItemsSource = VoicePacks.Catalog;
+        if (VoicePackBox.SelectedIndex < 0) VoicePackBox.SelectedIndex = 0;
+        var installed = VoicePacks.Installed(_configService);
+        if (!VoicePacks.AdapterPresent())
+            VoicePackStatus.Text = "Set up the voice adapter below first — the packs are read through it.";
+        else if (installed.Count > 0)
+            VoicePackStatus.Text = "Installed: " + string.Join(", ", installed.Select(p => p.Label.Split(' ')[0]))
+                + $" — the adapter reads {VoicePacks.CurrentPath()}. Not in the list above? Restart EQL Assistant.";
+        else
+            VoicePackStatus.Text = "";
+    }
+
+    private async void InstallVoicePack_Click(object sender, RoutedEventArgs e)
+    {
+        if (VoicePackBox.SelectedItem is not VoicePacks.Pack pack) return;
+        if (!VoicePacks.AdapterPresent())
+        {
+            VoicePackStatus.Text = "The voice adapter isn't installed yet — use 'Download & set up natural voices' below first.";
+            return;
+        }
+        VoicePackInstallBtn.IsEnabled = false;
+        try
+        {
+            var progress = new Progress<string>(msg => VoicePackStatus.Text = msg);
+            await VoicePacks.InstallAsync(_configService, pack, progress);
+            VoicePackStatus.Text = $"Installed. Restart EQL Assistant, then pick \"{VoicePacks.ExpectedVoiceName(pack)}\" above.";
+        }
+        catch (Exception ex)
+        {
+            VoicePackStatus.Text = "Install failed: " + ex.Message;
+            Log.Error("Voice pack install failed", ex);
+        }
+        finally { VoicePackInstallBtn.IsEnabled = true; }
     }
 
     // ---- Diagnostics bundle (8 Sep) -------------------------------------------
@@ -1249,6 +1282,7 @@ public partial class TriggerManagerWindow : Window
         UpdateMomentNoticeUx();
 
         // Sounds & voices: the one speaking voice for every spoken alert.
+        LoadVoicePacks();
         VoiceBox.SelectionChanged -= VoiceBox_SelectionChanged;
         VoiceBox.SelectionChanged += VoiceBox_SelectionChanged;
         VoiceBox.ItemsSource = new[] { "(system default)" }
