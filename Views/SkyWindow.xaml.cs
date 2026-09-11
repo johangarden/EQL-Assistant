@@ -25,8 +25,28 @@ public partial class SkyWindow : Window
     private static readonly Brush DoneFg = Freeze(Color.FromRgb(0x81, 0xC7, 0x84));
     private static readonly Brush OpenFg = Freeze(Color.FromRgb(0xDC, 0xE6, 0xF5));
 
+    /// <param name="Where">Where the held copies sit per the inventory dump
+    /// ("in General 11-Slot 9"; "" when none held or no dump) — owner request,
+    /// 11 Sep: "I can't find the items that are ready for turn-in".</param>
     public sealed record ChipVm(string Name, string CountText, string Sub, Brush Bg, Brush Fg,
-        string Tip, string Url);
+        string Tip, string Url, string Where = "");
+
+    private List<InventoryStore.CarryRow>? _chipInv;
+
+    /// <summary>The chip's "in …" text: up to two dump locations for the held
+    /// copies, "+N more" beyond, tier-tolerant on the name; "" when nothing is
+    /// held, no dump exists, or the dump doesn't list the item (moved after
+    /// the dump — run /outputfile inventory again).</summary>
+    public static string WhereText(IReadOnlyList<InventoryStore.CarryRow>? inv, string item, int held)
+    {
+        if (inv is null || held <= 0) return "";
+        string key = FocusEffects.ItemKey(item);
+        var spots = inv.Where(r => FocusEffects.ItemKey(r.Name) == key && !r.Name.EndsWith("(Exaltation)", StringComparison.Ordinal))
+            .Select(r => r.Count > 1 ? $"{r.Location} ×{r.Count}" : r.Location)
+            .ToList();
+        if (spots.Count == 0) return "";
+        return "in " + string.Join(", ", spots.Take(2)) + (spots.Count > 2 ? $" +{spots.Count - 2} more" : "");
+    }
 
     // The REWARD wears its wiki icon (the same embedded set the Character
     // window draws) — the drop rows stay text-only, by owner taste.
@@ -338,6 +358,7 @@ public partial class SkyWindow : Window
 
     private void Refresh()
     {
+        _chipInv = DumpRows(out _); // the chips say where a held copy sits
         if (_initializing || QuestsControl is null) return;
 
         RefreshBadges();
@@ -618,10 +639,12 @@ public partial class SkyWindow : Window
             string sub = it.Mobs.Count > 0
                 ? string.Join(" / ", it.Mobs) + (it.Where.Length > 0 ? $" · {it.Where}" : "")
                 : it.Who;
+            string where = WhereText(_chipInv, it.Name, held);
             return new ChipVm(it.Name, $"{held}/{it.Count}", sub, bg, fg,
                 $"{it.Name} — drops from {it.Who} ({it.Where}). Click for the wiki page."
+                + (where.Length > 0 ? $"\n{where} (per the last inventory dump — moved since? dump again)" : held > 0 && _chipInv is not null ? "\nNot in the last inventory dump — moved since? run /outputfile inventory again." : "")
                 + (it.Stats is null ? "" : "\n\n" + it.Stats),
-                WikiUrl(it.Name));
+                WikiUrl(it.Name), where);
         }).ToList();
 
         return new QuestVm(q,
