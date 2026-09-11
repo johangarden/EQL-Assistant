@@ -278,7 +278,8 @@ public partial class App : Application
                 meter.SetSelfExpandedForTest(false);
                 var folded = meter.RowsForTest;
                 if (folded.Count != 2 || folded[0].Name != "Thorrak" || folded[1].Name != "Jobaner (pet)"
-                    || !folded[0].ValueText.Contains("86%") || !folded[1].ValueText.Contains("14%") || folded[0].IsFold)
+                    || !folded[0].ValueText.Contains("86%") || !folded[1].ValueText.Contains("14%") || folded[0].IsFold
+                    || Math.Abs(folded[0].Fraction - 6.0 / 7) > 0.01 || Math.Abs(folded[1].Fraction - 1.0 / 7) > 0.01) // shares of the header
                     throw new Exception("meter solo folded: expected [Thorrak, Jobaner (pet)] total bars, got "
                         + string.Join(" | ", folded.Select(r => $"{r.Name} {r.ValueText}")));
                 meter.SetSelfExpandedForTest(true);

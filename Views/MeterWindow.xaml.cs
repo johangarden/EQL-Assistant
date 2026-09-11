@@ -404,8 +404,10 @@ public partial class MeterWindow : Window
             // combined number, and two total bars beneath it split it — you
             // and the pet, ranked, each a share of the combined total — so
             // "how much is the pet" still reads at a glance without the
-            // ability list.
-            double top = Math.Max(1, Math.Max(selfTotal, petTotal));
+            // ability list. The bars are shares of the HEADER (67% + 33%
+            // fills the header's width), not of the larger of the two
+            // (owner, 11 Sep: "shouldn't 67% fill 67%?").
+            double top = Math.Max(1, combined);
             var pair = new List<(double Total, bool IsPet)> { (selfTotal, false), (petTotal, true) };
             pair.Sort((a, b) => b.Total.CompareTo(a.Total));
             foreach (var (t, isPet) in pair)
