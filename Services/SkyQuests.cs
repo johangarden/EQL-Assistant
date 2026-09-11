@@ -62,11 +62,21 @@ public sealed class SkyQuests
         public Dictionary<string, int> Offered { get; set; } = new();
         public Dictionary<string, List<string>> QuestOffers { get; set; } = new();
         public List<string> OfferSeen { get; set; } = new();
+        public Dictionary<string, int> Destroyed { get; set; } = new();
+        public List<string> DestroySeen { get; set; } = new();
     }
 
     private readonly string _progressPath;
     private readonly Dictionary<string, int> _counts = new();          // ItemKey -> looted
     private readonly Dictionary<string, int> _offered = new();         // ItemKey -> turned in
+    // "You successfully destroyed 3 Golden Coffer." (confirmed 11 Sep — 293 in the
+    // owner's log): deleted copies leave the ledger too, so housekeeping stops
+    // offering what's already gone. Exact-line dedupe like the offers.
+    private readonly Dictionary<string, int> _destroyed = new();       // ItemKey -> destroyed
+    private readonly HashSet<string> _destroySeen = new();
+    private static readonly Regex DestroyRx = new(
+        @"^You successfully destroyed (?<n>\d+) (?<item>.+?)\.$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private readonly Dictionary<string, HashSet<string>> _questOffers  // quest -> ItemKeys offered
         = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _offerSeen = new(StringComparer.Ordinal); // replay dedupe
@@ -184,6 +194,17 @@ public sealed class SkyQuests
     {
         string body = TimestampPrefix.Replace(rawLine, "", 1);
 
+        if (body.StartsWith("You successfully destroyed ", StringComparison.Ordinal)
+            && DestroyRx.Match(body) is { Success: true } dm)
+        {
+            string key = LootTracker.ItemKey(dm.Groups["item"].Value);
+            if (!_questItemKeys.Contains(key) || !_destroySeen.Add(rawLine)) return;
+            _destroyed[key] = _destroyed.GetValueOrDefault(key) + Math.Max(1, int.Parse(dm.Groups["n"].Value));
+            SaveProgress();
+            Changed?.Invoke();
+            return;
+        }
+
         if (body.StartsWith("You offered ", StringComparison.Ordinal)
             && OfferRx.Match(body) is { Success: true } om)
         {
@@ -289,6 +310,8 @@ public sealed class SkyQuests
         _offered.Clear();
         _questOffers.Clear();
         _offerSeen.Clear();
+        _destroyed.Clear();
+        _destroySeen.Clear();
         SaveProgress();
         Changed?.Invoke();
     }
@@ -297,7 +320,7 @@ public sealed class SkyQuests
     public int HeldCount(SkyItem item)
     {
         string key = LootTracker.ItemKey(item.Name);
-        return Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key));
+        return HeldByKey(key);
     }
 
     public bool IsCompleted(SkyQuest q) => _completed.Contains(q.Key);
@@ -344,7 +367,7 @@ public sealed class SkyQuests
     public sealed record SurplusItem(string Item, int Surplus);
 
     private int HeldByKey(string key) =>
-        Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key));
+        Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key) - _destroyed.GetValueOrDefault(key));
 
     /// <summary>The per-isle shopping list: everything ACTIVE quests still
     /// need beyond what you hold, grouped by where it drops.</summary>
@@ -405,7 +428,13 @@ public sealed class SkyQuests
 
     /// <summary>Held copies no ACTIVE quest still wants (per the loot ledger):
     /// every quest for the item is done, or you hold more than they need.</summary>
-    public IReadOnlyList<SurplusItem> Surplus()
+    /// <param name="snapshotCopies">The inventory dump's copy count for an item
+    /// name, or -1 when the dump doesn't list it. A dump that lists FEWER
+    /// copies than the ledger wins (owner, 11 Sep: three coffers deleted, a
+    /// fresh dump, and housekeeping still said 4 spare — whatever left
+    /// without a log line, the bags are the truth). A dump that lists none
+    /// leaves the ledger's word, flagged as "not in the snapshot".</param>
+    public IReadOnlyList<SurplusItem> Surplus(Func<string, int>? snapshotCopies = null)
     {
         var needed = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var q in _quests)
@@ -422,7 +451,13 @@ public sealed class SkyQuests
         foreach (var key in _counts.Keys)
         {
             if (_currencyKeys.Contains(key)) continue; // stacks in the currency tab — no space to free
-            int surplus = HeldByKey(key) - needed.GetValueOrDefault(key);
+            int held = HeldByKey(key);
+            if (snapshotCopies is not null && held > 0)
+            {
+                int inDump = snapshotCopies(_keyToName.GetValueOrDefault(key, key));
+                if (inDump > 0 && inDump < held) held = inDump;
+            }
+            int surplus = held - needed.GetValueOrDefault(key);
             if (surplus > 0)
                 rows.Add(new SurplusItem(_keyToName.GetValueOrDefault(key, key), surplus));
         }
@@ -499,6 +534,8 @@ public sealed class SkyQuests
             foreach (var (k, v) in doc.QuestOffers)
                 _questOffers[k] = new HashSet<string>(v);
             foreach (var s in doc.OfferSeen) _offerSeen.Add(s);
+            foreach (var (k, v) in doc.Destroyed) _destroyed[k] = v;
+            foreach (var s in doc.DestroySeen) _destroySeen.Add(s);
         }
         catch { /* corrupt -> start empty */ }
     }
@@ -515,6 +552,8 @@ public sealed class SkyQuests
                 Offered = new Dictionary<string, int>(_offered),
                 QuestOffers = _questOffers.ToDictionary(kv => kv.Key, kv => kv.Value.ToList()),
                 OfferSeen = _offerSeen.ToList(),
+                Destroyed = new Dictionary<string, int>(_destroyed),
+                DestroySeen = _destroySeen.ToList(),
             }, JsonOpts));
         }
         catch { /* best-effort */ }

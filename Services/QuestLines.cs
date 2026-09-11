@@ -92,6 +92,8 @@ public sealed class QuestLines
         public List<string> Tracked { get; set; } = new();
         public List<string> OfferSeen { get; set; } = new();
         public Dictionary<string, int> Offered { get; set; } = new();
+        public Dictionary<string, int> Destroyed { get; set; } = new();
+        public List<string> DestroySeen { get; set; } = new();
     }
 
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -112,6 +114,7 @@ public sealed class QuestLines
     private static readonly Regex SayRx = new(@"^You say, '(?<t>.+)'$", RegexOptions.Compiled);
     private static readonly Regex OfferRx = new(@"^You offered (?<n>\d+) (?<item>.+?) to (?<npc>.+?)\.$", RegexOptions.Compiled);
     private static readonly Regex TradeDoneRx = new(@"^You complete the trade with (?<npc>.+?)\.$", RegexOptions.Compiled);
+    private static readonly Regex DestroyRx = new(@"^You successfully destroyed (?<n>\d+) (?<item>.+?)\.$", RegexOptions.Compiled);
 
     private const double TradeWindowSec = 300;
     private sealed record PendingOffer(DateTime At, string ItemKey, int N, string RawLine);
@@ -124,6 +127,8 @@ public sealed class QuestLines
     private readonly HashSet<string> _tracked = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _offerSeen = new();
     private readonly Dictionary<string, int> _offered = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _destroyed = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _destroySeen = new();
     private readonly Dictionary<string, List<PendingOffer>> _pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _handinKeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly LootTracker? _loot;
@@ -193,6 +198,8 @@ public sealed class QuestLines
             foreach (var t in doc.Tracked) _tracked.Add(t);
             foreach (var s in doc.OfferSeen) _offerSeen.Add(s);
             foreach (var (k, n) in doc.Offered) _offered[k] = n;
+            foreach (var (k, n) in doc.Destroyed) _destroyed[k] = n;
+            foreach (var s in doc.DestroySeen) _destroySeen.Add(s);
         }
         catch (Exception ex)
         {
@@ -212,6 +219,8 @@ public sealed class QuestLines
                 Tracked = _tracked.ToList(),
                 OfferSeen = _offerSeen.ToList(),
                 Offered = new Dictionary<string, int>(_offered),
+                Destroyed = new Dictionary<string, int>(_destroyed),
+                DestroySeen = _destroySeen.ToList(),
             };
             Directory.CreateDirectory(Path.GetDirectoryName(_progressPath)!);
             File.WriteAllText(_progressPath, JsonSerializer.Serialize(doc, JsonOpts));
@@ -225,6 +234,7 @@ public sealed class QuestLines
     public void ResetProgress()
     {
         _marks.Clear(); _partial.Clear(); _evidence.Clear(); _offerSeen.Clear(); _offered.Clear(); _pending.Clear();
+        _destroyed.Clear(); _destroySeen.Clear();
         SaveProgress();
         Changed?.Invoke();
     }
@@ -289,7 +299,7 @@ public sealed class QuestLines
         string key = LootTracker.ItemKey(item);
         int looted = _loot.Entries.Where(e => e.Kind == LootTracker.LootKind.Kept && LootTracker.ItemKey(e.Item) == key)
             .Sum(e => Math.Max(1, e.Count));
-        return Math.Max(0, looted - _offered.GetValueOrDefault(key));
+        return Math.Max(0, looted - _offered.GetValueOrDefault(key) - _destroyed.GetValueOrDefault(key));
     }
 
     // ---------------------------------------------------------------- the log
@@ -326,6 +336,15 @@ public sealed class QuestLines
         }
         else if (body.StartsWith("You complete the trade with ", StringComparison.Ordinal) && TradeDoneRx.Match(body) is { Success: true } tm)
             changed = CommitTrade(tm.Groups["npc"].Value, body, when);
+        else if (body.StartsWith("You successfully destroyed ", StringComparison.Ordinal) && DestroyRx.Match(body) is { Success: true } dm)
+        {
+            string key = LootTracker.ItemKey(dm.Groups["item"].Value);
+            if (_handinKeys.Contains(key) && _destroySeen.Add(rawLine))
+            {
+                _destroyed[key] = _destroyed.GetValueOrDefault(key) + Math.Max(1, int.Parse(dm.Groups["n"].Value));
+                changed = true;
+            }
+        }
 
         if (changed)
         {

@@ -168,11 +168,50 @@ public partial class TriggerManagerWindow : Window
         VoiceOnlineWarn.Visibility = IsOnlineVoice(VoiceBox.SelectedItem as string) ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void OpenNarratorVoices_Click(object sender, RoutedEventArgs e)
+    // ---- Offline voice packs (9 Sep) ------------------------------------------
+
+    private void LoadVoicePacks()
     {
-        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:easeofaccess-narrator") { UseShellExecute = true }); }
-        catch (Exception ex) { Log.Warn("Narrator settings page failed to open: " + ex.Message); }
+        // Labels, not records: the themed ComboBox template shows the item's
+        // own text and ignores DisplayMemberPath.
+        VoicePackBox.ItemsSource = VoicePacks.Catalog.Select(p => p.Label).ToList();
+        if (VoicePackBox.SelectedIndex < 0) VoicePackBox.SelectedIndex = 0;
+        var installed = VoicePacks.Installed(_configService);
+        if (!VoicePacks.AdapterPresent())
+            VoicePackStatus.Text = "Set up the voice adapter below first — the packs are read through it.";
+        else if (installed.Count > 0)
+            VoicePackStatus.Text = "Installed: " + string.Join(", ", installed.Select(p => p.Label.Split(' ')[0]))
+                + $" — the adapter reads {VoicePacks.CurrentPath()}. Not in the list above? Restart EQL Assistant.";
+        else
+            VoicePackStatus.Text = "";
     }
+
+    private async void InstallVoicePack_Click(object sender, RoutedEventArgs e)
+    {
+        if (VoicePackBox.SelectedIndex < 0 || VoicePackBox.SelectedIndex >= VoicePacks.Catalog.Count) return;
+        var pack = VoicePacks.Catalog[VoicePackBox.SelectedIndex];
+        if (!VoicePacks.AdapterPresent())
+        {
+            VoicePackStatus.Text = "The voice adapter isn't installed yet — use 'Download & set up natural voices' below first.";
+            return;
+        }
+        VoicePackInstallBtn.IsEnabled = false;
+        try
+        {
+            var progress = new Progress<string>(msg => VoicePackStatus.Text = msg);
+            await VoicePacks.InstallAsync(_configService, pack, progress);
+            VoicePackStatus.Text = $"Installed. Restart EQL Assistant, then pick \"{VoicePacks.ExpectedVoiceName(pack)}\" above.";
+        }
+        catch (Exception ex)
+        {
+            VoicePackStatus.Text = "Install failed: " + ex.Message;
+            Log.Error("Voice pack install failed", ex);
+        }
+        finally { VoicePackInstallBtn.IsEnabled = true; }
+    }
+
+    private int _incomingWindowSec = 15;
+    private Segmented? _incomingSeg;
 
     // ---- Diagnostics bundle (8 Sep) -------------------------------------------
 
@@ -1148,6 +1187,7 @@ public partial class TriggerManagerWindow : Window
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
+            ["Incoming damage"] = IncomingPage,
             ["Sky droppers"] = SkyHelperPage,
             ["Cursor ring"] = CursorRingPage,
             ["General"] = GeneralPage,
@@ -1249,6 +1289,7 @@ public partial class TriggerManagerWindow : Window
         UpdateMomentNoticeUx();
 
         // Sounds & voices: the one speaking voice for every spoken alert.
+        LoadVoicePacks();
         VoiceBox.SelectionChanged -= VoiceBox_SelectionChanged;
         VoiceBox.SelectionChanged += VoiceBox_SelectionChanged;
         VoiceBox.ItemsSource = new[] { "(system default)" }
@@ -1322,6 +1363,20 @@ public partial class TriggerManagerWindow : Window
         SctXpLifetimeBox.Text = _config.Overlay.SctXpLifetime.ToString(CultureInfo.InvariantCulture);
 
         EnemyDotsVisibleCheck.IsChecked = _config.Overlay.EnemyDotsVisible;
+        IncomingVisibleCheck.IsChecked = _config.Overlay.IncomingVisible;
+        _incomingWindowSec = _config.Overlay.IncomingWindowSec is 10 or 15 ? _config.Overlay.IncomingWindowSec : 15;
+        if (_incomingSeg is null)
+        {
+            _incomingSeg = new Segmented(new[]
+            {
+                new Segmented.Option("10", "10 s"),
+                new Segmented.Option("15", "15 s"),
+            }, _incomingWindowSec.ToString(), "#E8C15A");
+            _incomingSeg.Margin = new Thickness(0);
+            _incomingSeg.Changed += id => _incomingWindowSec = int.Parse(id);
+            IncomingWindowHost.Children.Add(_incomingSeg);
+        }
+        else _incomingSeg.Select(_incomingWindowSec.ToString());
         EnemyDotsGroupBox.SelectedValue = _config.Overlay.EnemyDotsGroupByMob ? "mob" : "spell";
         EnemyDotsAnchorBox.SelectedValue = (_configService.LoadPlacement("enemyDots")?.Anchor ?? Anchor.TopLeft).ToString();
         RemindersAnchorBox.SelectedValue = (_configService.LoadPlacement("reminders")?.Anchor ?? Anchor.TopLeft).ToString();
@@ -1602,6 +1657,8 @@ public partial class TriggerManagerWindow : Window
                 TargetMatrixVisible = _config.Overlay.TargetMatrixVisible, // tray-toggled
                 RemindersVisible = _config.Overlay.RemindersVisible,       // tray-toggled
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
+                IncomingVisible = IncomingVisibleCheck.IsChecked == true,
+                IncomingWindowSec = _incomingWindowSec,
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
                 ConditionsVisible = ConditionsVisibleCheck.IsChecked == true,
                 SkyHelperVisible = SkyHelperVisibleCheck.IsChecked == true,

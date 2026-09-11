@@ -119,6 +119,7 @@
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
                     <ListBoxItem Content="Condition badges"/>
+                    <ListBoxItem Content="Incoming damage"/>
                     <ListBoxItem Content="Sky droppers"/>
                     <ListBoxItem Content="APP SETTINGS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
@@ -950,11 +951,20 @@
                                     <TextBlock Foreground="#FFB74D" FontWeight="SemiBold" FontSize="12"
                                                Text="This is an Online voice — every alert is synthesized in the cloud first."/>
                                     <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0"
-                                               Text="That's a network round trip per alert (a second or two on a busy connection). Windows can install the same natural voices offline: Settings → Accessibility → Narrator → Add natural voices. They then appear in the list above without the word Online. Apps can't install voices themselves — only open the page."/>
-                                    <Button Content="Open Narrator voice settings" Width="200" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                            Click="OpenNarratorVoices_Click"/>
+                                               Text="That's a network round trip per alert (a second or two on a busy connection). Install the same voice offline below — Windows' own Narrator voice packs no longer work with the adapter, so the Narrator page won't help."/>
                                 </StackPanel>
                             </Border>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Offline natural voices" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A natural voice that speaks on this machine — no network round trip per alert. Windows 11's own Narrator voice packs stopped working with the adapter (their decryption key changed), so this installs the last working pack from the adapter maintainer's list: 12–25 MB downloaded, unzipped into the config folder, and the adapter pointed at it. No admin. Restart EQL Assistant afterwards and pick the voice without 'Online' in its name."/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <ComboBox x:Name="VoicePackBox" Width="300" MinHeight="30"/>
+                                <Button x:Name="VoicePackInstallBtn" Content="Install offline voice" Width="160" Margin="8,0,0,0"
+                                        Style="{StaticResource PrimaryBtn}" Click="InstallVoicePack_Click"/>
+                            </StackPanel>
+                            <TextBlock x:Name="VoicePackStatus" Style="{StaticResource Hint}" Margin="0,6,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Nicer voices, free" Style="{StaticResource SectionTitle}"/>
@@ -1021,6 +1031,25 @@
                     </ScrollViewer>
 
                     <!-- ============================ SKY QUEST HELPER ============================ -->
+                    <!-- ========================= INCOMING DAMAGE ========================= -->
+                    <ScrollViewer x:Name="IncomingPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Incoming damage" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A stance helper for the fight you're in: the last seconds of damage taken, melee red and spells violet, second by second, with the same verdict the death recap gives — defensive halves melee, mage hunter halves spells — while you can still switch. Locked, the panel vanishes while nothing hits you; unlocked it keeps a placeholder so it can be placed."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <CheckBox x:Name="IncomingVisibleCheck" Content="Show the panel" Margin="0,4,0,0"/>
+                            <TextBlock Text="Window" Style="{StaticResource FieldLabel}"/>
+                            <StackPanel x:Name="IncomingWindowHost" Orientation="Horizontal"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
+                                       Text="15 seconds reads a whole pull; 10 reacts faster to a caster joining in. The verdict needs one kind at 60% or more of the window — below that it says mixed."/>
+                        </StackPanel>
+                    </ScrollViewer>
+
                     <ScrollViewer x:Name="SkyHelperPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">

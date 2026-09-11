@@ -278,7 +278,8 @@ public partial class App : Application
                 meter.SetSelfExpandedForTest(false);
                 var folded = meter.RowsForTest;
                 if (folded.Count != 2 || folded[0].Name != "Thorrak" || folded[1].Name != "Jobaner (pet)"
-                    || !folded[0].ValueText.Contains("86%") || !folded[1].ValueText.Contains("14%") || folded[0].IsFold)
+                    || !folded[0].ValueText.Contains("86%") || !folded[1].ValueText.Contains("14%") || folded[0].IsFold
+                    || Math.Abs(folded[0].Fraction - 6.0 / 7) > 0.01 || Math.Abs(folded[1].Fraction - 1.0 / 7) > 0.01) // shares of the header
                     throw new Exception("meter solo folded: expected [Thorrak, Jobaner (pet)] total bars, got "
                         + string.Join(" | ", folded.Select(r => $"{r.Name} {r.ValueText}")));
                 meter.SetSelfExpandedForTest(true);
@@ -300,6 +301,21 @@ public partial class App : Application
                 hw.ShowView("fights");
                 hw.Close();
                 try { File.Delete(rbPath2); } catch { /* temp */ }
+            }
+
+            // The incoming-damage panel renders both states.
+            {
+                var iwv = new IncomingWatch();
+                var win = new Views.IncomingWindow(iwv, () => "defensive", new ConfigService(), 1.0, 15) { Left = -9000, Top = -9000 };
+                win.SetLocked(false);
+                win.Show();
+                win.Refresh();
+                if (win.LastKind != "") throw new Exception("incoming panel: quiet state should carry no verdict");
+                iwv.Add(DateTime.Now.AddSeconds(-2), 400, spell: true);
+                iwv.Add(DateTime.Now.AddSeconds(-1), 100, spell: false);
+                win.Refresh();
+                if (win.LastKind != "switch") throw new Exception("incoming panel: spell-heavy in defensive should read switch, got " + win.LastKind);
+                win.Close();
             }
 
             // The con card renders verdicts and the honest empty line.
@@ -2287,6 +2303,31 @@ public partial class App : Application
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
 
+            // Incoming damage watch (11 Sep): per-second buckets and the in-fight verdict.
+            {
+                var iw = new IncomingWatch { WindowSec = 15 };
+                var iw0 = new DateTime(2026, 9, 11, 21, 0, 0);
+                iw.Add(iw0.AddSeconds(-14), 300, spell: false);
+                iw.Add(iw0.AddSeconds(-14), 100, spell: true);
+                iw.Add(iw0.AddSeconds(-3), 900, spell: true);
+                iw.Add(iw0.AddSeconds(-20), 5000, spell: true); // outside the window
+                var snap = iw.Take(iw0, "defensive");
+                Check("incoming: buckets land in their second, the window drops older hits",
+                    snap.WindowSec == 15 && snap.MeleeCols[0] == 300 && snap.SpellCols[0] == 100 && snap.SpellCols[11] == 900
+                    && Math.Abs(snap.Total - 1300) < 0.01 && Math.Abs(snap.SpellShare - 1000.0 / 1300) < 0.001);
+                Check("incoming: spells dominant in defensive says switch to mage hunter",
+                    snap.VerdictKind == "switch" && snap.VerdictText.Contains("Mage hunter would halve"));
+                Check("incoming: the right stance reads ok, a mix reads mixed, nothing reads nothing",
+                    IncomingWatch.Verdict("mage hunter", 100, 900).Kind == "ok"
+                    && IncomingWatch.Verdict("defensive", 900, 100).Kind == "ok"
+                    && IncomingWatch.Verdict("mage hunter", 900, 100).Kind == "switch"
+                    && IncomingWatch.Verdict("striker", 500, 500).Kind == "mixed"
+                    && IncomingWatch.Verdict("", 900, 100).Text.Contains("defensive would halve")
+                    && IncomingWatch.Verdict("defensive", 0, 0).Kind == "");
+                Check("incoming: the config defaults — shown, 15 s window",
+                    new Models.AppConfig().Overlay.IncomingVisible && new Models.AppConfig().Overlay.IncomingWindowSec == 15);
+            }
+
             // Attack rounds (8 Sep): the annotation rides every melee event; the
             // avoid word rides every miss; RoundStats reads them honestly.
             {
@@ -2444,6 +2485,41 @@ public partial class App : Application
                 }
                 try { File.Delete(zipPath); File.Delete(fakeLog); } catch { /* temp */ }
             }
+            // Offline voice packs (9 Sep): catalog, unzip, and the adapter pointer.
+            {
+                Check("voice packs: the catalog names distinct https packs with distinct folders",
+                    VoicePacks.Catalog.Count >= 4
+                    && VoicePacks.Catalog.All(p => p.Url.StartsWith("https://", StringComparison.Ordinal) && p.Url.EndsWith(".Msix", StringComparison.Ordinal))
+                    && VoicePacks.Catalog.Select(p => p.Folder).Distinct().Count() == VoicePacks.Catalog.Count);
+                Check("voice packs: the expected picker name drops 'Online'",
+                    VoicePacks.ExpectedVoiceName(VoicePacks.Catalog[0]) == "Microsoft Sonia (Natural) - English (United Kingdom)");
+                string vpTmp = Path.Combine(Path.GetTempPath(), "eql_test_voicepack");
+                try { Directory.Delete(vpTmp, true); } catch { /* fresh */ }
+                Directory.CreateDirectory(vpTmp);
+                string fakeMsix = Path.Combine(vpTmp, "fake.Msix");
+                using (var z = System.IO.Compression.ZipFile.Open(fakeMsix, System.IO.Compression.ZipArchiveMode.Create))
+                {
+                    var en = z.CreateEntry("AppxManifest.xml");
+                    using var w = new StreamWriter(en.Open()); w.Write("<Package/>");
+                }
+                string outDir = Path.Combine(vpTmp, "MicrosoftWindows.Voice.en-GB.Sonia.1");
+                VoicePacks.Extract(fakeMsix, outDir);
+                Check("voice packs: an MSIX unzips like a zip into the pack folder", File.Exists(Path.Combine(outDir, "AppxManifest.xml")));
+                string realKey = VoicePacks.EnumeratorKey;
+                VoicePacks.EnumeratorKey = @"Software\EQL_Assistant_Selftest\Enumerator";
+                try
+                {
+                    VoicePacks.PointAdapterAt(vpTmp);
+                    Check("voice packs: the adapter pointer lands in the user hive with local voices enabled",
+                        VoicePacks.CurrentPath() == vpTmp);
+                }
+                finally
+                {
+                    VoicePacks.EnumeratorKey = realKey;
+                    try { Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(@"Software\EQL_Assistant_Selftest", false); } catch { /* test key */ }
+                }
+                try { Directory.Delete(vpTmp, true); } catch { /* temp */ }
+            }
             Check("voices: an Online natural voice is flagged, an offline one is not",
                 TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny Online (Natural) - English (United States)")
                 && !TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny (Natural) - English (United States)")
@@ -2513,6 +2589,38 @@ public partial class App : Application
                     // progress — a coin hand-in never proves a quest you haven't started.
                     Check("lines: a shared coins-only NPC can't prove an unstarted line", !ql.IsDone(fiery, fiery.Steps[4]));
                     try { File.Delete(qlPath); } catch { /* temp */ }
+                }
+
+                // Destroyed copies leave the ledger (11 Sep); the snapshot caps it.
+                {
+                    string dPath = Path.Combine(Path.GetTempPath(), "eql_test_sky_destroy.json");
+                    try { File.Delete(dPath); } catch { /* fresh */ }
+                    string dLoot = Path.Combine(Path.GetTempPath(), "eql_test_sky_destroy_loot.json");
+                    try { File.Delete(dLoot); } catch { /* fresh */ }
+                    var dl = new LootTracker(new ConfigService(), dLoot);
+                    var ds = new SkyQuests(new ConfigService(), dl, dPath);
+                    var coffer = ds.Quests.SelectMany(q => q.Items).First(i => i.Name == "Golden Coffer");
+                    for (int i = 0; i < 4; i++)
+                        dl.ProcessLine($"[Thu Sep 10 22:0{i}:00 2026] --You have looted Golden Coffer from a windrider drake's corpse.--");
+                    int before = ds.HeldCount(coffer);
+                    ds.ProcessLine("[Thu Sep 10 22:10:00 2026] You successfully destroyed 3 Golden Coffer.");
+                    Check("sky: destroyed copies leave the ledger", before == 4 && ds.HeldCount(coffer) == 1);
+                    ds.ProcessLine("[Thu Sep 10 22:10:00 2026] You successfully destroyed 3 Golden Coffer.");
+                    Check("sky: a replayed destroy line counts once", ds.HeldCount(coffer) == 1);
+                    var ds2 = new SkyQuests(new ConfigService(), dl, dPath);
+                    Check("sky: destroyed copies survive a reload", ds2.HeldCount(coffer) == 1);
+                    // The snapshot caps the ledger: ledger 1 held, dump says 0 -> ledger's word; dump says 5 -> ledger's word.
+                    var dsAll = new SkyQuests(new ConfigService(), dl, dPath);
+                    foreach (var q in dsAll.Quests) dsAll.SetCompleted(q, true); // nothing needs a coffer -> all held are spare
+                    int ledgerSpare = dsAll.Surplus().First(s => s.Item == "Golden Coffer").Surplus;
+                    int dumpNone = dsAll.Surplus(_ => -1).First(s => s.Item == "Golden Coffer").Surplus;
+                    int dumpMore = dsAll.Surplus(_ => 5).First(s => s.Item == "Golden Coffer").Surplus;
+                    for (int i = 0; i < 6; i++)
+                        dl.ProcessLine($"[Thu Sep 10 22:2{i}:00 2026] --You have looted Golden Coffer from a windrider drake's corpse.--");
+                    int dumpFewer = dsAll.Surplus(name => name == "Golden Coffer" ? 2 : -1).First(s => s.Item == "Golden Coffer").Surplus;
+                    Check("sky: the snapshot caps the spare count when it holds fewer than the ledger, never raises it",
+                        ledgerSpare == 1 && dumpNone == 1 && dumpMore == 1 && dumpFewer == 2);
+                    try { File.Delete(dPath); File.Delete(dLoot); } catch { /* temp */ }
                 }
 
                 string offer1 = "[Sat Aug 29 00:30:00 2026] You offered 1 Small Shield to Josin Faithbringer.";
@@ -3935,6 +4043,28 @@ public partial class App : Application
             };
             recap.Show();
             mgr = recap;
+        }
+        else if (page.Equals("incoming", StringComparison.OrdinalIgnoreCase))
+        {
+            // A synthetic spell-heavy window in a defensive stance.
+            var iw = new IncomingWatch();
+            var now = DateTime.Now;
+            double[] m = { 80, 300, 500, 0, 0, 60, 0, 40, 180, 0, 0, 0, 0, 0, 100 };
+            double[] sp = { 100, 0, 0, 400, 0, 0, 420, 0, 0, 80, 0, 0, 550, 550, 0 };
+            for (int i = 0; i < 15; i++)
+            {
+                if (m[i] > 0) iw.Add(now.AddSeconds(-(14 - i)), m[i], spell: false);
+                if (sp[i] > 0) iw.Add(now.AddSeconds(-(14 - i)), sp[i], spell: true);
+            }
+            var win = new Views.IncomingWindow(iw, () => "defensive", new ConfigService(), 1.0, 15)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            win.SetLocked(true);
+            win.Show();
+            win.Refresh();
+            mgr = win;
         }
         else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase))
         {

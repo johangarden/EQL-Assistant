@@ -142,6 +142,14 @@ public sealed class OverlayConfig
     /// Only for mobs the book has met past its sample floor.</summary>
     public bool ConCardVisible { get; set; } = true;
 
+    /// <summary>The incoming-damage panel (11 Sep): the last N seconds of
+    /// damage taken split melee / spells with the stance verdict, live.
+    /// Materialises only while something hits you (or while unlocked).</summary>
+    public bool IncomingVisible { get; set; } = true;
+
+    /// <summary>The panel's window in seconds (10 or 15).</summary>
+    public int IncomingWindowSec { get; set; } = 15;
+
     /// <summary>Whether the Sky quest helper panel is enabled (materializes
     /// only when a dropper is sighted or quests are tracked).</summary>
     public bool SkyHelperVisible { get; set; } = true;
