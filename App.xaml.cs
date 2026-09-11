@@ -2551,6 +2551,38 @@ public partial class App : Application
                     try { File.Delete(qlPath); } catch { /* temp */ }
                 }
 
+                // Destroyed copies leave the ledger (11 Sep); the snapshot caps it.
+                {
+                    string dPath = Path.Combine(Path.GetTempPath(), "eql_test_sky_destroy.json");
+                    try { File.Delete(dPath); } catch { /* fresh */ }
+                    string dLoot = Path.Combine(Path.GetTempPath(), "eql_test_sky_destroy_loot.json");
+                    try { File.Delete(dLoot); } catch { /* fresh */ }
+                    var dl = new LootTracker(new ConfigService(), dLoot);
+                    var ds = new SkyQuests(new ConfigService(), dl, dPath);
+                    var coffer = ds.Quests.SelectMany(q => q.Items).First(i => i.Name == "Golden Coffer");
+                    for (int i = 0; i < 4; i++)
+                        dl.ProcessLine($"[Thu Sep 10 22:0{i}:00 2026] --You have looted Golden Coffer from a windrider drake's corpse.--");
+                    int before = ds.HeldCount(coffer);
+                    ds.ProcessLine("[Thu Sep 10 22:10:00 2026] You successfully destroyed 3 Golden Coffer.");
+                    Check("sky: destroyed copies leave the ledger", before == 4 && ds.HeldCount(coffer) == 1);
+                    ds.ProcessLine("[Thu Sep 10 22:10:00 2026] You successfully destroyed 3 Golden Coffer.");
+                    Check("sky: a replayed destroy line counts once", ds.HeldCount(coffer) == 1);
+                    var ds2 = new SkyQuests(new ConfigService(), dl, dPath);
+                    Check("sky: destroyed copies survive a reload", ds2.HeldCount(coffer) == 1);
+                    // The snapshot caps the ledger: ledger 1 held, dump says 0 -> ledger's word; dump says 5 -> ledger's word.
+                    var dsAll = new SkyQuests(new ConfigService(), dl, dPath);
+                    foreach (var q in dsAll.Quests) dsAll.SetCompleted(q, true); // nothing needs a coffer -> all held are spare
+                    int ledgerSpare = dsAll.Surplus().First(s => s.Item == "Golden Coffer").Surplus;
+                    int dumpNone = dsAll.Surplus(_ => -1).First(s => s.Item == "Golden Coffer").Surplus;
+                    int dumpMore = dsAll.Surplus(_ => 5).First(s => s.Item == "Golden Coffer").Surplus;
+                    for (int i = 0; i < 6; i++)
+                        dl.ProcessLine($"[Thu Sep 10 22:2{i}:00 2026] --You have looted Golden Coffer from a windrider drake's corpse.--");
+                    int dumpFewer = dsAll.Surplus(name => name == "Golden Coffer" ? 2 : -1).First(s => s.Item == "Golden Coffer").Surplus;
+                    Check("sky: the snapshot caps the spare count when it holds fewer than the ledger, never raises it",
+                        ledgerSpare == 1 && dumpNone == 1 && dumpMore == 1 && dumpFewer == 2);
+                    try { File.Delete(dPath); File.Delete(dLoot); } catch { /* temp */ }
+                }
+
                 string offer1 = "[Sat Aug 29 00:30:00 2026] You offered 1 Small Shield to Josin Faithbringer.";
                 string offer2 = "[Sat Aug 29 00:30:01 2026] You offered 1 Wind Rune Meda to Josin Faithbringer.";
                 string trade = "[Sat Aug 29 00:30:05 2026] You complete the trade with Josin Faithbringer.";

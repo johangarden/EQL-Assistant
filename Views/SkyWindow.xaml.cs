@@ -512,7 +512,7 @@ public partial class SkyWindow : Window
         string line = $"Ledger: held {held} · active quests still need {needed} → {spare} spare";
         if (!haveDump) return line + ".";
         if (dumpCopies < held)
-            return line + $" · ⚠ the snapshot shows only {dumpCopies} — the ledger may be stale (something left without a log line); trust your bags.";
+            return line + $" · the snapshot shows only {dumpCopies}, so the spare count follows the snapshot (the ledger missed an exit — a merge, a sale, a give).";
         if (dumpCopies > held)
             return line + $" · the snapshot shows {dumpCopies} copies (more than the ledger knows) — even safer.";
         return line + $" · the snapshot agrees ({dumpCopies} copies).";
@@ -521,7 +521,18 @@ public partial class SkyWindow : Window
     private void RefreshHousekeeping()
     {
         var inv = DumpRows(out string stamp);
-        var spares = _sky.Surplus();
+        // The snapshot's copy count per item (tier-tolerant, exaltation rows
+        // skipped) caps the ledger: fewer in the bags than the ledger thinks
+        // means the ledger missed an exit — trust the bags.
+        int SnapshotCopies(string item)
+        {
+            if (inv is null) return -1;
+            string key = FocusEffects.ItemKey(item);
+            var hits = inv.Where(r => FocusEffects.ItemKey(r.Name) == key
+                                      && !r.Name.EndsWith("(Exaltation)", StringComparison.Ordinal)).ToList();
+            return hits.Count == 0 ? -1 : hits.Sum(r => Math.Max(1, r.Count));
+        }
+        var spares = _sky.Surplus(SnapshotCopies);
         var sections = new List<HouseSectionVm>();
 
         // Per item: its dump copies (tier-tolerant, exaltation rows skipped),
