@@ -177,6 +177,10 @@
                                                     <TextBlock Text="{Binding Sub}" Foreground="{Binding Fg}"
                                                                Opacity="0.72" FontSize="10.5" Margin="10,0,0,0"
                                                                VerticalAlignment="Center"/>
+                                                    <!-- Where the held copy sits, from the inventory dump. -->
+                                                    <TextBlock Text="{Binding Where}" Foreground="{StaticResource Brush.Gold}"
+                                                               FontSize="10.5" FontWeight="SemiBold" Margin="10,0,0,0"
+                                                               VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Border>
                                         </DataTemplate>

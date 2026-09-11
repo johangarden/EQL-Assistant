@@ -2303,6 +2303,25 @@ public partial class App : Application
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
 
+            // Quest chips say where a held copy sits (11 Sep).
+            {
+                var chipRows = new List<InventoryStore.CarryRow>
+                {
+                    new("Gorgon Head", "gorgon head", "General 11-Slot 9", 1, "bags", 1),
+                    new("Golden Coffer +1", "golden coffer", "Bank 3-Slot 2", 2, "bank", 2),
+                    new("Golden Coffer", "golden coffer", "General 2-Slot 1", 1, "bags", 3),
+                    new("Golden Coffer", "golden coffer", "General 2-Slot 4", 1, "bags", 4),
+                    new("Golden Coffer (Exaltation)", "golden coffer", "General 2-Slot 4", 1, "bags", 5),
+                };
+                Check("chips: a held item names its slot; tiers fold; two spots then +N; exaltation rows skipped",
+                    Views.SkyWindow.WhereText(chipRows, "Gorgon Head", 1) == "in General 11-Slot 9"
+                    && Views.SkyWindow.WhereText(chipRows, "Golden Coffer", 3) == "in Bank 3-Slot 2 ×2, General 2-Slot 1 +1 more");
+                Check("chips: nothing held, no dump, or not in the dump reads empty",
+                    Views.SkyWindow.WhereText(chipRows, "Gorgon Head", 0) == ""
+                    && Views.SkyWindow.WhereText(null, "Gorgon Head", 1) == ""
+                    && Views.SkyWindow.WhereText(chipRows, "Wind Rune Meda", 1) == "");
+            }
+
             // Incoming damage watch (11 Sep): per-second buckets and the in-fight verdict.
             {
                 var iw = new IncomingWatch { WindowSec = 15 };
