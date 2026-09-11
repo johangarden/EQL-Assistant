@@ -210,6 +210,9 @@ public partial class TriggerManagerWindow : Window
         finally { VoicePackInstallBtn.IsEnabled = true; }
     }
 
+    private int _incomingWindowSec = 15;
+    private Segmented? _incomingSeg;
+
     // ---- Diagnostics bundle (8 Sep) -------------------------------------------
 
     private int _diagMinutes = 30;
@@ -1184,6 +1187,7 @@ public partial class TriggerManagerWindow : Window
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
+            ["Incoming damage"] = IncomingPage,
             ["Sky droppers"] = SkyHelperPage,
             ["Cursor ring"] = CursorRingPage,
             ["General"] = GeneralPage,
@@ -1359,6 +1363,20 @@ public partial class TriggerManagerWindow : Window
         SctXpLifetimeBox.Text = _config.Overlay.SctXpLifetime.ToString(CultureInfo.InvariantCulture);
 
         EnemyDotsVisibleCheck.IsChecked = _config.Overlay.EnemyDotsVisible;
+        IncomingVisibleCheck.IsChecked = _config.Overlay.IncomingVisible;
+        _incomingWindowSec = _config.Overlay.IncomingWindowSec is 10 or 15 ? _config.Overlay.IncomingWindowSec : 15;
+        if (_incomingSeg is null)
+        {
+            _incomingSeg = new Segmented(new[]
+            {
+                new Segmented.Option("10", "10 s"),
+                new Segmented.Option("15", "15 s"),
+            }, _incomingWindowSec.ToString(), "#E8C15A");
+            _incomingSeg.Margin = new Thickness(0);
+            _incomingSeg.Changed += id => _incomingWindowSec = int.Parse(id);
+            IncomingWindowHost.Children.Add(_incomingSeg);
+        }
+        else _incomingSeg.Select(_incomingWindowSec.ToString());
         EnemyDotsGroupBox.SelectedValue = _config.Overlay.EnemyDotsGroupByMob ? "mob" : "spell";
         EnemyDotsAnchorBox.SelectedValue = (_configService.LoadPlacement("enemyDots")?.Anchor ?? Anchor.TopLeft).ToString();
         RemindersAnchorBox.SelectedValue = (_configService.LoadPlacement("reminders")?.Anchor ?? Anchor.TopLeft).ToString();
@@ -1639,6 +1657,8 @@ public partial class TriggerManagerWindow : Window
                 TargetMatrixVisible = _config.Overlay.TargetMatrixVisible, // tray-toggled
                 RemindersVisible = _config.Overlay.RemindersVisible,       // tray-toggled
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
+                IncomingVisible = IncomingVisibleCheck.IsChecked == true,
+                IncomingWindowSec = _incomingWindowSec,
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
                 ConditionsVisible = ConditionsVisibleCheck.IsChecked == true,
                 SkyHelperVisible = SkyHelperVisibleCheck.IsChecked == true,

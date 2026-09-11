@@ -29,6 +29,8 @@ public partial class MainWindow : Window
     private FlashWindow? _flash;
     private MeterWindow? _meter;
     private EnemyDotsWindow? _enemyDotsWin;
+    private IncomingWindow? _incomingWin;
+    private readonly IncomingWatch _incoming = new();
     private MoteTickerWindow? _moteTickerWin;
     private ConditionsWindow? _conditionsWin;
     private SkyHelperWindow? _skyHelperWin;
@@ -646,6 +648,11 @@ public partial class MainWindow : Window
 
     private void OnSctEvent(CombatParser.SctHit hit)
     {
+        // The incoming-damage watch eats every live hit on you, HUD hidden or
+        // not (it must be current the moment the panel returns); never on
+        // catch-up or reparse.
+        if (!_suppressSct && hit.Kind == CombatParser.SctKind.IncomingSelf)
+            _incoming.Add(DateTime.Now, hit.Amount, hit.Flavor != CombatParser.SctFlavor.Melee);
         if (_hidden || _sctHidden || _suppressSct) return;
         if (_sctLanes.TryGetValue(hit.Kind, out var lane))
             lane.Post(hit.Ability, hit.Amount,
@@ -857,6 +864,7 @@ public partial class MainWindow : Window
         _targetMatrix = RebuildPanel(_targetMatrix, "targetDebuffs", "Target Debuffs",
             _engine.TargetCells, defaultLeft: 420, defaultTop: 420);
         RebuildEnemyDotsWindow();
+        RebuildIncomingWindow();
         RebuildMoteTickerWindow();
         RebuildConditionsWindow();
         RebuildSkyHelperWindow();
@@ -932,6 +940,25 @@ public partial class MainWindow : Window
         _configService.SaveSettings(_config);
         RebuildRemindersWindow();
         _vm.Flash(_config.Overlay.RemindersVisible ? "Rebuff reminders shown." : "Rebuff reminders hidden.");
+    }
+
+    private void RebuildIncomingWindow()
+    {
+        if (_incomingWin is not null) { try { _incomingWin.Close(); } catch { /* ignore */ } _incomingWin = null; }
+        if (!_config.Overlay.IncomingVisible) return;
+        _incomingWin = new IncomingWindow(_incoming, () => _combat.CurrentStance, _configService,
+            _config.Overlay.Opacity, _config.Overlay.IncomingWindowSec);
+        _incomingWin.Show();
+        _incomingWin.SetLocked(_vm.Locked);
+        _incomingWin.SetHidden(_hidden);
+    }
+
+    private void ToggleIncoming()
+    {
+        _config.Overlay.IncomingVisible = !_config.Overlay.IncomingVisible;
+        _configService.SaveSettings(_config);
+        RebuildIncomingWindow();
+        _vm.Flash(_config.Overlay.IncomingVisible ? "Incoming damage panel shown." : "Incoming damage panel hidden.");
     }
 
     private void RebuildEnemyDotsWindow()
@@ -1214,6 +1241,7 @@ public partial class MainWindow : Window
         _selfMatrix?.SetLocked(_vm.Locked);
         _targetMatrix?.SetLocked(_vm.Locked);
         _enemyDotsWin?.SetLocked(_vm.Locked);
+        _incomingWin?.SetLocked(_vm.Locked);
         _moteTickerWin?.SetLocked(_vm.Locked);
         _conditionsWin?.SetLocked(_vm.Locked);
         _skyHelperWin?.SetLocked(_vm.Locked);
@@ -1238,6 +1266,7 @@ public partial class MainWindow : Window
         _config.Overlay.EnemyDotsVisible = !_config.Overlay.EnemyDotsVisible;
         _configService.SaveSettings(_config);
         RebuildEnemyDotsWindow();
+        RebuildIncomingWindow();
         _vm.Flash(_config.Overlay.EnemyDotsVisible ? "Enemy DoTs shown." : "Enemy DoTs hidden.");
     }
 
@@ -1288,6 +1317,7 @@ public partial class MainWindow : Window
                 SetWindowVisibility(page, _gameAway ? Visibility.Hidden : Visibility.Visible, "pinned page");
         ApplyCursorRing(); // the ring hides with everything else
         _enemyDotsWin?.SetHidden(_hidden);
+        _incomingWin?.SetHidden(_hidden);
         _moteTickerWin?.SetHidden(_hidden);
         _conditionsWin?.SetHidden(_hidden);
         _skyHelperWin?.SetHidden(_hidden);
@@ -1326,6 +1356,7 @@ public partial class MainWindow : Window
             _selfMatrix?.SetLocked(false);
             _targetMatrix?.SetLocked(false);
             _enemyDotsWin?.SetLocked(false);
+            _incomingWin?.SetLocked(false);
             _moteTickerWin?.SetLocked(false);
             _conditionsWin?.SetLocked(false);
             _skyHelperWin?.SetLocked(false);
@@ -1340,6 +1371,7 @@ public partial class MainWindow : Window
         _selfMatrix?.ResetPosition();
         _targetMatrix?.ResetPosition();
         _enemyDotsWin?.ResetPosition();
+        _incomingWin?.ResetPosition();
         _moteTickerWin?.ResetPosition();
         _conditionsWin?.ResetPosition();
         _skyHelperWin?.ResetPosition();
@@ -1714,6 +1746,7 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("Target-debuffs matrix", ToggleTargetMatrix, "Bars & matrices", () => _config.Overlay.TargetMatrixVisible));
         panels.Items.Add(BurgerPanelRow("Rebuff reminders", ToggleReminders, "Bars & matrices", () => _config.Overlay.RemindersVisible));
         panels.Items.Add(BurgerPanelRow("Enemy DoTs", ToggleEnemyDots, "Bars & matrices", () => _config.Overlay.EnemyDotsVisible));
+        panels.Items.Add(BurgerPanelRow("Incoming damage (stance helper)", ToggleIncoming, "Incoming damage", () => _config.Overlay.IncomingVisible));
         panels.Items.Add(BurgerPanelRow("Mote ticker", ToggleMoteTicker, "Bars & matrices", () => _config.Overlay.MoteTickerVisible));
         panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, "Condition badges", () => _config.Overlay.ConditionsVisible));
         // "Sky droppers", NOT "Sky quest helper": the Quests WINDOW (toolbar !)
@@ -2255,6 +2288,7 @@ public partial class MainWindow : Window
         try { _selfMatrix?.Close(); } catch { /* ignore */ }
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
         try { _enemyDotsWin?.Close(); } catch { /* ignore */ }
+        try { _incomingWin?.Close(); } catch { /* ignore */ }
         try { _moteTickerWin?.Close(); } catch { /* ignore */ }
         try { _conditionsWin?.Close(); } catch { /* ignore */ }
         try { _skyHelperWin?.Close(); } catch { /* ignore */ }

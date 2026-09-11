@@ -119,6 +119,7 @@
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
                     <ListBoxItem Content="Condition badges"/>
+                    <ListBoxItem Content="Incoming damage"/>
                     <ListBoxItem Content="Sky droppers"/>
                     <ListBoxItem Content="APP SETTINGS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
@@ -1030,6 +1031,25 @@
                     </ScrollViewer>
 
                     <!-- ============================ SKY QUEST HELPER ============================ -->
+                    <!-- ========================= INCOMING DAMAGE ========================= -->
+                    <ScrollViewer x:Name="IncomingPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Incoming damage" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A stance helper for the fight you're in: the last seconds of damage taken, melee red and spells violet, second by second, with the same verdict the death recap gives — defensive halves melee, mage hunter halves spells — while you can still switch. Locked, the panel vanishes while nothing hits you; unlocked it keeps a placeholder so it can be placed."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <CheckBox x:Name="IncomingVisibleCheck" Content="Show the panel" Margin="0,4,0,0"/>
+                            <TextBlock Text="Window" Style="{StaticResource FieldLabel}"/>
+                            <StackPanel x:Name="IncomingWindowHost" Orientation="Horizontal"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
+                                       Text="15 seconds reads a whole pull; 10 reacts faster to a caster joining in. The verdict needs one kind at 60% or more of the window — below that it says mixed."/>
+                        </StackPanel>
+                    </ScrollViewer>
+
                     <ScrollViewer x:Name="SkyHelperPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">

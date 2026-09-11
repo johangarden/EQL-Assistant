@@ -303,6 +303,21 @@ public partial class App : Application
                 try { File.Delete(rbPath2); } catch { /* temp */ }
             }
 
+            // The incoming-damage panel renders both states.
+            {
+                var iwv = new IncomingWatch();
+                var win = new Views.IncomingWindow(iwv, () => "defensive", new ConfigService(), 1.0, 15) { Left = -9000, Top = -9000 };
+                win.SetLocked(false);
+                win.Show();
+                win.Refresh();
+                if (win.LastKind != "") throw new Exception("incoming panel: quiet state should carry no verdict");
+                iwv.Add(DateTime.Now.AddSeconds(-2), 400, spell: true);
+                iwv.Add(DateTime.Now.AddSeconds(-1), 100, spell: false);
+                win.Refresh();
+                if (win.LastKind != "switch") throw new Exception("incoming panel: spell-heavy in defensive should read switch, got " + win.LastKind);
+                win.Close();
+            }
+
             // The con card renders verdicts and the honest empty line.
             {
                 var cc = new Views.ConCardWindow { Left = -9000, Top = -9000 };
@@ -2288,6 +2303,31 @@ public partial class App : Application
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
 
+            // Incoming damage watch (11 Sep): per-second buckets and the in-fight verdict.
+            {
+                var iw = new IncomingWatch { WindowSec = 15 };
+                var iw0 = new DateTime(2026, 9, 11, 21, 0, 0);
+                iw.Add(iw0.AddSeconds(-14), 300, spell: false);
+                iw.Add(iw0.AddSeconds(-14), 100, spell: true);
+                iw.Add(iw0.AddSeconds(-3), 900, spell: true);
+                iw.Add(iw0.AddSeconds(-20), 5000, spell: true); // outside the window
+                var snap = iw.Take(iw0, "defensive");
+                Check("incoming: buckets land in their second, the window drops older hits",
+                    snap.WindowSec == 15 && snap.MeleeCols[0] == 300 && snap.SpellCols[0] == 100 && snap.SpellCols[11] == 900
+                    && Math.Abs(snap.Total - 1300) < 0.01 && Math.Abs(snap.SpellShare - 1000.0 / 1300) < 0.001);
+                Check("incoming: spells dominant in defensive says switch to mage hunter",
+                    snap.VerdictKind == "switch" && snap.VerdictText.Contains("Mage hunter would halve"));
+                Check("incoming: the right stance reads ok, a mix reads mixed, nothing reads nothing",
+                    IncomingWatch.Verdict("mage hunter", 100, 900).Kind == "ok"
+                    && IncomingWatch.Verdict("defensive", 900, 100).Kind == "ok"
+                    && IncomingWatch.Verdict("mage hunter", 900, 100).Kind == "switch"
+                    && IncomingWatch.Verdict("striker", 500, 500).Kind == "mixed"
+                    && IncomingWatch.Verdict("", 900, 100).Text.Contains("defensive would halve")
+                    && IncomingWatch.Verdict("defensive", 0, 0).Kind == "");
+                Check("incoming: the config defaults — shown, 15 s window",
+                    new Models.AppConfig().Overlay.IncomingVisible && new Models.AppConfig().Overlay.IncomingWindowSec == 15);
+            }
+
             // Attack rounds (8 Sep): the annotation rides every melee event; the
             // avoid word rides every miss; RoundStats reads them honestly.
             {
@@ -4003,6 +4043,28 @@ public partial class App : Application
             };
             recap.Show();
             mgr = recap;
+        }
+        else if (page.Equals("incoming", StringComparison.OrdinalIgnoreCase))
+        {
+            // A synthetic spell-heavy window in a defensive stance.
+            var iw = new IncomingWatch();
+            var now = DateTime.Now;
+            double[] m = { 80, 300, 500, 0, 0, 60, 0, 40, 180, 0, 0, 0, 0, 0, 100 };
+            double[] sp = { 100, 0, 0, 400, 0, 0, 420, 0, 0, 80, 0, 0, 550, 550, 0 };
+            for (int i = 0; i < 15; i++)
+            {
+                if (m[i] > 0) iw.Add(now.AddSeconds(-(14 - i)), m[i], spell: false);
+                if (sp[i] > 0) iw.Add(now.AddSeconds(-(14 - i)), sp[i], spell: true);
+            }
+            var win = new Views.IncomingWindow(iw, () => "defensive", new ConfigService(), 1.0, 15)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            win.SetLocked(true);
+            win.Show();
+            win.Refresh();
+            mgr = win;
         }
         else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase))
         {
