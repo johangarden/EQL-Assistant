@@ -54,6 +54,35 @@ public sealed class IncomingWatch
         return new Snapshot(n, melee, spell, mc, sc, stance, text, kind);
     }
 
+    /// <summary>The wrong-stance notice (owner request 14 Sep): over the last
+    /// <paramref name="windowSec"/> seconds, when one kind is at least
+    /// <paramref name="minShare"/> of what hit you (0.75 = 75%) and the OTHER
+    /// stance would halve it, the stance to switch to — "mage hunter" or
+    /// "defensive"; "" when you're already in it, the mix is below the share,
+    /// or fewer than <see cref="MinHits"/> hits landed (one stray nuke is not
+    /// a pattern).</summary>
+    public (string Target, double Share, int Hits) SwitchAdvice(DateTime now, string stance, int windowSec, double minShare)
+    {
+        int n = Math.Clamp(windowSec, 3, 60);
+        double melee = 0, spell = 0; int hits = 0;
+        foreach (var h in _hits)
+        {
+            double back = (now - h.At).TotalSeconds;
+            if (back < 0 || back >= n) continue;
+            hits++;
+            if (h.Spell) spell += h.Amount; else melee += h.Amount;
+        }
+        double total = melee + spell;
+        if (hits < MinHits || total <= 0) return ("", 0, hits);
+        string st = (stance ?? "").Trim().ToLowerInvariant();
+        double sp = spell / total, mp = melee / total;
+        if (sp >= minShare && st != "mage hunter") return ("mage hunter", sp, hits);
+        if (mp >= minShare && st != "defensive") return ("defensive", mp, hits);
+        return ("", Math.Max(sp, mp), hits);
+    }
+
+    public const int MinHits = 3;
+
     /// <summary>The short in-fight verdict. Kinds: "switch" (another stance
     /// would halve the bigger half), "ok" (you're in the right one), "mixed"
     /// (no stance halves both), "" (nothing taken). Dominant = ≥60%.</summary>

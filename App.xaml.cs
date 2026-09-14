@@ -2376,6 +2376,31 @@ public partial class App : Application
                     && IncomingWatch.Verdict("defensive", 0, 0).Kind == "");
                 Check("incoming: the config defaults — shown, 15 s window",
                     new Models.AppConfig().Overlay.IncomingVisible && new Models.AppConfig().Overlay.IncomingWindowSec == 15);
+
+                // The wrong-stance notice (14 Sep): share over a short window, the
+                // other stance as the target, quiet when already there or too few hits.
+                var sw = new IncomingWatch();
+                var sw0 = new DateTime(2026, 9, 14, 21, 0, 0);
+                sw.Add(sw0.AddSeconds(-8), 300, spell: true);
+                sw.Add(sw0.AddSeconds(-4), 300, spell: true);
+                Check("incoming: two hits are not a pattern — no advice yet", sw.SwitchAdvice(sw0, "defensive", 10, 0.75).Target == "");
+                sw.Add(sw0.AddSeconds(-2), 200, spell: true);
+                sw.Add(sw0.AddSeconds(-1), 100, spell: false);
+                var a1 = sw.SwitchAdvice(sw0, "defensive", 10, 0.75);
+                Check("incoming: spells at 89% in defensive says mage hunter, with the share and the hit count",
+                    a1.Target == "mage hunter" && Math.Abs(a1.Share - 800.0 / 900) < 0.001 && a1.Hits == 4);
+                Check("incoming: already in mage hunter stays quiet; a 90% bar is not met; a 5 s window drops the oldest hit and still advises on three",
+                    sw.SwitchAdvice(sw0, "mage hunter", 10, 0.75).Target == ""
+                    && sw.SwitchAdvice(sw0, "defensive", 10, 0.90).Target == ""
+                    && sw.SwitchAdvice(sw0, "defensive", 5, 0.75) is { Hits: 3, Target: "mage hunter" });
+                sw.Add(sw0.AddSeconds(-1), 2000, spell: false);
+                Check("incoming: melee taking over says defensive from an unknown stance",
+                    sw.SwitchAdvice(sw0, "", 10, 0.6).Target == "defensive");
+                Check("incoming: the notice phrase fills the target, empty falls back",
+                    EQLOverlay.MainWindow.StancePhrase("Go {stance} now", "defensive") == "Go defensive now"
+                    && EQLOverlay.MainWindow.StancePhrase("", "mage hunter") == "Switch to mage hunter");
+                Check("incoming: the notice defaults — on, 75% over 10 s, spoken",
+                    new Models.AppConfig().Overlay is { StanceNoticeEnabled: true, StanceNoticeShare: 75, StanceNoticeWindowSec: 10, StanceNoticeMode: "speak" });
             }
 
             // Attack rounds (8 Sep): the annotation rides every melee event; the

@@ -711,7 +711,10 @@ public partial class MainWindow : Window
         // not (it must be current the moment the panel returns); never on
         // catch-up or reparse.
         if (!_suppressSct && hit.Kind == CombatParser.SctKind.IncomingSelf)
+        {
             _incoming.Add(DateTime.Now, hit.Amount, hit.Flavor != CombatParser.SctFlavor.Melee);
+            CheckStanceNotice();
+        }
         if (_hidden || _sctHidden || _suppressSct) return;
         if (_sctLanes.TryGetValue(hit.Kind, out var lane))
             lane.Post(hit.Ability, hit.Amount,
@@ -2008,6 +2011,31 @@ public partial class MainWindow : Window
 
     /// <summary>The audible half of a moment badge. A short per-kind cooldown
     /// keeps a chain-bashed cast from stacking dings on dings.</summary>
+    private DateTime _lastStanceAlert = DateTime.MinValue;
+    private const double StanceNoticeCooldownSec = 12;
+
+    /// <summary>The wrong-stance notice: evaluated on every hit you take —
+    /// when the other stance would halve most of it, say so, once per 12 s.</summary>
+    private void CheckStanceNotice()
+    {
+        var o = _config.Overlay;
+        if (!o.StanceNoticeEnabled) return;
+        var now = DateTime.Now;
+        if ((now - _lastStanceAlert).TotalSeconds < StanceNoticeCooldownSec) return;
+        var adv = _incoming.SwitchAdvice(now, _combat.CurrentStance, o.StanceNoticeWindowSec, Math.Clamp(o.StanceNoticeShare, 50, 100) / 100.0);
+        if (adv.Target.Length == 0) return;
+        _lastStanceAlert = now;
+        Log.Info($"Stance notice: {adv.Share * 100:0}% over {o.StanceNoticeWindowSec} s ({adv.Hits} hits) — switch to {adv.Target} (in '{_combat.CurrentStance}')");
+        if (o.StanceNoticeMode == "speak")
+            _alerts.Fire(StancePhrase(o.StanceNoticeSpeak, adv.Target), null);
+        else if (!string.IsNullOrWhiteSpace(o.StanceNoticeSound))
+            _alerts.Fire(null, o.StanceNoticeSound);
+    }
+
+    /// <summary>"Switch to {stance}" → "Switch to mage hunter"; an empty template speaks the default.</summary>
+    public static string StancePhrase(string template, string target) =>
+        (string.IsNullOrWhiteSpace(template) ? "Switch to {stance}" : template).Replace("{stance}", target, StringComparison.OrdinalIgnoreCase);
+
     private void OnConditionMoment(string kind)
     {
         if (kind is not (ConditionWatcher.Interrupted or ConditionWatcher.Resisted)) return; // the charm break speaks for itself

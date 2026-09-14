@@ -158,6 +158,18 @@ public sealed class OverlayConfig
     /// <summary>The panel's window in seconds (10 or 15).</summary>
     public int IncomingWindowSec { get; set; } = 15;
 
+    /// <summary>The wrong-stance notice (14 Sep): when one kind is at least
+    /// <see cref="StanceNoticeShare"/>% of the damage taken over the last
+    /// <see cref="StanceNoticeWindowSec"/> s and the other stance would halve
+    /// it — a phrase ("{stance}" becomes the target) or a sound, at most one
+    /// every 12 s.</summary>
+    public bool StanceNoticeEnabled { get; set; } = true;
+    public int StanceNoticeShare { get; set; } = 75;
+    public int StanceNoticeWindowSec { get; set; } = 10;
+    public string StanceNoticeMode { get; set; } = "speak";
+    public string StanceNoticeSpeak { get; set; } = "Switch to {stance}";
+    public string StanceNoticeSound { get; set; } = @"C:\Windows\Media\Windows Exclamation.wav";
+
     /// <summary>Whether the Sky quest helper panel is enabled (materializes
     /// only when a dropper is sighted or quests are tracked).</summary>
     public bool SkyHelperVisible { get; set; } = true;

@@ -1102,6 +1102,33 @@
                             <StackPanel x:Name="IncomingWindowHost" Orientation="Horizontal"/>
                             <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
                                        Text="15 seconds reads a whole pull; 10 reacts faster to a caster joining in. The verdict needs one kind at 60% or more of the window — below that it says mixed."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Wrong-stance notice" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="When one kind of damage is most of what you take and the OTHER stance would halve it, say so — a phrase or a sound, at most once every 12 seconds. Needs at least three hits in the window, so one stray nuke never nags. Quiet while you are already in the right stance."/>
+                            <CheckBox x:Name="StanceOnCheck" Content="Notify when the other stance would halve it"
+                                      FontWeight="SemiBold" Margin="0,8,0,0"
+                                      Checked="MomentNotice_Changed" Unchecked="MomentNotice_Changed"/>
+                            <StackPanel x:Name="StanceRow" Margin="24,6,0,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="At least" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <StackPanel x:Name="StanceShareHost" Orientation="Horizontal" VerticalAlignment="Center"/>
+                                    <TextBlock Text="of the damage over the last" Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="10,0,8,0"/>
+                                    <StackPanel x:Name="StanceWindowHost" Orientation="Horizontal" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <ComboBox x:Name="StanceModeBox" Width="90" SelectedValuePath="Tag"
+                                              SelectionChanged="MomentNotice_Changed">
+                                        <ComboBoxItem Content="Sound" Tag="sound"/>
+                                        <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                    </ComboBox>
+                                    <ComboBox x:Name="StanceSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
+                                    <TextBox x:Name="StanceSpeakBox" Width="200" Margin="8,0,0,0"
+                                             ToolTip="Spoken via text-to-speech — {stance} becomes 'mage hunter' or 'defensive'"/>
+                                    <Button Content="Test" Width="50" Margin="8,0,0,0" Click="StanceTest_Click"/>
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
 
