@@ -2303,6 +2303,22 @@ public partial class App : Application
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
 
+            // Reparse progress card (14 Sep): bytes done over total, culture-proof percent, file N of M.
+            {
+                var rp = new ReparseProgress("eqlog_Thorrak_paineel.txt", 2, 3, 61_300_000, 142_000_000, 213_400);
+                Check("reparse: progress is bytes done over total, percent rounded, title says file N of M",
+                    Math.Abs(rp.Fraction - 0.4317) < 0.001 && rp.Percent == "43%"
+                    && rp.Title == "Replaying eqlog_Thorrak_paineel.txt — file 2 of 3");
+                var one = new ReparseProgress("a.txt", 1, 1, 0, 0, 0);
+                Check("reparse: an empty file reads 0% until done, then 100%; one file has no 'of'",
+                    one.Fraction == 0 && one.Percent == "0%" && (one with { Done = true }).Fraction == 1
+                    && one.Title == "Replaying a.txt" && new ReparseProgress("a", 1, 1, 9, 4, 1).Fraction == 1);
+                Check("reparse: the catch-up card says so, and the toolbar fill is the track times the fraction",
+                    new ReparseProgress("a.txt", 1, 1, 0, 0, 0, Verb: "Catching up").Title == "Catching up a.txt"
+                    && Math.Abs(new ViewModels.OverlayViewModel(new TriggerEngine(new Models.AppConfig(), new AlertService()), new Models.AppConfig())
+                        { Progress = new ReparseProgress("a", 1, 1, 1, 2, 0) }.ProgressFill - ViewModels.OverlayViewModel.ProgressTrack / 2) < 0.01);
+            }
+
             // Quest chips say where a held copy sits (11 Sep).
             {
                 var chipRows = new List<InventoryStore.CarryRow>
@@ -4016,15 +4032,20 @@ public partial class App : Application
         // "character:<tab>" renders the Character window on a tab instead
         // (the selftest's inventory fixture in %TEMP% feeds it when present).
         if (page.Equals("toolbar", StringComparison.OrdinalIgnoreCase)
-            || page.Equals("toolbar:hidden", StringComparison.OrdinalIgnoreCase))
+            || page.Equals("toolbar:hidden", StringComparison.OrdinalIgnoreCase)
+            || page.Equals("toolbar:catchup", StringComparison.OrdinalIgnoreCase))
         {
             // The toolbar with a live view-model: "toolbar:hidden" shows the
-            // eye in its panels-hidden state.
+            // eye in its panels-hidden state, "toolbar:catchup" the progress
+            // card of a catch-up mid-run.
             var cs0 = new ConfigService();
             var cfg0 = cs0.LoadSettings();
             var vm = new ViewModels.OverlayViewModel(new TriggerEngine(cfg0, new AlertService()), cfg0)
             {
                 PanelsHidden = page.EndsWith(":hidden", StringComparison.OrdinalIgnoreCase),
+                Progress = page.EndsWith(":catchup", StringComparison.OrdinalIgnoreCase)
+                    ? new ReparseProgress("eqlog_Thorrak_paineel.txt", 1, 1, 61_300_000, 142_000_000, 41_200, Verb: "Catching up")
+                    : null,
             };
             var tb = new Views.ToolbarWindow(cs0)
             {
@@ -4119,7 +4140,11 @@ public partial class App : Application
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
             };
             m.Show();
-            m.SelectPage(page);
+            // "Data:reparse" shows the Data page with the progress card mid-run.
+            bool reparseDemo = page.Equals("Data:reparse", StringComparison.OrdinalIgnoreCase);
+            m.SelectPage(reparseDemo ? "Data" : page);
+            if (reparseDemo)
+                m.ShowReparseProgress(new ReparseProgress("eqlog_Thorrak_paineel.txt", 1, 1, 61_300_000, 142_000_000, 213_400));
             mgr = m;
         }
         mgr.UpdateLayout();

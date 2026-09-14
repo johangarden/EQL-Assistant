@@ -263,7 +263,7 @@ public partial class MainWindow : Window
             once.Tick += (_, _) =>
             {
                 once.Stop();
-                CatchUpToday();
+                _ = CatchUpTodayAsync();
             };
             once.Start();
         };
@@ -382,8 +382,12 @@ public partial class MainWindow : Window
     /// Replay today's lines from the followed log into the combat history,
     /// raid kills and seen spells — for when the app was started late.
     /// Triggers/alerts and combat text are NOT fired for old lines.
+    /// Yields every 2000 lines so the toolbar's progress card paints (the
+    /// whole file is scanned for today's lines, so a big log takes a while);
+    /// live lines landing in the gaps queue up and replay after — the same
+    /// order the old blocking read produced.
     /// </summary>
-    private void CatchUpToday()
+    private async Task CatchUpTodayAsync()
     {
         string? path = _watcher?.CurrentPath;
         if (path is null || !File.Exists(path))
@@ -391,10 +395,17 @@ public partial class MainWindow : Window
             _vm.Flash("Catch-up: no log file is being followed yet.");
             return;
         }
+        if (_reparsing)
+        {
+            _vm.Flash("A replay is already running — try again when it finishes.");
+            return;
+        }
 
         int fightsBefore = _combat.History.Count;
-        int lines = 0;
+        int lines = 0, read = 0;
+        string name = Path.GetFileName(path);
         _suppressSct = true;
+        _reparsing = true;
         // Session stats rebuild EXACTLY: the file read includes every line the
         // live feed already processed, so reset-and-refeed never double-counts.
         _session.Reset();
@@ -402,11 +413,18 @@ public partial class MainWindow : Window
         {
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
-            using var reader = new StreamReader(fs);
+            long total = fs.Length;
+            using var reader = new StreamReader(fs, System.Text.Encoding.UTF8, true, 1 << 16);
             var today = DateTime.Today;
             string? line;
+            _vm.Progress = new ReparseProgress(name, 1, 1, 0, total, 0, Verb: "Catching up");
             while ((line = reader.ReadLine()) is not null)
             {
+                if (++read % 2000 == 0)
+                {
+                    _vm.Progress = new ReparseProgress(name, 1, 1, fs.Position, total, lines, Verb: "Catching up");
+                    await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
+                }
                 if (!TryParseLineTime(line, out var t) || t.Date != today) continue;
                 _combat.Replay(line);
                 _raids.ProcessLine(line, t);
@@ -430,6 +448,8 @@ public partial class MainWindow : Window
         finally
         {
             _suppressSct = false;
+            _vm.Progress = null;
+            EndReplay();
         }
 
         _spellLib.SaveSeenIfDirty();
@@ -447,17 +467,21 @@ public partial class MainWindow : Window
     /// consumer dedupes (loot exact, kills 10-min window, duration samples by
     /// timestamp), so running this twice never double-counts.
     /// </summary>
-    private string ReparseFullLog()
+    private Task<string> ReparseFullLogAsync(IProgress<ReparseProgress>? progress)
     {
         string? path = _watcher?.CurrentPath;
         if (path is null || !File.Exists(path))
-            return "Reparse: no log file is being followed yet.";
-        return ReparseFile(path);
+            return Task.FromResult("Reparse: no log file is being followed yet.");
+        return ReparseFileAsync(path, progress);
     }
 
     /// <summary>Reparse ANY log file (e.g. one carried over from another PC) —
-    /// same retroactive pipeline, same dedupes, so histories merge safely.</summary>
-    private string ReparseFile(string path)
+    /// same retroactive pipeline, same dedupes, so histories merge safely.
+    /// Runs on the UI thread (the consumers are UI-affine) but yields every
+    /// 2000 lines so the Manager's progress card paints and the window stays
+    /// alive; live lines that land in the gaps are queued and replayed after.</summary>
+    private async Task<string> ReparseFileAsync(string path, IProgress<ReparseProgress>? progress,
+        int fileIndex = 1, int fileCount = 1)
     {
         int lootBefore = _loot.Entries.Count;
         int killsBefore = 0, durBefore = 0;
@@ -468,15 +492,24 @@ public partial class MainWindow : Window
 
         int lines = 0;
         var petsSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string name = Path.GetFileName(path);
         _suppressSct = true;
+        _reparsing = true;
         try
         {
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
-            using var reader = new StreamReader(fs);
+            long total = fs.Length;
+            using var reader = new StreamReader(fs, System.Text.Encoding.UTF8, true, 1 << 16);
             string? line;
+            progress?.Report(new ReparseProgress(name, fileIndex, fileCount, 0, total, 0));
             while ((line = reader.ReadLine()) is not null)
             {
+                if (++lines % 2000 == 0)
+                {
+                    progress?.Report(new ReparseProgress(name, fileIndex, fileCount, fs.Position, total, lines));
+                    await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
+                }
                 if (!TryParseLineTime(line, out var t)) continue;
                 _raids.ProcessLine(line, t);
                 _loot.ProcessLine(line);
@@ -490,8 +523,8 @@ public partial class MainWindow : Window
                 // pet never reads as an ally or a group member again.
                 if (_combat.TryParsePetSpeech(line, out string petName))
                     petsSeen.Add(petName);
-                lines++;
             }
+            progress?.Report(new ReparseProgress(name, fileIndex, fileCount, total, total, lines, Done: true));
         }
         catch (Exception ex)
         {
@@ -503,6 +536,7 @@ public partial class MainWindow : Window
             _suppressSct = false;
             _raids.KillRecorded -= onKill;
             _durations.SampleLearned -= onSample;
+            EndReplay();
         }
 
         _spellLib.SaveSeenIfDirty();
@@ -519,17 +553,17 @@ public partial class MainWindow : Window
     /// COPY in the config folder FIRST — the original may be deleted or moved,
     /// and Reset &amp; rebuild replays the stored copies — then run the
     /// retroactive replay on the copy.</summary>
-    private string MergeLogFile(string pickedPath)
+    private Task<string> MergeLogFileAsync(string pickedPath, IProgress<ReparseProgress>? progress)
     {
         string copy;
         try { copy = _configService.StoreMergedLogCopy(pickedPath); }
         catch (Exception ex)
         {
             Log.Warn("Merge copy failed: " + ex.Message);
-            return "Couldn't copy the file into the config folder — nothing was merged.";
+            return Task.FromResult("Couldn't copy the file into the config folder — nothing was merged.");
         }
         Log.Info($"Merged log stored as {Path.GetFileName(copy)}."); // shows under Additional log files
-        return ReparseFile(copy);
+        return ReparseFileAsync(copy, progress);
     }
 
     /// <summary>Data page's "Reset & rebuild": wipe every log-DERIVED data file
@@ -537,7 +571,7 @@ public partial class MainWindow : Window
     /// rebuild them all with a full reparse of the followed log PLUS every
     /// stored merge copy. Config, loadouts, respawns, raid targets, kept
     /// fights and window positions are untouched.</summary>
-    private string ResetAndRebuild()
+    private async Task<string> ResetAndRebuildAsync(IProgress<ReparseProgress>? progress)
     {
         Log.Info("Data reset: wiping derived data files before full reparse.");
         _loot.ResetAll();
@@ -548,9 +582,14 @@ public partial class MainWindow : Window
         _spellLib.ResetSeen();
         _durations.ResetAll();
 
-        string result = "Data files reset. " + ReparseFullLog();
         var merged = _configService.ListMergedLogs();
-        foreach (var f in merged) ReparseFile(f); // each logs its own summary
+        int count = 1 + merged.Count; // the progress card says "file 2 of 3"
+        string? path = _watcher?.CurrentPath;
+        string result = "Data files reset. " + (path is null || !File.Exists(path)
+            ? "Reparse: no log file is being followed yet."
+            : await ReparseFileAsync(path, progress, 1, count));
+        int index = 2;
+        foreach (var f in merged) await ReparseFileAsync(f, progress, index++, count); // each logs its own summary
         if (merged.Count > 0)
             result += $" Also replayed {merged.Count} stored merged log file(s).";
         return result;
@@ -1115,21 +1154,11 @@ public partial class MainWindow : Window
             _config.Log,
             onLine: line => Dispatcher.BeginInvoke(() =>
             {
-                _engine.ProcessLine(line);
-                _combat.ProcessLine(line);
-                _raids.ProcessLine(line);
-                _loot.ProcessLine(line);
-                _skyQuests.ProcessLine(line);
-                _questLines.ProcessLine(line);
-                _resists.ProcessLine(line);
-                _spellLib.MarkSeenFromLine(line);
-                _durations.ProcessLine(line);
-                _conditions.ProcessLine(line); // live CC state — not fed on catch-up
-                _respawnLearner.ProcessLine(line); // live-only too: stale lines would mint stale sightings
-                _skyHelper.ProcessLine(line);      // ibid. — quest-dropper sightings
-                _session.ProcessLine(line);    // leveling pace (rebuilt by catch-up)
-                if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
-                _logBus.Publish(line);
+                // A reparse yields to the UI between chunks (progress bar);
+                // live lines arriving in those gaps wait until it's done so
+                // the consumers see history first, then the present.
+                if (_reparsing) { _deferredLive.Add(line); return; }
+                ProcessLiveLine(line);
             }),
             onStatus: msg => Dispatcher.BeginInvoke(() => _vm.LogStatus = msg),
             onFileChanged: path => Dispatcher.BeginInvoke(() =>
@@ -1138,6 +1167,41 @@ public partial class MainWindow : Window
                 ApplySelfName();
             }));
         _watcher.Start();
+    }
+
+    /// <summary>The live pipeline for one log line — every consumer, then the bus.</summary>
+    private void ProcessLiveLine(string line)
+    {
+        _engine.ProcessLine(line);
+        _combat.ProcessLine(line);
+        _raids.ProcessLine(line);
+        _loot.ProcessLine(line);
+        _skyQuests.ProcessLine(line);
+        _questLines.ProcessLine(line);
+        _resists.ProcessLine(line);
+        _spellLib.MarkSeenFromLine(line);
+        _durations.ProcessLine(line);
+        _conditions.ProcessLine(line); // live CC state — not fed on catch-up
+        _respawnLearner.ProcessLine(line); // live-only too: stale lines would mint stale sightings
+        _skyHelper.ProcessLine(line);      // ibid. — quest-dropper sightings
+        _session.ProcessLine(line);    // leveling pace (rebuilt by catch-up)
+        if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
+        _logBus.Publish(line);
+    }
+
+    /// <summary>True while a replay (catch-up or reparse) runs; live lines queue
+    /// in <see cref="_deferredLive"/> and follow once it ends.</summary>
+    private bool _reparsing;
+    private readonly List<string> _deferredLive = new();
+
+    /// <summary>The replay is over: the live feed resumes, queued lines first.</summary>
+    private void EndReplay()
+    {
+        _reparsing = false;
+        if (_deferredLive.Count == 0) return;
+        var queued = _deferredLive.ToArray();
+        _deferredLive.Clear();
+        foreach (var q in queued) ProcessLiveLine(q);
     }
 
     // ---- character-name auto-detection ---------------------------------------
@@ -1404,9 +1468,9 @@ public partial class MainWindow : Window
             _manager = new TriggerManagerWindow(_configService, _config, _logBus, _alerts, _raids, _spellLib, _combat, OnManagerApplied, _durations,
                 logStatus: () => _vm.LogStatus)
             {
-                ReparseFullLogRequested = ReparseFullLog,
-                ReparseOtherRequested = MergeLogFile,
-                ResetAndRebuildRequested = ResetAndRebuild,
+                ReparseFullLogRequested = ReparseFullLogAsync,
+                ReparseOtherRequested = MergeLogFileAsync,
+                ResetAndRebuildRequested = ResetAndRebuildAsync,
             };
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
@@ -1804,7 +1868,7 @@ public partial class MainWindow : Window
         recap.Click += (_, _) => OpenDeathRecap();
         menu.Items.Add(recap);
         var catchUp = new MenuItem { Header = "Catch up from today's log" };
-        catchUp.Click += (_, _) => CatchUpToday();
+        catchUp.Click += (_, _) => _ = CatchUpTodayAsync();
         menu.Items.Add(catchUp);
 
         return menu;
@@ -2154,7 +2218,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Show last death recap", null, (_, _) => OpenDeathRecap());
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
 
-        menu.Items.Add("Catch up from today's log", null, (_, _) => CatchUpToday());
+        menu.Items.Add("Catch up from today's log", null, (_, _) => _ = CatchUpTodayAsync());
         menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdates(manual: true));
         menu.Items.Add("Open config folder", null, (_, _) => OpenConfigFolder());
         menu.Items.Add("Reset position", null, (_, _) => ResetPosition());

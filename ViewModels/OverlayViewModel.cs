@@ -95,6 +95,31 @@ public sealed class OverlayViewModel : ViewModelBase
         _flashTimer.Start();
     }
 
+    // Progress card under the toolbar: the startup catch-up and the menu's
+    // "Catch up from today's log" — owner request 14 Sep, a bar not a cursor.
+    private ReparseProgress? _progress;
+    public ReparseProgress? Progress
+    {
+        get => _progress;
+        set
+        {
+            _progress = value;
+            OnPropertyChanged(nameof(Progress));
+            OnPropertyChanged(nameof(ProgressVisible));
+            OnPropertyChanged(nameof(ProgressTitle));
+            OnPropertyChanged(nameof(ProgressPercent));
+            OnPropertyChanged(nameof(ProgressDetail));
+            OnPropertyChanged(nameof(ProgressFill));
+        }
+    }
+    public bool ProgressVisible => _progress is not null;
+    public string ProgressTitle => _progress?.Title ?? "";
+    public string ProgressPercent => _progress?.Percent ?? "";
+    public string ProgressDetail => _progress?.Detail ?? "";
+    /// <summary>The toolbar's track is 366 px (the toast's inner width).</summary>
+    public const double ProgressTrack = 366;
+    public double ProgressFill => ProgressTrack * (_progress?.Fraction ?? 0);
+
     private string _loadoutName = "Default";
     public string LoadoutName
     {

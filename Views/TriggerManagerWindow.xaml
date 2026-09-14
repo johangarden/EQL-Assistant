@@ -620,6 +620,35 @@
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
                                        Text="'Merge in another log file…' runs the same replay on a picked file — e.g. a log copied over from a second PC. Same dedupes, so the histories merge safely."/>
+                            <!-- Live progress of a replay: file, gold bar by bytes, percent,
+                                 lines so far. Hidden until a job runs; the summary takes
+                                 its place after (owner request 14 Sep). -->
+                            <Border x:Name="ReparseCard" Visibility="Collapsed" Margin="0,10,0,0"
+                                    Background="{StaticResource Brush.Card}" CornerRadius="6" Padding="12,10"
+                                    BorderBrush="{StaticResource Brush.Border}" BorderThickness="1">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <TextBlock x:Name="ReparsePct" DockPanel.Dock="Right" Text="0%"
+                                                   Foreground="{StaticResource Brush.Gold}" FontWeight="Bold" FontSize="14"
+                                                   Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="ReparseTitle" Foreground="{StaticResource Brush.TextDim}"
+                                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <Grid Height="8" Margin="0,8,0,6">
+                                        <Border Background="{StaticResource Brush.Sunken}" CornerRadius="4"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition x:Name="ReparseFillCol" Width="0*"/>
+                                                <ColumnDefinition x:Name="ReparseRestCol" Width="1*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Background="{StaticResource Brush.Gold}" CornerRadius="4"/>
+                                        </Grid>
+                                    </Grid>
+                                    <TextBlock x:Name="ReparseDetail" Style="{StaticResource Hint}" Margin="0"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock x:Name="ReparseResult" Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                       Visibility="Collapsed" Foreground="#6FCF97" TextWrapping="Wrap"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Additional log files" Style="{StaticResource SectionTitle}"/>
