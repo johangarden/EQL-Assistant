@@ -52,6 +52,11 @@ public partial class ConditionsWindow : Window
             // a cast bar snapped by a bolt
             "M1.5 10.5 L8.5 10.5 L8.5 13.5 L1.5 13.5 Z M15.5 10.5 L22.5 10.5 L22.5 13.5 L15.5 13.5 Z " +
             "M14 2 L9 11.5 L11.7 11.5 L10 22 L15 12.5 L12.3 12.5 Z")),
+        [ConditionWatcher.CharmBroke] = (Freeze("#FF8A80"), Geometry.Parse(
+            // the charm heart, cracked down the middle (even-odd crack)
+            "M12 21 C5 14 2 10.5 2 7.3 C2 4.4 4.2 2.5 6.8 2.5 C8.8 2.5 10.8 3.7 12 5.7 " +
+            "C13.2 3.7 15.2 2.5 17.2 2.5 C19.8 2.5 22 4.4 22 7.3 C22 10.5 19 14 12 21 Z " +
+            "M11.2 6.5 L13.6 6.5 L12.2 10.5 L14.2 12.5 L11.6 17.5 L12.4 12.8 L10.4 10.8 Z")),
         [ConditionWatcher.Resisted] = (Freeze("#4DD0E1"), Geometry.Parse(
             // a shield, the spell turned away (even-odd X cut)
             "M12 1.5 L20.5 4.8 L20.5 11 C20.5 17 17 20.7 12 22.5 C7 20.7 3.5 17 3.5 11 L3.5 4.8 Z " +

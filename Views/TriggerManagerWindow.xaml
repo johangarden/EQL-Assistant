@@ -119,6 +119,7 @@
                     <ListBoxItem Content="Flash alerts"/>
                     <ListBoxItem Content="Death recap"/>
                     <ListBoxItem Content="Condition badges"/>
+                    <ListBoxItem Content="Crowd control"/>
                     <ListBoxItem Content="Incoming damage"/>
                     <ListBoxItem Content="Sky droppers"/>
                     <ListBoxItem Content="APP SETTINGS" Style="{StaticResource NavHeader}"/>
@@ -1060,6 +1061,31 @@
                     </ScrollViewer>
 
                     <!-- ============================ SKY QUEST HELPER ============================ -->
+                    <!-- ========================= CROWD CONTROL ========================= -->
+                    <ScrollViewer x:Name="CrowdControlPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Crowd control" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Crowd control you put on mobs. Your cast anchors the spell's landing line, the wear-off line ends it, your death and zoning clear everything — the enemy DoTs' rules. Two panels: the charm card (one pet — how long it has held, what it dealt, red the moment it breaks) and the mez panel (a row per mesmerized mob, amber in the last stretch, red when anyone hits it — and who)."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <CheckBox x:Name="CharmCardVisibleCheck" Content="Show the charm card" Margin="0,4,0,0"/>
+                            <CheckBox x:Name="MezPanelVisibleCheck" Content="Show the mez panel" Margin="0,8,0,0"/>
+                            <CheckBox x:Name="CcSpeakCheck" Content="Speak the notices — 'Charm broke!', 'Mez broke on …', 'Re-mez …'" Margin="0,8,0,0"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                       Text="A broken charm also flashes a big CHARM BROKE badge in the condition panel. Locked, both panels vanish while they have nothing to say; unlocked they keep a placeholder so they can be placed."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Spells" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock x:Name="CcSpellsText" Style="{StaticResource Hint}"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
+                                       Text="Spells whose landing line the library lacks (the necro's undead charms) open as ASSUMED on the cast alone. The first wear-off line names the mob and teaches the app the emote that followed the cast — from then on that spell is solid."/>
+                        </StackPanel>
+                    </ScrollViewer>
+
                     <!-- ========================= INCOMING DAMAGE ========================= -->
                     <ScrollViewer x:Name="IncomingPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">

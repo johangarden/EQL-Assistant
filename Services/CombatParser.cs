@@ -768,6 +768,11 @@ public sealed class CombatParser
     /// <summary>"X resisted your Y!" — (spell, target, time).</summary>
     public event Action<string, string, DateTime>? OwnSpellResisted;
 
+    /// <summary>Every damage line: (attacker, target, amount, time), names
+    /// normalized ("you" → your name). The crowd-control engine reads the
+    /// charmed pet's hits and mez breaks from it.</summary>
+    public event Action<string, string, double, DateTime>? DamageDealt;
+
     /// <summary>The damage school the log printed for one of your spells ("" unknown).</summary>
     public string SchoolOf(string spell) => _spellSchools.GetValueOrDefault(PoolSpell(spell), "");
 
@@ -1734,6 +1739,7 @@ public sealed class CombatParser
         attacker = Normalize(attacker);
         target = Normalize(target);
         if (IsReflexive(target)) target = attacker;
+        DamageDealt?.Invoke(attacker, target, amount, time);
         Touch(time);
         TrackSides(attacker, target);
 

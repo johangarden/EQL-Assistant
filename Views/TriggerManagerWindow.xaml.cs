@@ -1225,6 +1225,7 @@ public partial class TriggerManagerWindow : Window
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
+            ["Crowd control"] = CrowdControlPage,
             ["Incoming damage"] = IncomingPage,
             ["Sky droppers"] = SkyHelperPage,
             ["Cursor ring"] = CursorRingPage,
@@ -1309,6 +1310,15 @@ public partial class TriggerManagerWindow : Window
     private void LoadSettingsFields()
     {
         ConditionsVisibleCheck.IsChecked = _config.Overlay.ConditionsVisible;
+        CharmCardVisibleCheck.IsChecked = _config.Overlay.CharmCardVisible;
+        MezPanelVisibleCheck.IsChecked = _config.Overlay.MezPanelVisible;
+        CcSpeakCheck.IsChecked = _config.Overlay.CcSpeak;
+        {
+            var cc = new CrowdControl(_spellLibrary, null);
+            int charm = cc.Defs.Count(d => d.Kind == CrowdControl.Kind.Charm), mez = cc.Defs.Count(d => d.Kind == CrowdControl.Kind.Mez);
+            int known = cc.Defs.Count(d => d.LandingSuffix.Length > 0);
+            CcSpellsText.Text = $"{charm} charm and {mez} mez spells known; {known} carry a landing line, {cc.Defs.Count - known} start as assumed.";
+        }
         SkyHelperVisibleCheck.IsChecked = _config.Overlay.SkyHelperVisible;
         SkyHelperCompletedCheck.IsChecked = _config.Overlay.SkyHelperShowCompleted;
         _soundUxLoading = true;
@@ -1699,6 +1709,9 @@ public partial class TriggerManagerWindow : Window
                 IncomingWindowSec = _incomingWindowSec,
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
                 ConditionsVisible = ConditionsVisibleCheck.IsChecked == true,
+                CharmCardVisible = CharmCardVisibleCheck.IsChecked == true,
+                MezPanelVisible = MezPanelVisibleCheck.IsChecked == true,
+                CcSpeak = CcSpeakCheck.IsChecked == true,
                 SkyHelperVisible = SkyHelperVisibleCheck.IsChecked == true,
                 SkyHelperShowCompleted = SkyHelperCompletedCheck.IsChecked == true,
                 InterruptNoticeEnabled = InterruptOnCheck.IsChecked == true,
