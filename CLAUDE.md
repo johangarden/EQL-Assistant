@@ -33,7 +33,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--replay <log>` | `eql_replay.txt` (parser coverage report on a real log) |
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` the toolbar, `quests:lines` the Notable quests pack, `recap` a synthetic death recap, `incoming` the incoming-damage panel |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` the toolbar (eye struck; catch-up progress card), `quests:lines` the Notable quests pack, `recap` a synthetic death recap, `incoming` the incoming-damage panel, `charm` / `charm:broke` the charm card, `mez` the mez panel, `Data:reparse` the Data page with the reparse progress card mid-run |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous
@@ -69,6 +69,13 @@ the affected suites (with `-Wait`) before committing.
   keyword guessing. Badge shows landing→wear-off; censors: own death, zoning;
   hygiene caps per condition (stun 30s … charm 21m). Live-only (not fed on
   catch-up).
+- `CrowdControl` — charm card + mez panel (CC you put ON MOBS): your
+  begin-cast anchors the spell's third-person landing (Beguile Undead →
+  "a greater ice bones moans.", observed), "Your X spell has worn off of Y."
+  ends it, damage on a mezzed mob breaks its row (and names who), death/
+  zoning censor. Unknown landings (necro undead charms) open ASSUMED and
+  are LEARNED from the emote after the cast once a wear-off names the mob
+  (`cc-landings.json`). Live-only. Charm break = CHARM BROKE badge + phrase.
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,

@@ -117,6 +117,14 @@ public sealed class OverlayConfig
     /// (materializes only while a condition is active, or unlocked).</summary>
     public bool ConditionsVisible { get; set; } = true;
 
+    /// <summary>Crowd control you put on mobs (14 Sep): the charm card (one
+    /// pet) and the mez panel (a row per mob). Both materialise only while
+    /// they have something to say, or while unlocked.</summary>
+    public bool CharmCardVisible { get; set; } = true;
+    public bool MezPanelVisible { get; set; } = true;
+    /// <summary>Spoken notices: "Charm broke!", "Mez broke on X", "Re-mez X".</summary>
+    public bool CcSpeak { get; set; } = true;
+
     /// <summary>The cursor ring: a gold circle following the mouse, so the
     /// cursor is findable in the heat of battle. Off by default.</summary>
     public bool CursorRingVisible { get; set; }

@@ -34,16 +34,16 @@ public partial class TriggerManagerWindow : Window
     private readonly SpellDurations? _durations;
 
     /// <summary>Set by MainWindow: replays the whole log through the retroactive
-    /// services and returns a one-line summary for the status bar.</summary>
-    public Func<string>? ReparseFullLogRequested { get; set; }
+    /// services, reporting progress, and returns a one-line summary.</summary>
+    public Func<IProgress<ReparseProgress>, Task<string>>? ReparseFullLogRequested { get; set; }
 
     /// <summary>Set by MainWindow: wipes derived data files, then reparses.</summary>
-    public Func<string>? ResetAndRebuildRequested { get; set; }
+    public Func<IProgress<ReparseProgress>, Task<string>>? ResetAndRebuildRequested { get; set; }
 
     /// <summary>Set by MainWindow: reparse a PICKED file (e.g. another PC's log).</summary>
-    public Func<string, string>? ReparseOtherRequested { get; set; }
+    public Func<string, IProgress<ReparseProgress>, Task<string>>? ReparseOtherRequested { get; set; }
 
-    private void ReparseOther_Click(object sender, RoutedEventArgs e)
+    private async void ReparseOther_Click(object sender, RoutedEventArgs e)
     {
         if (ReparseOtherRequested is null)
         {
@@ -57,10 +57,52 @@ public partial class TriggerManagerWindow : Window
         };
         if (dlg.ShowDialog(this) != true) return;
 
-        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
-        try { Status(ReparseOtherRequested(dlg.FileName)); }
-        finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+        await RunReparse(p => ReparseOtherRequested(dlg.FileName, p));
         RefreshMergedLogs();
+    }
+
+    // ---- reparse progress card (owner request 14 Sep: a bar, not a wait cursor) ----
+
+    private bool _reparseBusy;
+
+    /// <summary>Runs one replay job with the Data page's progress card up and
+    /// the data buttons resting; the summary lands in the status bar and under
+    /// the buttons (the status bar trims long lines).</summary>
+    private async Task RunReparse(Func<IProgress<ReparseProgress>, Task<string>> job)
+    {
+        if (_reparseBusy) return;
+        SetReparseBusy(true);
+        Status("Replaying the log…");
+        var progress = new Progress<ReparseProgress>(ShowReparseProgress);
+        string result;
+        try { result = await job(progress); }
+        catch (Exception ex) { result = "Reparse failed: " + ex.Message; }
+        finally { SetReparseBusy(false); }
+        Status(result);
+        ReparseResult.Text = result;
+        ReparseResult.Visibility = Visibility.Visible;
+    }
+
+    private void SetReparseBusy(bool busy)
+    {
+        _reparseBusy = busy;
+        ReparseBtn.IsEnabled = ReparseOtherBtn.IsEnabled = ResetRebuildBtn.IsEnabled = RemoveMergedBtn.IsEnabled = !busy;
+        ReparseCard.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        if (busy) ReparseResult.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>Paints one progress tick: title (file, N of M), gold bar by
+    /// bytes, percent, line count. Public so --render-manager Data:reparse can
+    /// show the card mid-run.</summary>
+    public void ShowReparseProgress(ReparseProgress p)
+    {
+        if (!_reparseBusy) SetReparseBusy(true);
+        ReparseTitle.Text = p.Title;
+        ReparsePct.Text = p.Percent;
+        ReparseDetail.Text = p.Detail;
+        double f = p.Fraction;
+        ReparseFillCol.Width = new GridLength(f, GridUnitType.Star);
+        ReparseRestCol.Width = new GridLength(1 - f, GridUnitType.Star);
     }
 
     // ---- stored merge copies (Data page) --------------------------------------
@@ -282,7 +324,7 @@ public partial class TriggerManagerWindow : Window
         RefreshMergedLogs();
     }
 
-    private void ResetRebuild_Click(object sender, RoutedEventArgs e)
+    private async void ResetRebuild_Click(object sender, RoutedEventArgs e)
     {
         if (ResetAndRebuildRequested is null)
         {
@@ -301,13 +343,11 @@ public partial class TriggerManagerWindow : Window
                 yesText: "Reset & rebuild", noText: "Cancel"))
             return;
 
-        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
-        try { Status(ResetAndRebuildRequested()); }
-        finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+        await RunReparse(ResetAndRebuildRequested);
         UpdateDurationUx();
     }
 
-    private void Reparse_Click(object sender, RoutedEventArgs e)
+    private async void Reparse_Click(object sender, RoutedEventArgs e)
     {
         if (ReparseFullLogRequested is null)
         {
@@ -321,9 +361,7 @@ public partial class TriggerManagerWindow : Window
                 yesText: "Reparse", noText: "Cancel"))
             return;
 
-        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
-        try { Status(ReparseFullLogRequested()); }
-        finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+        await RunReparse(ReparseFullLogRequested);
         UpdateDurationUx(); // learned-duration hint may have new samples now
     }
 
@@ -1187,6 +1225,7 @@ public partial class TriggerManagerWindow : Window
             ["Flash alerts"] = FlashPage,
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
+            ["Crowd control"] = CrowdControlPage,
             ["Incoming damage"] = IncomingPage,
             ["Sky droppers"] = SkyHelperPage,
             ["Cursor ring"] = CursorRingPage,
@@ -1271,6 +1310,15 @@ public partial class TriggerManagerWindow : Window
     private void LoadSettingsFields()
     {
         ConditionsVisibleCheck.IsChecked = _config.Overlay.ConditionsVisible;
+        CharmCardVisibleCheck.IsChecked = _config.Overlay.CharmCardVisible;
+        MezPanelVisibleCheck.IsChecked = _config.Overlay.MezPanelVisible;
+        CcSpeakCheck.IsChecked = _config.Overlay.CcSpeak;
+        {
+            var cc = new CrowdControl(_spellLibrary, null);
+            int charm = cc.Defs.Count(d => d.Kind == CrowdControl.Kind.Charm), mez = cc.Defs.Count(d => d.Kind == CrowdControl.Kind.Mez);
+            int known = cc.Defs.Count(d => d.LandingSuffix.Length > 0);
+            CcSpellsText.Text = $"{charm} charm and {mez} mez spells known; {known} carry a landing line, {cc.Defs.Count - known} start as assumed.";
+        }
         SkyHelperVisibleCheck.IsChecked = _config.Overlay.SkyHelperVisible;
         SkyHelperCompletedCheck.IsChecked = _config.Overlay.SkyHelperShowCompleted;
         _soundUxLoading = true;
@@ -1661,6 +1709,9 @@ public partial class TriggerManagerWindow : Window
                 IncomingWindowSec = _incomingWindowSec,
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
                 ConditionsVisible = ConditionsVisibleCheck.IsChecked == true,
+                CharmCardVisible = CharmCardVisibleCheck.IsChecked == true,
+                MezPanelVisible = MezPanelVisibleCheck.IsChecked == true,
+                CcSpeak = CcSpeakCheck.IsChecked == true,
                 SkyHelperVisible = SkyHelperVisibleCheck.IsChecked == true,
                 SkyHelperShowCompleted = SkyHelperCompletedCheck.IsChecked == true,
                 InterruptNoticeEnabled = InterruptOnCheck.IsChecked == true,

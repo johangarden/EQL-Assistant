@@ -23,6 +23,8 @@ public sealed class ConditionWatcher
     // it broke, or it bounced. They expire by themselves after a beat.
     public const string Interrupted = "INTERRUPTED";
     public const string Resisted = "RESISTED";
+    /// <summary>Your charmed pet turned on you — pushed by the crowd-control engine.</summary>
+    public const string CharmBroke = "CHARM BROKE";
 
     /// <summary>One active condition: what, for how long so far — and, for the
     /// moment badges, which spell (shown where the elapsed time would sit).</summary>
@@ -204,6 +206,16 @@ public sealed class ConditionWatcher
     {
         _active.Clear();
         _moments.Clear();
+    }
+
+    /// <summary>Push a moment badge from outside the line feed (the charm
+    /// break): shown for <paramref name="seconds"/>, the detail where the
+    /// spell name sits.</summary>
+    public void Flash(string kind, string detail, double seconds)
+    {
+        var now = DateTime.Now;
+        _moments[kind] = (now, now.AddSeconds(seconds), detail);
+        Moment?.Invoke(kind, detail); // the panel's tick paints it within 300 ms; no StateChanged — that is the fight recorder's CC span feed
     }
 
     /// <summary>Test hook: every badge, self-clearing after ~12s.</summary>

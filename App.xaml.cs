@@ -318,6 +318,20 @@ public partial class App : Application
                 win.Close();
             }
 
+            // The crowd-control panels render the demo state.
+            {
+                var ccv = new CrowdControl(null, null);
+                ccv.SeedDemo(DateTime.Now, broke: true);
+                var cw = new Views.CharmWindow(ccv, new ConfigService(), 1.0) { Left = -9000, Top = -9000 };
+                cw.SetLocked(false); cw.Show(); cw.Refresh();
+                if (cw.LastState != "broke") throw new Exception("charm card: the demo should read broke, got " + cw.LastState);
+                cw.Close();
+                var mw = new Views.MezWindow(ccv, new ConfigService(), 1.0) { Left = -9000, Top = -9000 };
+                mw.SetLocked(false); mw.Show(); mw.Refresh();
+                if (mw.Rows.Count != 4 || !mw.Rows[0].Broke) throw new Exception("mez panel: the demo should list four rows, the broken one first");
+                mw.Close();
+            }
+
             // The con card renders verdicts and the honest empty line.
             {
                 var cc = new Views.ConCardWindow { Left = -9000, Top = -9000 };
@@ -2303,6 +2317,23 @@ public partial class App : Application
                 Check("alerts: headless runs are gagged — nothing speaks from a selftest", AlertService.Silenced);
             Check("log: the tailer's default poll is 100 ms", new Models.AppConfig().Log.PollIntervalMs == 100);
 
+            // Reparse progress card (14 Sep): bytes done over total, culture-proof percent, file N of M.
+            {
+                var rp = new ReparseProgress("eqlog_Thorrak_paineel.txt", 2, 3, 61_300_000, 142_000_000, 213_400);
+                Check("reparse: progress is bytes done over total, percent rounded, title says file N of M",
+                    Math.Abs(rp.Fraction - 0.4317) < 0.001 && rp.Percent == "43%"
+                    && rp.Title == "Replaying eqlog_Thorrak_paineel.txt — file 2 of 3");
+                var one = new ReparseProgress("a.txt", 1, 1, 0, 0, 0);
+                Check("reparse: an empty file reads 0% until done, then 100%; one file has no 'of'",
+                    one.Fraction == 0 && one.Percent == "0%" && (one with { Done = true }).Fraction == 1
+                    && one.Title == "Replaying a.txt" && new ReparseProgress("a", 1, 1, 9, 4, 1).Fraction == 1);
+                CrowdControlChecks(Check);
+                Check("reparse: the catch-up card says so, and the toolbar fill is the track times the fraction",
+                    new ReparseProgress("a.txt", 1, 1, 0, 0, 0, Verb: "Catching up").Title == "Catching up a.txt"
+                    && Math.Abs(new ViewModels.OverlayViewModel(new TriggerEngine(new Models.AppConfig(), new AlertService()), new Models.AppConfig())
+                        { Progress = new ReparseProgress("a", 1, 1, 1, 2, 0) }.ProgressFill - ViewModels.OverlayViewModel.ProgressTrack / 2) < 0.01);
+            }
+
             // Quest chips say where a held copy sits (11 Sep).
             {
                 var chipRows = new List<InventoryStore.CarryRow>
@@ -2941,6 +2972,106 @@ public partial class App : Application
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest_engine.txt"), result);
         Environment.ExitCode = failures == 0 ? 0 : 1;
         Shutdown();
+    }
+
+    /// <summary>Crowd control (14 Sep): the charm card and mez panel engine,
+    /// replayed on the 24 Aug Beguile Undead lines and a synthetic mez chain.</summary>
+    private static void CrowdControlChecks(Action<string, bool> Check)
+    {
+        var c0 = new DateTime(2026, 8, 24, 8, 42, 0);
+        string L(int sec, string body) => $"[{c0.AddSeconds(sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+
+        // Charm, on the lines the log actually printed.
+        var cc = new CrowdControl(null, null) { IsSelf = n => n == "Thorrak" };
+        Check("cc: the hand-added necro charms exist, Beguile Undead with its observed landing",
+            cc.Find("Beguile Undead") is { Kind: CrowdControl.Kind.Charm, LandingSuffix: "moans." }
+            && cc.Find("Dominate Undead") is { Kind: CrowdControl.Kind.Charm, LandingSuffix: "" } && cc.Find("Boil Blood") is null);
+        cc.ProcessLine(L(15, "You begin casting Beguile Undead."));
+        Check("cc: an armed charm shows nothing until the landing", cc.Charm is null);
+        cc.ProcessLine(L(20, "a greater ice bones moans."));
+        Check("cc: the observed landing opens the card on the mob",
+            cc.Charm is { Pet: "a greater ice bones", Spell: "Beguile Undead", Assumed: false });
+        cc.NoteDamage("A greater ice bones", "a greater ice bones", 40, c0.AddSeconds(21));
+        cc.NoteDamage("A greater ice bones", "Thorrak", 8, c0.AddSeconds(21));
+        cc.ProcessLine(L(23, "A greater ice bones has been slain by a greater ice bones!"));
+        Check("cc: same-name pet vs mob — the pet's hits and kill count, hits on you don't",
+            cc.Charm is { PetDamage: 40, PetKills: 1 });
+        int broke = 0; string brokePet = "";
+        cc.CharmBroke += p => { broke++; brokePet = p; };
+        cc.ProcessLine(L(26, "Your Beguile Undead spell has worn off of a greater ice bones."));
+        cc.ProcessLine(L(26, "Your Beguile Undead spell has worn off of a greater ice bones."));
+        Check("cc: the wear-off line breaks the charm once, naming the pet", broke == 1 && brokePet == "a greater ice bones");
+        var s1 = cc.Take(c0.AddSeconds(30));
+        Check("cc: the card reads broke with the time it held", s1.Charm is { Broke: true, Held: 10, SinceBreak: 4 } && s1.Attempt is null);
+        cc.ProcessLine(L(45, "You begin casting Beguile Undead."));
+        cc.ProcessLine(L(50, "Your Beguile Undead spell is interrupted."));
+        Check("cc: a failed recast waits behind the red card", cc.Take(c0.AddSeconds(51)).Charm is { Broke: true });
+        var s2 = cc.Take(c0.AddSeconds(100));
+        Check("cc: the red card leaves after a minute", s2.Charm is null && s2.Attempt is null);
+        cc.ProcessLine(L(101, "You begin casting Beguile Undead."));
+        cc.ProcessLine(L(106, "a greater ice bones resisted your Beguile Undead!"));
+        Check("cc: a resist is the amber attempt, naming the mob, gone after 30 s",
+            cc.Take(c0.AddSeconds(110)).Attempt is { How: "resisted", Target: "a greater ice bones", Spell: "Beguile Undead" }
+            && cc.Take(c0.AddSeconds(140)).Attempt is null);
+        cc.ProcessLine(L(150, "You begin casting Beguile Undead."));
+        cc.ProcessLine(L(155, "a greater ice bones moans."));
+        cc.ProcessLine(L(160, "You have entered Permafrost Caverns."));
+        Check("cc: zoning clears the card", cc.Charm is null && !cc.Take(c0.AddSeconds(161)).Any);
+
+        // An unknown landing: assumed on the cast, named by the wear-off, learned from the emote.
+        string learnPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_landings.json");
+        try { File.Delete(learnPath); } catch { /* fresh */ }
+        var cl = new CrowdControl(null, learnPath) { IsSelf = n => n == "Thorrak" };
+        cl.ProcessLine(L(0, "You begin casting Dominate Undead."));
+        Check("cc: an unknown landing opens an assumed card at once", cl.Charm is { Assumed: true, Pet: "your target" });
+        cl.ProcessLine(L(3, "A skeleton hits Thorrak for 5 points of damage."));
+        cl.ProcessLine(L(4, "a skeleton cackles."));
+        cl.ProcessLine(L(5, "A skeleton tries to hit Thorrak, but misses!"));
+        cl.ProcessLine(L(40, "Your Dominate Undead spell has worn off of a skeleton."));
+        Check("cc: the wear-off names the assumed pet, breaks it, and the emote after the cast is learned",
+            cl.Charm is { Pet: "a skeleton", BrokeAt: not null } && cl.Landing("Dominate Undead") == "cackles." && File.Exists(learnPath));
+        var cl2 = new CrowdControl(null, learnPath);
+        Check("cc: the learned landing survives a restart", cl2.Landing("Dominate Undead") == "cackles.");
+        var cf = new CrowdControl(null, null);
+        cf.ProcessLine(L(0, "You begin casting Cajole Undead."));
+        cf.ProcessLine(L(4, "a ghoul resisted your Cajole Undead!"));
+        Check("cc: an assumed card dies with the resist of its own cast", cf.Charm is null && cf.LastAttempt is { How: "resisted" });
+        try { File.Delete(learnPath); } catch { /* temp */ }
+
+        // Mez, from the library's own text.
+        var lib = new SpellLibrary(new ConfigService());
+        var mz = new CrowdControl(lib, null) { IsSelf = n => n == "Thorrak" };
+        Check("cc: the library yields the mez family — Mesmerization lands as 'has been mesmerized.' for 24 s",
+            mz.Find("Mesmerization") is { Kind: CrowdControl.Kind.Mez, LandingSuffix: "has been mesmerized.", DurationSec: 24 }
+            && mz.Find("Beguile") is { Kind: CrowdControl.Kind.Charm } && mz.Find("Enthrall") is { Kind: CrowdControl.Kind.Mez });
+        mz.ProcessLine(L(0, "You begin casting Mesmerization."));
+        mz.ProcessLine(L(3, "a greater ice bones has been mesmerized."));
+        mz.ProcessLine(L(5, "You begin casting Mesmerization."));
+        mz.ProcessLine(L(8, "a greater ice bones has been mesmerized."));
+        Check("cc: a second landing on a name still running comfortably is a second mob, numbered",
+            mz.MezRows.Count == 2 && mz.MezRows[0].Label == "a greater ice bones 01" && mz.MezRows[1].Label == "a greater ice bones 02");
+        string brokeLabel = "", brokeBy = "";
+        mz.MezBroke += (l, w) => { brokeLabel = l; brokeBy = w; };
+        mz.NoteDamage("Garn", "a greater ice bones", 58, c0.AddSeconds(10));
+        var m1 = mz.Take(c0.AddSeconds(11));
+        Check("cc: damage on a mezzed name breaks the OLDEST row and says who",
+            brokeLabel == "a greater ice bones 01" && brokeBy == "Garn" && m1.Mez[0] is { Broke: true, BrokeBy: "Garn", BrokeAmount: 58 }
+            && m1.Held == 1 && m1.Broken == 1 && m1.Next is { Label: "a greater ice bones 02", Left: 21 });
+        var due = new List<string>();
+        mz.MezDue += due.Add;
+        var m2 = mz.Take(c0.AddSeconds(27));
+        mz.Take(c0.AddSeconds(28));
+        Check("cc: the last stretch (max 6 s, 20%) flags the row due once and drops the broken row after 8 s",
+            due.Count == 1 && due[0] == "a greater ice bones 02" && m2.Mez.Count == 1 && m2.Mez[0].Due);
+        mz.ProcessLine(L(29, "Your Mesmerization spell has worn off of a greater ice bones."));
+        Check("cc: the wear-off closes the row", mz.MezRows.Count == 0);
+        var row = Views.MezWindow.Row(new CrowdControl.MezView("an ice bones", "Mesmerization", 4, 24, 20, false, false, "", 0, 0, true), true);
+        var rowB = Views.MezWindow.Row(new CrowdControl.MezView("a greater ice bones 02", "Mesmerization", 0, 24, 11, false, true, "Garn", 58, 2, false), false);
+        Check("cc: the mez row texts — due reads re-mez now, broke names the hitter",
+            row is { TimeText: "0:04", SubText: "re-mez now", RightText: "of 0:24", FillWidth: 49 }
+            && rowB is { TimeText: "BROKE", RightText: "held 0:11" } && rowB.SubText.StartsWith("Garn hit it for 58"));
+        Check("cc: the config defaults — both panels on, notices spoken",
+            new Models.AppConfig().Overlay is { CharmCardVisible: true, MezPanelVisible: true, CcSpeak: true });
     }
 
     private void RunLoadoutSelfTest()
@@ -4016,15 +4147,20 @@ public partial class App : Application
         // "character:<tab>" renders the Character window on a tab instead
         // (the selftest's inventory fixture in %TEMP% feeds it when present).
         if (page.Equals("toolbar", StringComparison.OrdinalIgnoreCase)
-            || page.Equals("toolbar:hidden", StringComparison.OrdinalIgnoreCase))
+            || page.Equals("toolbar:hidden", StringComparison.OrdinalIgnoreCase)
+            || page.Equals("toolbar:catchup", StringComparison.OrdinalIgnoreCase))
         {
             // The toolbar with a live view-model: "toolbar:hidden" shows the
-            // eye in its panels-hidden state.
+            // eye in its panels-hidden state, "toolbar:catchup" the progress
+            // card of a catch-up mid-run.
             var cs0 = new ConfigService();
             var cfg0 = cs0.LoadSettings();
             var vm = new ViewModels.OverlayViewModel(new TriggerEngine(cfg0, new AlertService()), cfg0)
             {
                 PanelsHidden = page.EndsWith(":hidden", StringComparison.OrdinalIgnoreCase),
+                Progress = page.EndsWith(":catchup", StringComparison.OrdinalIgnoreCase)
+                    ? new ReparseProgress("eqlog_Thorrak_paineel.txt", 1, 1, 61_300_000, 142_000_000, 41_200, Verb: "Catching up")
+                    : null,
             };
             var tb = new Views.ToolbarWindow(cs0)
             {
@@ -4085,6 +4221,24 @@ public partial class App : Application
             win.Refresh();
             mgr = win;
         }
+        else if (page.Equals("charm", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("charm:broke", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("mez", StringComparison.OrdinalIgnoreCase))
+        {
+            // The crowd-control panels on the demo state: the charm card
+            // holding / broken, the mez panel with a due, a broken and an
+            // assumed row.
+            var cc = new CrowdControl(null, null);
+            cc.SeedDemo(DateTime.Now, broke: !page.Equals("charm", StringComparison.OrdinalIgnoreCase));
+            Window win = page.StartsWith("charm", StringComparison.OrdinalIgnoreCase)
+                ? new Views.CharmWindow(cc, new ConfigService(), 1.0)
+                : new Views.MezWindow(cc, new ConfigService(), 1.0);
+            win.WindowStartupLocation = WindowStartupLocation.Manual;
+            win.Left = -10000; win.Top = -10000; win.ShowInTaskbar = false; win.ShowActivated = false;
+            if (win is Views.CharmWindow cw) { cw.SetLocked(true); cw.Show(); cw.Refresh(); }
+            else if (win is Views.MezWindow mw) { mw.SetLocked(true); mw.Show(); mw.Refresh(); }
+            mgr = win;
+        }
         else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase))
         {
             var csq = new ConfigService();
@@ -4119,7 +4273,11 @@ public partial class App : Application
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
             };
             m.Show();
-            m.SelectPage(page);
+            // "Data:reparse" shows the Data page with the progress card mid-run.
+            bool reparseDemo = page.Equals("Data:reparse", StringComparison.OrdinalIgnoreCase);
+            m.SelectPage(reparseDemo ? "Data" : page);
+            if (reparseDemo)
+                m.ShowReparseProgress(new ReparseProgress("eqlog_Thorrak_paineel.txt", 1, 1, 61_300_000, 142_000_000, 213_400));
             mgr = m;
         }
         mgr.UpdateLayout();
