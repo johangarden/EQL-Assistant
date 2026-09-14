@@ -254,6 +254,8 @@ public partial class TriggerManagerWindow : Window
 
     private int _incomingWindowSec = 15;
     private Segmented? _incomingSeg;
+    private int _stanceShare = 75, _stanceWindowSec = 10;
+    private Segmented? _stanceShareSeg, _stanceWindowSeg;
 
     // ---- Diagnostics bundle (8 Sep) -------------------------------------------
 
@@ -871,6 +873,7 @@ public partial class TriggerManagerWindow : Window
         RespawnSpawnSoundBox.ItemsSource = LoadSoundPresets();
         InterruptSoundBox.ItemsSource = LoadSoundPresets();
         ResistSoundBox.ItemsSource = LoadSoundPresets();
+        StanceSoundBox.ItemsSource = LoadSoundPresets();
     }
 
     private void WarnSound_Changed(object sender, SelectionChangedEventArgs e)
@@ -1425,6 +1428,37 @@ public partial class TriggerManagerWindow : Window
             IncomingWindowHost.Children.Add(_incomingSeg);
         }
         else _incomingSeg.Select(_incomingWindowSec.ToString());
+        // The wrong-stance notice (14 Sep).
+        StanceOnCheck.IsChecked = _config.Overlay.StanceNoticeEnabled;
+        StanceModeBox.SelectedValue = _config.Overlay.StanceNoticeMode;
+        StanceSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.StanceNoticeSpeak) ? "Switch to {stance}" : _config.Overlay.StanceNoticeSpeak;
+        SyncSoundCombo(StanceSoundBox, _config.Overlay.StanceNoticeSound);
+        _stanceShare = _config.Overlay.StanceNoticeShare is 60 or 75 or 90 ? _config.Overlay.StanceNoticeShare : 75;
+        _stanceWindowSec = _config.Overlay.StanceNoticeWindowSec is 5 or 10 ? _config.Overlay.StanceNoticeWindowSec : 10;
+        if (_stanceShareSeg is null)
+        {
+            _stanceShareSeg = new Segmented(new[]
+            {
+                new Segmented.Option("60", "60%"),
+                new Segmented.Option("75", "75%"),
+                new Segmented.Option("90", "90%"),
+            }, _stanceShare.ToString(), "#E8C15A") { Margin = new Thickness(0) };
+            _stanceShareSeg.Changed += id => _stanceShare = int.Parse(id);
+            StanceShareHost.Children.Add(_stanceShareSeg);
+            _stanceWindowSeg = new Segmented(new[]
+            {
+                new Segmented.Option("5", "5 s"),
+                new Segmented.Option("10", "10 s"),
+            }, _stanceWindowSec.ToString(), "#E8C15A") { Margin = new Thickness(0) };
+            _stanceWindowSeg.Changed += id => _stanceWindowSec = int.Parse(id);
+            StanceWindowHost.Children.Add(_stanceWindowSeg);
+        }
+        else
+        {
+            _stanceShareSeg.Select(_stanceShare.ToString());
+            _stanceWindowSeg!.Select(_stanceWindowSec.ToString());
+        }
+        UpdateMomentNoticeUx();
         EnemyDotsGroupBox.SelectedValue = _config.Overlay.EnemyDotsGroupByMob ? "mob" : "spell";
         EnemyDotsAnchorBox.SelectedValue = (_configService.LoadPlacement("enemyDots")?.Anchor ?? Anchor.TopLeft).ToString();
         RemindersAnchorBox.SelectedValue = (_configService.LoadPlacement("reminders")?.Anchor ?? Anchor.TopLeft).ToString();
@@ -1459,6 +1493,20 @@ public partial class TriggerManagerWindow : Window
         bool rSound = ResistModeBox.SelectedValue as string != "speak";
         ResistSoundBox.Visibility = rSound ? Visibility.Visible : Visibility.Collapsed;
         ResistSpeakBox.Visibility = rSound ? Visibility.Collapsed : Visibility.Visible;
+        if (StanceRow is null) return;
+        StanceRow.IsEnabled = StanceOnCheck.IsChecked == true;
+        bool sSound = StanceModeBox.SelectedValue as string != "speak";
+        StanceSoundBox.Visibility = sSound ? Visibility.Visible : Visibility.Collapsed;
+        StanceSpeakBox.Visibility = sSound ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void StanceTest_Click(object sender, RoutedEventArgs e)
+    {
+        if (_alerts.Muted) { Status("Unmute to preview."); return; }
+        if (StanceModeBox.SelectedValue as string == "speak")
+            _alerts.Fire(MainWindow.StancePhrase(StanceSpeakBox.Text, "mage hunter"), null);
+        else if (StanceSoundBox.SelectedItem is SoundPreset p && p.Path.Length > 0)
+            _alerts.Fire(null, p.Path);
     }
 
     private void InterruptTest_Click(object sender, RoutedEventArgs e) =>
@@ -1707,6 +1755,12 @@ public partial class TriggerManagerWindow : Window
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
                 IncomingVisible = IncomingVisibleCheck.IsChecked == true,
                 IncomingWindowSec = _incomingWindowSec,
+                StanceNoticeEnabled = StanceOnCheck.IsChecked == true,
+                StanceNoticeShare = _stanceShare,
+                StanceNoticeWindowSec = _stanceWindowSec,
+                StanceNoticeMode = StanceModeBox.SelectedValue as string ?? "speak",
+                StanceNoticeSpeak = StanceSpeakBox.Text.Trim(),
+                StanceNoticeSound = (StanceSoundBox.SelectedItem as SoundPreset)?.Path ?? _config.Overlay.StanceNoticeSound,
                 EnemyDotsGroupByMob = EnemyDotsGroupBox.SelectedValue as string != "spell",
                 ConditionsVisible = ConditionsVisibleCheck.IsChecked == true,
                 CharmCardVisible = CharmCardVisibleCheck.IsChecked == true,
