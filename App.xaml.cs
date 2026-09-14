@@ -2727,6 +2727,16 @@ public partial class App : Application
                 Check("sky: a spare rune is tracked but never listed as housekeeping (currency takes no space)",
                     sqAgain.Surplus().All(s => s.Item != "Wind Rune Ozah")
                     && sqAgain.MissingByIsle().All(r => r.Item != "Wind Rune Ozah"));
+                // Group headers say what the group IS (14 Sep): wind runes are the
+                // any-isle random drops, the Efreeti weapons come from the named.
+                var isleRows = sqAgain.MissingByIsle(includeHeld: true);
+                Check("sky: wind runes file under the any-isle random-drop header, Efreeti weapons under the named bosses",
+                    isleRows.First(r => r.Item == "Wind Rune Meda").Isle == SkyQuests.AnyIsleLabel
+                    && isleRows.Where(r => r.Item.StartsWith("Efreeti ")).All(r => r.Isle.StartsWith(SkyQuests.NamedLabelPrefix) && r.Isle.Contains("Noble Dojorn") && !r.Isle.Contains("Unknown"))
+                    && isleRows.All(r => r.Isle != "Plane of Sky")
+                    && isleRows.Select(r => r.Isle).Distinct().ToList() is var order
+                    && order.IndexOf(SkyQuests.AnyIsleLabel) < order.FindIndex(i => i.StartsWith(SkyQuests.NamedLabelPrefix))
+                    && order.IndexOf("Island 8") < order.IndexOf(SkyQuests.AnyIsleLabel));
 
                 var helper = new SkyHelper(sq); // never class-locked (owner ruling, 6 Sep)
                 var sighted = new List<string>();

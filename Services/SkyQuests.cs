@@ -405,13 +405,21 @@ public sealed class SkyQuests
             }
         }
 
+        // Items with no isle of their own (the wiki's "Where" is empty) drop
+        // from the NAMED — the group header names them, not "random".
+        var namedMobs = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (_, a) in agg)
+            if (a.Sample.Where.Length == 0)
+                foreach (var m in a.Sample.Mobs.Where(m => !m.StartsWith("Unknown", StringComparison.OrdinalIgnoreCase)))
+                    namedMobs.Add(m);
+
         var rows = new List<IsleNeed>();
         foreach (var (name, a) in agg)
         {
             int held = HeldByKey(LootTracker.ItemKey(name));
             int missing = a.Needed - held;
             if (missing <= 0 && !includeHeld) continue;
-            string isle = a.Sample.Where.Length > 0 ? a.Sample.Where : "Any isle · random Sky drop";
+            string isle = IsleLabel(a.Sample, namedMobs);
             string who = a.Sample.Mobs.Count > 0 ? string.Join(", ", a.Sample.Mobs) : a.Sample.Who;
             rows.Add(new IsleNeed(isle, name, Math.Max(0, missing), a.Needed, who, a.Quests.ToList(), held));
         }
@@ -420,10 +428,29 @@ public sealed class SkyQuests
             .ToList();
     }
 
+    public const string AnyIsleLabel = "Any isle · random drop from any Sky mob";
+    public const string NamedLabelPrefix = "Named drops · ";
+
+    /// <summary>The group header an item files under. The wiki's "Where" for
+    /// the wind runes is just "Plane of Sky" with "random drop — any Plane of
+    /// Sky mob" as the dropper: that IS the any-isle group. Items with no
+    /// isle at all (the Efreeti weapons) drop from the named bosses, and the
+    /// header says so (owner, 14 Sep: "this part is misleading").</summary>
+    public static string IsleLabel(SkyItem sample, IReadOnlyCollection<string> namedMobs)
+    {
+        if (sample.Where.Length == 0)
+            return namedMobs.Count > 0 ? NamedLabelPrefix + string.Join(" / ", namedMobs) : AnyIsleLabel;
+        if (sample.Who.Contains("random drop", StringComparison.OrdinalIgnoreCase)
+            || sample.Where.Equals("Plane of Sky", StringComparison.OrdinalIgnoreCase))
+            return AnyIsleLabel;
+        return sample.Where;
+    }
+
     private static int IsleOrder(string isle)
     {
         var m = Regex.Match(isle, @"\d+");
-        return m.Success ? int.Parse(m.Value) : 99; // "Any isle" and oddballs sink
+        if (m.Success) return int.Parse(m.Value);
+        return isle.StartsWith("Any isle", StringComparison.Ordinal) ? 98 : 99; // random drops, then the named
     }
 
     /// <summary>Held copies no ACTIVE quest still wants (per the loot ledger):
