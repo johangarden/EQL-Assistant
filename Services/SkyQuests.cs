@@ -201,6 +201,13 @@ public sealed class SkyQuests
     private int LedgerByKey(string key) =>
         Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key) - _destroyed.GetValueOrDefault(key));
 
+    /// <summary>The ledger's arithmetic for one item — the --sky-audit tool's row.</summary>
+    public (int Looted, int Offered, int Destroyed, int Held) Audit(string item)
+    {
+        string key = LootTracker.ItemKey(item);
+        return (_counts.GetValueOrDefault(key), _offered.GetValueOrDefault(key), _destroyed.GetValueOrDefault(key), HeldByKey(key));
+    }
+
     /// <summary>True when the dump, not the ledger, decided an item's count.</summary>
     public bool DumpDecided(string item)
     {

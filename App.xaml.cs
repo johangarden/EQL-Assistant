@@ -59,6 +59,19 @@ public partial class App : Application
             return;
         }
 
+        // Gated: `--sky-audit <log> [item filter]` — replay a log through the
+        // loot ledger and the Sky tracker on scratch files and print every quest
+        // item's looted / offered / destroyed / held with the lines behind them.
+        // The owner's "it says I still have it" reports start here.
+        int sa = Array.IndexOf(e.Args, "--sky-audit");
+        if (sa >= 0 && sa + 1 < e.Args.Length)
+        {
+            try { RunSkyAudit(e.Args[sa + 1], sa + 2 < e.Args.Length ? e.Args[sa + 2] : ""); }
+            catch (Exception ex) { File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_sky_audit.txt"), ex.ToString()); }
+            Shutdown();
+            return;
+        }
+
         // Gated: render one Manager page to a PNG (`--render-manager <page> <out.png>`)
         // — lets a build be eyeballed against a design mock without a human.
         int rm = Array.IndexOf(e.Args, "--render-manager");
@@ -3940,6 +3953,46 @@ public partial class App : Application
     /// its own, timing per line; then all of them in the live order. Reports
     /// µs/line, the worst single line, and lines/s headroom against the log's
     /// own peak rate (65/s observed). Alerts are gagged.</summary>
+    private static void RunSkyAudit(string path, string filter)
+    {
+        var report = new System.Text.StringBuilder();
+        var cs = new ConfigService();
+        string lootPath = Path.Combine(Path.GetTempPath(), "eql_audit_loot.json");
+        string skyPath = Path.Combine(Path.GetTempPath(), "eql_audit_sky.json");
+        try { File.Delete(lootPath); } catch { /* fresh */ }
+        try { File.Delete(skyPath); } catch { /* fresh */ }
+        var loot = new LootTracker(cs, lootPath);
+        var sky = new SkyQuests(cs, loot, skyPath);
+        var names = sky.Quests.SelectMany(q => q.Items).Select(i => i.Name).Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(n => filter.Length == 0 || n.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        var lines = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var n in names) lines[n] = new List<string>();
+        int total = 0;
+        foreach (var line in File.ReadLines(path))
+        {
+            total++;
+            loot.ProcessLine(line);
+            sky.ProcessLine(line);
+            if (line.Contains("You have looted", StringComparison.Ordinal) || line.Contains("You offered", StringComparison.Ordinal)
+                || line.Contains("successfully destroyed", StringComparison.Ordinal) || line.Contains("You looted", StringComparison.Ordinal))
+                foreach (var n in names)
+                    if (line.Contains(n, StringComparison.OrdinalIgnoreCase)) lines[n].Add(line);
+        }
+        report.AppendLine($"sky audit: {Path.GetFileName(path)} — {total:N0} lines; {names.Count} quest items{(filter.Length > 0 ? $" matching '{filter}'" : "")}");
+        report.AppendLine($"completed quests: {sky.Quests.Count(q => sky.IsCompleted(q))} of {sky.Quests.Count}");
+        foreach (var n in names)
+        {
+            var a = sky.Audit(n);
+            if (filter.Length == 0 && a.Looted == 0 && a.Offered == 0) continue;
+            report.AppendLine();
+            report.AppendLine($"{n}: looted {a.Looted} · offered {a.Offered} · destroyed {a.Destroyed} → held {a.Held}"
+                + $"  [{string.Join("; ", sky.Quests.Where(q => q.Items.Any(i => i.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).Select(q => q.Name + (sky.IsCompleted(q) ? " ✓" : "")))}]");
+            foreach (var l in lines[n]) report.AppendLine("    " + l);
+        }
+        File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_sky_audit.txt"), report.ToString());
+    }
+
     private void RunBench(string path)
     {
         AlertService.Silenced = true;
