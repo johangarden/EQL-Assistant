@@ -136,7 +136,10 @@ public sealed class SkyQuests
             string key = LootTracker.ItemKey(e.Item);
             if (e.Kind == LootTracker.LootKind.Currency) _currencyKeys.Add(key);
             if (_questItemKeys.Contains(key))
+            {
                 fromLoot[key] = fromLoot.GetValueOrDefault(key) + Math.Max(1, e.Count);
+                NoteLootTime(key, e.When);
+            }
         }
         bool lifted = false;
         foreach (var (key, n) in fromLoot)
@@ -161,8 +164,90 @@ public sealed class SkyQuests
         if (e.Kind == LootTracker.LootKind.Currency) _currencyKeys.Add(key);
         if (!_questItemKeys.Contains(key)) return false;
         _counts[key] = _counts.GetValueOrDefault(key) + Math.Max(1, e.Count);
+        NoteLootTime(key, e.When);
         if (save) SaveProgress();
         return true;
+    }
+
+    // ---- the bags win --------------------------------------------------------------
+    // Owner, 15 Sep: "3 quests ready for turn-in but only some items have a
+    // slot — new dumps and a reparse changed nothing". The ledger had copies
+    // the bags no longer held (an exit the log never showed). For PHYSICAL
+    // items the last /outputfile inventory is the truth: a dump written after
+    // the item's last pickup caps the held count to what it lists — down to 0.
+    // Currency (wind runes) never appears in a dump and is never capped; a
+    // pickup AFTER the dump makes the dump stale for that item, no cap.
+
+    /// <summary>Copies of an item the last inventory dump lists (0 = none);
+    /// set by the Sky window, null when there is no dump.</summary>
+    public Func<string, int>? SnapshotCopies { get; set; }
+    /// <summary>When that dump was written.</summary>
+    public DateTime? SnapshotAt { get; set; }
+
+    private readonly Dictionary<string, DateTime> _lastLootAt = new(StringComparer.OrdinalIgnoreCase);
+    private void NoteLootTime(string key, DateTime when)
+    {
+        if (when > _lastLootAt.GetValueOrDefault(key, DateTime.MinValue)) _lastLootAt[key] = when;
+    }
+
+    private bool IsCurrencyKey(string key) =>
+        _currencyKeys.Contains(key)
+        || _keyToName.GetValueOrDefault(key, key).StartsWith("Wind Rune", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The ledger alone — looted minus turned in minus destroyed —
+    /// before the bags weigh in.</summary>
+    public int LedgerHeld(string item) => LedgerByKey(LootTracker.ItemKey(item));
+
+    private int LedgerByKey(string key) =>
+        Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key) - _destroyed.GetValueOrDefault(key));
+
+    /// <summary>The ledger's arithmetic for one item — the --sky-audit tool's row.</summary>
+    public (int Looted, int Offered, int Destroyed, int Held) Audit(string item)
+    {
+        string key = LootTracker.ItemKey(item);
+        return (_counts.GetValueOrDefault(key), _offered.GetValueOrDefault(key), _destroyed.GetValueOrDefault(key), HeldByKey(key));
+    }
+
+    /// <summary>Where the live ledger disagrees with a fresh replay of the log
+    /// (<see cref="SkyAudit"/>): one line per quest item, "Item: live N → log M".</summary>
+    public IReadOnlyList<string> DriftAgainst(SkyQuests fromLog)
+    {
+        var rows = new List<string>();
+        foreach (var name in _quests.SelectMany(q => q.Items).Select(i => i.Name).Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+        {
+            int live = LedgerHeld(name), log = fromLog.LedgerHeld(name);
+            if (live != log) rows.Add($"{name}: live {live} → log {log}");
+        }
+        int liveDone = _completed.Count, logDone = fromLog._completed.Count;
+        if (liveDone != logDone) rows.Add($"completed quests: live {liveDone} → log {logDone}");
+        return rows;
+    }
+
+    /// <summary>Realign to the log: adopt a fresh replay's counts, turn-ins,
+    /// destroys and completions wholesale. Tracking survives (finished hunts
+    /// un-track). Only the Sky ledger changes — nothing else is touched.</summary>
+    public void AdoptFrom(SkyQuests fromLog)
+    {
+        _counts.Clear(); foreach (var (k, v) in fromLog._counts) _counts[k] = v;
+        _offered.Clear(); foreach (var (k, v) in fromLog._offered) _offered[k] = v;
+        _destroyed.Clear(); foreach (var (k, v) in fromLog._destroyed) _destroyed[k] = v;
+        _questOffers.Clear(); foreach (var (k, v) in fromLog._questOffers) _questOffers[k] = new HashSet<string>(v);
+        _offerSeen.Clear(); _offerSeen.UnionWith(fromLog._offerSeen);
+        _destroySeen.Clear(); _destroySeen.UnionWith(fromLog._destroySeen);
+        _completed.Clear(); _completed.UnionWith(fromLog._completed);
+        _currencyKeys.UnionWith(fromLog._currencyKeys);
+        _lastLootAt.Clear(); foreach (var (k, v) in fromLog._lastLootAt) _lastLootAt[k] = v;
+        _tracked.RemoveWhere(_completed.Contains);
+        SaveProgress();
+        Changed?.Invoke();
+    }
+
+    /// <summary>True when the dump, not the ledger, decided an item's count.</summary>
+    public bool DumpDecided(string item)
+    {
+        string key = LootTracker.ItemKey(item);
+        return HeldByKey(key) < LedgerByKey(key);
     }
 
     // Turn-ins ARE logged even though rewards are not (confirmed 29 Aug 2026):
@@ -366,8 +451,17 @@ public sealed class SkyQuests
     /// copies safe to hand to a guildie (or the vendor).</summary>
     public sealed record SurplusItem(string Item, int Surplus);
 
-    private int HeldByKey(string key) =>
-        Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key) - _destroyed.GetValueOrDefault(key));
+    private int HeldByKey(string key)
+    {
+        int held = LedgerByKey(key);
+        if (held > 0 && SnapshotCopies is not null && SnapshotAt is { } at && !IsCurrencyKey(key)
+            && at > _lastLootAt.GetValueOrDefault(key, DateTime.MinValue))
+        {
+            int inDump = SnapshotCopies(_keyToName.GetValueOrDefault(key, key));
+            if (inDump >= 0 && inDump < held) held = inDump; // the bags win
+        }
+        return held;
+    }
 
     /// <summary>The per-isle shopping list: everything ACTIVE quests still
     /// need beyond what you hold, grouped by where it drops.</summary>
@@ -477,10 +571,11 @@ public sealed class SkyQuests
         var rows = new List<SurplusItem>();
         foreach (var key in _counts.Keys)
         {
-            if (_currencyKeys.Contains(key)) continue; // stacks in the currency tab — no space to free
-            int held = HeldByKey(key);
-            if (snapshotCopies is not null && held > 0)
+            if (IsCurrencyKey(key)) continue; // stacks in the currency tab — no space to free
+            int held = HeldByKey(key); // already capped by the dump when one is set
+            if (snapshotCopies is not null && SnapshotCopies is null && held > 0)
             {
+                // Legacy path (no snapshot hooks on the instance): the caller's dump count.
                 int inDump = snapshotCopies(_keyToName.GetValueOrDefault(key, key));
                 if (inDump > 0 && inDump < held) held = inDump;
             }

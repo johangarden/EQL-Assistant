@@ -18,7 +18,7 @@ namespace EQLOverlay.Views;
 public partial class MezWindow : Window
 {
     public sealed record RowVm(string Label, string TimeText, double FillWidth, string SubText, string RightText,
-        bool Due, bool Assumed, bool Broke, bool First);
+        bool Due, bool Assumed, bool Broke, bool First, bool Overrun = false);
 
     private const double TrackWidth = 296;
     private static readonly Brush UnlockedBackdrop = Freeze("#F0141A24");
@@ -79,16 +79,19 @@ public partial class MezWindow : Window
     /// <summary>One row's texts and fill, pure for the selftest.</summary>
     public static RowVm Row(CrowdControl.MezView m, bool first)
     {
-        string time = m.Broke ? "BROKE" : m.Duration > 0 ? CharmWindow.Clock(Math.Max(0, m.Left)) + (m.Assumed ? "?" : "")
+        string time = m.Broke ? "BROKE"
+            : m.Overrun ? "+" + CharmWindow.Clock(-m.Left)
+            : m.Duration > 0 ? CharmWindow.Clock(Math.Max(0, m.Left)) + (m.Assumed ? "?" : "")
             : CharmWindow.Clock(m.Held) + "↑";
-        double frac = m.Broke ? 1 : m.Duration > 0 ? Math.Clamp(m.Left / m.Duration, 0, 1) : 1;
+        double frac = m.Broke || m.Overrun ? 1 : m.Duration > 0 ? Math.Clamp(m.Left / m.Duration, 0, 1) : 1;
         string sub = m.Broke ? $"{m.BrokeBy} hit it for {m.BrokeAmount:N0} · {m.SinceBreak:0} s ago"
+            : m.Overrun ? "past the clock — still held until the wear-off line"
             : m.Assumed ? "assumed — landing line not yet seen"
             : m.Due ? "re-mez now"
             : $"landed {m.Held:0} s ago";
         string right = m.Broke ? $"held {CharmWindow.Clock(m.Held)}"
-            : m.Duration > 0 ? $"of {CharmWindow.Clock(m.Duration)}" : "no known clock";
-        return new RowVm(m.Label, time, Math.Round(TrackWidth * frac), sub, right, m.Due, m.Assumed, m.Broke, first);
+            : m.Duration > 0 ? $"of {CharmWindow.Clock(m.Duration)}{(m.Learned ? " · learned" : "")}" : "no known clock";
+        return new RowVm(m.Label, time, Math.Round(TrackWidth * frac), sub, right, m.Due, m.Assumed, m.Broke, first, m.Overrun);
     }
 
     public void Refresh()
@@ -105,6 +108,7 @@ public partial class MezWindow : Window
         SummaryText.Text = !any ? "nothing held"
             : (held > 0 ? $"{held} held" : "") + (broken > 0 ? (held > 0 ? " · " : "") + $"{broken} broken" : "") + spell;
         if (broken > 0) { NextText.Text = "broke!"; NextText.Foreground = Red; }
+        else if (s.Loose.Count > 0) { NextText.Text = s.Loose.Count == 1 ? $"{s.Loose[0]} loose — mez it" : $"{s.Loose.Count} loose — mez them"; NextText.Foreground = Amber; }
         else if (s.Next is { } n) { NextText.Text = n.Due ? "re-mez now" : $"re-mez in {Math.Max(0, n.Left - CrowdControl.LastStretch(n.Duration)):0} s"; NextText.Foreground = Amber; }
         else { NextText.Text = any ? "—" : ""; NextText.Foreground = Faint; }
 

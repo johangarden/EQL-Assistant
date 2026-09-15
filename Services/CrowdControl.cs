@@ -58,16 +58,17 @@ public sealed class CrowdControl
         public string BrokeBy = "";
         public double BrokeAmount;
         public bool Warned;
+        public bool Refreshed;          // re-landed in place — the wear-off's span teaches nothing
         public string Label => Instance > 0 ? $"{Mob} {Instance:00}" : Mob;
     }
 
     public sealed record CharmView(string Pet, string Spell, double Held, double Ceiling, bool Assumed,
         bool Broke, double SinceBreak, double PetDamage, int PetKills, double? SinceLastHit);
     public sealed record MezView(string Label, string Spell, double Left, double Duration, double Held,
-        bool Assumed, bool Broke, string BrokeBy, double BrokeAmount, double SinceBreak, bool Due);
+        bool Assumed, bool Broke, string BrokeBy, double BrokeAmount, double SinceBreak, bool Due, bool Overrun = false, bool Learned = false);
     public sealed record AttemptView(string Spell, string Target, string How, double Ago);
 
-    public sealed record Snapshot(CharmView? Charm, AttemptView? Attempt, IReadOnlyList<MezView> Mez)
+    public sealed record Snapshot(CharmView? Charm, AttemptView? Attempt, IReadOnlyList<MezView> Mez, IReadOnlyList<string> Loose)
     {
         public int Held => Mez.Count(m => !m.Broke);
         public int Broken => Mez.Count(m => m.Broke);
@@ -82,6 +83,9 @@ public sealed class CrowdControl
     public event Action<string, string>? MezBroke;
     /// <summary>A mez entered its last stretch: (mob label) — "re-mez now".</summary>
     public event Action<string>? MezDue;
+    /// <summary>A same-name mob ACTED while every row of that name is held —
+    /// an unmezzed add is loose: (mob name). The recast cue.</summary>
+    public event Action<string>? MezLoose;
     /// <summary>Anything changed — the panels repaint at once.</summary>
     public event Action? Changed;
 
@@ -89,6 +93,10 @@ public sealed class CrowdControl
     public Func<string, bool> IsSelf { get; set; } = n => n.Equals("You", StringComparison.OrdinalIgnoreCase);
 
     public const double CastWindowSec = 15;     // cast-anchor rule
+    public const double AeSpreadSec = 2.5;      // an AE's landings print within this of the first
+    public const double TwinWindowSec = 5;      // two landings on one name this close = twins, not a re-mez
+    public const int SampleKeep = 5;
+    public const double MinSampleSec = 3;
     public const double BrokeLingerSec = 60;    // the red charm card
     public const double MezBrokeLingerSec = 8;  // the red mez row
     public const double AttemptLingerSec = 30;
@@ -98,7 +106,25 @@ public sealed class CrowdControl
     private readonly Dictionary<string, string> _learned = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<string>> _tails = new(StringComparer.OrdinalIgnoreCase);
     private (Def Def, DateTime At)? _pending;
+    /// <summary>When the pending cast first landed: an AE mez lands on every
+    /// mob within a breath of the first, so further landings are taken for
+    /// <see cref="AeSpreadSec"/> after it and no longer (a stranger's mez on a
+    /// different mob later in the window is not ours).</summary>
+    private DateTime? _pendingLandedAt;
+    /// <summary>Learned durations per base spell: the last few landing→wear-off
+    /// spans of UNBROKEN rows; the estimate is the MAX (early breaks read
+    /// short and must never drag the clock down). Ranks, focus effects and AAs
+    /// stretch the real clock past the library figure (Mesmerization VI runs
+    /// 24 s, VIII 31 s in the owner's log) — the log teaches it.</summary>
+    private readonly Dictionary<string, List<double>> _samples = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<MezRow> _mez = new();
+    /// <summary>Names with a known LOOSE add — a mezzed mob never acts, so a
+    /// same-name mob attacking or casting while every row of that name is
+    /// held proves an unmezzed one (owner, 15 Sep: adds forcing a recast).
+    /// While a name is loose: damage on the name is the loose one's, not a
+    /// break; the next landing on the name APPENDS (the add got mezzed) and
+    /// clears it; a death of the name is the loose one's.</summary>
+    private readonly HashSet<string> _loose = new(StringComparer.OrdinalIgnoreCase);
     private readonly string? _path;
 
     public CharmState? Charm { get; private set; }
@@ -184,7 +210,7 @@ public sealed class CrowdControl
             || body.StartsWith("You have entered ", StringComparison.Ordinal))
         {
             bool had = Charm is not null || _mez.Count > 0 || LastAttempt is not null;
-            Charm = null; LastAttempt = null; _mez.Clear(); _pending = null;
+            Charm = null; LastAttempt = null; _mez.Clear(); _pending = null; _loose.Clear();
             if (had) Changed?.Invoke();
             return;
         }
@@ -195,12 +221,28 @@ public sealed class CrowdControl
             var def = Find(cast.Groups["s"].Value);
             if (def is null) return;
             _pending = (def, time);
+            _pendingLandedAt = null;
             _tails[def.Spell] = new List<string>();
             if (def.LandingSuffix.Length == 0) OpenAssumed(def, time);
             return;
         }
 
-        if (_pending is { } pe && (time - pe.At).TotalSeconds > CastWindowSec) _pending = null;
+        // A held name acting — casting, or swinging and missing (a hit comes
+        // through NoteDamage) — is a loose add. Cheap gates: only while rows exist.
+        if (_mez.Count > 0)
+        {
+            int ci = body.IndexOf(" begins casting ", StringComparison.Ordinal);
+            if (ci > 0) NoteActing(body[..ci], time);
+            else
+            {
+                int ti = body.IndexOf(" tries to ", StringComparison.Ordinal);
+                if (ti > 0) NoteActing(body[..ti], time);
+            }
+        }
+
+        if (_pending is { } pe && ((time - pe.At).TotalSeconds > CastWindowSec
+                                   || (_pendingLandedAt is { } la && (time - la).TotalSeconds > AeSpreadSec)))
+            _pending = null;
 
         // The lines after a cast — an unknown landing is learned from them
         // when the wear-off later names the mob.
@@ -246,7 +288,11 @@ public sealed class CrowdControl
         {
             string mob = body[..^p.Def.LandingSuffix.Length].Trim();
             Start(p.Def, mob, time, assumed: false);
-            _pending = null;
+            // A charm takes one pet — done. A mez may be an AE: keep the cast
+            // armed for the spread so every "<mob> has been mesmerized." of
+            // this cast opens its own row.
+            if (p.Def.Kind == Kind.Charm) _pending = null;
+            else _pendingLandedAt ??= time;
             return;
         }
 
@@ -264,13 +310,18 @@ public sealed class CrowdControl
 
     /// <summary>Every damage line, from the parser (attacker, target, amount):
     /// the pet's hits feed the card, a hit on a mezzed mob breaks its row.</summary>
-    public void NoteDamage(string attacker, string target, double amount, DateTime time)
+    public void NoteDamage(string attacker, string target, double amount, DateTime time, bool dot = false)
     {
         if (Charm is { BrokeAt: null } c && Same(attacker, c.Pet) && !IsSelf(target))
         {
             c.PetDamage += amount;
             c.LastPetHit = time;
         }
+        // A DoT keeps ticking on a mezzed mob's behalf — not an act. A melee hit
+        // or a nuke from a held name is.
+        if (!dot && _mez.Count > 0) NoteActing(attacker, time);
+        // Damage on a name with a loose add is the add being fought, not a break.
+        if (_loose.Contains(target.Trim())) return;
         var row = _mez.Where(r => r.BrokeAt is null && Same(r.Mob, target)).OrderBy(r => r.Since).FirstOrDefault();
         if (row is not null)
         {
@@ -284,27 +335,47 @@ public sealed class CrowdControl
 
     // ---- state changes -----------------------------------------------------------
 
+    private void NoteActing(string name, DateTime time)
+    {
+        name = name.Trim();
+        if (name.Length == 0 || IsSelf(name)) return;
+        var rows = _mez.Where(r => Same(r.Mob, name)).ToList();
+        if (rows.Count == 0 || rows.Any(r => r.BrokeAt is not null)) return; // a broken one may well be the actor
+        if (!_loose.Add(rows[0].Mob)) return;
+        Log.Info($"[cc] {rows[0].Mob} acted while every {rows[0].Mob} row is held — a loose add");
+        MezLoose?.Invoke(rows[0].Mob);
+        Changed?.Invoke();
+    }
+
+    /// <summary>Names with a known loose add (selftest / header).</summary>
+    public IReadOnlyCollection<string> LooseNames => _loose;
+
     private void OpenAssumed(Def def, DateTime time) => Start(def, "your target", time, assumed: true);
 
     private void Start(Def def, string mob, DateTime time, bool assumed)
     {
         if (def.Kind == Kind.Charm)
         {
-            Charm = new CharmState { Pet = mob, Spell = def.Spell, Since = time, Ceiling = def.DurationSec, Assumed = assumed };
+            Charm = new CharmState { Pet = mob, Spell = def.Spell, Since = time, Ceiling = DurationFor(def), Assumed = assumed };
             LastAttempt = null;
         }
         else
         {
-            // Bounded reading, as the enemy DoTs: a landing refreshes a row of
-            // that name that is broken, assumed, overrun or in its last stretch;
-            // otherwise it is a SECOND mob and gets the next number.
+            // A re-mez is the common case, twins the rare one: a landing on a
+            // name refreshes that name's oldest row — unless every row of the
+            // name landed within the last few seconds (this very cast, an AE
+            // hitting two mobs of one name), which makes it a twin with the
+            // next number. Broken and assumed rows are always taken over first.
+            double duration = DurationFor(def);
             var same = _mez.Where(r => Same(r.Mob, mob) || (assumed && r.Assumed)).OrderBy(r => r.Since).ToList();
-            var refresh = same.FirstOrDefault(r => r.BrokeAt is not null || r.Assumed || r.Duration <= 0
-                || (time - r.Since).TotalSeconds >= r.Duration - LastStretch(r.Duration));
+            bool wasLoose = _loose.Remove(mob.Trim()); // the add got mezzed: its own row, never a refresh
+            var refresh = same.FirstOrDefault(r => r.BrokeAt is not null || r.Assumed)
+                ?? (wasLoose || (same.Count > 0 && same.All(r => (time - r.Since).TotalSeconds < TwinWindowSec)) ? null : same.FirstOrDefault());
             if (refresh is not null)
             {
-                refresh.Mob = mob; refresh.Spell = def.Spell; refresh.Since = time; refresh.Duration = def.DurationSec;
+                refresh.Mob = mob; refresh.Spell = def.Spell; refresh.Since = time; refresh.Duration = duration;
                 refresh.Assumed = assumed; refresh.BrokeAt = null; refresh.BrokeBy = ""; refresh.BrokeAmount = 0; refresh.Warned = false;
+                refresh.Refreshed = true; // its old span is no sample
             }
             else
             {
@@ -312,9 +383,9 @@ public sealed class CrowdControl
                 {
                     foreach (var r in same.Where(r => r.Instance == 0)) r.Instance = 1;
                     int next = same.Max(r => r.Instance) + 1;
-                    _mez.Add(new MezRow { Mob = mob, Instance = next, Spell = def.Spell, Since = time, Duration = def.DurationSec, Assumed = assumed });
+                    _mez.Add(new MezRow { Mob = mob, Instance = next, Spell = def.Spell, Since = time, Duration = duration, Assumed = assumed });
                 }
-                else _mez.Add(new MezRow { Mob = mob, Spell = def.Spell, Since = time, Duration = def.DurationSec, Assumed = assumed });
+                else _mez.Add(new MezRow { Mob = mob, Spell = def.Spell, Since = time, Duration = duration, Assumed = assumed });
             }
         }
         Changed?.Invoke();
@@ -323,7 +394,9 @@ public sealed class CrowdControl
     private void Failed(Def def, string target, string how, DateTime time)
     {
         bool pendingWas = _pending is { } p && p.Def.Spell.Equals(def.Spell, StringComparison.OrdinalIgnoreCase);
-        _pending = null;
+        // A charm's failure is the cast's failure. A mez may be an AE: one mob
+        // resisting says nothing about the others, the cast stays armed.
+        if (def.Kind == Kind.Charm || how != "resisted") _pending = null;
         if (def.Kind == Kind.Charm)
         {
             // An assumed card opened on this very cast was a guess — it's off.
@@ -354,10 +427,29 @@ public sealed class CrowdControl
         {
             var row = _mez.Where(r => r.BrokeAt is null && (Same(r.Mob, mob) || r.Assumed)).OrderBy(r => r.Since).FirstOrDefault();
             if (row is null) return;
+            if (!row.Refreshed && !row.Assumed) LearnDuration(def, (time - row.Since).TotalSeconds);
             _mez.Remove(row);
         }
         Learn(def, mob);
         Changed?.Invoke();
+    }
+
+    /// <summary>The clock a new row runs on: the learned estimate (MAX of the
+    /// last <see cref="SampleKeep"/> unbroken spans) over the library figure.</summary>
+    public double DurationFor(Def def) =>
+        _samples.TryGetValue(def.Spell, out var s) && s.Count > 0 ? Math.Max(s.Max(), def.DurationSec) : def.DurationSec;
+
+    public double? LearnedDuration(string spell) =>
+        Find(spell) is { } d && _samples.TryGetValue(d.Spell, out var s) && s.Count > 0 ? s.Max() : null;
+
+    private void LearnDuration(Def def, double seconds)
+    {
+        if (seconds < MinSampleSec) return;
+        if (!_samples.TryGetValue(def.Spell, out var list)) _samples[def.Spell] = list = new List<double>();
+        list.Add(Math.Round(seconds, 1));
+        while (list.Count > SampleKeep) list.RemoveAt(0);
+        Log.Info($"[cc] {def.Spell} ran {seconds:0} s to its wear-off — clock now {DurationFor(def):0} s");
+        SaveLearned();
     }
 
     private void OnDeath(string victim, string killer, DateTime time)
@@ -375,8 +467,12 @@ public sealed class CrowdControl
         }
         else if (Charm is { BrokeAt: null } c2 && Same(killer, c2.Pet)) { c2.PetKills++; changed = true; }
 
-        var row = _mez.Where(r => Same(r.Mob, victim)).OrderBy(r => r.Since).FirstOrDefault();
-        if (row is not null) { _mez.Remove(row); changed = true; }
+        if (_loose.Remove(victim.Trim())) { changed = true; } // the loose add died — the held rows stand
+        else
+        {
+            var row = _mez.Where(r => Same(r.Mob, victim)).OrderBy(r => r.Since).FirstOrDefault();
+            if (row is not null) { _mez.Remove(row); changed = true; }
+        }
         if (changed) Changed?.Invoke();
     }
 
@@ -427,31 +523,37 @@ public sealed class CrowdControl
         }
 
         var due = new List<string>();
+        // Past its clock with no wear-off seen, a row OVERRUNS (grey, counting
+        // "+Ns") instead of vanishing — the clock was an estimate, the wear-off
+        // line is the truth and teaches the next one. Hygiene: max(90 s, 3×).
         _mez.RemoveAll(r =>
             (r.BrokeAt is { } b && (now - b).TotalSeconds > MezBrokeLingerSec)
-            || (r.BrokeAt is null && r.Duration > 0 && (now - r.Since).TotalSeconds > r.Duration + 30)
+            || (r.BrokeAt is null && r.Duration > 0 && (now - r.Since).TotalSeconds > Math.Max(90, r.Duration * 3))
             || (r.BrokeAt is null && r.Duration <= 0 && (now - r.Since).TotalSeconds > UnknownCullSec));
         var views = new List<MezView>();
         foreach (var r in _mez)
         {
             double held = Math.Max(0, (now - r.Since).TotalSeconds);
             double left = r.Duration > 0 ? r.Duration - held : 0;
-            bool isDue = r.BrokeAt is null && r.Duration > 0 && left <= LastStretch(r.Duration);
+            bool overrun = r.BrokeAt is null && r.Duration > 0 && left < 0;
+            bool isDue = r.BrokeAt is null && r.Duration > 0 && !overrun && left <= LastStretch(r.Duration);
             if (isDue && !r.Warned) { r.Warned = true; due.Add(r.Label); }
+            bool learned = _samples.TryGetValue(r.Spell, out var sm) && sm.Count > 0;
             views.Add(new MezView(r.Label, r.Spell, left, r.Duration, held, r.Assumed, r.BrokeAt is not null,
-                r.BrokeBy, r.BrokeAmount, r.BrokeAt is { } bb ? (now - bb).TotalSeconds : 0, isDue));
+                r.BrokeBy, r.BrokeAmount, r.BrokeAt is { } bb ? (now - bb).TotalSeconds : 0, isDue, overrun, learned));
         }
         var ordered = views.OrderByDescending(v => v.Broke)
             .ThenBy(v => v.Duration > 0 ? v.Left : double.MaxValue)
             .ThenBy(v => v.Label, StringComparer.OrdinalIgnoreCase)
             .ToList();
         foreach (var d in due) MezDue?.Invoke(d);
-        return new Snapshot(cv, av, ordered);
+        _loose.RemoveWhere(n => !_mez.Any(r => Same(r.Mob, n))); // no held row left — nothing to be loose from
+        return new Snapshot(cv, av, ordered, _loose.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList());
     }
 
     public void Clear()
     {
-        Charm = null; LastAttempt = null; _mez.Clear(); _pending = null;
+        Charm = null; LastAttempt = null; _mez.Clear(); _pending = null; _loose.Clear();
         Changed?.Invoke();
     }
 
@@ -472,20 +574,35 @@ public sealed class CrowdControl
 
     private static bool Same(string a, string b) => a.Trim().Equals(b.Trim(), StringComparison.OrdinalIgnoreCase);
 
+    private sealed class LearnedFile
+    {
+        public Dictionary<string, string> Landings { get; set; } = new();
+        public Dictionary<string, List<double>> Durations { get; set; } = new();
+    }
+
     private void LoadLearned()
     {
         if (_path is null || !File.Exists(_path)) return;
         try
         {
-            var d = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(_path));
-            if (d is null) return;
-            foreach (var (spell, suffix) in d)
+            string json = File.ReadAllText(_path);
+            LearnedFile? f = null;
+            try { f = JsonSerializer.Deserialize<LearnedFile>(json); } catch { /* the first format below */ }
+            if (f is null || (f.Landings.Count == 0 && f.Durations.Count == 0))
+            {
+                // v2.57 wrote a bare spell → suffix map.
+                var bare = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                f = new LearnedFile { Landings = bare ?? new() };
+            }
+            foreach (var (spell, suffix) in f.Landings)
             {
                 if (string.IsNullOrWhiteSpace(suffix)) continue;
                 _learned[spell] = suffix;
                 if (_defs.TryGetValue(spell, out var def) && def.LandingSuffix.Length == 0)
                     _defs[spell] = def with { LandingSuffix = suffix };
             }
+            foreach (var (spell, samples) in f.Durations)
+                if (samples.Count > 0) _samples[spell] = samples.TakeLast(SampleKeep).ToList();
         }
         catch (Exception ex) { Log.Warn("cc-landings.json unreadable: " + ex.Message); }
     }
@@ -493,7 +610,15 @@ public sealed class CrowdControl
     private void SaveLearned()
     {
         if (_path is null) return;
-        try { File.WriteAllText(_path, JsonSerializer.Serialize(_learned, JsonOpts)); }
+        try
+        {
+            var f = new LearnedFile
+            {
+                Landings = new Dictionary<string, string>(_learned, StringComparer.OrdinalIgnoreCase),
+                Durations = _samples.ToDictionary(kv => kv.Key, kv => kv.Value.ToList(), StringComparer.OrdinalIgnoreCase),
+            };
+            File.WriteAllText(_path, JsonSerializer.Serialize(f, JsonOpts));
+        }
         catch (Exception ex) { Log.Warn("cc-landings.json not saved: " + ex.Message); }
     }
 

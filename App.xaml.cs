@@ -59,6 +59,19 @@ public partial class App : Application
             return;
         }
 
+        // Gated: `--sky-audit <log> [item filter]` — replay a log through the
+        // loot ledger and the Sky tracker on scratch files and print every quest
+        // item's looted / offered / destroyed / held with the lines behind them.
+        // The owner's "it says I still have it" reports start here.
+        int sa = Array.IndexOf(e.Args, "--sky-audit");
+        if (sa >= 0 && sa + 1 < e.Args.Length)
+        {
+            try { RunSkyAudit(e.Args[sa + 1], sa + 2 < e.Args.Length ? e.Args[sa + 2] : ""); }
+            catch (Exception ex) { File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_sky_audit.txt"), ex.ToString()); }
+            Shutdown();
+            return;
+        }
+
         // Gated: render one Manager page to a PNG (`--render-manager <page> <out.png>`)
         // — lets a build be eyeballed against a design mock without a human.
         int rm = Array.IndexOf(e.Args, "--render-manager");
@@ -315,6 +328,7 @@ public partial class App : Application
                 iwv.Add(DateTime.Now.AddSeconds(-1), 100, spell: false);
                 win.Refresh();
                 if (win.LastKind != "switch") throw new Exception("incoming panel: spell-heavy in defensive should read switch, got " + win.LastKind);
+                if (win.LastChip != "DEFENSIVE ▸ MAGE HUNTER") throw new Exception("incoming panel: the pill should name the stance to switch to, got " + win.LastChip);
                 win.Close();
             }
 
@@ -2721,6 +2735,55 @@ public partial class App : Application
                 Check("sky: a replayed trade never double-counts",
                     sqAgain.HeldCount(clericMeda) == 0
                     && sqAgain.MissingByIsle().First(r => r.Item == "Wind Rune Meda").Missing == 5);
+                // The bags win (15 Sep): a dump newer than the pickup that lacks a
+                // PHYSICAL item counts it as gone; an older dump doesn't; currency
+                // is never capped; the ledger's own number stays readable.
+                {
+                    var gorgon = sqAgain.Quests.SelectMany(q => q.Items).First(i => i.Name == "Gorgon Head");
+                    int gorgonBefore = sqAgain.HeldCount(gorgon);
+                    skyLoot.ProcessLine("[Mon Jan 06 12:05:00 2020] --You have looted a Gorgon Head from a selftest gorgon's corpse.--");
+                    Check("sky: a kept quest item ticks the ledger", sqAgain.HeldCount(gorgon) == gorgonBefore + 1);
+                    var jakaItem = sqAgain.Quests.First(q => q.Name == "Magician Test of Gesticulation").Items.First(i => i.Name == "Wind Rune Jaka");
+                    int jakaHeld = sqAgain.HeldCount(jakaItem);
+                    sqAgain.SnapshotCopies = _ => 0;
+                    sqAgain.SnapshotAt = new DateTime(2026, 9, 15, 8, 0, 0);
+                    Check("sky: a fresh dump that lacks the item counts it as gone; the ledger still says what it said; currency is untouched",
+                        sqAgain.HeldCount(gorgon) == 0 && sqAgain.LedgerHeld("Gorgon Head") == gorgonBefore + 1
+                        && sqAgain.DumpDecided("Gorgon Head") && sqAgain.HeldCount(jakaItem) == jakaHeld && !sqAgain.DumpDecided("Wind Rune Jaka"));
+                    sqAgain.SnapshotAt = new DateTime(2019, 1, 1);
+                    Check("sky: a dump older than the pickup is stale for that item — no cap",
+                        sqAgain.HeldCount(gorgon) == gorgonBefore + 1 && !sqAgain.DumpDecided("Gorgon Head"));
+                    sqAgain.SnapshotCopies = null; sqAgain.SnapshotAt = null;
+
+                    // The audit (15 Sep): a fresh replay of a log file, the drift
+                    // against the live ledger, and the realign that adopts it.
+                    string auditLog = Path.Combine(Path.GetTempPath(), "eql_selftest_audit_log.txt");
+                    File.WriteAllLines(auditLog, new[]
+                    {
+                        "[Mon Jan 06 12:05:00 2020] --You have looted a Gorgon Head from a selftest gorgon's corpse.--",
+                        "[Mon Jan 06 12:06:00 2020] You offered 1 Gorgon Head to Selftest Keeper.",
+                        "[Mon Jan 06 12:06:02 2020] You complete the trade with Selftest Keeper.",
+                    });
+                    var skyAuditRes = SkyAudit.ReplayAsync(skyCfg, new[] { auditLog }, "", null, null).GetAwaiter().GetResult();
+                    Check("audit: the replay reads the file alone — looted 1, offered 1, held 0, in the report",
+                        skyAuditRes.Lines == 3 && skyAuditRes.Sky.Audit("Gorgon Head") is { Looted: 1, Offered: 1, Held: 0 }
+                        && skyAuditRes.Report.Contains("Gorgon Head: looted 1 · offered 1 · destroyed 0 → held 0"));
+                    // A separate "live" ledger (same loot history, its own progress
+                    // file) takes the realign — the shared one keeps its state for the
+                    // checks that follow.
+                    string liveProg = Path.Combine(Path.GetTempPath(), "eql_selftest_sky_live.json");
+                    try { File.Delete(liveProg); } catch { /* fresh */ }
+                    var sqLive = new SkyQuests(skyCfg, skyLoot, liveProg);
+                    var drift = sqLive.DriftAgainst(skyAuditRes.Sky);
+                    Check("audit: the live ledger's extra Gorgon Head shows as drift, live → log",
+                        drift.Any(d => d.StartsWith("Gorgon Head: live ") && d.EndsWith(" → log 0")));
+                    var gorgonQuest = sqLive.Quests.First(q => q.Items.Any(i => i.Name == "Gorgon Head"));
+                    sqLive.SetTracked(gorgonQuest, true);
+                    sqLive.AdoptFrom(skyAuditRes.Sky);
+                    Check("audit: realigning adopts the log's ledger and keeps tracking",
+                        sqLive.HeldCount(gorgon) == 0 && sqLive.DriftAgainst(skyAuditRes.Sky).Count == 0 && sqLive.IsTracked(gorgonQuest));
+                    try { File.Delete(auditLog); File.Delete(liveProg); } catch { /* temp */ }
+                }
                 // The isle CHECKLIST carries held items at Missing 0 (with the held
                 // count); the plain shopping list still hides them.
                 Check("sky: a class filter may name several classes (the MINE badge)",
@@ -3081,9 +3144,8 @@ public partial class App : Application
             && mz.Find("Beguile") is { Kind: CrowdControl.Kind.Charm } && mz.Find("Enthrall") is { Kind: CrowdControl.Kind.Mez });
         mz.ProcessLine(L(0, "You begin casting Mesmerization."));
         mz.ProcessLine(L(3, "a greater ice bones has been mesmerized."));
-        mz.ProcessLine(L(5, "You begin casting Mesmerization."));
-        mz.ProcessLine(L(8, "a greater ice bones has been mesmerized."));
-        Check("cc: a second landing on a name still running comfortably is a second mob, numbered",
+        mz.ProcessLine(L(4, "a greater ice bones has been mesmerized.")); // the same cast: an AE twin
+        Check("cc: two landings on one name within the same cast are twins, numbered",
             mz.MezRows.Count == 2 && mz.MezRows[0].Label == "a greater ice bones 01" && mz.MezRows[1].Label == "a greater ice bones 02");
         string brokeLabel = "", brokeBy = "";
         mz.MezBroke += (l, w) => { brokeLabel = l; brokeBy = w; };
@@ -3091,7 +3153,7 @@ public partial class App : Application
         var m1 = mz.Take(c0.AddSeconds(11));
         Check("cc: damage on a mezzed name breaks the OLDEST row and says who",
             brokeLabel == "a greater ice bones 01" && brokeBy == "Garn" && m1.Mez[0] is { Broke: true, BrokeBy: "Garn", BrokeAmount: 58 }
-            && m1.Held == 1 && m1.Broken == 1 && m1.Next is { Label: "a greater ice bones 02", Left: 21 });
+            && m1.Held == 1 && m1.Broken == 1 && m1.Next is { Label: "a greater ice bones 02", Left: 17 });
         var due = new List<string>();
         mz.MezDue += due.Add;
         var m2 = mz.Take(c0.AddSeconds(27));
@@ -3100,6 +3162,84 @@ public partial class App : Application
             due.Count == 1 && due[0] == "a greater ice bones 02" && m2.Mez.Count == 1 && m2.Mez[0].Due);
         mz.ProcessLine(L(29, "Your Mesmerization spell has worn off of a greater ice bones."));
         Check("cc: the wear-off closes the row", mz.MezRows.Count == 0);
+
+        // AE mez (owner, 15 Sep: "when I AE mez only one mob is shown"): every
+        // landing within a breath of the first opens a row; a landing later in
+        // the window is a stranger's; a resist mid-AE keeps the cast armed.
+        var ae = new CrowdControl(lib, null);
+        ae.ProcessLine(L(100, "You begin casting Mesmerization VIII."));
+        ae.ProcessLine(L(103, "a will sapper resisted your Mesmerization VIII!"));
+        ae.ProcessLine(L(103, "a thought spoiler has been mesmerized."));
+        ae.ProcessLine(L(103, "a will sapper has been mesmerized."));
+        ae.ProcessLine(L(104, "a will sapper has been mesmerized."));
+        ae.ProcessLine(L(109, "a mind eater has been mesmerized."));
+        Check("cc: an AE opens a row per landing — twins numbered — and ignores a landing outside the spread",
+            ae.MezRows.Count == 3 && ae.MezRows.Count(r => r.Mob == "a will sapper") == 2
+            && ae.MezRows.Where(r => r.Mob == "a will sapper").Select(r => r.Label).OrderBy(x => x).SequenceEqual(new[] { "a will sapper 01", "a will sapper 02" })
+            && ae.MezRows.All(r => r.Mob != "a mind eater"));
+        // A re-mez mid-clock REFRESHES (the common case); rows past the clock
+        // overrun instead of vanishing; the wear-off teaches the real clock.
+        ae.ProcessLine(L(115, "You begin casting Mesmerization VIII."));
+        ae.ProcessLine(L(118, "a thought spoiler has been mesmerized."));
+        Check("cc: a re-mez on a name mid-clock refreshes its row instead of minting a twin",
+            ae.MezRows.Count == 3 && ae.MezRows.First(r => r.Mob == "a thought spoiler").Since == c0.AddSeconds(118)
+            && ae.MezRows.First(r => r.Mob == "a thought spoiler").Refreshed);
+        var ov = ae.Take(c0.AddSeconds(135)); // will sappers landed at 103/104 on a 24 s clock: past it
+        Check("cc: a row past its clock overruns — grey, counting up, still listed",
+            ov.Mez.Count == 3 && ov.Mez.Where(v => v.Label.StartsWith("a will sapper")).All(v => v.Overrun && v.Left < 0 && !v.Due)
+            && Views.MezWindow.Row(ov.Mez.First(v => v.Overrun), true) is { Overrun: true } orow && orow.TimeText.StartsWith("+0:0"));
+        ae.ProcessLine(L(143, "Your Mesmerization spell has worn off of a will sapper.")); // 40 s after the 103 landing
+        Check("cc: the wear-off of an unbroken row teaches the clock — 40 s now, not the library's 24",
+            ae.LearnedDuration("Mesmerization VIII") == 40 && ae.MezRows.Count == 2
+            && ae.DurationFor(ae.Find("Mesmerization")!) == 40);
+        ae.ProcessLine(L(150, "You begin casting Mesmerization VIII."));
+        ae.ProcessLine(L(153, "an ice bones has been mesmerized."));
+        Check("cc: the next landing runs on the learned clock and says so",
+            ae.MezRows.First(r => r.Mob == "an ice bones").Duration == 40
+            && Views.MezWindow.Row(ae.Take(c0.AddSeconds(154)).Mez.First(v => v.Label == "an ice bones"), true).RightText == "of 0:40 · learned");
+        ae.NoteDamage("Garn", "an ice bones", 10, c0.AddSeconds(160));
+        ae.ProcessLine(L(161, "Your Mesmerization spell has worn off of an ice bones."));
+        Check("cc: a broken row's wear-off teaches nothing (its span is a break, not a clock)",
+            ae.LearnedDuration("Mesmerization VIII") == 40);
+        // A loose add (owner, 15 Sep): a mezzed mob never acts, so a held name
+        // attacking or casting proves an unmezzed one — no false break on it,
+        // the next landing appends, its death spares the rows.
+        var la = new CrowdControl(lib, null) { IsSelf = n => n == "Thorrak" };
+        la.ProcessLine(L(300, "You begin casting Mesmerization."));
+        la.ProcessLine(L(303, "a will sapper has been mesmerized."));
+        la.ProcessLine(L(303, "a thought spoiler has been mesmerized."));
+        var looseSeen = new List<string>();
+        la.MezLoose += looseSeen.Add;
+        la.NoteDamage("a will sapper", "Thorrak", 12, c0.AddSeconds(310), dot: true); // its DoT still ticks — not an act
+        Check("cc: a held mob's DoT tick is not an act", la.LooseNames.Count == 0);
+        la.NoteDamage("A will sapper", "Thorrak", 12, c0.AddSeconds(311));
+        la.NoteDamage("A will sapper", "Thorrak", 9, c0.AddSeconds(312));
+        Check("cc: a held name hitting you proves a loose add — flagged once, spoken once",
+            la.LooseNames.Contains("a will sapper") && looseSeen.Count == 1 && la.Take(c0.AddSeconds(312)).Loose.SequenceEqual(new[] { "a will sapper" }));
+        la.NoteDamage("Garn", "a will sapper", 58, c0.AddSeconds(313));
+        Check("cc: damage on a name with a loose add is the add's — the held row is not broken",
+            la.MezRows.All(r => r.BrokeAt is null));
+        la.ProcessLine(L(314, "A thought spoiler begins casting Instill."));
+        Check("cc: a held name casting is an act too", la.LooseNames.Contains("a thought spoiler"));
+        la.ProcessLine(L(315, "A thought spoiler has been slain by Garn!"));
+        Check("cc: the loose one dying spares the held row and clears the flag",
+            la.MezRows.Count(r => r.Mob == "a thought spoiler") == 1 && !la.LooseNames.Contains("a thought spoiler"));
+        la.ProcessLine(L(320, "You begin casting Mesmerization."));
+        la.ProcessLine(L(323, "a will sapper has been mesmerized."));
+        Check("cc: the next landing on a loose name is the add's own row, never a refresh, and the flag clears",
+            la.MezRows.Count(r => r.Mob == "a will sapper") == 2 && la.LooseNames.Count == 0);
+
+        // The learned clock persists with the landings.
+        string ccPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_durations.json");
+        try { File.Delete(ccPath); } catch { /* fresh */ }
+        var pl = new CrowdControl(lib, ccPath);
+        pl.ProcessLine(L(200, "You begin casting Mesmerization."));
+        pl.ProcessLine(L(203, "an ice bones has been mesmerized."));
+        pl.ProcessLine(L(238, "Your Mesmerization spell has worn off of an ice bones."));
+        var pl2 = new CrowdControl(lib, ccPath);
+        Check("cc: learned clocks survive a restart alongside learned landings",
+            pl2.LearnedDuration("Mesmerization") == 35 && pl2.Find("Beguile Undead")!.LandingSuffix == "moans.");
+        try { File.Delete(ccPath); } catch { /* temp */ }
         var row = Views.MezWindow.Row(new CrowdControl.MezView("an ice bones", "Mesmerization", 4, 24, 20, false, false, "", 0, 0, true), true);
         var rowB = Views.MezWindow.Row(new CrowdControl.MezView("a greater ice bones 02", "Mesmerization", 0, 24, 11, false, true, "Garn", 58, 2, false), false);
         Check("cc: the mez row texts — due reads re-mez now, broke names the hitter",
@@ -3510,6 +3650,23 @@ public partial class App : Application
                 && rkd.KillsFor("Lady Vox").Select(k => k.D).OrderBy(x => x).SequenceEqual(new[] { 0, 1 }));
             File.Delete(rkdPath);
 
+            // Article-blind targets (15 Sep): "You have slain a thunder spirit
+            // princess!" is Thunder Spirit Princess; "the Hand of Veeshan" is The
+            // Hand of Veeshan. Five princess kills had recorded nothing.
+            string rkaPath = Path.Combine(Path.GetTempPath(), "eql_rka_test.json");
+            File.Delete(rkaPath);
+            var rka = new RaidKills(new ConfigService(), rkaPath);
+            var art = new DateTime(2026, 9, 10, 21, 0, 0);
+            rka.ProcessLine("[x] You have entered The Plane of Sky.", art);
+            rka.ProcessLine("[x] You have slain a thunder spirit princess!", art.AddMinutes(1));
+            rka.ProcessLine("[x] A thunder spirit princess has been slain by Puggaard!", art.AddMinutes(20));
+            rka.ProcessLine("[x] You have slain the Hand of Veeshan!", art.AddMinutes(30));
+            Check("kills: a leading article never hides a named — princess and Hand of Veeshan record under their listed names",
+                rka.KillsFor("Thunder Spirit Princess").Count == 2 && rka.KillsFor("The Hand of Veeshan").Count == 1
+                && rka.IsTarget("a thunder spirit princess +1") && !rka.IsTarget("a rat")
+                && RaidKills.ArticleBlind.Key("The Hand of Veeshan") == "Hand of Veeshan" && RaidKills.ArticleBlind.Key("Anashti Sul") == "Anashti Sul");
+            File.Delete(rkaPath);
+
             // Global respawns: the auto-generated death pattern matches both
             // forms; the duration is the learned minimum (typed times retired).
             var respEntry = new Models.RespawnEntry { Name = "Lady Vox" };
@@ -3919,6 +4076,12 @@ public partial class App : Application
     /// its own, timing per line; then all of them in the live order. Reports
     /// µs/line, the worst single line, and lines/s headroom against the log's
     /// own peak rate (65/s observed). Alerts are gagged.</summary>
+    private static void RunSkyAudit(string path, string filter)
+    {
+        var r = SkyAudit.ReplayAsync(new ConfigService(), new[] { path }, filter, null, null).GetAwaiter().GetResult();
+        File.WriteAllText(SkyAudit.ReportPath, r.Report);
+    }
+
     private void RunBench(string path)
     {
         AlertService.Silenced = true;

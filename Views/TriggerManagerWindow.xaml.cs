@@ -43,6 +43,39 @@ public partial class TriggerManagerWindow : Window
     /// <summary>Set by MainWindow: reparse a PICKED file (e.g. another PC's log).</summary>
     public Func<string, IProgress<ReparseProgress>, Task<string>>? ReparseOtherRequested { get; set; }
 
+    /// <summary>Set by MainWindow: replay the logs through a fresh quest ledger
+    /// and compare (summary back); the drift lines; realign to the log.</summary>
+    public Func<IProgress<ReparseProgress>, Task<string>>? AuditSkyRequested { get; set; }
+    public Func<IReadOnlyList<string>>? SkyDriftPreview { get; set; }
+    public Func<string>? RealignSkyRequested { get; set; }
+
+    private async void AuditSky_Click(object sender, RoutedEventArgs e)
+    {
+        if (AuditSkyRequested is null) { Status("The audit isn't available right now."); return; }
+        await RunReparse(AuditSkyRequested);
+        var drift = SkyDriftPreview?.Invoke() ?? Array.Empty<string>();
+        if (drift.Count == 0 || RealignSkyRequested is null) return;
+        string list = string.Join("\n", drift.Take(10)) + (drift.Count > 10 ? $"\n… and {drift.Count - 10} more" : "");
+        if (!ConfirmDialog.Show(this, "Realign the quest ledger?",
+                $"The log disagrees with the saved quest ledger on {drift.Count} point(s):\n\n{list}\n\n" +
+                "Realign the Plane of Sky ledger to the log? Counts, turn-ins and completions are taken from the replay; " +
+                "tracking survives. Loot history, kills, durations and everything else stay as they are.",
+                yesText: "Realign", noText: "Not now"))
+            return;
+        string result = RealignSkyRequested();
+        Status(result);
+        ReparseResult.Text = result;
+        ReparseResult.Visibility = Visibility.Visible;
+    }
+
+    private void OpenAudit_Click(object sender, RoutedEventArgs e)
+    {
+        string path = SkyAudit.ReportPath;
+        if (!System.IO.File.Exists(path)) { Status("No audit report yet — run the audit first."); return; }
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true }); }
+        catch (Exception ex) { Status("Couldn't open the report: " + ex.Message); }
+    }
+
     private async void ReparseOther_Click(object sender, RoutedEventArgs e)
     {
         if (ReparseOtherRequested is null)
@@ -86,7 +119,7 @@ public partial class TriggerManagerWindow : Window
     private void SetReparseBusy(bool busy)
     {
         _reparseBusy = busy;
-        ReparseBtn.IsEnabled = ReparseOtherBtn.IsEnabled = ResetRebuildBtn.IsEnabled = RemoveMergedBtn.IsEnabled = !busy;
+        ReparseBtn.IsEnabled = ReparseOtherBtn.IsEnabled = ResetRebuildBtn.IsEnabled = RemoveMergedBtn.IsEnabled = AuditSkyBtn.IsEnabled = !busy;
         ReparseCard.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         if (busy) ReparseResult.Visibility = Visibility.Collapsed;
     }

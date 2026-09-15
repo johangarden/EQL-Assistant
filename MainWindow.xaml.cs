@@ -157,7 +157,8 @@ public partial class MainWindow : Window
             IsSelf = n => n.Equals("You", StringComparison.OrdinalIgnoreCase)
                 || n.Equals(_combat.SelfName, StringComparison.OrdinalIgnoreCase),
         };
-        _combat.DamageDealt += (att, tgt, amount, time) => { if (!_suppressSct) _cc.NoteDamage(att, tgt, amount, time); };
+        _combat.DamageDealt += (att, tgt, amount, time, dot) => { if (!_suppressSct) _cc.NoteDamage(att, tgt, amount, time, dot); };
+        _cc.MezLoose += mob => { if (!_suppressSct && _config.Overlay.CcSpeak) _alerts.Fire($"Loose {mob} — mez it", null); };
         _cc.CharmBroke += pet =>
         {
             if (_suppressSct) return;
@@ -591,6 +592,55 @@ public partial class MainWindow : Window
     /// rebuild them all with a full reparse of the followed log PLUS every
     /// stored merge copy. Config, loadouts, respawns, raid targets, kept
     /// fights and window positions are untouched.</summary>
+    // ---- quest ledger audit (Data page, 15 Sep) ------------------------------------
+
+    private SkyAudit.Result? _lastSkyAudit;
+    private IReadOnlyList<string> _skyDrift = Array.Empty<string>();
+
+    /// <summary>Replay the followed log plus every merged copy through a fresh
+    /// ledger and compare with the live one; the report lands in %TEMP%.</summary>
+    private async Task<string> AuditSkyLedgerAsync(IProgress<ReparseProgress>? progress)
+    {
+        var paths = new List<string>();
+        string? cur = _watcher?.CurrentPath;
+        if (cur is not null && File.Exists(cur)) paths.Add(cur);
+        paths.AddRange(_configService.ListMergedLogs());
+        if (paths.Count == 0) return "Audit: no log file is being followed yet.";
+        try
+        {
+            _lastSkyAudit = await SkyAudit.ReplayAsync(_configService, paths, "", progress,
+                async () => await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background));
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("Sky audit failed: " + ex.Message);
+            return "Audit failed — see the log file.";
+        }
+        try { File.WriteAllText(SkyAudit.ReportPath, _lastSkyAudit.Report); } catch { /* report is optional */ }
+        _skyDrift = _skyQuests.DriftAgainst(_lastSkyAudit.Sky);
+        int items = _lastSkyAudit.Sky.Quests.SelectMany(q => q.Items).Select(i => i.Name).Distinct().Count();
+        int done = _lastSkyAudit.Sky.Quests.Count(_lastSkyAudit.Sky.IsCompleted);
+        string summary = _skyDrift.Count == 0
+            ? $"Quest ledger agrees with the log — {items} quest items, {done} of {_lastSkyAudit.Sky.Quests.Count} quests complete ({_lastSkyAudit.Lines:N0} lines from {paths.Count} file(s)). Report: {SkyAudit.ReportPath}"
+            : $"Quest ledger differs from the log on {_skyDrift.Count} point(s): {string.Join("; ", _skyDrift.Take(3))}{(_skyDrift.Count > 3 ? "; …" : "")}. Report: {SkyAudit.ReportPath}";
+        Log.Info(summary);
+        return summary;
+    }
+
+    private IReadOnlyList<string> SkyDriftPreview() => _skyDrift;
+
+    private string RealignSkyLedger()
+    {
+        if (_lastSkyAudit is null) return "Run the audit first.";
+        int before = _skyQuests.Quests.Count(_skyQuests.IsCompleted);
+        _skyQuests.AdoptFrom(_lastSkyAudit.Sky);
+        int after = _skyQuests.Quests.Count(_skyQuests.IsCompleted);
+        _skyDrift = Array.Empty<string>();
+        string msg = $"Quest ledger realigned to the log — {before} → {after} quests complete. Only the Plane of Sky ledger changed.";
+        Log.Info(msg);
+        return msg;
+    }
+
     private async Task<string> ResetAndRebuildAsync(IProgress<ReparseProgress>? progress)
     {
         Log.Info("Data reset: wiping derived data files before full reparse.");
@@ -1543,6 +1593,9 @@ public partial class MainWindow : Window
                 ReparseFullLogRequested = ReparseFullLogAsync,
                 ReparseOtherRequested = MergeLogFileAsync,
                 ResetAndRebuildRequested = ResetAndRebuildAsync,
+                AuditSkyRequested = AuditSkyLedgerAsync,
+                SkyDriftPreview = SkyDriftPreview,
+                RealignSkyRequested = RealignSkyLedger,
             };
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();

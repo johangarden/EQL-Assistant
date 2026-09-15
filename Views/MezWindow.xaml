@@ -71,6 +71,12 @@
                                 <Setter TargetName="Fill" Property="Opacity" Value="0.45"/>
                                 <Setter TargetName="SubText" Property="Foreground" Value="#FFB74D"/>
                             </DataTrigger>
+                            <DataTrigger Binding="{Binding Overrun}" Value="True">
+                                <Setter TargetName="TimeText" Property="Foreground" Value="#9AA3AF"/>
+                                <Setter TargetName="Fill" Property="Background" Value="#9AA3AF"/>
+                                <Setter TargetName="Fill" Property="Opacity" Value="0.5"/>
+                                <Setter TargetName="SubText" Property="Foreground" Value="#9AA3AF"/>
+                            </DataTrigger>
                             <DataTrigger Binding="{Binding Broke}" Value="True">
                                 <Setter TargetName="TimeText" Property="Foreground" Value="#FF8A80"/>
                                 <Setter TargetName="Fill" Property="Background" Value="#E57373"/>

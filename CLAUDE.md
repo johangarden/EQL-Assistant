@@ -32,6 +32,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--selftest-repop` | `eql_selftest_repop.txt` |
 | `--replay <log>` | `eql_replay.txt` (parser coverage report on a real log) |
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
+| `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
 | `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` the toolbar (eye struck; catch-up progress card), `quests:lines` the Notable quests pack, `recap` a synthetic death recap, `incoming` the incoming-damage panel, `charm` / `charm:broke` the charm card, `mez` the mez panel, `Data:reparse` the Data page with the reparse progress card mid-run |
 
@@ -73,9 +74,18 @@ the affected suites (with `-Wait`) before committing.
   begin-cast anchors the spell's third-person landing (Beguile Undead →
   "a greater ice bones moans.", observed), "Your X spell has worn off of Y."
   ends it, damage on a mezzed mob breaks its row (and names who), death/
-  zoning censor. Unknown landings (necro undead charms) open ASSUMED and
-  are LEARNED from the emote after the cast once a wear-off names the mob
-  (`cc-landings.json`). Live-only. Charm break = CHARM BROKE badge + phrase.
+  zoning censor. An AE mez opens a row per landing within 2.5 s of the
+  first (twins = two landings on one name within 5 s; anything later on a
+  name is a RE-MEZ and refreshes). Clocks: learned MAX of the last 5
+  unbroken landing→wear-off spans over the library figure (ranks/focus/AA
+  stretch it — Mesmerization VI 24 s, VIII 31 s observed); a row past its
+  clock OVERRUNS grey until the wear-off (hygiene max(90 s, 3×)). LOOSE
+  adds: a mezzed mob never acts, so a held name hitting/casting (not DoT
+  ticks) flags a loose add — damage on the name is the add's (no false
+  break), its death spares the rows, the next landing appends. Unknown
+  landings (necro undead charms) open ASSUMED and are LEARNED from the
+  emote after the cast once a wear-off names the mob. Both learned sets
+  persist in `cc-landings.json`. Live-only. Charm break = badge + phrase.
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,
