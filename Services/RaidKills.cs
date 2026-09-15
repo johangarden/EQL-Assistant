@@ -50,8 +50,28 @@ public sealed class RaidKills
     private readonly string _targetsPath;
     private readonly string _killsPath;
     private readonly List<Tier> _tiers = new();
-    private readonly HashSet<string> _targetSet = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, List<Kill>> _kills = new(StringComparer.OrdinalIgnoreCase);
+    // Article-blind: the game prints some named as common nouns — "You have
+    // slain a thunder spirit princess!" (owner, 15 Sep: five kills, none
+    // recorded against "Thunder Spirit Princess") and "the Hand of Veeshan"
+    // for "The Hand of Veeshan". A leading a / an / the never decides a match.
+    private readonly HashSet<string> _targetSet = new(ArticleBlind.Instance);
+    private readonly Dictionary<string, List<Kill>> _kills = new(ArticleBlind.Instance);
+
+    /// <summary>Case-insensitive, and blind to a leading "a " / "an " / "the ".</summary>
+    public sealed class ArticleBlind : IEqualityComparer<string>
+    {
+        public static readonly ArticleBlind Instance = new();
+        public static string Key(string s)
+        {
+            s = s.Trim();
+            foreach (var art in new[] { "a ", "an ", "the " })
+                if (s.StartsWith(art, StringComparison.OrdinalIgnoreCase) && s.Length > art.Length)
+                    return s[art.Length..].Trim();
+            return s;
+        }
+        public bool Equals(string? x, string? y) => string.Equals(Key(x ?? ""), Key(y ?? ""), StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode(string obj) => StringComparer.OrdinalIgnoreCase.GetHashCode(Key(obj));
+    }
 
     // EQL zone difficulty rides in the zone name: "Befallen" = D0,
     // "Befallen 1 (Awakened)" = D1 … "Befallen 4 (Refined)" = D4.

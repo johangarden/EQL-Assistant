@@ -3573,6 +3573,23 @@ public partial class App : Application
                 && rkd.KillsFor("Lady Vox").Select(k => k.D).OrderBy(x => x).SequenceEqual(new[] { 0, 1 }));
             File.Delete(rkdPath);
 
+            // Article-blind targets (15 Sep): "You have slain a thunder spirit
+            // princess!" is Thunder Spirit Princess; "the Hand of Veeshan" is The
+            // Hand of Veeshan. Five princess kills had recorded nothing.
+            string rkaPath = Path.Combine(Path.GetTempPath(), "eql_rka_test.json");
+            File.Delete(rkaPath);
+            var rka = new RaidKills(new ConfigService(), rkaPath);
+            var art = new DateTime(2026, 9, 10, 21, 0, 0);
+            rka.ProcessLine("[x] You have entered The Plane of Sky.", art);
+            rka.ProcessLine("[x] You have slain a thunder spirit princess!", art.AddMinutes(1));
+            rka.ProcessLine("[x] A thunder spirit princess has been slain by Puggaard!", art.AddMinutes(20));
+            rka.ProcessLine("[x] You have slain the Hand of Veeshan!", art.AddMinutes(30));
+            Check("kills: a leading article never hides a named — princess and Hand of Veeshan record under their listed names",
+                rka.KillsFor("Thunder Spirit Princess").Count == 2 && rka.KillsFor("The Hand of Veeshan").Count == 1
+                && rka.IsTarget("a thunder spirit princess +1") && !rka.IsTarget("a rat")
+                && RaidKills.ArticleBlind.Key("The Hand of Veeshan") == "Hand of Veeshan" && RaidKills.ArticleBlind.Key("Anashti Sul") == "Anashti Sul");
+            File.Delete(rkaPath);
+
             // Global respawns: the auto-generated death pattern matches both
             // forms; the duration is the learned minimum (typed times retired).
             var respEntry = new Models.RespawnEntry { Name = "Lady Vox" };
