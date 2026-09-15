@@ -157,7 +157,8 @@ public partial class MainWindow : Window
             IsSelf = n => n.Equals("You", StringComparison.OrdinalIgnoreCase)
                 || n.Equals(_combat.SelfName, StringComparison.OrdinalIgnoreCase),
         };
-        _combat.DamageDealt += (att, tgt, amount, time) => { if (!_suppressSct) _cc.NoteDamage(att, tgt, amount, time); };
+        _combat.DamageDealt += (att, tgt, amount, time, dot) => { if (!_suppressSct) _cc.NoteDamage(att, tgt, amount, time, dot); };
+        _cc.MezLoose += mob => { if (!_suppressSct && _config.Overlay.CcSpeak) _alerts.Fire($"Loose {mob} — mez it", null); };
         _cc.CharmBroke += pet =>
         {
             if (_suppressSct) return;

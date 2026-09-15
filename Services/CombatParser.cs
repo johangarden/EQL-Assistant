@@ -771,7 +771,7 @@ public sealed class CombatParser
     /// <summary>Every damage line: (attacker, target, amount, time), names
     /// normalized ("you" → your name). The crowd-control engine reads the
     /// charmed pet's hits and mez breaks from it.</summary>
-    public event Action<string, string, double, DateTime>? DamageDealt;
+    public event Action<string, string, double, DateTime, bool>? DamageDealt;
 
     /// <summary>The damage school the log printed for one of your spells ("" unknown).</summary>
     public string SchoolOf(string spell) => _spellSchools.GetValueOrDefault(PoolSpell(spell), "");
@@ -1739,7 +1739,7 @@ public sealed class CombatParser
         attacker = Normalize(attacker);
         target = Normalize(target);
         if (IsReflexive(target)) target = attacker;
-        DamageDealt?.Invoke(attacker, target, amount, time);
+        DamageDealt?.Invoke(attacker, target, amount, time, dot);
         Touch(time);
         TrackSides(attacker, target);
 

@@ -68,7 +68,7 @@ public sealed class CrowdControl
         bool Assumed, bool Broke, string BrokeBy, double BrokeAmount, double SinceBreak, bool Due, bool Overrun = false, bool Learned = false);
     public sealed record AttemptView(string Spell, string Target, string How, double Ago);
 
-    public sealed record Snapshot(CharmView? Charm, AttemptView? Attempt, IReadOnlyList<MezView> Mez)
+    public sealed record Snapshot(CharmView? Charm, AttemptView? Attempt, IReadOnlyList<MezView> Mez, IReadOnlyList<string> Loose)
     {
         public int Held => Mez.Count(m => !m.Broke);
         public int Broken => Mez.Count(m => m.Broke);
@@ -83,6 +83,9 @@ public sealed class CrowdControl
     public event Action<string, string>? MezBroke;
     /// <summary>A mez entered its last stretch: (mob label) — "re-mez now".</summary>
     public event Action<string>? MezDue;
+    /// <summary>A same-name mob ACTED while every row of that name is held —
+    /// an unmezzed add is loose: (mob name). The recast cue.</summary>
+    public event Action<string>? MezLoose;
     /// <summary>Anything changed — the panels repaint at once.</summary>
     public event Action? Changed;
 
@@ -115,6 +118,13 @@ public sealed class CrowdControl
     /// 24 s, VIII 31 s in the owner's log) — the log teaches it.</summary>
     private readonly Dictionary<string, List<double>> _samples = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<MezRow> _mez = new();
+    /// <summary>Names with a known LOOSE add — a mezzed mob never acts, so a
+    /// same-name mob attacking or casting while every row of that name is
+    /// held proves an unmezzed one (owner, 15 Sep: adds forcing a recast).
+    /// While a name is loose: damage on the name is the loose one's, not a
+    /// break; the next landing on the name APPENDS (the add got mezzed) and
+    /// clears it; a death of the name is the loose one's.</summary>
+    private readonly HashSet<string> _loose = new(StringComparer.OrdinalIgnoreCase);
     private readonly string? _path;
 
     public CharmState? Charm { get; private set; }
@@ -200,7 +210,7 @@ public sealed class CrowdControl
             || body.StartsWith("You have entered ", StringComparison.Ordinal))
         {
             bool had = Charm is not null || _mez.Count > 0 || LastAttempt is not null;
-            Charm = null; LastAttempt = null; _mez.Clear(); _pending = null;
+            Charm = null; LastAttempt = null; _mez.Clear(); _pending = null; _loose.Clear();
             if (had) Changed?.Invoke();
             return;
         }
@@ -215,6 +225,19 @@ public sealed class CrowdControl
             _tails[def.Spell] = new List<string>();
             if (def.LandingSuffix.Length == 0) OpenAssumed(def, time);
             return;
+        }
+
+        // A held name acting — casting, or swinging and missing (a hit comes
+        // through NoteDamage) — is a loose add. Cheap gates: only while rows exist.
+        if (_mez.Count > 0)
+        {
+            int ci = body.IndexOf(" begins casting ", StringComparison.Ordinal);
+            if (ci > 0) NoteActing(body[..ci], time);
+            else
+            {
+                int ti = body.IndexOf(" tries to ", StringComparison.Ordinal);
+                if (ti > 0) NoteActing(body[..ti], time);
+            }
         }
 
         if (_pending is { } pe && ((time - pe.At).TotalSeconds > CastWindowSec
@@ -287,13 +310,18 @@ public sealed class CrowdControl
 
     /// <summary>Every damage line, from the parser (attacker, target, amount):
     /// the pet's hits feed the card, a hit on a mezzed mob breaks its row.</summary>
-    public void NoteDamage(string attacker, string target, double amount, DateTime time)
+    public void NoteDamage(string attacker, string target, double amount, DateTime time, bool dot = false)
     {
         if (Charm is { BrokeAt: null } c && Same(attacker, c.Pet) && !IsSelf(target))
         {
             c.PetDamage += amount;
             c.LastPetHit = time;
         }
+        // A DoT keeps ticking on a mezzed mob's behalf — not an act. A melee hit
+        // or a nuke from a held name is.
+        if (!dot && _mez.Count > 0) NoteActing(attacker, time);
+        // Damage on a name with a loose add is the add being fought, not a break.
+        if (_loose.Contains(target.Trim())) return;
         var row = _mez.Where(r => r.BrokeAt is null && Same(r.Mob, target)).OrderBy(r => r.Since).FirstOrDefault();
         if (row is not null)
         {
@@ -306,6 +334,21 @@ public sealed class CrowdControl
     }
 
     // ---- state changes -----------------------------------------------------------
+
+    private void NoteActing(string name, DateTime time)
+    {
+        name = name.Trim();
+        if (name.Length == 0 || IsSelf(name)) return;
+        var rows = _mez.Where(r => Same(r.Mob, name)).ToList();
+        if (rows.Count == 0 || rows.Any(r => r.BrokeAt is not null)) return; // a broken one may well be the actor
+        if (!_loose.Add(rows[0].Mob)) return;
+        Log.Info($"[cc] {rows[0].Mob} acted while every {rows[0].Mob} row is held — a loose add");
+        MezLoose?.Invoke(rows[0].Mob);
+        Changed?.Invoke();
+    }
+
+    /// <summary>Names with a known loose add (selftest / header).</summary>
+    public IReadOnlyCollection<string> LooseNames => _loose;
 
     private void OpenAssumed(Def def, DateTime time) => Start(def, "your target", time, assumed: true);
 
@@ -325,8 +368,9 @@ public sealed class CrowdControl
             // next number. Broken and assumed rows are always taken over first.
             double duration = DurationFor(def);
             var same = _mez.Where(r => Same(r.Mob, mob) || (assumed && r.Assumed)).OrderBy(r => r.Since).ToList();
+            bool wasLoose = _loose.Remove(mob.Trim()); // the add got mezzed: its own row, never a refresh
             var refresh = same.FirstOrDefault(r => r.BrokeAt is not null || r.Assumed)
-                ?? (same.Count > 0 && same.All(r => (time - r.Since).TotalSeconds < TwinWindowSec) ? null : same.FirstOrDefault());
+                ?? (wasLoose || (same.Count > 0 && same.All(r => (time - r.Since).TotalSeconds < TwinWindowSec)) ? null : same.FirstOrDefault());
             if (refresh is not null)
             {
                 refresh.Mob = mob; refresh.Spell = def.Spell; refresh.Since = time; refresh.Duration = duration;
@@ -423,8 +467,12 @@ public sealed class CrowdControl
         }
         else if (Charm is { BrokeAt: null } c2 && Same(killer, c2.Pet)) { c2.PetKills++; changed = true; }
 
-        var row = _mez.Where(r => Same(r.Mob, victim)).OrderBy(r => r.Since).FirstOrDefault();
-        if (row is not null) { _mez.Remove(row); changed = true; }
+        if (_loose.Remove(victim.Trim())) { changed = true; } // the loose add died — the held rows stand
+        else
+        {
+            var row = _mez.Where(r => Same(r.Mob, victim)).OrderBy(r => r.Since).FirstOrDefault();
+            if (row is not null) { _mez.Remove(row); changed = true; }
+        }
         if (changed) Changed?.Invoke();
     }
 
@@ -499,12 +547,13 @@ public sealed class CrowdControl
             .ThenBy(v => v.Label, StringComparer.OrdinalIgnoreCase)
             .ToList();
         foreach (var d in due) MezDue?.Invoke(d);
-        return new Snapshot(cv, av, ordered);
+        _loose.RemoveWhere(n => !_mez.Any(r => Same(r.Mob, n))); // no held row left — nothing to be loose from
+        return new Snapshot(cv, av, ordered, _loose.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList());
     }
 
     public void Clear()
     {
-        Charm = null; LastAttempt = null; _mez.Clear(); _pending = null;
+        Charm = null; LastAttempt = null; _mez.Clear(); _pending = null; _loose.Clear();
         Changed?.Invoke();
     }
 

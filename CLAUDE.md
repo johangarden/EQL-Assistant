@@ -79,7 +79,10 @@ the affected suites (with `-Wait`) before committing.
   name is a RE-MEZ and refreshes). Clocks: learned MAX of the last 5
   unbroken landing→wear-off spans over the library figure (ranks/focus/AA
   stretch it — Mesmerization VI 24 s, VIII 31 s observed); a row past its
-  clock OVERRUNS grey until the wear-off (hygiene max(90 s, 3×)). Unknown
+  clock OVERRUNS grey until the wear-off (hygiene max(90 s, 3×)). LOOSE
+  adds: a mezzed mob never acts, so a held name hitting/casting (not DoT
+  ticks) flags a loose add — damage on the name is the add's (no false
+  break), its death spares the rows, the next landing appends. Unknown
   landings (necro undead charms) open ASSUMED and are LEARNED from the
   emote after the cast once a wear-off names the mob. Both learned sets
   persist in `cc-landings.json`. Live-only. Charm break = badge + phrase.

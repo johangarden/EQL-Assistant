@@ -108,6 +108,7 @@ public partial class MezWindow : Window
         SummaryText.Text = !any ? "nothing held"
             : (held > 0 ? $"{held} held" : "") + (broken > 0 ? (held > 0 ? " · " : "") + $"{broken} broken" : "") + spell;
         if (broken > 0) { NextText.Text = "broke!"; NextText.Foreground = Red; }
+        else if (s.Loose.Count > 0) { NextText.Text = s.Loose.Count == 1 ? $"{s.Loose[0]} loose — mez it" : $"{s.Loose.Count} loose — mez them"; NextText.Foreground = Amber; }
         else if (s.Next is { } n) { NextText.Text = n.Due ? "re-mez now" : $"re-mez in {Math.Max(0, n.Left - CrowdControl.LastStretch(n.Duration)):0} s"; NextText.Foreground = Amber; }
         else { NextText.Text = any ? "—" : ""; NextText.Foreground = Faint; }
 

@@ -3201,6 +3201,34 @@ public partial class App : Application
         ae.ProcessLine(L(161, "Your Mesmerization spell has worn off of an ice bones."));
         Check("cc: a broken row's wear-off teaches nothing (its span is a break, not a clock)",
             ae.LearnedDuration("Mesmerization VIII") == 40);
+        // A loose add (owner, 15 Sep): a mezzed mob never acts, so a held name
+        // attacking or casting proves an unmezzed one — no false break on it,
+        // the next landing appends, its death spares the rows.
+        var la = new CrowdControl(lib, null) { IsSelf = n => n == "Thorrak" };
+        la.ProcessLine(L(300, "You begin casting Mesmerization."));
+        la.ProcessLine(L(303, "a will sapper has been mesmerized."));
+        la.ProcessLine(L(303, "a thought spoiler has been mesmerized."));
+        var looseSeen = new List<string>();
+        la.MezLoose += looseSeen.Add;
+        la.NoteDamage("a will sapper", "Thorrak", 12, c0.AddSeconds(310), dot: true); // its DoT still ticks — not an act
+        Check("cc: a held mob's DoT tick is not an act", la.LooseNames.Count == 0);
+        la.NoteDamage("A will sapper", "Thorrak", 12, c0.AddSeconds(311));
+        la.NoteDamage("A will sapper", "Thorrak", 9, c0.AddSeconds(312));
+        Check("cc: a held name hitting you proves a loose add — flagged once, spoken once",
+            la.LooseNames.Contains("a will sapper") && looseSeen.Count == 1 && la.Take(c0.AddSeconds(312)).Loose.SequenceEqual(new[] { "a will sapper" }));
+        la.NoteDamage("Garn", "a will sapper", 58, c0.AddSeconds(313));
+        Check("cc: damage on a name with a loose add is the add's — the held row is not broken",
+            la.MezRows.All(r => r.BrokeAt is null));
+        la.ProcessLine(L(314, "A thought spoiler begins casting Instill."));
+        Check("cc: a held name casting is an act too", la.LooseNames.Contains("a thought spoiler"));
+        la.ProcessLine(L(315, "A thought spoiler has been slain by Garn!"));
+        Check("cc: the loose one dying spares the held row and clears the flag",
+            la.MezRows.Count(r => r.Mob == "a thought spoiler") == 1 && !la.LooseNames.Contains("a thought spoiler"));
+        la.ProcessLine(L(320, "You begin casting Mesmerization."));
+        la.ProcessLine(L(323, "a will sapper has been mesmerized."));
+        Check("cc: the next landing on a loose name is the add's own row, never a refresh, and the flag clears",
+            la.MezRows.Count(r => r.Mob == "a will sapper") == 2 && la.LooseNames.Count == 0);
+
         // The learned clock persists with the landings.
         string ccPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_durations.json");
         try { File.Delete(ccPath); } catch { /* fresh */ }
