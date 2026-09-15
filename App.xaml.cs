@@ -2754,6 +2754,35 @@ public partial class App : Application
                     Check("sky: a dump older than the pickup is stale for that item — no cap",
                         sqAgain.HeldCount(gorgon) == gorgonBefore + 1 && !sqAgain.DumpDecided("Gorgon Head"));
                     sqAgain.SnapshotCopies = null; sqAgain.SnapshotAt = null;
+
+                    // The audit (15 Sep): a fresh replay of a log file, the drift
+                    // against the live ledger, and the realign that adopts it.
+                    string auditLog = Path.Combine(Path.GetTempPath(), "eql_selftest_audit_log.txt");
+                    File.WriteAllLines(auditLog, new[]
+                    {
+                        "[Mon Jan 06 12:05:00 2020] --You have looted a Gorgon Head from a selftest gorgon's corpse.--",
+                        "[Mon Jan 06 12:06:00 2020] You offered 1 Gorgon Head to Selftest Keeper.",
+                        "[Mon Jan 06 12:06:02 2020] You complete the trade with Selftest Keeper.",
+                    });
+                    var skyAuditRes = SkyAudit.ReplayAsync(skyCfg, new[] { auditLog }, "", null, null).GetAwaiter().GetResult();
+                    Check("audit: the replay reads the file alone — looted 1, offered 1, held 0, in the report",
+                        skyAuditRes.Lines == 3 && skyAuditRes.Sky.Audit("Gorgon Head") is { Looted: 1, Offered: 1, Held: 0 }
+                        && skyAuditRes.Report.Contains("Gorgon Head: looted 1 · offered 1 · destroyed 0 → held 0"));
+                    // A separate "live" ledger (same loot history, its own progress
+                    // file) takes the realign — the shared one keeps its state for the
+                    // checks that follow.
+                    string liveProg = Path.Combine(Path.GetTempPath(), "eql_selftest_sky_live.json");
+                    try { File.Delete(liveProg); } catch { /* fresh */ }
+                    var sqLive = new SkyQuests(skyCfg, skyLoot, liveProg);
+                    var drift = sqLive.DriftAgainst(skyAuditRes.Sky);
+                    Check("audit: the live ledger's extra Gorgon Head shows as drift, live → log",
+                        drift.Any(d => d.StartsWith("Gorgon Head: live ") && d.EndsWith(" → log 0")));
+                    var gorgonQuest = sqLive.Quests.First(q => q.Items.Any(i => i.Name == "Gorgon Head"));
+                    sqLive.SetTracked(gorgonQuest, true);
+                    sqLive.AdoptFrom(skyAuditRes.Sky);
+                    Check("audit: realigning adopts the log's ledger and keeps tracking",
+                        sqLive.HeldCount(gorgon) == 0 && sqLive.DriftAgainst(skyAuditRes.Sky).Count == 0 && sqLive.IsTracked(gorgonQuest));
+                    try { File.Delete(auditLog); File.Delete(liveProg); } catch { /* temp */ }
                 }
                 // The isle CHECKLIST carries held items at Missing 0 (with the held
                 // count); the plain shopping list still hides them.
@@ -3955,42 +3984,8 @@ public partial class App : Application
     /// own peak rate (65/s observed). Alerts are gagged.</summary>
     private static void RunSkyAudit(string path, string filter)
     {
-        var report = new System.Text.StringBuilder();
-        var cs = new ConfigService();
-        string lootPath = Path.Combine(Path.GetTempPath(), "eql_audit_loot.json");
-        string skyPath = Path.Combine(Path.GetTempPath(), "eql_audit_sky.json");
-        try { File.Delete(lootPath); } catch { /* fresh */ }
-        try { File.Delete(skyPath); } catch { /* fresh */ }
-        var loot = new LootTracker(cs, lootPath);
-        var sky = new SkyQuests(cs, loot, skyPath);
-        var names = sky.Quests.SelectMany(q => q.Items).Select(i => i.Name).Distinct(StringComparer.OrdinalIgnoreCase)
-            .Where(n => filter.Length == 0 || n.Contains(filter, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
-        var lines = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var n in names) lines[n] = new List<string>();
-        int total = 0;
-        foreach (var line in File.ReadLines(path))
-        {
-            total++;
-            loot.ProcessLine(line);
-            sky.ProcessLine(line);
-            if (line.Contains("You have looted", StringComparison.Ordinal) || line.Contains("You offered", StringComparison.Ordinal)
-                || line.Contains("successfully destroyed", StringComparison.Ordinal) || line.Contains("You looted", StringComparison.Ordinal))
-                foreach (var n in names)
-                    if (line.Contains(n, StringComparison.OrdinalIgnoreCase)) lines[n].Add(line);
-        }
-        report.AppendLine($"sky audit: {Path.GetFileName(path)} — {total:N0} lines; {names.Count} quest items{(filter.Length > 0 ? $" matching '{filter}'" : "")}");
-        report.AppendLine($"completed quests: {sky.Quests.Count(q => sky.IsCompleted(q))} of {sky.Quests.Count}");
-        foreach (var n in names)
-        {
-            var a = sky.Audit(n);
-            if (filter.Length == 0 && a.Looted == 0 && a.Offered == 0) continue;
-            report.AppendLine();
-            report.AppendLine($"{n}: looted {a.Looted} · offered {a.Offered} · destroyed {a.Destroyed} → held {a.Held}"
-                + $"  [{string.Join("; ", sky.Quests.Where(q => q.Items.Any(i => i.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).Select(q => q.Name + (sky.IsCompleted(q) ? " ✓" : "")))}]");
-            foreach (var l in lines[n]) report.AppendLine("    " + l);
-        }
-        File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_sky_audit.txt"), report.ToString());
+        var r = SkyAudit.ReplayAsync(new ConfigService(), new[] { path }, filter, null, null).GetAwaiter().GetResult();
+        File.WriteAllText(SkyAudit.ReportPath, r.Report);
     }
 
     private void RunBench(string path)

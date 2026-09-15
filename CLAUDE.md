@@ -32,7 +32,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--selftest-repop` | `eql_selftest_repop.txt` |
 | `--replay <log>` | `eql_replay.txt` (parser coverage report on a real log) |
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
-| `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files: every quest item's looted / offered / destroyed / held with the lines behind them (the "it says I still have it" reports start here) |
+| `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
 | `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` the toolbar (eye struck; catch-up progress card), `quests:lines` the Notable quests pack, `recap` a synthetic death recap, `incoming` the incoming-damage panel, `charm` / `charm:broke` the charm card, `mez` the mez panel, `Data:reparse` the Data page with the reparse progress card mid-run |
 

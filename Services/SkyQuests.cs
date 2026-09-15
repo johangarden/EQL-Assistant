@@ -208,6 +208,41 @@ public sealed class SkyQuests
         return (_counts.GetValueOrDefault(key), _offered.GetValueOrDefault(key), _destroyed.GetValueOrDefault(key), HeldByKey(key));
     }
 
+    /// <summary>Where the live ledger disagrees with a fresh replay of the log
+    /// (<see cref="SkyAudit"/>): one line per quest item, "Item: live N → log M".</summary>
+    public IReadOnlyList<string> DriftAgainst(SkyQuests fromLog)
+    {
+        var rows = new List<string>();
+        foreach (var name in _quests.SelectMany(q => q.Items).Select(i => i.Name).Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+        {
+            int live = LedgerHeld(name), log = fromLog.LedgerHeld(name);
+            if (live != log) rows.Add($"{name}: live {live} → log {log}");
+        }
+        int liveDone = _completed.Count, logDone = fromLog._completed.Count;
+        if (liveDone != logDone) rows.Add($"completed quests: live {liveDone} → log {logDone}");
+        return rows;
+    }
+
+    /// <summary>Realign to the log: adopt a fresh replay's counts, turn-ins,
+    /// destroys and completions wholesale. Tracking survives (finished hunts
+    /// un-track). Only the Sky ledger changes — nothing else is touched.</summary>
+    public void AdoptFrom(SkyQuests fromLog)
+    {
+        _counts.Clear(); foreach (var (k, v) in fromLog._counts) _counts[k] = v;
+        _offered.Clear(); foreach (var (k, v) in fromLog._offered) _offered[k] = v;
+        _destroyed.Clear(); foreach (var (k, v) in fromLog._destroyed) _destroyed[k] = v;
+        _questOffers.Clear(); foreach (var (k, v) in fromLog._questOffers) _questOffers[k] = new HashSet<string>(v);
+        _offerSeen.Clear(); _offerSeen.UnionWith(fromLog._offerSeen);
+        _destroySeen.Clear(); _destroySeen.UnionWith(fromLog._destroySeen);
+        _completed.Clear(); _completed.UnionWith(fromLog._completed);
+        _currencyKeys.UnionWith(fromLog._currencyKeys);
+        _lastLootAt.Clear(); foreach (var (k, v) in fromLog._lastLootAt) _lastLootAt[k] = v;
+        _tracked.RemoveWhere(_completed.Contains);
+        SaveProgress();
+        Changed?.Invoke();
+    }
+
     /// <summary>True when the dump, not the ledger, decided an item's count.</summary>
     public bool DumpDecided(string item)
     {
