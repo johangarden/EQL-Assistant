@@ -3144,9 +3144,8 @@ public partial class App : Application
             && mz.Find("Beguile") is { Kind: CrowdControl.Kind.Charm } && mz.Find("Enthrall") is { Kind: CrowdControl.Kind.Mez });
         mz.ProcessLine(L(0, "You begin casting Mesmerization."));
         mz.ProcessLine(L(3, "a greater ice bones has been mesmerized."));
-        mz.ProcessLine(L(5, "You begin casting Mesmerization."));
-        mz.ProcessLine(L(8, "a greater ice bones has been mesmerized."));
-        Check("cc: a second landing on a name still running comfortably is a second mob, numbered",
+        mz.ProcessLine(L(4, "a greater ice bones has been mesmerized.")); // the same cast: an AE twin
+        Check("cc: two landings on one name within the same cast are twins, numbered",
             mz.MezRows.Count == 2 && mz.MezRows[0].Label == "a greater ice bones 01" && mz.MezRows[1].Label == "a greater ice bones 02");
         string brokeLabel = "", brokeBy = "";
         mz.MezBroke += (l, w) => { brokeLabel = l; brokeBy = w; };
@@ -3154,7 +3153,7 @@ public partial class App : Application
         var m1 = mz.Take(c0.AddSeconds(11));
         Check("cc: damage on a mezzed name breaks the OLDEST row and says who",
             brokeLabel == "a greater ice bones 01" && brokeBy == "Garn" && m1.Mez[0] is { Broke: true, BrokeBy: "Garn", BrokeAmount: 58 }
-            && m1.Held == 1 && m1.Broken == 1 && m1.Next is { Label: "a greater ice bones 02", Left: 21 });
+            && m1.Held == 1 && m1.Broken == 1 && m1.Next is { Label: "a greater ice bones 02", Left: 17 });
         var due = new List<string>();
         mz.MezDue += due.Add;
         var m2 = mz.Take(c0.AddSeconds(27));
@@ -3163,6 +3162,56 @@ public partial class App : Application
             due.Count == 1 && due[0] == "a greater ice bones 02" && m2.Mez.Count == 1 && m2.Mez[0].Due);
         mz.ProcessLine(L(29, "Your Mesmerization spell has worn off of a greater ice bones."));
         Check("cc: the wear-off closes the row", mz.MezRows.Count == 0);
+
+        // AE mez (owner, 15 Sep: "when I AE mez only one mob is shown"): every
+        // landing within a breath of the first opens a row; a landing later in
+        // the window is a stranger's; a resist mid-AE keeps the cast armed.
+        var ae = new CrowdControl(lib, null);
+        ae.ProcessLine(L(100, "You begin casting Mesmerization VIII."));
+        ae.ProcessLine(L(103, "a will sapper resisted your Mesmerization VIII!"));
+        ae.ProcessLine(L(103, "a thought spoiler has been mesmerized."));
+        ae.ProcessLine(L(103, "a will sapper has been mesmerized."));
+        ae.ProcessLine(L(104, "a will sapper has been mesmerized."));
+        ae.ProcessLine(L(109, "a mind eater has been mesmerized."));
+        Check("cc: an AE opens a row per landing — twins numbered — and ignores a landing outside the spread",
+            ae.MezRows.Count == 3 && ae.MezRows.Count(r => r.Mob == "a will sapper") == 2
+            && ae.MezRows.Where(r => r.Mob == "a will sapper").Select(r => r.Label).OrderBy(x => x).SequenceEqual(new[] { "a will sapper 01", "a will sapper 02" })
+            && ae.MezRows.All(r => r.Mob != "a mind eater"));
+        // A re-mez mid-clock REFRESHES (the common case); rows past the clock
+        // overrun instead of vanishing; the wear-off teaches the real clock.
+        ae.ProcessLine(L(115, "You begin casting Mesmerization VIII."));
+        ae.ProcessLine(L(118, "a thought spoiler has been mesmerized."));
+        Check("cc: a re-mez on a name mid-clock refreshes its row instead of minting a twin",
+            ae.MezRows.Count == 3 && ae.MezRows.First(r => r.Mob == "a thought spoiler").Since == c0.AddSeconds(118)
+            && ae.MezRows.First(r => r.Mob == "a thought spoiler").Refreshed);
+        var ov = ae.Take(c0.AddSeconds(135)); // will sappers landed at 103/104 on a 24 s clock: past it
+        Check("cc: a row past its clock overruns — grey, counting up, still listed",
+            ov.Mez.Count == 3 && ov.Mez.Where(v => v.Label.StartsWith("a will sapper")).All(v => v.Overrun && v.Left < 0 && !v.Due)
+            && Views.MezWindow.Row(ov.Mez.First(v => v.Overrun), true) is { Overrun: true } orow && orow.TimeText.StartsWith("+0:0"));
+        ae.ProcessLine(L(143, "Your Mesmerization spell has worn off of a will sapper.")); // 40 s after the 103 landing
+        Check("cc: the wear-off of an unbroken row teaches the clock — 40 s now, not the library's 24",
+            ae.LearnedDuration("Mesmerization VIII") == 40 && ae.MezRows.Count == 2
+            && ae.DurationFor(ae.Find("Mesmerization")!) == 40);
+        ae.ProcessLine(L(150, "You begin casting Mesmerization VIII."));
+        ae.ProcessLine(L(153, "an ice bones has been mesmerized."));
+        Check("cc: the next landing runs on the learned clock and says so",
+            ae.MezRows.First(r => r.Mob == "an ice bones").Duration == 40
+            && Views.MezWindow.Row(ae.Take(c0.AddSeconds(154)).Mez.First(v => v.Label == "an ice bones"), true).RightText == "of 0:40 · learned");
+        ae.NoteDamage("Garn", "an ice bones", 10, c0.AddSeconds(160));
+        ae.ProcessLine(L(161, "Your Mesmerization spell has worn off of an ice bones."));
+        Check("cc: a broken row's wear-off teaches nothing (its span is a break, not a clock)",
+            ae.LearnedDuration("Mesmerization VIII") == 40);
+        // The learned clock persists with the landings.
+        string ccPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_durations.json");
+        try { File.Delete(ccPath); } catch { /* fresh */ }
+        var pl = new CrowdControl(lib, ccPath);
+        pl.ProcessLine(L(200, "You begin casting Mesmerization."));
+        pl.ProcessLine(L(203, "an ice bones has been mesmerized."));
+        pl.ProcessLine(L(238, "Your Mesmerization spell has worn off of an ice bones."));
+        var pl2 = new CrowdControl(lib, ccPath);
+        Check("cc: learned clocks survive a restart alongside learned landings",
+            pl2.LearnedDuration("Mesmerization") == 35 && pl2.Find("Beguile Undead")!.LandingSuffix == "moans.");
+        try { File.Delete(ccPath); } catch { /* temp */ }
         var row = Views.MezWindow.Row(new CrowdControl.MezView("an ice bones", "Mesmerization", 4, 24, 20, false, false, "", 0, 0, true), true);
         var rowB = Views.MezWindow.Row(new CrowdControl.MezView("a greater ice bones 02", "Mesmerization", 0, 24, 11, false, true, "Garn", 58, 2, false), false);
         Check("cc: the mez row texts — due reads re-mez now, broke names the hitter",

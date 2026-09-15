@@ -74,9 +74,15 @@ the affected suites (with `-Wait`) before committing.
   begin-cast anchors the spell's third-person landing (Beguile Undead →
   "a greater ice bones moans.", observed), "Your X spell has worn off of Y."
   ends it, damage on a mezzed mob breaks its row (and names who), death/
-  zoning censor. Unknown landings (necro undead charms) open ASSUMED and
-  are LEARNED from the emote after the cast once a wear-off names the mob
-  (`cc-landings.json`). Live-only. Charm break = CHARM BROKE badge + phrase.
+  zoning censor. An AE mez opens a row per landing within 2.5 s of the
+  first (twins = two landings on one name within 5 s; anything later on a
+  name is a RE-MEZ and refreshes). Clocks: learned MAX of the last 5
+  unbroken landing→wear-off spans over the library figure (ranks/focus/AA
+  stretch it — Mesmerization VI 24 s, VIII 31 s observed); a row past its
+  clock OVERRUNS grey until the wear-off (hygiene max(90 s, 3×)). Unknown
+  landings (necro undead charms) open ASSUMED and are LEARNED from the
+  emote after the cast once a wear-off names the mob. Both learned sets
+  persist in `cc-landings.json`. Live-only. Charm break = badge + phrase.
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,
