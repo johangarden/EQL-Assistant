@@ -2722,6 +2722,26 @@ public partial class App : Application
                 Check("sky: a replayed trade never double-counts",
                     sqAgain.HeldCount(clericMeda) == 0
                     && sqAgain.MissingByIsle().First(r => r.Item == "Wind Rune Meda").Missing == 5);
+                // The bags win (15 Sep): a dump newer than the pickup that lacks a
+                // PHYSICAL item counts it as gone; an older dump doesn't; currency
+                // is never capped; the ledger's own number stays readable.
+                {
+                    var gorgon = sqAgain.Quests.SelectMany(q => q.Items).First(i => i.Name == "Gorgon Head");
+                    int gorgonBefore = sqAgain.HeldCount(gorgon);
+                    skyLoot.ProcessLine("[Mon Jan 06 12:05:00 2020] --You have looted a Gorgon Head from a selftest gorgon's corpse.--");
+                    Check("sky: a kept quest item ticks the ledger", sqAgain.HeldCount(gorgon) == gorgonBefore + 1);
+                    var jakaItem = sqAgain.Quests.First(q => q.Name == "Magician Test of Gesticulation").Items.First(i => i.Name == "Wind Rune Jaka");
+                    int jakaHeld = sqAgain.HeldCount(jakaItem);
+                    sqAgain.SnapshotCopies = _ => 0;
+                    sqAgain.SnapshotAt = new DateTime(2026, 9, 15, 8, 0, 0);
+                    Check("sky: a fresh dump that lacks the item counts it as gone; the ledger still says what it said; currency is untouched",
+                        sqAgain.HeldCount(gorgon) == 0 && sqAgain.LedgerHeld("Gorgon Head") == gorgonBefore + 1
+                        && sqAgain.DumpDecided("Gorgon Head") && sqAgain.HeldCount(jakaItem) == jakaHeld && !sqAgain.DumpDecided("Wind Rune Jaka"));
+                    sqAgain.SnapshotAt = new DateTime(2019, 1, 1);
+                    Check("sky: a dump older than the pickup is stale for that item — no cap",
+                        sqAgain.HeldCount(gorgon) == gorgonBefore + 1 && !sqAgain.DumpDecided("Gorgon Head"));
+                    sqAgain.SnapshotCopies = null; sqAgain.SnapshotAt = null;
+                }
                 // The isle CHECKLIST carries held items at Missing 0 (with the held
                 // count); the plain shopping list still hides them.
                 Check("sky: a class filter may name several classes (the MINE badge)",

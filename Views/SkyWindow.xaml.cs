@@ -356,10 +356,23 @@ public partial class SkyWindow : Window
         RefreshIsles();
     }
 
+    /// <summary>Copies of an item in the dump rows, tier-tolerant, exaltation
+    /// rows skipped; 0 when the dump doesn't list it.</summary>
+    public static int CountInDump(IReadOnlyList<InventoryStore.CarryRow> inv, string item)
+    {
+        string key = FocusEffects.ItemKey(item);
+        return inv.Where(r => FocusEffects.ItemKey(r.Name) == key && !r.Name.EndsWith("(Exaltation)", StringComparison.Ordinal))
+            .Sum(r => Math.Max(1, r.Count));
+    }
+
     private void Refresh()
     {
         _chipInv = DumpRows(out _); // the chips say where a held copy sits
-        if (_initializing || QuestsControl is null) return;
+        if (_initializing || QuestsControl is null) return; // XAML init fires this before _sky is set
+        // The bags win: for physical items the dump caps the ledger's count.
+        var inv = _chipInv;
+        _sky.SnapshotCopies = inv is null ? null : item => CountInDump(inv, item);
+        _sky.SnapshotAt = inv is null ? null : _dumpCache?.Stamp;
 
         RefreshBadges();
         StylePills();
@@ -529,7 +542,8 @@ public partial class SkyWindow : Window
     /// needed").</summary>
     private string LedgerLine(string item, int spare, int dumpCopies, bool haveDump)
     {
-        var (held, needed) = _sky.LedgerFor(item);
+        var (_, needed) = _sky.LedgerFor(item);
+        int held = _sky.LedgerHeld(item); // the ledger's own word, before the bags
         string line = $"Ledger: held {held} · active quests still need {needed} → {spare} spare";
         if (!haveDump) return line + ".";
         if (dumpCopies < held)
@@ -553,7 +567,7 @@ public partial class SkyWindow : Window
                                       && !r.Name.EndsWith("(Exaltation)", StringComparison.Ordinal)).ToList();
             return hits.Count == 0 ? -1 : hits.Sum(r => Math.Max(1, r.Count));
         }
-        var spares = _sky.Surplus(SnapshotCopies);
+        var spares = _sky.Surplus(); // the instance's snapshot hooks already cap the counts
         var sections = new List<HouseSectionVm>();
 
         // Per item: its dump copies (tier-tolerant, exaltation rows skipped),
@@ -640,9 +654,12 @@ public partial class SkyWindow : Window
                 ? string.Join(" / ", it.Mobs) + (it.Where.Length > 0 ? $" · {it.Where}" : "")
                 : it.Who;
             string where = WhereText(_chipInv, it.Name, held);
+            string dumpNote = where.Length > 0 ? $"\n{where} (per the last inventory dump — moved since? dump again)"
+                : _sky.DumpDecided(it.Name) ? $"\nThe loot ledger counted {_sky.LedgerHeld(it.Name)}, but the last inventory dump doesn't list it — the bags win. Back in your bags? Dump again."
+                : held > 0 && _chipInv is not null ? "\nNot in the last inventory dump — picked up after it? run /outputfile inventory again." : "";
             return new ChipVm(it.Name, $"{held}/{it.Count}", sub, bg, fg,
                 $"{it.Name} — drops from {it.Who} ({it.Where}). Click for the wiki page."
-                + (where.Length > 0 ? $"\n{where} (per the last inventory dump — moved since? dump again)" : held > 0 && _chipInv is not null ? "\nNot in the last inventory dump — moved since? run /outputfile inventory again." : "")
+                + dumpNote
                 + (it.Stats is null ? "" : "\n\n" + it.Stats),
                 WikiUrl(it.Name), where);
         }).ToList();

@@ -136,7 +136,10 @@ public sealed class SkyQuests
             string key = LootTracker.ItemKey(e.Item);
             if (e.Kind == LootTracker.LootKind.Currency) _currencyKeys.Add(key);
             if (_questItemKeys.Contains(key))
+            {
                 fromLoot[key] = fromLoot.GetValueOrDefault(key) + Math.Max(1, e.Count);
+                NoteLootTime(key, e.When);
+            }
         }
         bool lifted = false;
         foreach (var (key, n) in fromLoot)
@@ -161,8 +164,48 @@ public sealed class SkyQuests
         if (e.Kind == LootTracker.LootKind.Currency) _currencyKeys.Add(key);
         if (!_questItemKeys.Contains(key)) return false;
         _counts[key] = _counts.GetValueOrDefault(key) + Math.Max(1, e.Count);
+        NoteLootTime(key, e.When);
         if (save) SaveProgress();
         return true;
+    }
+
+    // ---- the bags win --------------------------------------------------------------
+    // Owner, 15 Sep: "3 quests ready for turn-in but only some items have a
+    // slot — new dumps and a reparse changed nothing". The ledger had copies
+    // the bags no longer held (an exit the log never showed). For PHYSICAL
+    // items the last /outputfile inventory is the truth: a dump written after
+    // the item's last pickup caps the held count to what it lists — down to 0.
+    // Currency (wind runes) never appears in a dump and is never capped; a
+    // pickup AFTER the dump makes the dump stale for that item, no cap.
+
+    /// <summary>Copies of an item the last inventory dump lists (0 = none);
+    /// set by the Sky window, null when there is no dump.</summary>
+    public Func<string, int>? SnapshotCopies { get; set; }
+    /// <summary>When that dump was written.</summary>
+    public DateTime? SnapshotAt { get; set; }
+
+    private readonly Dictionary<string, DateTime> _lastLootAt = new(StringComparer.OrdinalIgnoreCase);
+    private void NoteLootTime(string key, DateTime when)
+    {
+        if (when > _lastLootAt.GetValueOrDefault(key, DateTime.MinValue)) _lastLootAt[key] = when;
+    }
+
+    private bool IsCurrencyKey(string key) =>
+        _currencyKeys.Contains(key)
+        || _keyToName.GetValueOrDefault(key, key).StartsWith("Wind Rune", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The ledger alone — looted minus turned in minus destroyed —
+    /// before the bags weigh in.</summary>
+    public int LedgerHeld(string item) => LedgerByKey(LootTracker.ItemKey(item));
+
+    private int LedgerByKey(string key) =>
+        Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key) - _destroyed.GetValueOrDefault(key));
+
+    /// <summary>True when the dump, not the ledger, decided an item's count.</summary>
+    public bool DumpDecided(string item)
+    {
+        string key = LootTracker.ItemKey(item);
+        return HeldByKey(key) < LedgerByKey(key);
     }
 
     // Turn-ins ARE logged even though rewards are not (confirmed 29 Aug 2026):
@@ -366,8 +409,17 @@ public sealed class SkyQuests
     /// copies safe to hand to a guildie (or the vendor).</summary>
     public sealed record SurplusItem(string Item, int Surplus);
 
-    private int HeldByKey(string key) =>
-        Math.Max(0, _counts.GetValueOrDefault(key) - _offered.GetValueOrDefault(key) - _destroyed.GetValueOrDefault(key));
+    private int HeldByKey(string key)
+    {
+        int held = LedgerByKey(key);
+        if (held > 0 && SnapshotCopies is not null && SnapshotAt is { } at && !IsCurrencyKey(key)
+            && at > _lastLootAt.GetValueOrDefault(key, DateTime.MinValue))
+        {
+            int inDump = SnapshotCopies(_keyToName.GetValueOrDefault(key, key));
+            if (inDump >= 0 && inDump < held) held = inDump; // the bags win
+        }
+        return held;
+    }
 
     /// <summary>The per-isle shopping list: everything ACTIVE quests still
     /// need beyond what you hold, grouped by where it drops.</summary>
@@ -477,10 +529,11 @@ public sealed class SkyQuests
         var rows = new List<SurplusItem>();
         foreach (var key in _counts.Keys)
         {
-            if (_currencyKeys.Contains(key)) continue; // stacks in the currency tab — no space to free
-            int held = HeldByKey(key);
-            if (snapshotCopies is not null && held > 0)
+            if (IsCurrencyKey(key)) continue; // stacks in the currency tab — no space to free
+            int held = HeldByKey(key); // already capped by the dump when one is set
+            if (snapshotCopies is not null && SnapshotCopies is null && held > 0)
             {
+                // Legacy path (no snapshot hooks on the instance): the caller's dump count.
                 int inDump = snapshotCopies(_keyToName.GetValueOrDefault(key, key));
                 if (inDump > 0 && inDump < held) held = inDump;
             }
