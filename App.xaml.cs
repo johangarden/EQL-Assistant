@@ -315,6 +315,7 @@ public partial class App : Application
                 iwv.Add(DateTime.Now.AddSeconds(-1), 100, spell: false);
                 win.Refresh();
                 if (win.LastKind != "switch") throw new Exception("incoming panel: spell-heavy in defensive should read switch, got " + win.LastKind);
+                if (win.LastChip != "DEFENSIVE ▸ MAGE HUNTER") throw new Exception("incoming panel: the pill should name the stance to switch to, got " + win.LastChip);
                 win.Close();
             }
 

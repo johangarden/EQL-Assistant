@@ -13,8 +13,8 @@
 
     <!-- Incoming damage (owner request, 11 Sep): the last N seconds of damage
          taken, melee red / spells violet, per second, and the stance verdict
-         — the death recap's split, live. Header row → split bar → columns →
-         verdict, nothing below (owner ruling on the mock). -->
+         — the death recap's split, live. Header row → split bar → columns,
+         nothing below; the verdict lives in the stance pill's colour. -->
     <Border x:Name="RootBorder" CornerRadius="8" Padding="10,8,10,9" Background="#E0141A24"
             BorderBrush="#3A4560" BorderThickness="1" Width="300">
         <StackPanel>
@@ -55,15 +55,14 @@
                 <Border BorderBrush="#1F2637" BorderThickness="0,0,0,1" Padding="0,0,0,1">
                     <UniformGrid x:Name="Columns" Rows="1" Height="38"/>
                 </Border>
-                <Grid Margin="0,2,0,6">
+                <!-- No verdict text below (owner, 15 Sep: "it's bloating the
+                     panel") — the stance pill carries the verdict: green when
+                     your stance halves the bigger half, red naming the stance
+                     that would, grey when the mix favours neither. -->
+                <Grid Margin="0,2,0,0">
                     <TextBlock x:Name="AxisLeft" FontFamily="Consolas" FontSize="9.5" Foreground="#5C6B82" HorizontalAlignment="Left"/>
                     <TextBlock Text="now" FontFamily="Consolas" FontSize="9.5" Foreground="#5C6B82" HorizontalAlignment="Right"/>
                 </Grid>
-
-                <Border x:Name="VerdictBox" CornerRadius="5" Padding="8,6" BorderThickness="3,0,0,0"
-                        BorderBrush="#9575CD" Background="#1F1B2E">
-                    <TextBlock x:Name="VerdictText" FontSize="12" Foreground="#C9D4E3" TextWrapping="Wrap"/>
-                </Border>
             </StackPanel>
         </StackPanel>
     </Border>

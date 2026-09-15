@@ -20,15 +20,18 @@ public partial class IncomingWindow : Window
 {
     private static readonly Brush MeleeFill = Freeze("#E57373");
     private static readonly Brush SpellFill = Freeze("#9575CD");
+    // The stance pill IS the verdict: green = your stance halves the bigger
+    // half, red = the other one would (and the pill names it), grey = mixed
+    // or nothing taken (owner, 15 Sep — the verdict text below was bloat).
     private static readonly Brush ChipDim = Freeze("#C9D4E3");
-    private static readonly Brush ChipDef = Freeze("#E57373");
-    private static readonly Brush ChipHunter = Freeze("#B39DDB");
-    private static readonly Brush VerdictSwitch = Freeze("#9575CD");
-    private static readonly Brush VerdictSwitchBg = Freeze("#1F1B2E");
-    private static readonly Brush VerdictOk = Freeze("#7CE07C");
-    private static readonly Brush VerdictOkBg = Freeze("#1A2A1E");
-    private static readonly Brush VerdictMixed = Freeze("#7F93AD");
-    private static readonly Brush VerdictMixedBg = Freeze("#1A2030");
+    private static readonly Brush ChipDimBg = Freeze("#232B3D");
+    private static readonly Brush ChipDimBorder = Freeze("#3A4560");
+    private static readonly Brush ChipOk = Freeze("#7CE07C");
+    private static readonly Brush ChipOkBg = Freeze("#1A2A1E");
+    private static readonly Brush ChipOkBorder = Freeze("#2E6B48");
+    private static readonly Brush ChipSwitch = Freeze("#FF8A80");
+    private static readonly Brush ChipSwitchBg = Freeze("#2A1416");
+    private static readonly Brush ChipSwitchBorder = Freeze("#7A2E33");
     private static readonly Brush UnlockedBackdrop = Freeze("#F0141A24");
     private static readonly Brush LockedBackdrop = Freeze("#E0141A24");
 
@@ -77,6 +80,8 @@ public partial class IncomingWindow : Window
 
     /// <summary>The verdict kind last painted ("switch" / "ok" / "mixed" / "") — selftest.</summary>
     public string LastKind { get; private set; } = "";
+    /// <summary>The stance pill's text last painted ("DEFENSIVE ▸ MAGE HUNTER") — selftest.</summary>
+    public string LastChip { get; private set; } = "";
 
     public void Refresh()
     {
@@ -86,9 +91,16 @@ public partial class IncomingWindow : Window
         Placeholder.Text = $"No damage taken in the last {s.WindowSec} s.";
 
         string st = s.Stance.Trim();
-        StanceText.Text = st.Length > 0 ? st.ToUpperInvariant() : "STANCE ?";
-        StanceText.Foreground = st.Equals("defensive", StringComparison.OrdinalIgnoreCase) ? ChipDef
-            : st.Equals("mage hunter", StringComparison.OrdinalIgnoreCase) ? ChipHunter : ChipDim;
+        string stanceLabel = st.Length > 0 ? st.ToUpperInvariant() : "STANCE ?";
+        string target = s.VerdictKind == "switch" ? (s.SpellShare >= 0.6 ? "MAGE HUNTER" : "DEFENSIVE") : "";
+        StanceText.Text = target.Length > 0 ? $"{stanceLabel} ▸ {target}" : stanceLabel;
+        (StanceText.Foreground, StanceChip.Background, StanceChip.BorderBrush) = s.VerdictKind switch
+        {
+            "ok" => (ChipOk, ChipOkBg, ChipOkBorder),
+            "switch" => (ChipSwitch, ChipSwitchBg, ChipSwitchBorder),
+            _ => (ChipDim, ChipDimBg, ChipDimBorder),
+        };
+        LastChip = StanceText.Text;
 
         bool any = s.Any;
         Body.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
@@ -117,13 +129,6 @@ public partial class IncomingWindow : Window
                 Columns.Children.Add(col);
             }
 
-            VerdictText.Text = s.VerdictText;
-            (VerdictBox.BorderBrush, VerdictBox.Background) = s.VerdictKind switch
-            {
-                "ok" => (VerdictOk, VerdictOkBg),
-                "mixed" => (VerdictMixed, VerdictMixedBg),
-                _ => (VerdictSwitch, VerdictSwitchBg),
-            };
         }
 
         bool show = !_hidden && (any || !_locked);
