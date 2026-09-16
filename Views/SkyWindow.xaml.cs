@@ -535,6 +535,29 @@ public partial class SkyWindow : Window
 
     // Storage order for the sections: what's on you, then what's stashed.
     private static readonly string[] HouseLaneOrder = { "worn", "bags", "bank", "depot", "hoard" };
+    // Clearing order: the spares you'd destroy first sit in your bags (that is
+    // the space you want back); worn copies are the last to call spare.
+    private static readonly string[] HouseClearOrder = { "bags", "bank", "depot", "hoard", "worn" };
+
+    /// <summary>Spread an item's spare count over the lanes that hold copies:
+    /// each lane gets at most its own copies, in clearing order, until the
+    /// spares run out. A lane whose copies are all still needed is left out.
+    /// Pure — the selftest pins it.</summary>
+    public static List<(string Lane, int Spare)> AllocateSpares(int surplus, IReadOnlyList<(string Lane, int Copies)> lanes)
+    {
+        var result = new List<(string, int)>();
+        int remaining = surplus;
+        foreach (var lane in HouseClearOrder.Concat(lanes.Select(l => l.Lane).Except(HouseClearOrder, StringComparer.Ordinal).OrderBy(k => k)))
+        {
+            int copies = lanes.Where(l => l.Lane == lane).Sum(l => l.Copies);
+            if (copies == 0) continue;
+            int take = Math.Min(copies, remaining);
+            if (take <= 0) break;
+            result.Add((lane, take));
+            remaining -= take;
+        }
+        return result;
+    }
 
     /// <summary>The ledger's reasoning for one spare, plus the dump's
     /// cross-check — "spare" must never mean "safe to destroy" on a stale
@@ -572,7 +595,11 @@ public partial class SkyWindow : Window
 
         // Per item: its dump copies (tier-tolerant, exaltation rows skipped),
         // grouped by the storage they sit in.
-        var byLane = new Dictionary<string, List<(SkyQuests.SurplusItem Spare, List<InventoryStore.CarryRow> Rows)>>(StringComparer.Ordinal);
+        // One spare is one copy — an item split across bags and bank shows
+        // each lane's OWN copies, never the whole spare count twice (owner,
+        // 16 Sep: "x2 spare on both bank and bags — misleading"). Spares are
+        // allocated to lanes in the order you'd clear them: bags first.
+        var byLane = new Dictionary<string, List<(SkyQuests.SurplusItem Spare, int Here, List<InventoryStore.CarryRow> Rows)>>(StringComparer.Ordinal);
         var notInDump = new List<SkyQuests.SurplusItem>();
         var copiesOf = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var s in spares)
@@ -583,14 +610,16 @@ public partial class SkyWindow : Window
                 .ToList() ?? new List<InventoryStore.CarryRow>();
             copiesOf[s.Item] = hits.Sum(r => Math.Max(1, r.Count));
             if (hits.Count == 0) { notInDump.Add(s); continue; }
-            foreach (var g in hits.GroupBy(r => r.Lane, StringComparer.Ordinal))
+            var lanes = hits.GroupBy(r => r.Lane, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+            var alloc = AllocateSpares(s.Surplus, lanes.Select(kv => (kv.Key, kv.Value.Sum(r => Math.Max(1, r.Count)))).ToList());
+            foreach (var (lane, here) in alloc)
             {
-                if (!byLane.TryGetValue(g.Key, out var list)) byLane[g.Key] = list = new();
-                list.Add((s, g.ToList()));
+                if (!byLane.TryGetValue(lane, out var list)) byLane[lane] = list = new();
+                list.Add((s, here, lanes[lane]));
             }
         }
 
-        HouseVm Item(SkyQuests.SurplusItem s, string sectionKey, IEnumerable<string> slotLines)
+        HouseVm Item(SkyQuests.SurplusItem s, string sectionKey, int here, IEnumerable<string> slotLines)
         {
             string key = s.Item + "|" + sectionKey;
             bool open = _houseOpen.Contains(key);
@@ -601,25 +630,26 @@ public partial class SkyWindow : Window
                 lines.Add(LedgerLine(s.Item, s.Surplus, copiesOf.GetValueOrDefault(s.Item), inv is not null));
                 lines.Add($"— snapshot from {(stamp.Length > 0 ? stamp : "?")}");
             }
-            return new HouseVm(key, s.Item, $"×{s.Surplus} spare", open, lines);
+            string count = here >= s.Surplus ? $"×{here} spare" : $"×{here} spare here · {s.Surplus} in all";
+            return new HouseVm(key, s.Item, count, open, lines);
         }
 
         foreach (var lane in HouseLaneOrder.Concat(byLane.Keys.Except(HouseLaneOrder, StringComparer.Ordinal).OrderBy(k => k)))
         {
             if (!byLane.TryGetValue(lane, out var list)) continue;
             string title = InventoryStore.LaneLabels.GetValueOrDefault(lane, lane);
-            var items = list.Select(x => Item(x.Spare, lane, x.Rows.Select(r =>
+            var items = list.Select(x => Item(x.Spare, lane, x.Here, x.Rows.Select(r =>
                     (r.Count > 1 ? $"{r.Location} · ×{r.Count}" : r.Location)
                     + (r.Name.Equals(x.Spare.Item, StringComparison.OrdinalIgnoreCase) ? "" : $"  ({r.Name})"))))
                 .ToList();
             sections.Add(new HouseSectionVm(lane, title,
-                $"{items.Count} item(s) · {list.Sum(x => x.Spare.Surplus)} spare",
+                $"{items.Count} item(s) · {list.Sum(x => x.Here)} spare",
                 _houseSectionOpen.Contains(lane), items));
         }
         if (notInDump.Count > 0)
         {
             string title = inv is null ? "No inventory snapshot" : "Not in the snapshot";
-            var items = notInDump.Select(s => Item(s, "none", new[]
+            var items = notInDump.Select(s => Item(s, "none", s.Surplus, new[]
             {
                 inv is null
                     ? "Run /outputfile inventory in game to see where it sits."

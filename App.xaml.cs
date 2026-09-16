@@ -2755,6 +2755,18 @@ public partial class App : Application
                         sqAgain.HeldCount(gorgon) == gorgonBefore + 1 && !sqAgain.DumpDecided("Gorgon Head"));
                     sqAgain.SnapshotCopies = null; sqAgain.SnapshotAt = null;
 
+                    // Housekeeping spreads one spare count over the lanes that hold
+                    // copies (16 Sep: a belt in the bags and one in the bank read
+                    // "x2 spare" in BOTH sections) — bags first, never twice.
+                    var split = Views.SkyWindow.AllocateSpares(2, new[] { ("bank", 1), ("bags", 1) });
+                    var one = Views.SkyWindow.AllocateSpares(1, new[] { ("bank", 1), ("bags", 1) });
+                    var many = Views.SkyWindow.AllocateSpares(3, new[] { ("bank", 2), ("bags", 1) });
+                    Check("housekeeping: spares are split across lanes, bags first, each lane at most its own copies",
+                        split.SequenceEqual(new[] { ("bags", 1), ("bank", 1) })
+                        && one.SequenceEqual(new[] { ("bags", 1) })
+                        && many.SequenceEqual(new[] { ("bags", 1), ("bank", 2) })
+                        && Views.SkyWindow.AllocateSpares(5, new[] { ("bank", 2), ("bags", 1) }).Sum(x => x.Spare) == 3);
+
                     // The audit (15 Sep): a fresh replay of a log file, the drift
                     // against the live ledger, and the realign that adopts it.
                     string auditLog = Path.Combine(Path.GetTempPath(), "eql_selftest_audit_log.txt");
