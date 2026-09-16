@@ -420,6 +420,25 @@ public partial class App : Application
             ring.UpdateLayout();
             ring.Close();
 
+            // The mote ticker's stint ends the moment you zone (16 Sep): a tier
+            // 4 stint must not keep showing in tier 3 before the first drop there.
+            {
+                var t0 = DateTime.Now;
+                var motes = new List<LootTracker.LootEntry>
+                {
+                    new(t0.AddMinutes(-2), "Mote of Major Potential", "a scorn banshee", "The Plane of Hate - Solo 4 (Refined)", LootTracker.LootKind.Kept),
+                    new(t0.AddMinutes(-9), "Mote of Potential", "a scorn banshee", "The Plane of Hate - Solo 4 (Refined)", LootTracker.LootKind.Kept),
+                    new(t0.AddMinutes(-40), "Mote of Potential", "a scorn banshee", "The Plane of Hate - Solo 4 (Refined)", LootTracker.LootKind.Kept),
+                };
+                var same = Views.MoteTickerWindow.LiveStint(motes, "The Plane of Hate - Solo 4 (Refined)", t0);
+                var moved = Views.MoteTickerWindow.LiveStint(motes, "The Plane of Hate - Solo 3 (Ascended)", t0);
+                var unknown = Views.MoteTickerWindow.LiveStint(motes, "", t0);
+                if (same is not { ByGrade: var bg } || bg.Sum() != 2 || same.Value.Zone != "The Plane of Hate - Solo 4 (Refined)")
+                    throw new Exception("mote ticker: the same-zone stint should chain the two recent motes and stop at the 31-minute gap");
+                if (moved is not null) throw new Exception("mote ticker: zoning to another tier must end the stint");
+                if (unknown is null) throw new Exception("mote ticker: an unknown current zone (fresh start) keeps the stint");
+            }
+
             // The mote ticker builds and stays hidden with no live stint.
             var ticker = new Views.MoteTickerWindow(new LootTracker(cs), cs, 1.0);
             ticker.Show();
@@ -2754,6 +2773,18 @@ public partial class App : Application
                     Check("sky: a dump older than the pickup is stale for that item — no cap",
                         sqAgain.HeldCount(gorgon) == gorgonBefore + 1 && !sqAgain.DumpDecided("Gorgon Head"));
                     sqAgain.SnapshotCopies = null; sqAgain.SnapshotAt = null;
+
+                    // Housekeeping spreads one spare count over the lanes that hold
+                    // copies (16 Sep: a belt in the bags and one in the bank read
+                    // "x2 spare" in BOTH sections) — bags first, never twice.
+                    var split = Views.SkyWindow.AllocateSpares(2, new[] { ("bank", 1), ("bags", 1) });
+                    var one = Views.SkyWindow.AllocateSpares(1, new[] { ("bank", 1), ("bags", 1) });
+                    var many = Views.SkyWindow.AllocateSpares(3, new[] { ("bank", 2), ("bags", 1) });
+                    Check("housekeeping: spares are split across lanes, bags first, each lane at most its own copies",
+                        split.SequenceEqual(new[] { ("bags", 1), ("bank", 1) })
+                        && one.SequenceEqual(new[] { ("bags", 1) })
+                        && many.SequenceEqual(new[] { ("bags", 1), ("bank", 2) })
+                        && Views.SkyWindow.AllocateSpares(5, new[] { ("bank", 2), ("bags", 1) }).Sum(x => x.Spare) == 3);
 
                     // The audit (15 Sep): a fresh replay of a log file, the drift
                     // against the live ledger, and the realign that adopts it.

@@ -27,6 +27,10 @@ public sealed class LootTracker
     private readonly List<LootEntry> _entries = new(); // newest first
     private string _zone = "";
 
+    /// <summary>The zone the last "You have entered" line named — tier tail
+    /// included ("The Plane of Hate - Solo 4 (Refined)"); "" before any.</summary>
+    public string CurrentZone => _zone;
+
     /// <summary>All entries, newest first.</summary>
     public IReadOnlyList<LootEntry> Entries => _entries;
 
