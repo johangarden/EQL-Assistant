@@ -420,6 +420,25 @@ public partial class App : Application
             ring.UpdateLayout();
             ring.Close();
 
+            // The mote ticker's stint ends the moment you zone (16 Sep): a tier
+            // 4 stint must not keep showing in tier 3 before the first drop there.
+            {
+                var t0 = DateTime.Now;
+                var motes = new List<LootTracker.LootEntry>
+                {
+                    new(t0.AddMinutes(-2), "Mote of Major Potential", "a scorn banshee", "The Plane of Hate - Solo 4 (Refined)", LootTracker.LootKind.Kept),
+                    new(t0.AddMinutes(-9), "Mote of Potential", "a scorn banshee", "The Plane of Hate - Solo 4 (Refined)", LootTracker.LootKind.Kept),
+                    new(t0.AddMinutes(-40), "Mote of Potential", "a scorn banshee", "The Plane of Hate - Solo 4 (Refined)", LootTracker.LootKind.Kept),
+                };
+                var same = Views.MoteTickerWindow.LiveStint(motes, "The Plane of Hate - Solo 4 (Refined)", t0);
+                var moved = Views.MoteTickerWindow.LiveStint(motes, "The Plane of Hate - Solo 3 (Ascended)", t0);
+                var unknown = Views.MoteTickerWindow.LiveStint(motes, "", t0);
+                if (same is not { ByGrade: var bg } || bg.Sum() != 2 || same.Value.Zone != "The Plane of Hate - Solo 4 (Refined)")
+                    throw new Exception("mote ticker: the same-zone stint should chain the two recent motes and stop at the 31-minute gap");
+                if (moved is not null) throw new Exception("mote ticker: zoning to another tier must end the stint");
+                if (unknown is null) throw new Exception("mote ticker: an unknown current zone (fresh start) keeps the stint");
+            }
+
             // The mote ticker builds and stays hidden with no live stint.
             var ticker = new Views.MoteTickerWindow(new LootTracker(cs), cs, 1.0);
             ticker.Show();

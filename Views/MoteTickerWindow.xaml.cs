@@ -79,19 +79,27 @@ public partial class MoteTickerWindow : Window
     public void ResetPosition() => _placement.ResetToDefault();
 
     /// <summary>The live stint, read fresh off the ledger: the newest mote,
-    /// then older same-zone motes chained by ≤15-minute gaps.</summary>
-    private (string Zone, DateTime First, int[] ByGrade)? LiveStint(DateTime now)
+    /// then older same-zone motes chained by ≤15-minute gaps. Zoning ends it
+    /// at once — the stint's zone (tier tail included) must be the zone you
+    /// are IN (owner, 16 Sep: tier 4 kept showing after he moved to tier 3
+    /// and no mote had dropped there yet).</summary>
+    private (string Zone, DateTime First, int[] ByGrade)? LiveStint(DateTime now) =>
+        LiveStint(_loot.Entries, _loot.CurrentZone, now);
+
+    public static (string Zone, DateTime First, int[] ByGrade)? LiveStint(IReadOnlyList<LootTracker.LootEntry> entries, string currentZone, DateTime now)
     {
         string zone = "";
         DateTime first = default, prev = default;
         int[]? byGrade = null;
-        foreach (var e in _loot.Entries) // newest first
+        foreach (var e in entries) // newest first
         {
             int g = MoteFarm.GradeOf(e.Item);
             if (g < 0) continue;
             if (byGrade is null)
             {
                 if ((now - e.When).TotalMinutes > StintGapMin) return null; // stint over
+                if (currentZone.Length > 0 && !currentZone.Equals(e.Zone, StringComparison.OrdinalIgnoreCase))
+                    return null; // you zoned — the stint ended with the zone; the next mote starts the new one
                 zone = e.Zone;
                 byGrade = new int[MoteFarm.Grades.Length];
             }
