@@ -630,8 +630,9 @@ public partial class SkyWindow : Window
                 lines.Add(LedgerLine(s.Item, s.Surplus, copiesOf.GetValueOrDefault(s.Item), inv is not null));
                 lines.Add($"— snapshot from {(stamp.Length > 0 ? stamp : "?")}");
             }
-            string count = here >= s.Surplus ? $"×{here} spare" : $"×{here} spare here · {s.Surplus} in all";
-            return new HouseVm(key, s.Item, count, open, lines);
+            // Just the copies in THIS lane (owner, 17 Sep: "remove the '2 in all'");
+            // the fold-out's ledger line still carries the whole count.
+            return new HouseVm(key, s.Item, $"×{here} spare", open, lines);
         }
 
         foreach (var lane in HouseLaneOrder.Concat(byLane.Keys.Except(HouseLaneOrder, StringComparer.Ordinal).OrderBy(k => k)))
