@@ -91,8 +91,11 @@ the affected suites (with `-Wait`) before committing.
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,
   `SkyQuests`, `QuestLines` (embedded `data/quest-lines.json`: multi-step
   weapon quests tracked as proven-condition SETS — kills, loot, sealed
-  trades, said keywords; right-clicks are owner ticks; a later step implies
-  earlier ones; coins-only trades only count for a started line),
+  trades, said keywords; right-clicks are owner ticks. INTENT rule (17 Sep):
+  only anchoring steps (hand-ins, said keywords) or ticks start a line and
+  imply the steps before them; kill/loot steps vouch for nothing and are
+  marked only once the line is started (their evidence waits); coins-only
+  trades likewise. Old chains implied by a kill are withdrawn on load),
   `SpellLibrary` (embedded `data/spell-library.json`, 1438
   spells), `SpellDurations` (observed-duration learner), `TriggerColors`
   (type→color), `ConfigService` (all persistence), `AlertService` (TTS/wav),
