@@ -2669,8 +2669,8 @@ public partial class App : Application
                     Check("lines: replay is a no-op", fired == before && ql.DoneCount(torrid) == 3);
                     // Coins-only step: the trade itself is the proof.
                     ql.ProcessLine("[Fri Sep 04 20:00:00 2026] You complete the trade with Dason Goldblade.");
-                    Check("lines: a coins-only hand-in proves on the trade line and implies the kill before it",
-                        ql.IsDone(torrid, dason) && ql.IsDone(torrid, grimKill) && ql.MarkOf(torrid, grimKill)!.How == "implied");
+                    Check("lines: a coins-only hand-in proves on the trade line of a STARTED line, and vouches for nothing before it",
+                        ql.IsDone(torrid, dason) && !ql.IsDone(torrid, grimKill) && ql.NextStep(torrid) == grimKill);
                     // The keyword + the final hand-in.
                     ql.ProcessLine("[Sat Sep 05 21:00:00 2026] You say, 'I still seek guidance'");
                     Check("lines: the said keyword is a partial proof", !ql.IsDone(torrid, luxio) && ql.PartialOf(torrid, luxio).Contains("say"));
@@ -2697,6 +2697,38 @@ public partial class App : Application
                     // progress — a coin hand-in never proves a quest you haven't started.
                     Check("lines: a shared coins-only NPC can't prove an unstarted line", !ql.IsDone(fiery, fiery.Steps[4]));
                     try { File.Delete(qlPath); } catch { /* temp */ }
+
+                    // Kills and drops alone never start a line (17 Sep: Xicotl + the
+                    // hilt in Hate, Dark Reavers in Guk had two lines "in progress"
+                    // the owner never began). The evidence waits; a sealed hand-in
+                    // starts the line and the waiting step lights up — nothing implied.
+                    string qlPath2 = Path.Combine(Path.GetTempPath(), "eql_test_questlines2.json");
+                    try { File.Delete(qlPath2); } catch { /* fresh */ }
+                    var qi = new QuestLines(new ConfigService(), null, qlPath2);
+                    var zimel = qi.Quests.First(q => q.Key == "zimels-blades");
+                    var xicotl = zimel.Steps.First(s => s.Id == "xicotl");
+                    qi.ProcessLine("[Sun Sep 13 22:40:00 2026] You have slain Xicotl!");
+                    qi.ProcessLine("[Sun Sep 13 22:40:20 2026] --You have looted a Glowing Sword Hilt from Xicotl's corpse.--");
+                    qi.ProcessLine("[Sun Sep 13 23:00:00 2026] --You have looted a Dark Reaver +2 from a ghoul cavalier's corpse.--");
+                    Check("lines: a kill and a drop on an unstarted line mark nothing, the evidence waits",
+                        qi.DoneCount(zimel) == 0 && !qi.Started(zimel) && qi.PartialOf(zimel, xicotl).Contains("kill:xicotl")
+                        && qi.Quests.All(q => qi.DoneCount(q) == 0));
+                    for (int i = 0; i < 4; i++) qi.ProcessLine("[Mon Sep 14 20:00:00 2026] You offered 1 Drom's Champagne to Tykar Renlin.");
+                    qi.ProcessLine("[Mon Sep 14 20:00:05 2026] You complete the trade with Tykar Renlin.");
+                    Check("lines: the sealed hand-in starts the line and the hilt already in hand counts — steps between stay open",
+                        qi.Started(zimel) && qi.IsDone(zimel, zimel.Steps[0]) && qi.IsDone(zimel, xicotl) && qi.MarkOf(zimel, xicotl)!.How == "auto"
+                        && qi.DoneCount(zimel) == 2 && qi.NextStep(zimel) == zimel.Steps[1]);
+                    // Old progress is re-judged on load: the chain a Hate evening implied is withdrawn.
+                    string bad = Path.Combine(Path.GetTempPath(), "eql_test_questlines_bad.json");
+                    File.WriteAllText(bad, "{\"Steps\":{"
+                        + "\"zimels-blades/xicotl\":{\"When\":\"2026-09-13T22:40:00\",\"How\":\"auto\",\"Evidence\":\"You have slain Xicotl!\"},"
+                        + "\"zimels-blades/champagne\":{\"When\":\"2026-09-13T22:40:00\",\"How\":\"implied\",\"Evidence\":\"implied by step 8: Kill Xicotl for the Glowing Sword Hilt\"},"
+                        + "\"zimels-blades/prisoner\":{\"When\":\"2026-09-13T22:40:00\",\"How\":\"implied\",\"Evidence\":\"implied by step 8: Kill Xicotl for the Glowing Sword Hilt\"}}}");
+                    var qs = new QuestLines(new ConfigService(), null, bad);
+                    var zimelS = qs.Quests.First(q => q.Key == "zimels-blades");
+                    Check("lines: on load, marks a kill-and-drop step implied are withdrawn, and so is that step on a never-started line",
+                        qs.DoneCount(zimelS) == 0 && !qs.Started(zimelS));
+                    try { File.Delete(qlPath2); File.Delete(bad); } catch { /* temp */ }
                 }
 
                 // Destroyed copies leave the ledger (11 Sep); the snapshot caps it.
@@ -2879,6 +2911,31 @@ public partial class App : Application
                 helper.ShowCompleted = true;
                 Check("sky helper: ...and returns, marked done, when configured to",
                     helper.ItemsFor("Keeper of Souls").Any(i => i is { Class: "BRD", QuestDone: true }));
+
+                // The notable quest lines' droppers ride the same helper (17 Sep):
+                // Xicotl carries the Glowing Sword Hilt for Zimel's Blades; the drop
+                // and the destroy of a wanted item both shout, started line or not.
+                string qlHelperPath = Path.Combine(Path.GetTempPath(), "eql_test_ql_helper.json");
+                try { File.Delete(qlHelperPath); } catch { /* fresh */ }
+                var qlh = new QuestLines(new ConfigService(), null, qlHelperPath);
+                var helper2 = new SkyHelper(sq, qlh);
+                var sighted2 = new List<string>();
+                helper2.Sighted += m => sighted2.Add(m);
+                helper2.ProcessLine("[x] Xicotl hits YOU for 88 points of damage.");
+                Check("quest droppers: a quest line's kill-and-loot mob sights, and the card names the item, the line and the step",
+                    sighted2 is ["Xicotl"]
+                    && helper2.ItemsFor("Xicotl") is [{ Item: "Glowing Sword Hilt", Quest: "Zimel's Blades · step 8", Class: "any", Held: 0, Need: 1, QuestDone: false }]
+                    && helper2.ItemsFor("Lord Grimrot").Any(i => i.Item == "Burning Soul of the Pestilent" && i.Class == "PAL/SHD"));
+                var shouts = new List<string>();
+                qlh.ItemLooted += (q, s, item) => shouts.Add($"loot:{item}:{q.Key}:{q.Steps.IndexOf(s) + 1}");
+                qlh.ItemDestroyed += (q, s, item) => shouts.Add($"gone:{item}:{q.Key}");
+                qlh.ProcessLine("[Sun Sep 13 22:40:20 2026] --You have looted a Glowing Sword Hilt from Xicotl's corpse.--");
+                qlh.ProcessLine("[Sun Sep 13 22:50:00 2026] You successfully destroyed 1 Glowing Sword Hilt.");
+                qlh.ProcessLine("[Sun Sep 13 22:50:00 2026] You successfully destroyed 1 Glowing Sword Hilt.");
+                qlh.ProcessLine("[Sun Sep 13 22:51:00 2026] You successfully destroyed 3 Bone Chips.");
+                Check("quest droppers: the drop and the destroy of a wanted item shout once each, junk stays quiet",
+                    shouts.SequenceEqual(new[] { "loot:Glowing Sword Hilt:zimels-blades:8", "gone:Glowing Sword Hilt:zimels-blades" }));
+                try { File.Delete(qlHelperPath); } catch { /* temp */ }
 
                 // Tracking: ★ persists, completion un-tracks.
                 sq.SetCompleted(voice, false);

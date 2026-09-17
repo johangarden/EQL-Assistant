@@ -28,6 +28,7 @@ public partial class SkyHelperWindow : Window
 
     private readonly SkyHelper _helper;
     private readonly SkyQuests _sky;
+    private readonly QuestLines? _lines;
     private readonly PanelPlacement _placement;
     private readonly DispatcherTimer _tick;
     private nint _hwnd;
@@ -53,12 +54,14 @@ public partial class SkyHelperWindow : Window
     private static readonly Brush NeedFg = Freeze("#E8C15A");
     private static readonly Brush HaveFg = Freeze("#66BB6A");
 
-    public SkyHelperWindow(SkyHelper helper, SkyQuests sky, ConfigService configService, double opacity)
+    public SkyHelperWindow(SkyHelper helper, SkyQuests sky, ConfigService configService, double opacity, QuestLines? lines = null)
     {
         InitializeComponent();
         _helper = helper;
         _sky = sky;
-        Title = "EQL Assistant — Sky helper";
+        _lines = lines;
+        if (_lines is not null) _lines.Changed += OnSkyChanged;
+        Title = "EQL Assistant — Quest droppers";
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
         _placement = new PanelPlacement(this, configService, "skyhelper", Anchor.TopRight, 40, 320);
 
@@ -83,7 +86,7 @@ public partial class SkyHelperWindow : Window
             _hwnd = new WindowInteropHelper(this).Handle;
             ApplyClickThrough();
         };
-        Closed += (_, _) => { _tick.Stop(); _sky.Changed -= OnSkyChanged; };
+        Closed += (_, _) => { _tick.Stop(); _sky.Changed -= OnSkyChanged; if (_lines is not null) _lines.Changed -= OnSkyChanged; };
 
         BuildContextMenu();
         Refresh(); // Loaded re-runs it; this keeps a never-shown window honest (selftest too)
@@ -163,11 +166,29 @@ public partial class SkyHelperWindow : Window
     private void BuildHunting(List<LineVm> lines)
     {
         var tracked = _sky.TrackedQuests();
-        if (tracked.Count == 0) return;
+        var trackedLines = _lines?.Quests.Where(q => _lines.IsTracked(q) && !_lines.IsComplete(q)).ToList() ?? new List<QuestLines.Quest>();
+        if (tracked.Count == 0 && trackedLines.Count == 0) return;
 
+        int n = tracked.Count + trackedLines.Count;
         lines.Add(new LineVm(
-            $"HUNTING — {tracked.Count} QUEST{(tracked.Count == 1 ? "" : "S")} TRACKED",
+            $"HUNTING — {n} QUEST{(n == 1 ? "" : "S")} TRACKED",
             LabelFg, FontWeights.Bold, 9.5, new Thickness(2, lines.Count > 0 ? 8 : 0, 0, 1)));
+        // ★ quest lines: their open kill-and-loot steps, the mob and the zone.
+        foreach (var q in trackedLines)
+        {
+            lines.Add(new LineVm($"{q.Name}  ·  {(q.Classes.Count > 0 ? string.Join("/", q.Classes) : "any class")}", MobFg,
+                FontWeights.SemiBold, 12, new Thickness(2, 1, 0, 0)));
+            for (int i = 0; i < q.Steps.Count; i++)
+            {
+                var s = q.Steps[i];
+                if (s.Loot.Count == 0 || s.Kill.Count == 0) continue;
+                bool done = _lines!.IsDone(q, s);
+                lines.Add(new LineVm(
+                    $"{string.Join(", ", s.Loot)} — {string.Join(" / ", s.Kill)}{(s.Zone.Length > 0 ? $" · {s.Zone}" : "")} · step {i + 1}",
+                    done ? DimFg : HintFg, FontWeights.Normal, 11, new Thickness(10, 0, 0, 0),
+                    done ? TextDecorations.Strikethrough : null));
+            }
+        }
         foreach (var q in tracked)
         {
             lines.Add(new LineVm($"{q.Name}  ·  {SkyHelper.Abbr(q.Class)}", MobFg,

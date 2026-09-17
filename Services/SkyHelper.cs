@@ -20,6 +20,7 @@ namespace EQLOverlay.Services;
 public sealed class SkyHelper
 {
     private readonly SkyQuests _sky;
+    private readonly QuestLines? _lines;
 
     /// <summary>Admit items whose quest is already completed (config; default
     /// off — a done quest's drop is noise).</summary>
@@ -57,9 +58,13 @@ public sealed class SkyHelper
         "scowls at you|glowers at you|glares at you|regards you|looks upon you"
         + "|judges you|kindly considers you|regards you as an ally";
 
-    public SkyHelper(SkyQuests sky)
+    /// <param name="lines">The notable quest lines (17 Sep, owner: "extend the
+    /// Sky dropper to all NPCs that drop stuff for quests on the Quests page") —
+    /// every kill-and-loot step's mob becomes a dropper too.</param>
+    public SkyHelper(SkyQuests sky, QuestLines? lines = null)
     {
         _sky = sky;
+        _lines = lines;
         RebuildMobs();
     }
 
@@ -72,6 +77,8 @@ public sealed class SkyHelper
         var names = _sky.Quests
             .SelectMany(q => q.Items)
             .SelectMany(i => i.Mobs)
+            .Concat(_lines?.Quests.SelectMany(q => q.Steps).Where(s => s.Loot.Count > 0).SelectMany(s => s.Kill)
+                    ?? Enumerable.Empty<string>())
             .Where(m => m.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase);
         const RegexOptions opts = RegexOptions.Compiled | RegexOptions.CultureInvariant
@@ -138,6 +145,24 @@ public sealed class SkyHelper
                     _sky.AllocatedHeld(q, it), it.Count, done)); // one copy serves one quest
             }
         }
+        // The notable quest lines: a kill-and-loot step whose mob this is.
+        if (_lines is not null)
+            foreach (var q in _lines.Quests)
+            {
+                bool lineDone = _lines.IsComplete(q);
+                if (lineDone && !ShowCompleted) continue;
+                for (int i = 0; i < q.Steps.Count; i++)
+                {
+                    var s = q.Steps[i];
+                    if (s.Loot.Count == 0 || !s.Kill.Contains(mob, StringComparer.OrdinalIgnoreCase)) continue;
+                    bool stepDone = _lines.IsDone(q, s);
+                    if (stepDone && !ShowCompleted) continue;
+                    string cls = q.Classes.Count > 0 ? string.Join("/", q.Classes) : "any";
+                    foreach (var item in s.Loot)
+                        items.Add(new CardItem(item, $"{q.Name} · step {i + 1}", cls, s.Zone,
+                            Math.Min(1, _lines.LedgerHeld(item)), 1, lineDone || stepDone));
+                }
+            }
         // Still-needed first, then ready-to-hand-in, then completed-quest info.
         return items
             .OrderBy(i => i.QuestDone ? 2 : i.Held >= i.Need ? 1 : 0)

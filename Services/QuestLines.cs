@@ -140,6 +140,28 @@ public sealed class QuestLines
     /// <summary>A step just proved itself from the log (never on ticks or replays of known marks).</summary>
     public event Action<Quest, Step>? StepDone;
 
+    /// <summary>A quest line's loot item just dropped into your bags — whether
+    /// or not the line is started (owner, 17 Sep: he destroyed the Glowing
+    /// Sword Hilt with the junk; the app should have said what it was).</summary>
+    public event Action<Quest, Step, string>? ItemLooted;
+    /// <summary>You destroyed an item an unfinished step still wants.</summary>
+    public event Action<Quest, Step, string>? ItemDestroyed;
+
+    /// <summary>The first unfinished step wanting this item as loot or hand-in.</summary>
+    public (Quest Quest, Step Step, int Index)? StepWanting(string item)
+    {
+        string key = LootTracker.ItemKey(item);
+        foreach (var q in _quests)
+            for (int i = 0; i < q.Steps.Count; i++)
+            {
+                var s = q.Steps[i];
+                if (IsDone(q, s)) continue;
+                if (s.Loot.Any(l => LootTracker.ItemKey(l) == key) || s.Handin.Any(h => LootTracker.ItemKey(h.Name) == key))
+                    return (q, s, i);
+            }
+        return null;
+    }
+
     public QuestLines(ConfigService config, LootTracker? loot = null, string? progressPathOverride = null)
     {
         _loot = loot;
@@ -150,6 +172,7 @@ public sealed class QuestLines
                 foreach (var n in s.Handin)
                     _handinKeys.Add(LootTracker.ItemKey(n.Name));
         LoadProgress();
+        Sanitize();
     }
 
     // ---------------------------------------------------------------- data
@@ -257,6 +280,19 @@ public sealed class QuestLines
     public bool IsComplete(Quest q) => q.Steps.All(s => IsDone(q, s));
     public Step? NextStep(Quest q) => q.Steps.FirstOrDefault(s => !IsDone(q, s));
 
+    /// <summary>A step whose proof is an act of quest INTENT: a sealed hand-in
+    /// of quest items, or a said keyword. Kills and drops happen for a hundred
+    /// other reasons — Xicotl and the Glowing Sword Hilt are a Plane of Hate
+    /// evening, Dark Reavers drop all night in Guk — so they vouch for nothing
+    /// but themselves, and only once the line is started (owner, 17 Sep: two
+    /// lines "in progress" he had never begun).</summary>
+    public static bool Anchors(Step s) => s.Handin.Count > 0 || s.Say.Length > 0;
+
+    /// <summary>The line was begun on purpose: an owner tick anywhere, or the
+    /// log proving an anchoring step.</summary>
+    public bool Started(Quest q) => q.Steps.Any(s => _marks.TryGetValue(StepKey(q, s), out var m)
+        && (m.How == "you" || (m.How == "auto" && Anchors(s))));
+
     public bool IsTracked(Quest q) => _tracked.Contains(q.Key);
     public void SetTracked(Quest q, bool on)
     {
@@ -273,6 +309,7 @@ public sealed class QuestLines
         if (_marks.ContainsKey(key)) return;
         _marks[key] = new Mark(when ?? DateTime.Now, "you", s.Click.Length > 0 ? $"right-clicked {s.Click}" : "ticked");
         ImplyEarlier(q, s, when ?? DateTime.Now);
+        ReproveWaiting(q, when ?? DateTime.Now); // the tick started the line: drops already in hand now count
         SaveProgress();
         Changed?.Invoke();
     }
@@ -319,6 +356,7 @@ public sealed class QuestLines
                  && LootRx.Match(body) is { Success: true } lm)
         {
             string item = Regex.Replace(lm.Groups["item"].Value, @"^\d+ ", "");
+            if (StepWanting(item) is { } want) ItemLooted?.Invoke(want.Quest, want.Step, item);
             changed = Satisfy("loot:", LootTracker.ItemKey(item), body, when, MatchLoot);
         }
         else if (body.StartsWith("You say, '", StringComparison.Ordinal) && SayRx.Match(body) is { Success: true } saym)
@@ -339,6 +377,8 @@ public sealed class QuestLines
         else if (body.StartsWith("You successfully destroyed ", StringComparison.Ordinal) && DestroyRx.Match(body) is { Success: true } dm)
         {
             string key = LootTracker.ItemKey(dm.Groups["item"].Value);
+            bool fresh = !_destroySeen.Contains(rawLine);
+            if (fresh && StepWanting(dm.Groups["item"].Value) is { } gone) ItemDestroyed?.Invoke(gone.Quest, gone.Step, dm.Groups["item"].Value);
             if (_handinKeys.Contains(key) && _destroySeen.Add(rawLine))
             {
                 _destroyed[key] = _destroyed.GetValueOrDefault(key) + Math.Max(1, int.Parse(dm.Groups["n"].Value));
@@ -407,7 +447,7 @@ public sealed class QuestLines
                 // Coins-only: the trade itself is the proof — but coins leave
                 // no offer line, and both swords pay the same Dason Goldblade,
                 // so it only counts for a line you have already started.
-                if (s.Handin.Count == 0 && DoneCount(q) > 0 && set.Add("trade")) any = true;
+                if (s.Handin.Count == 0 && Started(q) && set.Add("trade")) any = true;
                 if (!any) continue;
                 AddEvidence(key, $"{evidence} · {when:d MMM HH:mm}");
                 changed = true;
@@ -439,9 +479,53 @@ public sealed class QuestLines
         }
         else if (s.Coins.Length > 0 && !set.Contains("trade")) return; // coins-only: the trade line itself
         if (s.Click.Length > 0 && !set.Contains("click")) return; // the tick flips it
+        // A kill or a drop alone never starts a line — the evidence waits in
+        // the partial set until an anchoring step (or a tick) begins it.
+        if (!Anchors(s) && !Started(q)) return;
         _marks[key] = new Mark(when, "auto", string.Join(" · ", _evidence.GetValueOrDefault(key) ?? new List<string>()));
-        ImplyEarlier(q, s, when);
+        if (Anchors(s)) ImplyEarlier(q, s, when); // only intent vouches for the chain before it
         StepDone?.Invoke(q, s);
+        if (Anchors(s)) ReproveWaiting(q, when);
+    }
+
+    /// <summary>The line just started: steps whose kills and drops were already
+    /// in the log get their marks now.</summary>
+    private void ReproveWaiting(Quest q, DateTime when)
+    {
+        foreach (var o in q.Steps.ToList())
+            if (!IsDone(q, o) && _partial.ContainsKey(StepKey(q, o)))
+                TryProve(q, o, when);
+    }
+
+    /// <summary>Progress written under the old rule (any proven step implied
+    /// the whole chain before it) is re-judged on load: implied marks that a
+    /// non-anchoring, un-ticked step made are withdrawn, then auto marks on
+    /// non-anchoring steps of lines never started. Logged, saved once.</summary>
+    private void Sanitize()
+    {
+        int removed = 0;
+        foreach (var q in _quests)
+        {
+            foreach (var s in q.Steps)
+            {
+                string key = StepKey(q, s);
+                if (_marks.GetValueOrDefault(key) is not { How: "implied" } m) continue;
+                var mm = Regex.Match(m.Evidence, @"implied by step (\d+)");
+                if (!mm.Success || !int.TryParse(mm.Groups[1].Value, out int n) || n < 1 || n > q.Steps.Count) continue;
+                var src = q.Steps[n - 1];
+                bool byTick = _marks.GetValueOrDefault(StepKey(q, src)) is { How: "you" };
+                if (!Anchors(src) && !byTick) { _marks.Remove(key); removed++; }
+            }
+            if (Started(q)) continue;
+            foreach (var s in q.Steps)
+            {
+                string key = StepKey(q, s);
+                if (_marks.GetValueOrDefault(key) is { How: "auto" } && !Anchors(s)) { _marks.Remove(key); removed++; }
+            }
+        }
+        if (removed == 0) return;
+        Log.Info($"[lines] {removed} step mark(s) withdrawn on load — kills and drops alone no longer start a line");
+        SaveProgress();
     }
 
     /// <summary>A proven step vouches for everything before it.</summary>

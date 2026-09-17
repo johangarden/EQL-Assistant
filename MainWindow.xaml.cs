@@ -136,7 +136,19 @@ public partial class MainWindow : Window
                 ? $"{q.Name} complete — {q.Reward}!"
                 : $"{q.Name} — step {done} of {q.Steps.Count} done", "#FFD54F");
         };
-        _skyHelper = new SkyHelper(_skyQuests); // never class-locked (owner ruling)
+        _skyHelper = new SkyHelper(_skyQuests, _questLines); // never class-locked (owner ruling); the lines' droppers too (17 Sep)
+        // A quest line's item dropping — or being destroyed — gets a shout,
+        // started line or not: the hilt must not leave with the junk again.
+        _questLines.ItemLooted += (q, s, item) =>
+        {
+            if (_suppressSct) return;
+            OnFlashRequested($"{item} — {q.Name}, step {q.Steps.IndexOf(s) + 1}. Keep it!", "#FFD54F");
+        };
+        _questLines.ItemDestroyed += (q, s, item) =>
+        {
+            if (_suppressSct) return;
+            OnFlashRequested($"Destroyed {item} — {q.Name} still needs it (step {q.Steps.IndexOf(s) + 1})", "#FF8A80");
+        };
         _skyQuests.QuestCompleted += q =>
         {
             if (!_suppressSct) // replay/reparse re-completions shouldn't flash-spam
@@ -1155,7 +1167,7 @@ public partial class MainWindow : Window
         if (_skyHelperWin is not null) { try { _skyHelperWin.Close(); } catch { /* ignore */ } _skyHelperWin = null; }
         if (!_config.Overlay.SkyHelperVisible) return;
         _skyHelper.ShowCompleted = _config.Overlay.SkyHelperShowCompleted;
-        _skyHelperWin = new SkyHelperWindow(_skyHelper, _skyQuests, _configService, _config.Overlay.Opacity)
+        _skyHelperWin = new SkyHelperWindow(_skyHelper, _skyQuests, _configService, _config.Overlay.Opacity, _questLines)
         {
             OpenSkyRequested = OpenSkyQuests,
             ShowCompletedChanged = on =>
@@ -1174,7 +1186,7 @@ public partial class MainWindow : Window
         _config.Overlay.SkyHelperVisible = !_config.Overlay.SkyHelperVisible;
         _configService.SaveSettings(_config);
         RebuildSkyHelperWindow();
-        _vm.Flash(_config.Overlay.SkyHelperVisible ? "Sky droppers on." : "Sky droppers off.");
+        _vm.Flash(_config.Overlay.SkyHelperVisible ? "Quest droppers on." : "Quest droppers off.");
     }
 
     private void RebuildSessionStatsWindow()
@@ -1942,7 +1954,7 @@ public partial class MainWindow : Window
         panels.Items.Add(BurgerPanelRow("Condition badges (stun/fear)", ToggleConditions, "Condition badges", () => _config.Overlay.ConditionsVisible));
         // "Sky droppers", NOT "Sky quest helper": the Quests WINDOW (toolbar !)
         // is a different thing, and the old name kept getting mistaken for it.
-        panels.Items.Add(BurgerPanelRow("Sky droppers", ToggleSkyHelper, "Sky droppers", () => _config.Overlay.SkyHelperVisible));
+        panels.Items.Add(BurgerPanelRow("Quest droppers", ToggleSkyHelper, "Quest droppers", () => _config.Overlay.SkyHelperVisible));
         panels.Items.Add(BurgerPanelRow("Session stats (XP/AA/motes)", ToggleSessionStats, null, () => _config.Overlay.SessionStatsVisible));
         panels.Items.Add(BurgerPanelRow("Spawn timer", ToggleTimer, "Spawn timer", () => !_timerHidden));
         panels.Items.Add(BurgerPanelRow("DPS meter", ToggleMeter, "DPS + Skills, Procs", () => !_meterHidden));

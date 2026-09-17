@@ -1263,7 +1263,7 @@ public partial class TriggerManagerWindow : Window
             ["Condition badges"] = ConditionsPage,
             ["Crowd control"] = CrowdControlPage,
             ["Incoming damage"] = IncomingPage,
-            ["Sky droppers"] = SkyHelperPage,
+            ["Quest droppers"] = SkyHelperPage,
             ["Cursor ring"] = CursorRingPage,
             ["General"] = GeneralPage,
             ["Log source"] = LogSourcePage,
