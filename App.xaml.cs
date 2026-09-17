@@ -2912,6 +2912,31 @@ public partial class App : Application
                 Check("sky helper: ...and returns, marked done, when configured to",
                     helper.ItemsFor("Keeper of Souls").Any(i => i is { Class: "BRD", QuestDone: true }));
 
+                // The notable quest lines' droppers ride the same helper (17 Sep):
+                // Xicotl carries the Glowing Sword Hilt for Zimel's Blades; the drop
+                // and the destroy of a wanted item both shout, started line or not.
+                string qlHelperPath = Path.Combine(Path.GetTempPath(), "eql_test_ql_helper.json");
+                try { File.Delete(qlHelperPath); } catch { /* fresh */ }
+                var qlh = new QuestLines(new ConfigService(), null, qlHelperPath);
+                var helper2 = new SkyHelper(sq, qlh);
+                var sighted2 = new List<string>();
+                helper2.Sighted += m => sighted2.Add(m);
+                helper2.ProcessLine("[x] Xicotl hits YOU for 88 points of damage.");
+                Check("quest droppers: a quest line's kill-and-loot mob sights, and the card names the item, the line and the step",
+                    sighted2 is ["Xicotl"]
+                    && helper2.ItemsFor("Xicotl") is [{ Item: "Glowing Sword Hilt", Quest: "Zimel's Blades · step 8", Class: "any", Held: 0, Need: 1, QuestDone: false }]
+                    && helper2.ItemsFor("Lord Grimrot").Any(i => i.Item == "Burning Soul of the Pestilent" && i.Class == "PAL/SHD"));
+                var shouts = new List<string>();
+                qlh.ItemLooted += (q, s, item) => shouts.Add($"loot:{item}:{q.Key}:{q.Steps.IndexOf(s) + 1}");
+                qlh.ItemDestroyed += (q, s, item) => shouts.Add($"gone:{item}:{q.Key}");
+                qlh.ProcessLine("[Sun Sep 13 22:40:20 2026] --You have looted a Glowing Sword Hilt from Xicotl's corpse.--");
+                qlh.ProcessLine("[Sun Sep 13 22:50:00 2026] You successfully destroyed 1 Glowing Sword Hilt.");
+                qlh.ProcessLine("[Sun Sep 13 22:50:00 2026] You successfully destroyed 1 Glowing Sword Hilt.");
+                qlh.ProcessLine("[Sun Sep 13 22:51:00 2026] You successfully destroyed 3 Bone Chips.");
+                Check("quest droppers: the drop and the destroy of a wanted item shout once each, junk stays quiet",
+                    shouts.SequenceEqual(new[] { "loot:Glowing Sword Hilt:zimels-blades:8", "gone:Glowing Sword Hilt:zimels-blades" }));
+                try { File.Delete(qlHelperPath); } catch { /* temp */ }
+
                 // Tracking: ★ persists, completion un-tracks.
                 sq.SetCompleted(voice, false);
                 sq.SetTracked(voice, true);

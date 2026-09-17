@@ -17,13 +17,13 @@
             <!-- Drag handle + title, shown only when unlocked. -->
             <Border x:Name="Header" Background="#E01B2130" CornerRadius="5" Padding="8,3" Margin="0,0,0,4"
                     Visibility="Collapsed" MouseLeftButtonDown="Header_DragMove">
-                <TextBlock Text="Sky droppers — con/hit a dropper, or ★ quests to hunt"
+                <TextBlock Text="Quest droppers — con/hit a dropper, or ★ quests to hunt"
                            Foreground="#9FB4D0" FontWeight="Bold" FontSize="11"/>
             </Border>
 
             <TextBlock x:Name="Placeholder" Foreground="#7F93AD" FontSize="11" Margin="2,2,2,4"
                        Visibility="Collapsed" MaxWidth="300" TextWrapping="Wrap"
-                       Text="Con or hit a Plane of Sky quest dropper and its quest items appear here. ★ quests in the Sky window to keep their hunt list standing."/>
+                       Text="Con or hit a mob that drops for a Plane of Sky quest or a notable quest line and its items appear here. ★ quests to keep their hunt list standing."/>
 
             <ItemsControl x:Name="LinesControl">
                 <ItemsControl.ItemTemplate>

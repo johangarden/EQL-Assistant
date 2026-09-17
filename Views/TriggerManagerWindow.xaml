@@ -121,7 +121,7 @@
                     <ListBoxItem Content="Condition badges"/>
                     <ListBoxItem Content="Crowd control"/>
                     <ListBoxItem Content="Incoming damage"/>
-                    <ListBoxItem Content="Sky droppers"/>
+                    <ListBoxItem Content="Quest droppers"/>
                     <ListBoxItem Content="APP SETTINGS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
                     <ListBoxItem Content="Log source"/>
@@ -1144,7 +1144,7 @@
                     <ScrollViewer x:Name="SkyHelperPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Sky droppers" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="Quest droppers" Style="{StaticResource PageTitle}"/>
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"

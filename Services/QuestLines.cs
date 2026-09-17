@@ -140,6 +140,28 @@ public sealed class QuestLines
     /// <summary>A step just proved itself from the log (never on ticks or replays of known marks).</summary>
     public event Action<Quest, Step>? StepDone;
 
+    /// <summary>A quest line's loot item just dropped into your bags — whether
+    /// or not the line is started (owner, 17 Sep: he destroyed the Glowing
+    /// Sword Hilt with the junk; the app should have said what it was).</summary>
+    public event Action<Quest, Step, string>? ItemLooted;
+    /// <summary>You destroyed an item an unfinished step still wants.</summary>
+    public event Action<Quest, Step, string>? ItemDestroyed;
+
+    /// <summary>The first unfinished step wanting this item as loot or hand-in.</summary>
+    public (Quest Quest, Step Step, int Index)? StepWanting(string item)
+    {
+        string key = LootTracker.ItemKey(item);
+        foreach (var q in _quests)
+            for (int i = 0; i < q.Steps.Count; i++)
+            {
+                var s = q.Steps[i];
+                if (IsDone(q, s)) continue;
+                if (s.Loot.Any(l => LootTracker.ItemKey(l) == key) || s.Handin.Any(h => LootTracker.ItemKey(h.Name) == key))
+                    return (q, s, i);
+            }
+        return null;
+    }
+
     public QuestLines(ConfigService config, LootTracker? loot = null, string? progressPathOverride = null)
     {
         _loot = loot;
@@ -334,6 +356,7 @@ public sealed class QuestLines
                  && LootRx.Match(body) is { Success: true } lm)
         {
             string item = Regex.Replace(lm.Groups["item"].Value, @"^\d+ ", "");
+            if (StepWanting(item) is { } want) ItemLooted?.Invoke(want.Quest, want.Step, item);
             changed = Satisfy("loot:", LootTracker.ItemKey(item), body, when, MatchLoot);
         }
         else if (body.StartsWith("You say, '", StringComparison.Ordinal) && SayRx.Match(body) is { Success: true } saym)
@@ -354,6 +377,8 @@ public sealed class QuestLines
         else if (body.StartsWith("You successfully destroyed ", StringComparison.Ordinal) && DestroyRx.Match(body) is { Success: true } dm)
         {
             string key = LootTracker.ItemKey(dm.Groups["item"].Value);
+            bool fresh = !_destroySeen.Contains(rawLine);
+            if (fresh && StepWanting(dm.Groups["item"].Value) is { } gone) ItemDestroyed?.Invoke(gone.Quest, gone.Step, dm.Groups["item"].Value);
             if (_handinKeys.Contains(key) && _destroySeen.Add(rawLine))
             {
                 _destroyed[key] = _destroyed.GetValueOrDefault(key) + Math.Max(1, int.Parse(dm.Groups["n"].Value));
