@@ -241,12 +241,20 @@ public partial class App : Application
             Directory.CreateDirectory(invDir);
             File.WriteAllText(Path.Combine(invDir, "Testchar_paineel-Inventory.txt"),
                 "Location\tName\tID\tCount\tSlots\r\nHead\tValorium Helmet +1\t4851\t1\t10\r\n");
-            var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
+            string hbPath = Path.Combine(Path.GetTempPath(), "eql_selftest_char_charms.json");
+            try { File.Delete(hbPath); } catch { /* fresh */ }
+            var hb = new CharmBook(null, hbPath);
+            hb.Add(new CharmBook.Episode("a greater ice bones", "Beguile Undead", "Permafrost Caverns", DateTime.Now.AddMinutes(-10), DateTime.Now.AddMinutes(-4), "broke", 1240, 9, 212, 2, 44, "Beguile Undead", 380, 47));
+            hb.AddAttempt(new CharmBook.Attempt("a greater ice bones", "Beguile Undead", "resisted", DateTime.Now.AddMinutes(-12), "Permafrost Caverns"));
+            var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel", null, hb);
             invWin.Show();
             invWin.ShowFocusTab(); // instantiate the audit-board template
             invWin.ShowTab("bis");  // and the best-in-slot board
+            invWin.ShowTab("charms"); // and the charm ledger (21 Sep)
             invWin.UpdateLayout();
+            if (invWin.CharmRowsForTest != 1) throw new Exception("character: the Charmed pets tab should list the one charmed mob");
             invWin.Close();
+            try { File.Delete(hbPath); } catch { /* temp */ }
 
             // The Loot window hosts the browser tabs of the same panel: the
             // ledger list, exaltations and the armor-set board (owns a
@@ -330,6 +338,31 @@ public partial class App : Application
                 if (win.LastKind != "switch") throw new Exception("incoming panel: spell-heavy in defensive should read switch, got " + win.LastKind);
                 if (win.LastChip != "DEFENSIVE ▸ MAGE HUNTER") throw new Exception("incoming panel: the pill should name the stance to switch to, got " + win.LastChip);
                 win.Close();
+            }
+
+            // The same chart as the DPS meter's cap (21 Sep): collapsed until
+            // hosted, folded to its header while quiet, unfolds and reads the
+            // verdict on the first hits, and comes off again.
+            {
+                var iwv = new IncomingWatch();
+                var mp2 = new CombatParser { SelfName = "Thorrak" };
+                var meter = new Views.MeterWindow(new ConfigService(), mp2, new LootTracker(new ConfigService()), 1.0,
+                    Array.Empty<string>(), false, false, soloMode: true) { Left = -9000, Top = -9000 };
+                meter.Show();
+                if (meter.IncomingCapShown) throw new Exception("meter cap: shown before the chart was hosted");
+                meter.SetIncoming(iwv, () => "defensive", 15, foldQuiet: true);
+                if (!meter.IncomingCapShown) throw new Exception("meter cap: hosting should show the cap");
+                if (meter.IncomingCapBodyShown) throw new Exception("meter cap: quiet should fold to the header");
+                if (meter.IncomingCapKind != "") throw new Exception("meter cap: quiet state should carry no verdict");
+                iwv.Add(DateTime.Now.AddSeconds(-2), 400, spell: true);
+                iwv.Add(DateTime.Now.AddSeconds(-1), 100, spell: false);
+                meter.SetIncoming(iwv, () => "defensive", 15, foldQuiet: true);
+                if (!meter.IncomingCapBodyShown) throw new Exception("meter cap: hits should unfold the chart");
+                if (meter.IncomingCapKind != "switch") throw new Exception("meter cap: spell-heavy in defensive should read switch, got " + meter.IncomingCapKind);
+                if (meter.IncomingCapChip != "DEFENSIVE ▸ MAGE HUNTER") throw new Exception("meter cap: the pill should name the stance, got " + meter.IncomingCapChip);
+                meter.SetIncoming(null, () => "defensive", 15, foldQuiet: true);
+                if (meter.IncomingCapShown) throw new Exception("meter cap: un-hosting should collapse the cap");
+                meter.Close();
             }
 
             // The crowd-control panels render the demo state.
@@ -716,6 +749,23 @@ public partial class App : Application
             Check("classes: a /who inside the suspicion window is not wiped by it",
                 wc.CurrentClasses == "SHD/BER" && wc.CurrentLevel == 30);
             Check("classes: the /who nag fired once per convicted swap", swaps == 2);
+            // A spell upgrade rewrites the spellbook too (21 Sep): the merge line
+            // explains the refresh that follows; an item merge does not.
+            wc.Replay($"[{FT(1100)}] You have successfully merged two items together to create a new item: Drain Spirit V");
+            wc.Replay($"[{FT(1102)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(1103)}] You have successfully merged two items together to create a new item: Drain Spirit VI");
+            wc.Replay($"[{FT(1104)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(1112)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: spell upgrades never read as a swap — the combo stays",
+                wc.CurrentClasses == "SHD/BER" && wc.CurrentLevel == 30 && swaps == 2);
+            wc.Replay($"[{FT(1200)}] You have finished scribing Lich.");
+            wc.Replay($"[{FT(1201)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(1210)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: a fresh scribe explains its refresh too", wc.CurrentClasses == "SHD/BER" && swaps == 2);
+            wc.Replay($"[{FT(1300)}] You have successfully merged two items together to create a new item: Efreeti War Maul +2");
+            wc.Replay($"[{FT(1301)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(1310)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: an ITEM merge explains nothing — a refresh after it is still a swap", wc.CurrentClasses == "" && swaps == 3);
 
             // ---- instance tiers ride the zone name (Johan, 1 Sep 2026):
             // "Nagafen's Lair - Solo 4 (Refined)" = tier 4; no suffix = base.
@@ -3169,6 +3219,8 @@ public partial class App : Application
 
         // Charm, on the lines the log actually printed.
         var cc = new CrowdControl(null, null) { IsSelf = n => n == "Thorrak" };
+        var episodes = new List<CharmBook.Episode>();
+        cc.CharmEnded += episodes.Add;
         Check("cc: the hand-added necro charms exist, Beguile Undead with its observed landing",
             cc.Find("Beguile Undead") is { Kind: CrowdControl.Kind.Charm, LandingSuffix: "moans." }
             && cc.Find("Dominate Undead") is { Kind: CrowdControl.Kind.Charm, LandingSuffix: "" } && cc.Find("Boil Blood") is null);
@@ -3187,8 +3239,11 @@ public partial class App : Application
         cc.ProcessLine(L(26, "Your Beguile Undead spell has worn off of a greater ice bones."));
         cc.ProcessLine(L(26, "Your Beguile Undead spell has worn off of a greater ice bones."));
         Check("cc: the wear-off line breaks the charm once, naming the pet", broke == 1 && brokePet == "a greater ice bones");
+        Check("cc: the episode went to the ledger — pet, spell, six seconds held, broke, 40 damage in 1 hit, 1 kill",
+            episodes is [{ Mob: "a greater ice bones", Spell: "Beguile Undead", How: "broke", PetDamage: 40, PetHits: 1, MaxHit: 40, PetKills: 1 }]
+            && Math.Abs(episodes[0].HeldSec - 6) < 0.01);
         var s1 = cc.Take(c0.AddSeconds(30));
-        Check("cc: the card reads broke with the time it held", s1.Charm is { Broke: true, Held: 10, SinceBreak: 4 } && s1.Attempt is null);
+        Check("cc: the card reads broke with the time it held — frozen at the break, not still counting", s1.Charm is { Broke: true, Held: 6, SinceBreak: 4 } && s1.Attempt is null);
         cc.ProcessLine(L(45, "You begin casting Beguile Undead."));
         cc.ProcessLine(L(50, "Your Beguile Undead spell is interrupted."));
         Check("cc: a failed recast waits behind the red card", cc.Take(c0.AddSeconds(51)).Charm is { Broke: true });
@@ -3203,6 +3258,54 @@ public partial class App : Application
         cc.ProcessLine(L(155, "a greater ice bones moans."));
         cc.ProcessLine(L(160, "You have entered Permafrost Caverns."));
         Check("cc: zoning clears the card", cc.Charm is null && !cc.Take(c0.AddSeconds(161)).Any);
+        Check("cc: zoning closes the episode as 'zoned', five seconds held, and the break earlier was recorded once",
+            episodes.Count == 2 && episodes[1] is { How: "zoned", PetHits: 0 } && Math.Abs(episodes[1].HeldSec - 5) < 0.01);
+
+        // The charm ledger (21 Sep): per-mob averages, the card's countdown.
+        string bookPath = Path.Combine(Path.GetTempPath(), "eql_selftest_charms.json");
+        try { File.Delete(bookPath); } catch { /* fresh */ }
+        var book = new CharmBook(null, bookPath);
+        foreach (var ep in episodes) book.Add(ep);
+        book.Add(episodes[0]); // replay dedupe
+        book.Add(new CharmBook.Episode("a skeleton", "Dominate Undead", "Befallen", c0, c0.AddSeconds(120), "died", 2400, 20, 300, 3));
+        var stats = book.Stats("a greater ice bones");
+        Check("ledger: per mob — two charms, avg 5.5 s, longest 6 s, one broke, 40/hit, kills carry, replay dedupes",
+            stats is { Charms: 2, Breaks: 1, Deaths: 0, Kills: 1, DamagePerHit: 40, MaxHit: 40 } && Math.Abs(stats.AvgHeldSec - 5.5) < 0.01 && stats.LongestSec == 6
+            && book.ByMob()[0].Mob == "a greater ice bones" && book.ByMob("Dominate") is [{ Mob: "a skeleton", Dps: 20, Deaths: 1 }]);
+        book.AddAttempt(new CharmBook.Attempt("a skeleton", "Dominate Undead", "resisted", c0.AddSeconds(-30), "Befallen"));
+        book.AddAttempt(new CharmBook.Attempt("a skeleton", "Dominate Undead", "resisted", c0.AddSeconds(-30), "Befallen")); // replay
+        book.AddAttempt(new CharmBook.Attempt("", "Dominate Undead", "interrupted", c0.AddSeconds(-20), "Befallen")); // no mob — nothing to learn
+        var book2 = new CharmBook(null, bookPath);
+        Check("ledger: episodes and attempts survive a restart; a resist counts once per mob, a nameless interrupt not at all",
+            book2.Episodes.Count == 3 && book2.Stats("a skeleton") is { Zone: "Befallen", Resisted: 1 } && book2.Attempts.Count == 1
+            && book2.Stats("a greater ice bones")!.Resisted == 0);
+        // The five fields (21 Sep): mob level from /con, the cast's rank, damage the pet took, your level, resists.
+        var cf5 = new CrowdControl(null, null) { IsSelf = n => n == "Thorrak", LevelLookup = m => m == "a greater ice bones" ? 44 : 0, OwnLevel = () => 47 };
+        var eps5 = new List<CharmBook.Episode>(); var att5 = new List<CharmBook.Attempt>();
+        cf5.CharmEnded += eps5.Add; cf5.CharmAttemptFailed += att5.Add;
+        cf5.ProcessLine(L(0, "You have entered Permafrost Caverns."));
+        cf5.ProcessLine(L(10, "You begin casting Beguile Undead."));
+        cf5.ProcessLine(L(14, "a greater ice bones resisted your Beguile Undead!"));
+        cf5.ProcessLine(L(20, "You begin casting Beguile Undead."));
+        cf5.ProcessLine(L(25, "a greater ice bones moans."));
+        cf5.NoteDamage("A greater ice bones", "an ice bones", 40, c0.AddSeconds(26));
+        cf5.NoteDamage("an ice bones", "a greater ice bones", 15, c0.AddSeconds(27));
+        cf5.NoteDamage("A greater ice bones", "a greater ice bones", 9, c0.AddSeconds(28)); // same-name twin: the pet's hit
+        cf5.ProcessLine(L(40, "Your Beguile Undead spell has worn off of a greater ice bones."));
+        Check("cc: the episode carries the /con level, the cast as printed, what the pet took and your level; the resist is an attempt",
+            eps5 is [{ MobLevel: 44, Rank: "Beguile Undead", PetTaken: 15, YourLevel: 47, Zone: "Permafrost Caverns", PetHits: 2, PetDamage: 49 }]
+            && att5 is [{ Mob: "a greater ice bones", How: "resisted", Zone: "Permafrost Caverns" }]);
+        try { File.Delete(bookPath); } catch { /* temp */ }
+        var holding = new CrowdControl.CharmView("a wan ghoul knight", "Beguile", 506, 960, false, false, 0, 9473, 4, 3, 41, 612);
+        var past = holding with { Held = 1000 };
+        var noCeil = holding with { Ceiling = 0 };
+        Check("card: a known ceiling counts down and depletes; past it reads +m:ss grey; none counts up",
+            Views.CharmWindow.ClockFor(holding, false) is { Clock: "7:34", Overrun: false } h && Math.Abs(h.Fill - 454.0 / 960) < 0.001
+            && Views.CharmWindow.ClockFor(past, false) is { Clock: "+0:40", Overrun: true, Fill: 1 }
+            && Views.CharmWindow.ClockFor(noCeil, false) is { Clock: "8:26↑", Overrun: false }
+            && Views.CharmWindow.ClockFor(holding, true).Spell.EndsWith("· learned")
+            && Views.CharmWindow.PaceLine(holding) == "19 DPS · 231/hit · max 612 · 41 hits"
+            && Views.CharmWindow.HistoryLine(stats).StartsWith("before: 2× · avg 0:05 · best 0:06"));
 
         // An unknown landing: assumed on the cast, named by the wear-off, learned from the emote.
         string learnPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_landings.json");
@@ -3316,6 +3419,29 @@ public partial class App : Application
         la.ProcessLine(L(323, "a will sapper has been mesmerized."));
         Check("cc: the next landing on a loose name is the add's own row, never a refresh, and the flag clears",
             la.MezRows.Count(r => r.Mob == "a will sapper") == 2 && la.LooseNames.Count == 0);
+
+        // One break, one row (owner, 21 Sep): three twins held, the group beats
+        // on the one that broke — the other two stay mezzed.
+        var tw = new CrowdControl(lib, null) { IsSelf = n => n == "Thorrak" };
+        tw.ProcessLine(L(400, "You begin casting Mesmerization."));
+        tw.ProcessLine(L(403, "an ice bones has been mesmerized."));
+        tw.ProcessLine(L(403, "an ice bones has been mesmerized."));
+        tw.ProcessLine(L(404, "an ice bones has been mesmerized."));
+        int breaks = 0; tw.MezBroke += (_, _) => breaks++;
+        tw.NoteDamage("Garn", "an ice bones", 58, c0.AddSeconds(406));
+        tw.NoteDamage("Thorrak", "an ice bones", 120, c0.AddSeconds(407));
+        tw.NoteDamage("Garn", "an ice bones", 61, c0.AddSeconds(408));
+        var tws = tw.Take(c0.AddSeconds(409));
+        Check("cc: hits on a name with a broken twin land on the broken one — one break, two still held",
+            breaks == 1 && tws.Broken == 1 && tws.Held == 2 && tws.Loose.SequenceEqual(new[] { "an ice bones" }));
+        tw.ProcessLine(L(410, "You begin casting Mesmerization."));
+        tw.ProcessLine(L(413, "an ice bones has been mesmerized."));
+        Check("cc: the re-mez takes the broken row back, no fourth twin, the name is no longer loose",
+            tw.MezRows.Count == 3 && tw.MezRows.All(r => r.BrokeAt is null) && tw.LooseNames.Count == 0);
+        tw.NoteDamage("Garn", "an ice bones", 58, c0.AddSeconds(420));
+        tw.ProcessLine(L(425, "An ice bones has been slain by Garn!"));
+        Check("cc: the broken one dying clears the loose name and leaves the held twins",
+            tw.MezRows.Count(r => r.BrokeAt is null) == 2 && tw.LooseNames.Count == 0);
 
         // The learned clock persists with the landings.
         string ccPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_durations.json");
@@ -3671,6 +3797,23 @@ public partial class App : Application
                 RaidKills.ParseDifficulty("Befallen 1 (Awakened)") == 1
                 && RaidKills.ParseDifficulty("Blackburrow 1 (Awakened)") == 1
                 && RaidKills.ParseDifficulty("Clan Crushbone 4 (Refined)") == 4);
+
+            // A charmed mob is the meter's pet while the charm holds (21 Sep).
+            {
+                var cpp = new CombatParser { SelfName = "Thorrak", PetName = "Garn" };
+                var cpSct = new List<CombatParser.SctHit>();
+                cpp.SctEvent += cpSct.Add;
+                cpp.CharmedPet = "a wan ghoul knight";
+                cpp.ProcessLine("[Mon Sep 21 20:00:00 2026] A wan ghoul knight slashes a scorn banshee for 210 points of damage.");
+                cpp.ProcessLine("[Mon Sep 21 20:00:01 2026] A scorn banshee hits a wan ghoul knight for 90 points of damage.");
+                Check("charmed pet: the meter follows the charmed mob, its hits are pet damage, hits on it are pet incoming",
+                    cpp.ActivePet == "a wan ghoul knight" && cpp.IsPet("A wan ghoul knight")
+                    && cpSct.Any(h => h is { Kind: CombatParser.SctKind.OutgoingPet, Amount: 210 })
+                    && cpSct.Any(h => h is { Kind: CombatParser.SctKind.IncomingPet, Amount: 90 })
+                    && cpp.GetAbilityRows("a wan ghoul knight").Any(r => r.Total == 210));
+                cpp.CharmedPet = "";
+                Check("charmed pet: the charm gone, the summoned pet is the pet again", cpp.ActivePet == "Garn" && !cpp.IsPet("a wan ghoul knight"));
+            }
 
             // Raid-kill death-line parsing (level suffixes stripped).
             Check("raid kill: slain-by line",
@@ -4485,6 +4628,41 @@ public partial class App : Application
             recap.Show();
             mgr = recap;
         }
+        else if (page.Equals("meter:incoming", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("meter:incoming:quiet", StringComparison.OrdinalIgnoreCase))
+        {
+            // The DPS meter with the incoming chart docked as its cap: a
+            // spell-heavy window mid-fight, or folded to the header while quiet.
+            var mp = new CombatParser { SelfName = "Thorrak", PetName = "Garn" };
+            for (int i = 0; i < 6; i++)
+            {
+                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2:00} 2026] Thorrak slashes a thunder spirit princess for {280 + i * 15} points of damage.");
+                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] Garn bites a thunder spirit princess for {90 + i * 5} points of damage.");
+                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] Thorrak hit a thunder spirit princess for {160 + i * 10} points of disease damage by Spear of Disease.");
+                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] a thunder spirit princess hit YOU for {300 + i * 20} points of cold damage by Frost Spear.");
+            }
+            var iw = new IncomingWatch();
+            if (!page.EndsWith(":quiet", StringComparison.OrdinalIgnoreCase))
+            {
+                var now = DateTime.Now;
+                double[] m = { 80, 300, 500, 0, 0, 60, 0, 40, 180, 0, 0, 0, 0, 0, 100 };
+                double[] sp = { 100, 0, 0, 400, 0, 0, 420, 0, 0, 80, 0, 0, 550, 550, 0 };
+                for (int i = 0; i < 15; i++)
+                {
+                    if (m[i] > 0) iw.Add(now.AddSeconds(-(14 - i)), m[i], spell: false);
+                    if (sp[i] > 0) iw.Add(now.AddSeconds(-(14 - i)), sp[i], spell: true);
+                }
+            }
+            var meter = new Views.MeterWindow(new ConfigService(), mp, new LootTracker(new ConfigService()), 1.0,
+                Array.Empty<string>(), false, false, soloMode: true)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            meter.Show();
+            meter.SetIncoming(iw, () => "defensive", 15, foldQuiet: true);
+            mgr = meter;
+        }
         else if (page.Equals("incoming", StringComparison.OrdinalIgnoreCase))
         {
             // A synthetic spell-heavy window in a defensive stance.
@@ -4525,6 +4703,34 @@ public partial class App : Application
             else if (win is Views.MezWindow mw) { mw.SetLocked(true); mw.Show(); mw.Refresh(); }
             mgr = win;
         }
+        else if (page.Equals("sct", StringComparison.OrdinalIgnoreCase))
+        {
+            // One combat-text lane, unlocked, with a crit, a spell and a proc frozen mid-flight.
+            var lane = new Views.SctLaneWindow(new ConfigService(), "sctRender", "Outgoing",
+                new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x4F)), new SolidColorBrush(Color.FromRgb(0x9F, 0xA8, 0xDA)), new SolidColorBrush(Color.FromRgb(0x80, 0xCB, 0xC4)),
+                1.0, 22, 500, 260, 220, -10000, -10000)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            lane.Show();
+            lane.SetLocked(false);
+            lane.FreezeForRender();
+            mgr = lane;
+        }
+        else if (page.Equals("levelup", StringComparison.OrdinalIgnoreCase))
+        {
+            // The level-up card for a three-class combo at 44 (dividers between classes).
+            var lib = new SpellLibrary(new ConfigService());
+            var classes = new[] { "SHD", "SHM", "ENC" };
+            var win = new Views.LevelUpWindow
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            win.Show(44, classes, lib.UnlocksAt(44, classes));
+            mgr = win;
+        }
         else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase))
         {
             var csq = new ConfigService();
@@ -4539,7 +4745,18 @@ public partial class App : Application
         }
         else if (page.StartsWith("character:", StringComparison.OrdinalIgnoreCase))
         {
-            var inv = new Views.InventoryWindow(Path.Combine(Path.GetTempPath(), "eql_selftest_inv"), "Testchar", "paineel")
+            // "character:charms" shows the ledger on demo rows.
+            CharmBook? demoBook = null;
+            if (page.Equals("character:charms", StringComparison.OrdinalIgnoreCase))
+            {
+                demoBook = new CharmBook(null, null);
+                var t = DateTime.Now;
+                demoBook.Add(new CharmBook.Episode("a wan ghoul knight", "Beguile", "The Plane of Hate", t.AddMinutes(-52), t.AddMinutes(-36), "broke", 9473, 41, 612, 4, 48, "Beguile", 3400, 50));
+                demoBook.Add(new CharmBook.Episode("a wan ghoul knight", "Beguile", "The Plane of Hate", t.AddMinutes(-30), t.AddMinutes(-24), "died", 2210, 12, 380, 1, 48, "Beguile", 5100, 50));
+                demoBook.Add(new CharmBook.Episode("a greater ice bones", "Beguile Undead", "Permafrost Caverns", t.AddDays(-3), t.AddDays(-3).AddSeconds(6), "broke", 40, 1, 40, 1, 44, "Beguile Undead", 0, 47));
+                demoBook.AddAttempt(new CharmBook.Attempt("a greater ice bones", "Beguile Undead", "resisted", t.AddDays(-3).AddMinutes(-1), "Permafrost Caverns"));
+            }
+            var inv = new Views.InventoryWindow(Path.Combine(Path.GetTempPath(), "eql_selftest_inv"), "Testchar", "paineel", null, demoBook)
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
@@ -4820,6 +5037,14 @@ public partial class App : Application
             tw4.SetZone("Befallen 3 (Fused)");
             Check("zoning back promotes the intact clock to the pie",
                 tw4.BigState is { Mode: "Kurven", Remaining: > 150 and <= 200 });
+            // Tiers are the same zone (21 Sep): a Befallen 3 mob shows in Befallen
+            // and in Befallen 1 (Awakened) alike, and keeps the pie across tiers.
+            tw4.SetZone("Befallen");
+            Check("zones compare tier-blind: the clock stays on the pie in another tier of the same zone",
+                tw4.BigState.Mode == "Kurven" && !tw4.HiddenNames.Contains("Kurven") && tw4.HiddenNames.Contains("Vox")
+                && TimerWindow.SameZone("The Ruins of Old Guk 4 (Refined)", "The Ruins of Old Guk")
+                && TimerWindow.SameZone("Nagafen's Lair - Solo 2 (Ascended)", "Nagafen's Lair")
+                && !TimerWindow.SameZone("Befallen", "Permafrost"));
             tw4.Close();
         }
         catch (Exception ex)

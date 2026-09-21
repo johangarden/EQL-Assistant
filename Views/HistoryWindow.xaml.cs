@@ -432,6 +432,7 @@ public partial class HistoryWindow : Window
         if (_view == "resists") Dispatcher.BeginInvoke(BuildResists);
     }
 
+
     private void ResistSearch_Changed(object sender, RoutedEventArgs e)
     {
         if (_view == "resists") BuildResists();

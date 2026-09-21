@@ -120,12 +120,18 @@ public partial class TimerWindow : Window
 
     private string _zone = "";
 
+    /// <summary>Zones compare TIER-BLIND (owner, 21 Sep: a mob added from a
+    /// "Ruins of Old Guk 4 (Refined)" kill hid — and never took the pie — in
+    /// every other tier of Guk): "Befallen 3 (Fused)" is Befallen.</summary>
+    public static bool SameZone(string a, string b) =>
+        string.Equals(MoteFarm.BaseZone(a), MoteFarm.BaseZone(b), StringComparison.OrdinalIgnoreCase);
+
     public void SetZone(string zone)
     {
         _zone = zone.Trim();
         if (_modeName is not null
             && RespawnLookup?.Invoke(_modeName)?.Zone?.Trim() is { Length: > 0 } mz
-            && !string.Equals(mz, _zone, StringComparison.OrdinalIgnoreCase))
+            && !SameZone(mz, _zone))
         {
             // The pie's mob lives elsewhere now — park it (still counting).
             DemoteBig(spawnFired: false, seenAt: null);
@@ -144,7 +150,7 @@ public partial class TimerWindow : Window
         if (entryZone.Length == 0) return true;
         // Zone unknown yet (fresh launch): clocks show, quiet watchers wait.
         if (_zone.Length == 0) return !e.Watching;
-        return string.Equals(entryZone, _zone, StringComparison.OrdinalIgnoreCase);
+        return SameZone(entryZone, _zone);
     }
 
     /// <summary>Sync the quiet "watching" rows with the respawn list: every

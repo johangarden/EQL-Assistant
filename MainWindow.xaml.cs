@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private CharmWindow? _charmWin;
     private MezWindow? _mezWin;
     private CrowdControl _cc = null!;
+    private CharmBook _charms = null!;
     private MoteTickerWindow? _moteTickerWin;
     private ConditionsWindow? _conditionsWin;
     private SkyHelperWindow? _skyHelperWin;
@@ -170,7 +171,14 @@ public partial class MainWindow : Window
                 || n.Equals(_combat.SelfName, StringComparison.OrdinalIgnoreCase),
         };
         _combat.DamageDealt += (att, tgt, amount, time, dot) => { if (!_suppressSct) _cc.NoteDamage(att, tgt, amount, time, dot); };
+        _charms = new CharmBook(_configService); // the charm ledger (21 Sep)
+        _cc.CharmEnded += ep => { if (!_suppressSct) _charms.Add(ep); };
+        _cc.CharmAttemptFailed += a => { if (!_suppressSct) _charms.AddAttempt(a); };
+        _cc.LevelLookup = _combat.ConLevelOf;
+        _cc.OwnLevel = () => _combat.CurrentLevel;
         _cc.MezLoose += mob => { if (!_suppressSct && _config.Overlay.CcSpeak) _alerts.Fire($"Loose {mob} — mez it", null); };
+        // The charmed mob is the meter's pet while the charm holds (21 Sep).
+        _cc.Changed += () => _combat.CharmedPet = _cc.Charm is { BrokeAt: null } cp && cp.Pet != "your target" ? cp.Pet : "";
         _cc.CharmBroke += pet =>
         {
             if (_suppressSct) return;
@@ -875,7 +883,7 @@ public partial class MainWindow : Window
         {
             var list = _configService.LoadRespawns();
             if (list.Any(r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return;
-            list.Add(new Models.RespawnEntry { Name = name, Zone = zone });
+            list.Add(new Models.RespawnEntry { Name = name, Zone = MoteFarm.BaseZone(zone) }); // tier-blind: the mob lives in Guk, not in "Guk 4 (Refined)"
             _configService.SaveRespawns(list);
             // The engine holds the same trigger list instance, so re-merging the
             // timerAuto triggers makes the new respawn live immediately.
@@ -936,6 +944,7 @@ public partial class MainWindow : Window
             _configService.SaveSettings(_config);
         };
         _meter.Show();
+        ApplyIncomingHome();
         UpdateMeterVisibility();
     }
 
@@ -1071,7 +1080,9 @@ public partial class MainWindow : Window
     private void RebuildIncomingWindow()
     {
         if (_incomingWin is not null) { try { _incomingWin.Close(); } catch { /* ignore */ } _incomingWin = null; }
-        if (!_config.Overlay.IncomingVisible) return;
+        _incoming.WindowSec = _config.Overlay.IncomingWindowSec;
+        ApplyIncomingHome();
+        if (!_config.Overlay.IncomingVisible || _config.Overlay.IncomingOnMeter) return;
         _incomingWin = new IncomingWindow(_incoming, () => _combat.CurrentStance, _configService,
             _config.Overlay.Opacity, _config.Overlay.IncomingWindowSec);
         _incomingWin.Show();
@@ -1079,11 +1090,21 @@ public partial class MainWindow : Window
         _incomingWin.SetHidden(_hidden);
     }
 
+    /// <summary>Where the incoming chart lives (21 Sep): on the meter it is the
+    /// card's cap and the standalone window is never built; off the meter the
+    /// cap collapses. Idempotent — called from both rebuilds.</summary>
+    private void ApplyIncomingHome()
+    {
+        bool onMeter = _config.Overlay.IncomingVisible && _config.Overlay.IncomingOnMeter;
+        _meter?.SetIncoming(onMeter ? _incoming : null, () => _combat.CurrentStance,
+            _config.Overlay.IncomingWindowSec, _config.Overlay.IncomingFoldQuiet);
+    }
+
     private void RebuildCharmWindow()
     {
         if (_charmWin is not null) { try { _charmWin.Close(); } catch { /* ignore */ } _charmWin = null; }
         if (!_config.Overlay.CharmCardVisible) return;
-        _charmWin = new CharmWindow(_cc, _configService, _config.Overlay.Opacity);
+        _charmWin = new CharmWindow(_cc, _configService, _config.Overlay.Opacity, _charms);
         _charmWin.Show();
         _charmWin.SetLocked(_vm.Locked);
         _charmWin.SetHidden(_hidden);
@@ -1394,6 +1415,24 @@ public partial class MainWindow : Window
                     _combat.AddDemoFight(); _combat.AddDemoEnemyDots(); _conditions.AddDemo();
                     if (_sessionWin is not null && !_session.HasData)
                     { _session.AddDemo(DateTime.Now); _sessionWin.Refresh(); }
+                    // The newer panels join the demo (owner, 21 Sep: "the last few
+                    // panels don't show on Ctrl+Alt+T"): a spell-heavy window on the
+                    // incoming panel (it empties by itself), a charm and a mezzed
+                    // room on the crowd-control panels (cleared after 15 s).
+                    {
+                        var dnow = DateTime.Now;
+                        double[] dm = { 80, 300, 500, 0, 0, 60, 0, 40, 180, 0, 0, 0, 0, 0, 100 };
+                        double[] dsp = { 100, 0, 0, 400, 0, 0, 420, 0, 0, 80, 0, 0, 550, 550, 0 };
+                        for (int i = 0; i < 15; i++)
+                        {
+                            if (dm[i] > 0) _incoming.Add(dnow.AddSeconds(-(14 - i)), dm[i], spell: false);
+                            if (dsp[i] > 0) _incoming.Add(dnow.AddSeconds(-(14 - i)), dsp[i], spell: true);
+                        }
+                        _cc.SeedDemo(dnow, broke: false);
+                        var ccDemo = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+                        ccDemo.Tick += (_, _) => { ccDemo.Stop(); _cc.ClearDemo(); };
+                        ccDemo.Start();
+                    }
                     UpdateMatrixVisibility();
                     OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
                     if (!_hidden && !_sctHidden)
@@ -2057,14 +2096,9 @@ public partial class MainWindow : Window
     /// <summary>A "timerAuto" trigger matched (e.g. a named mob death) — start the watch.</summary>
     private void OnTimerRequested(double seconds, string name)
     {
-        if (_timerHidden)
-        {
-            _timerHidden = false;
-            _config.Overlay.TimerVisible = true;
-            _configService.SaveSettings(_config);
-        }
-        if (_hidden) UnhideAll();
-        UpdateTimerVisibility();
+        // A kill starts the clock — it never re-opens a panel you hid (owner,
+        // 21 Sep: "I turn off the panel and it comes back"). The clock runs
+        // behind the scenes; the spawn notice still speaks.
         _timer?.StartWith(seconds, name);
         _vm.Flash($"{name} down — spawn timer started.");
         Log.Info($"Auto-started spawn timer ({seconds:0}s) from trigger '{name}'.");
@@ -2207,7 +2241,7 @@ public partial class MainWindow : Window
             string logPath = _watcher?.CurrentPath ?? "";
             var (name, server) = InventoryStore.ParseLogName(logPath);
             _inventoryWindow = new Views.InventoryWindow(
-                InventoryStore.EqRootOf(logPath), name, server, _session);
+                InventoryStore.EqRootOf(logPath), name, server, _session, _charms);
             _inventoryWindow.Closed += (_, _) => _inventoryWindow = null;
             _inventoryWindow.Show();
         }

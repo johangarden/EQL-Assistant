@@ -39,8 +39,15 @@ public sealed class CrowdControl
         public bool Assumed;
         public DateTime? BrokeAt;
         public double PetDamage;
+        public int PetHits;
+        public double MaxHit;
+        public double PetTaken; // what the pet took meanwhile
         public int PetKills;
         public DateTime? LastPetHit;
+        public string Cast = "";  // the cast as printed, rank included
+        public int MobLevel;
+        public int YourLevel;
+        public bool Recorded;   // its episode went to the CharmBook
     }
 
     /// <summary>A failed charm attempt — the amber "NO PET" state.</summary>
@@ -63,7 +70,14 @@ public sealed class CrowdControl
     }
 
     public sealed record CharmView(string Pet, string Spell, double Held, double Ceiling, bool Assumed,
-        bool Broke, double SinceBreak, double PetDamage, int PetKills, double? SinceLastHit);
+        bool Broke, double SinceBreak, double PetDamage, int PetKills, double? SinceLastHit,
+        int PetHits = 0, double MaxHit = 0)
+    {
+        public double DamagePerHit => PetHits > 0 ? PetDamage / PetHits : 0;
+        public double Dps => Held > 0 ? PetDamage / Held : 0;
+        /// <summary>Seconds left on the ceiling clock; negative past it; null when the ceiling is unknown.</summary>
+        public double? Left => Ceiling > 0 ? Ceiling - Held : null;
+    }
     public sealed record MezView(string Label, string Spell, double Left, double Duration, double Held,
         bool Assumed, bool Broke, string BrokeBy, double BrokeAmount, double SinceBreak, bool Due, bool Overrun = false, bool Learned = false);
     public sealed record AttemptView(string Spell, string Target, string How, double Ago);
@@ -79,6 +93,15 @@ public sealed class CrowdControl
 
     /// <summary>The charm broke: (pet). The loud one — badge and phrase.</summary>
     public event Action<string>? CharmBroke;
+    /// <summary>A charm ended, however it ended — the ledger's episode.</summary>
+    public event Action<CharmBook.Episode>? CharmEnded;
+    /// <summary>A charm never landed: (mob, spell as cast, how, when, zone).</summary>
+    public event Action<CharmBook.Attempt>? CharmAttemptFailed;
+    /// <summary>The mob's /con level and your own level — set by the host (parser).</summary>
+    public Func<string, int>? LevelLookup { get; set; }
+    public Func<int>? OwnLevel { get; set; }
+    private string _zone = "";
+    private string _pendingCast = "";
     /// <summary>A mez broke early: (mob label, who hit it).</summary>
     public event Action<string, string>? MezBroke;
     /// <summary>A mez entered its last stretch: (mob label) — "re-mez now".</summary>
@@ -210,6 +233,9 @@ public sealed class CrowdControl
             || body.StartsWith("You have entered ", StringComparison.Ordinal))
         {
             bool had = Charm is not null || _mez.Count > 0 || LastAttempt is not null;
+            EndCharm(body.StartsWith("You have entered ", StringComparison.Ordinal) ? "zoned" : "you died", time);
+            if (body.StartsWith("You have entered ", StringComparison.Ordinal) && body.EndsWith('.'))
+                _zone = body["You have entered ".Length..^1];
             Charm = null; LastAttempt = null; _mez.Clear(); _pending = null; _loose.Clear();
             if (had) Changed?.Invoke();
             return;
@@ -221,6 +247,7 @@ public sealed class CrowdControl
             var def = Find(cast.Groups["s"].Value);
             if (def is null) return;
             _pending = (def, time);
+            _pendingCast = cast.Groups["s"].Value.Trim();
             _pendingLandedAt = null;
             _tails[def.Spell] = new List<string>();
             if (def.LandingSuffix.Length == 0) OpenAssumed(def, time);
@@ -315,8 +342,12 @@ public sealed class CrowdControl
         if (Charm is { BrokeAt: null } c && Same(attacker, c.Pet) && !IsSelf(target))
         {
             c.PetDamage += amount;
+            c.PetHits++;
+            if (amount > c.MaxHit) c.MaxHit = amount;
             c.LastPetHit = time;
         }
+        else if (Charm is { BrokeAt: null } ct && Same(target, ct.Pet) && !Same(attacker, ct.Pet))
+            ct.PetTaken += amount; // a same-name mob hitting the pet reads as the pet taking it — the honest half
         // A DoT keeps ticking on a mezzed mob's behalf — not an act. A melee hit
         // or a nuke from a held name is.
         if (!dot && _mez.Count > 0) NoteActing(attacker, time);
@@ -328,6 +359,11 @@ public sealed class CrowdControl
             row.BrokeAt = time;
             row.BrokeBy = attacker;
             row.BrokeAmount = amount;
+            // The broken one is now a LOOSE mob of that name: the group keeps
+            // hitting it, and every hit must land on it — not break the next
+            // held twin (owner, 21 Sep: "when one breaks, all same-name mobs
+            // break"). It stays loose until it dies or your next landing.
+            _loose.Add(row.Mob);
             MezBroke?.Invoke(row.Label, attacker);
             Changed?.Invoke();
         }
@@ -356,7 +392,13 @@ public sealed class CrowdControl
     {
         if (def.Kind == Kind.Charm)
         {
-            Charm = new CharmState { Pet = mob, Spell = def.Spell, Since = time, Ceiling = DurationFor(def), Assumed = assumed };
+            EndCharm("replaced", time); // a new charm while one holds: the old one's episode closes
+            Charm = new CharmState
+            {
+                Pet = mob, Spell = def.Spell, Since = time, Ceiling = DurationFor(def), Assumed = assumed,
+                Cast = _pendingCast.Length > 0 ? _pendingCast : def.Spell,
+                MobLevel = LevelLookup?.Invoke(mob) ?? 0, YourLevel = OwnLevel?.Invoke() ?? 0,
+            };
             LastAttempt = null;
         }
         else
@@ -402,6 +444,8 @@ public sealed class CrowdControl
             // An assumed card opened on this very cast was a guess — it's off.
             if (Charm is { Assumed: true } c && pendingWas && (time - c.Since).TotalSeconds <= CastWindowSec) Charm = null;
             if (Charm is null) LastAttempt = new Attempt(def.Spell, target, how, time);
+            if (target.Length > 0)
+                CharmAttemptFailed?.Invoke(new CharmBook.Attempt(target, _pendingCast.Length > 0 ? _pendingCast : def.Spell, how, time, _zone));
         }
         else
         {
@@ -421,6 +465,7 @@ public sealed class CrowdControl
             {
                 Charm.BrokeAt = time;
                 CharmBroke?.Invoke(Charm.Pet);
+                EndCharm("broke", time);
             }
         }
         else
@@ -463,7 +508,7 @@ public sealed class CrowdControl
             // the pet dying.
             if (Same(killer, c.Pet) && c.BrokeAt is null) { c.PetKills++; changed = true; }
             else if (killer == "You" || IsSelf(killer)) { /* the mob died — the pet lives */ }
-            else { Charm = null; changed = true; }
+            else { EndCharm("died", time); Charm = null; changed = true; }
         }
         else if (Charm is { BrokeAt: null } c2 && Same(killer, c2.Pet)) { c2.PetKills++; changed = true; }
 
@@ -474,6 +519,20 @@ public sealed class CrowdControl
             if (row is not null) { _mez.Remove(row); changed = true; }
         }
         if (changed) Changed?.Invoke();
+    }
+
+    /// <summary>Close the running charm's episode (once) and hand it to the
+    /// ledger: how long it held, how it ended, what the pet did. An assumed
+    /// pet never named ("your target") is no episode.</summary>
+    private void EndCharm(string how, DateTime time)
+    {
+        if (Charm is not { } c || c.Recorded) return;
+        c.Recorded = true;
+        if (c.Pet == "your target") return;
+        DateTime end = c.BrokeAt ?? time;
+        int level = c.MobLevel > 0 ? c.MobLevel : LevelLookup?.Invoke(c.Pet) ?? 0; // a /con mid-charm counts
+        CharmEnded?.Invoke(new CharmBook.Episode(c.Pet, c.Spell, _zone, c.Since, end, how,
+            c.PetDamage, c.PetHits, c.MaxHit, c.PetKills, level, c.Cast, c.PetTaken, c.YourLevel));
     }
 
     /// <summary>An unknown landing learns itself: among the lines that followed
@@ -511,9 +570,9 @@ public sealed class CrowdControl
         if (Charm is { } c)
         {
             if (c.BrokeAt is { } b && (now - b).TotalSeconds > BrokeLingerSec) Charm = null;
-            else cv = new CharmView(c.Pet, c.Spell, Math.Max(0, (now - c.Since).TotalSeconds), c.Ceiling, c.Assumed,
+            else cv = new CharmView(c.Pet, c.Spell, Math.Max(0, ((c.BrokeAt ?? now) - c.Since).TotalSeconds), c.Ceiling, c.Assumed,
                 c.BrokeAt is not null, c.BrokeAt is { } bb ? (now - bb).TotalSeconds : 0,
-                c.PetDamage, c.PetKills, c.LastPetHit is { } lh ? (now - lh).TotalSeconds : null);
+                c.PetDamage, c.PetKills, c.LastPetHit is { } lh ? (now - lh).TotalSeconds : null, c.PetHits, c.MaxHit);
         }
         AttemptView? av = null;
         if (Charm is null && LastAttempt is { } a)
@@ -557,10 +616,23 @@ public sealed class CrowdControl
         Changed?.Invoke();
     }
 
-    /// <summary>Demo state for the render targets and the selftest.</summary>
+    private bool _demo;
+
+    /// <summary>Ctrl+Alt+T's demo is over: drop it (a real charm or mez that
+    /// arrived meanwhile has already replaced the demo rows).</summary>
+    public void ClearDemo()
+    {
+        if (!_demo) return;
+        _demo = false;
+        Clear();
+    }
+
+    /// <summary>Demo state for the render targets, the selftest and Ctrl+Alt+T.
+    /// The demo charm is marked recorded so it never becomes a ledger episode.</summary>
     public void SeedDemo(DateTime now, bool broke)
     {
-        Charm = new CharmState { Pet = "a greater ice bones", Spell = "Beguile Undead", Since = now.AddSeconds(-41), Ceiling = 480, PetDamage = 1240, PetKills = 2, LastPetHit = now.AddSeconds(-3) };
+        _demo = true;
+        Charm = new CharmState { Pet = "a greater ice bones", Spell = "Beguile Undead", Since = now.AddSeconds(-41), Ceiling = 480, PetDamage = 1240, PetHits = 9, MaxHit = 212, PetKills = 2, LastPetHit = now.AddSeconds(-3), Recorded = true };
         if (broke) { Charm.Since = now.AddSeconds(-10); Charm.BrokeAt = now.AddSeconds(-4); }
         _mez.Clear();
         _mez.Add(new MezRow { Mob = "a greater ice bones", Instance = 1, Spell = "Mesmerization", Since = now.AddSeconds(-20), Duration = 24 });

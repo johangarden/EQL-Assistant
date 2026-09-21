@@ -22,6 +22,18 @@ public sealed class CombatParser
     /// <summary>Optional pet name — enables the pet line in the incoming footer.</summary>
     public string PetName { get; set; } = "";
 
+    /// <summary>The mob you hold charmed right now ("" = none) — set by the
+    /// crowd-control engine while the charm holds. A charmed mob IS your pet:
+    /// its hits fold under you on the meter, its kills are yours (owner, 21
+    /// Sep). Same-name twins are told apart by role in the damage line only
+    /// as far as the line allows: the pet is the attacker of anything that
+    /// is not you.</summary>
+    public string CharmedPet { get; set; } = "";
+
+    /// <summary>The pet the meter follows: the charmed mob while a charm
+    /// holds, else the summoned pet.</summary>
+    public string ActivePet => CharmedPet.Trim().Length > 0 ? CharmedPet.Trim() : PetName.Trim();
+
     // Every pet name seen — a re-summon gets a NEW random name, and a fight
     // can hold several (pet dies, you summon again). Without this memory the
     // old pets read as strangers and solo fights get tagged "group".
@@ -799,6 +811,15 @@ public sealed class CombatParser
     private DateTime _grantBurstStart = DateTime.MinValue;
     private int _grantCount;
     private DateTime _swapSuspectAt = DateTime.MinValue;
+    /// <summary>The last spell upgrade or scribe: a spellbook refresh that
+    /// follows one is that, not a swap (owner, 21 Sep: every spell merge
+    /// nagged "/who" and blanked the combo — 25 of the log's 84 refreshes
+    /// trailed a merge). A rank tail ("Drain Spirit V") marks a SPELL merge.</summary>
+    private DateTime _spellChangeAt = DateTime.MinValue;
+    private const double SpellChangeAcquitSec = 20;
+    private static readonly Regex SpellMergeRx = new(
+        @"^You have successfully merged two items together to create a new item: .+ [IVX]{1,7}$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex StanceRx = new(
         @"^You assume an? (?<s>.+?) stance\.",
@@ -866,6 +887,9 @@ public sealed class CombatParser
         "MEZZED" => "Mezzed",
         _ => kind.Length > 1 ? char.ToUpperInvariant(kind[0]) + kind[1..].ToLowerInvariant() : kind,
     };
+
+    /// <summary>The level your last /con of this mob printed (0 = never conned).</summary>
+    public int ConLevelOf(string mob) => _conLevels.GetValueOrDefault(mob.Trim(), 0);
 
     /// <summary>Con levels for the enemies this fight actually recorded.</summary>
     private Dictionary<string, int> MatchConLevels(List<Row> damage)
@@ -1172,12 +1196,23 @@ public sealed class CombatParser
             if (++_grantCount >= 4) _swapSuspectAt = time;
             return;
         }
+        // A spell upgrade (merge to the next rank) or a fresh scribe rewrites
+        // the spellbook too — the refresh that follows is explained, no jury.
+        if ((body.StartsWith("You have successfully merged two items together", StringComparison.Ordinal) && SpellMergeRx.IsMatch(body))
+            || body.StartsWith("You have finished scribing ", StringComparison.Ordinal))
+        {
+            _spellChangeAt = time;
+            // A refresh may already be on trial from a merge a breath earlier.
+            if (_swapSuspectAt != DateTime.MinValue && (time - _swapSuspectAt).TotalSeconds <= SpellChangeAcquitSec) _swapSuspectAt = DateTime.MinValue;
+            return;
+        }
         // The spellbook refresh prints on swaps too — Johan's hypothesis:
         // even for pure-melee combos that grant no spell lines. Same jury:
-        // a level line within 5s acquits it, silence convicts.
+        // a level line within 5s acquits it, silence convicts — and a spell
+        // merge or scribe in the last 20 s explains it outright.
         if (body.StartsWith("Your spellbook has been updated!", StringComparison.Ordinal))
         {
-            _swapSuspectAt = time;
+            if ((time - _spellChangeAt).TotalSeconds > SpellChangeAcquitSec) _swapSuspectAt = time;
             return;
         }
         if (body.StartsWith("You have gained a level!", StringComparison.Ordinal))
@@ -1530,7 +1565,7 @@ public sealed class CombatParser
         // dealt or took damage — or you healed while an actual enemy was in
         // the fight (a pure-healer raid counts; your regen ticking between
         // pulls, or a mob beating on a passer-by, never does).
-        string pet = PetName.Trim();
+        string pet = ActivePet;
         bool selfDamage = _incomingSelf > 0 || _incomingPet > 0
             || _damage.ContainsKey(Self())
             || (pet.Length > 0 && _damage.ContainsKey(pet));
@@ -1570,11 +1605,11 @@ public sealed class CombatParser
             Classes = _classesAtStart,
             Level = _levelAtStart,
             BuffsAtStart = new List<string>(_buffsAtStart),
-            Pet = PetName.Trim(),
+            Pet = ActivePet,
         };
         foreach (var (mob, lvl) in MatchConLevels(rec.Damage)) rec.EnemyLevels[mob] = lvl;
         foreach (var name in rec.Damage.Concat(rec.Healing)
-                     .Where(r => !r.Enemy && _knownPets.Contains(r.Name))
+                     .Where(r => !r.Enemy && (_knownPets.Contains(r.Name) || (CharmedPet.Length > 0 && r.Name.Equals(CharmedPet.Trim(), StringComparison.OrdinalIgnoreCase))))
                      .Select(r => r.Name).Distinct(StringComparer.OrdinalIgnoreCase))
             rec.Pets.Add(name);
         // Filter at the freeze, not just at insert: pet knowledge can ARRIVE
@@ -2000,6 +2035,7 @@ public sealed class CombatParser
     public bool IsPet(string name) =>
         (!string.IsNullOrWhiteSpace(PetName)
          && name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
+        || (CharmedPet.Length > 0 && name.Trim().Equals(CharmedPet.Trim(), StringComparison.OrdinalIgnoreCase))
         || _knownPets.Contains(name.Trim());
 
     private static double Amount(Match m, string group) =>

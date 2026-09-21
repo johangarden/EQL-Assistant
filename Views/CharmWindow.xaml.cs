@@ -32,20 +32,23 @@ public partial class CharmWindow : Window
     private static readonly Brush RedBg = Freeze("#2A1416");
     private static readonly Brush RedText = Freeze("#F5C6C2");
     private static readonly Brush Gold = Freeze("#FFD54F");
+    private static readonly Brush Grey = Freeze("#9AA3AF");
     private static readonly Brush UnlockedBackdrop = Freeze("#F0141A24");
     private static readonly Brush LockedBackdrop = Freeze("#E0141A24");
 
     private readonly CrowdControl _cc;
+    private readonly CharmBook? _book;
     private readonly PanelPlacement _placement;
     private readonly DispatcherTimer _tick;
     private nint _hwnd;
     private bool _locked;
     private bool _hidden;
 
-    public CharmWindow(CrowdControl cc, ConfigService configService, double opacity)
+    public CharmWindow(CrowdControl cc, ConfigService configService, double opacity, CharmBook? book = null)
     {
         InitializeComponent();
         _cc = cc;
+        _book = book;
         Title = "EQL Assistant — Charm";
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
         _placement = new PanelPlacement(this, configService, "charm", Anchor.TopLeft, 420, 620);
@@ -86,6 +89,25 @@ public partial class CharmWindow : Window
 
     public static string Clock(double s) => $"{(int)(s / 60)}:{(int)(s % 60):00}";
 
+    /// <summary>The card's clock and bar for a holding charm (pure — selftest):
+    /// a known ceiling counts DOWN (owner, 21 Sep) and depletes the bar; past
+    /// it the clock reads "+m:ss" grey (the wear-off will come); no ceiling
+    /// counts up on a faint full bar.</summary>
+    public static (string Clock, double Fill, bool Overrun, string Spell) ClockFor(CrowdControl.CharmView c, bool learned)
+    {
+        if (c.Left is not { } left)
+            return (Clock(c.Held) + "↑", 1, false, $"{c.Spell} · counts up, no known ceiling");
+        if (left < 0)
+            return ("+" + Clock(-left), 1, true, $"{c.Spell} · past the {Clock(c.Ceiling)} ceiling — held until it breaks");
+        return (Clock(left), Math.Clamp(left / c.Ceiling, 0, 1), false, $"{c.Spell} · {Clock(c.Ceiling)} ceiling{(learned ? " · learned" : "")}");
+    }
+
+    public static string PaceLine(CrowdControl.CharmView c) =>
+        c.PetHits == 0 ? "no hits yet" : $"{c.Dps:0} DPS · {c.DamagePerHit:N0}/hit · max {c.MaxHit:N0} · {c.PetHits} hits";
+
+    public static string HistoryLine(CharmBook.MobStats? s) =>
+        s is null ? "" : $"before: {s.Charms}× · avg {Clock(s.AvgHeldSec)} · best {Clock(s.LongestSec)} · {s.Dps:0} DPS · {s.Kills} kills";
+
     public void Refresh()
     {
         var s = _cc.Take(DateTime.Now);
@@ -101,24 +123,30 @@ public partial class CharmWindow : Window
             ChipText.Foreground = broke ? Red : Violet;
             ChipBox.Background = broke ? RedChip : VioletChip;
             PetText.Text = c.Pet;
-            AgeText.Text = Clock(c.Held);
-            AgeText.Foreground = broke ? Red : Gold;
+            var (clock, fill, overrun, spellLine) = ClockFor(c, _cc.LearnedDuration(c.Spell) is not null);
+            AgeText.Text = broke ? Clock(c.Held) : clock;
+            AgeText.Foreground = broke ? Red : overrun ? Grey : Gold;
             SpellText.Text = broke ? $"{c.Spell} · broke {c.SinceBreak:0} s ago"
                 : c.Assumed ? $"{c.Spell} · assumed — landing line not yet seen"
-                : c.Ceiling > 0 ? $"{c.Spell} · counts up to the {Clock(c.Ceiling)} ceiling" : $"{c.Spell} · counts up";
+                : spellLine;
             TrackRow.Visibility = Visibility.Visible;
             MetaRow.Visibility = Visibility.Visible;
-            double f = c.Ceiling > 0 ? Math.Clamp(c.Held / c.Ceiling, 0, 1) : (broke ? 0.02 : 1);
+            double f = broke ? 0.02 : fill;
             FillCol.Width = new GridLength(Math.Max(0.0001, f), GridUnitType.Star);
             RestCol.Width = new GridLength(Math.Max(0.0001, 1 - f), GridUnitType.Star);
-            FillBar.Background = broke ? RedFill : VioletFill;
-            FillBar.Opacity = c.Ceiling > 0 || broke ? 1 : 0.35;
-            HeldText.Text = broke ? $"held {Clock(c.Held)}" : $"held {Clock(c.Held)} · counts up";
+            FillBar.Background = broke ? RedFill : overrun ? Grey : VioletFill;
+            FillBar.Opacity = c.Ceiling > 0 || broke ? (overrun ? 0.5 : 1) : 0.35;
+            HeldText.Text = $"held {Clock(c.Held)}";
             CeilingText.Text = c.Ceiling > 0 ? $"ceiling {Clock(c.Ceiling)}" : "no known ceiling";
             StatsRow.Visibility = broke ? Visibility.Collapsed : Visibility.Visible;
             DealtText.Text = $"pet dealt {c.PetDamage:N0}";
             KillsText.Text = c.PetKills == 1 ? "1 kill" : $"{c.PetKills} kills";
             LastHitText.Text = c.SinceLastHit is { } lh ? $"last hit {lh:0} s ago" : "no hits yet";
+            PaceText.Visibility = broke ? Visibility.Collapsed : Visibility.Visible;
+            PaceText.Text = PaceLine(c);
+            string hist = HistoryLine(_book?.Stats(c.Pet));
+            HistoryText.Text = hist;
+            HistoryText.Visibility = hist.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
             VerdictBox.Visibility = broke ? Visibility.Visible : Visibility.Collapsed;
             if (broke)
             {
@@ -141,6 +169,10 @@ public partial class CharmWindow : Window
             TrackRow.Visibility = Visibility.Collapsed;
             MetaRow.Visibility = Visibility.Collapsed;
             StatsRow.Visibility = Visibility.Collapsed;
+            PaceText.Visibility = Visibility.Collapsed;
+            string hist = HistoryLine(_book?.Stats(a.Target));
+            HistoryText.Text = hist;
+            HistoryText.Visibility = hist.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
             VerdictBox.Visibility = Visibility.Visible;
             VerdictBox.BorderBrush = AmberBorder; VerdictBox.Background = AmberBg;
             VerdictTitle.Text = $"{Cap(a.How)} {a.Ago:0} s ago";
@@ -157,6 +189,8 @@ public partial class CharmWindow : Window
             PetText.Text = "no charmed pet";
             AgeText.Text = "";
             SpellText.Text = "";
+            PaceText.Visibility = Visibility.Collapsed;
+            HistoryText.Visibility = Visibility.Collapsed;
         }
 
         bool show = !_hidden && (any || !_locked);

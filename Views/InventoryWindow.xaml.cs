@@ -10,13 +10,14 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class InventoryWindow : Window
 {
-    public static readonly string[] HostedTabs = { "sheet", "focus", "bis" };
+    public static readonly string[] HostedTabs = { "sheet", "focus", "bis", "charms" };
 
     public InventoryWindow(string eqRoot, string charName, string server,
-        SessionStats? session = null)
+        SessionStats? session = null, CharmBook? charms = null)
     {
         InitializeComponent();
         Interop.WindowTheme.ApplyDark(this);
+        Panel.Charms = charms; // the Charmed pets tab (21 Sep)
         // "character": a fresh bounds key — the pre-merge Inventory sizes
         // don't fit the four-tab window.
         DialogPlacement.Persist(this, "character");
@@ -30,6 +31,9 @@ public partial class InventoryWindow : Window
 
     /// <summary>Front the audit board (also the selftest hook).</summary>
     public void ShowFocusTab() => Panel.ShowFocusTab();
+
+    /// <summary>Mob rows on the Charmed pets tab — selftest.</summary>
+    public int CharmRowsForTest => Panel.CharmRowsForTest;
 
     // ---- the drill drawer extends the WINDOW itself ---------------------------
 

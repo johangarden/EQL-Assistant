@@ -34,7 +34,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` the toolbar (eye struck; catch-up progress card), `quests:lines` the Notable quests pack, `recap` a synthetic death recap, `incoming` the incoming-damage panel, `charm` / `charm:broke` the charm card, `mez` the mez panel, `Data:reparse` the Data page with the reparse progress card mid-run |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` the toolbar (eye struck; catch-up progress card), `quests:lines` the Notable quests pack, `recap` a synthetic death recap, `incoming` the incoming-damage panel, `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `levelup` the level-up card, `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous
@@ -86,6 +86,12 @@ the affected suites (with `-Wait`) before committing.
   landings (necro undead charms) open ASSUMED and are LEARNED from the
   emote after the cast once a wear-off names the mob. Both learned sets
   persist in `cc-landings.json`. Live-only. Charm break = badge + phrase.
+  Every charm that ends (broke / died / zoned / replaced / you died) is a
+  `CharmBook` episode (`charms.json`: pet, spell + cast rank, zone, hold,
+  pet hits/dmg/max hit/taken, kills, mob /con level, your level; failed
+  attempts per mob too) → Character window "Charmed pets" tab
+  (`CharmsView`) + the card's "before:" line; the card counts DOWN a known
+  ceiling and overruns grey past it.
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,

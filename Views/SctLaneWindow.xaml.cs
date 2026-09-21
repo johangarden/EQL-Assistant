@@ -33,6 +33,8 @@ public partial class SctLaneWindow : Window
     private readonly Brush _procColor;
     private readonly double _fontSize;
     private readonly double _bigThreshold;
+    private static readonly FontFamily CritFace = new("Impact, Segoe UI Black, Segoe UI");
+    private static readonly Brush CritWord = new SolidColorBrush(Color.FromRgb(0xFF, 0xF1, 0xA8)); // pale gold, the same on every flavour
     private readonly DispatcherTimer _pump;
     private readonly Queue<(string Label, double Amount, bool Plus, CombatParser.SctFlavor Flavor, bool Crit, string? Text)> _queue = new();
     private DateTime _lastSpawn = DateTime.MinValue;
@@ -104,6 +106,29 @@ public partial class SctLaneWindow : Window
         PumpQueue();
     }
 
+    /// <summary>Render hook (--render-manager sct): three floats spawned at
+    /// once, animations stopped, spread down the lane at full opacity.</summary>
+    public void FreezeForRender()
+    {
+        Spawn("backstab", 312, false, CombatParser.SctFlavor.Melee, crit: true);
+        Spawn("Frost Breath", 254, false, CombatParser.SctFlavor.Spell, crit: false);
+        Spawn("thorns", 44, false, CombatParser.SctFlavor.Proc, crit: false);
+        int i = 0;
+        foreach (var child in Lane.Children.OfType<TextBlock>())
+        {
+            child.BeginAnimation(Canvas.TopProperty, null);
+            child.BeginAnimation(OpacityProperty, null);
+            child.Opacity = 1;
+            if (child.RenderTransform is ScaleTransform st)
+            {
+                st.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                st.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                st.ScaleX = st.ScaleY = 1;
+            }
+            Canvas.SetTop(child, 8 + i++ * _fontSize * 2.2);
+        }
+    }
+
     /// <summary>A few sample numbers for the Ctrl+Alt+T demo.</summary>
     public void SpawnDemo()
     {
@@ -137,31 +162,50 @@ public partial class SctLaneWindow : Window
         string? overrideText = null)
     {
         bool big = crit || (overrideText is null && amount >= _bigThreshold);
+        var fg = flavor switch
+        {
+            CombatParser.SctFlavor.Spell => _spellColor,
+            CombatParser.SctFlavor.Proc => _procColor,
+            _ => _meleeColor,
+        };
+        // A crit shouts (owner, 21 Sep): "CRIT! 312" in a display face, bigger,
+        // with a glow in its own colour, and a punch-in on arrival. Windows
+        // ships Impact; the list falls back to Segoe UI Black, then Segoe UI.
         var text = new TextBlock
         {
             Width = Lane.Width,
             TextAlignment = TextAlignment.Center,
-            Foreground = flavor switch
-            {
-                CombatParser.SctFlavor.Spell => _spellColor,
-                CombatParser.SctFlavor.Proc => _procColor,
-                _ => _meleeColor,
-            },
+            Foreground = fg,
             FontWeight = FontWeights.Bold,
-            FontSize = big ? _fontSize * 1.4 : _fontSize,
-            Effect = new DropShadowEffect { ShadowDepth = 1, BlurRadius = 4, Opacity = 0.95, Color = Colors.Black },
+            FontSize = crit ? _fontSize * 1.7 : big ? _fontSize * 1.4 : _fontSize,
+            FontFamily = crit ? CritFace : FontFamily,
+            Effect = crit
+                ? new DropShadowEffect { ShadowDepth = 0, BlurRadius = 14, Opacity = 0.9, Color = (fg as SolidColorBrush)?.Color ?? Colors.White }
+                : new DropShadowEffect { ShadowDepth = 1, BlurRadius = 4, Opacity = 0.95, Color = Colors.Black },
         };
+        if (crit) text.Inlines.Add(new Run("CRIT! ") { Foreground = CritWord });
         text.Inlines.Add(new Run(overrideText ?? (plus ? "+" : "") + amount.ToString("N0") + (crit ? "!" : "")));
         if (!string.IsNullOrEmpty(label))
             text.Inlines.Add(new Run("  " + label)
             {
                 FontSize = Math.Max(10, _fontSize * 0.62),
                 FontWeight = FontWeights.Normal,
+                FontFamily = FontFamily,
             });
 
         Canvas.SetLeft(text, 0);
         Canvas.SetTop(text, Lane.Height - _fontSize * 1.8);
         Lane.Children.Add(text);
+        if (crit)
+        {
+            // Punch: lands at 1.35× and settles to 1× in a quarter second.
+            var scale = new ScaleTransform(1.35, 1.35);
+            text.RenderTransformOrigin = new Point(0.5, 0.5);
+            text.RenderTransform = scale;
+            var settle = new DoubleAnimation(1.35, 1.0, TimeSpan.FromMilliseconds(260)) { EasingFunction = new System.Windows.Media.Animation.BackEase { Amplitude = 0.4, EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut } };
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, settle);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, settle);
+        }
 
         var dur = TimeSpan.FromSeconds(_lifetimeSeconds);
         var rise = new DoubleAnimation(Lane.Height - _fontSize * 1.8, 4, dur);
