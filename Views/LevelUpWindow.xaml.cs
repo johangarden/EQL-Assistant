@@ -66,8 +66,13 @@ public partial class LevelUpWindow : Window
 
         Rows.Children.Clear();
         RowCount = 0;
+        string lastCls = "";
         foreach (var (spell, cls) in unlocks.OrderBy(u => u.Cls).ThenBy(u => u.Spell.Name, StringComparer.OrdinalIgnoreCase))
         {
+            // A hairline between one class's spells and the next (owner, 21 Sep).
+            if (lastCls.Length > 0 && !cls.Equals(lastCls, StringComparison.Ordinal))
+                Rows.Children.Add(new Border { Height = 1, Background = ChipLine, Margin = new Thickness(0, 3, 0, 6), Opacity = 0.8 });
+            lastCls = cls;
             var row = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
             var chip = new Border
             {

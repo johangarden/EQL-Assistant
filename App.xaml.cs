@@ -4620,6 +4620,19 @@ public partial class App : Application
             else if (win is Views.MezWindow mw) { mw.SetLocked(true); mw.Show(); mw.Refresh(); }
             mgr = win;
         }
+        else if (page.Equals("levelup", StringComparison.OrdinalIgnoreCase))
+        {
+            // The level-up card for a three-class combo at 44 (dividers between classes).
+            var lib = new SpellLibrary(new ConfigService());
+            var classes = new[] { "SHD", "SHM", "ENC" };
+            var win = new Views.LevelUpWindow
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            win.Show(44, classes, lib.UnlocksAt(44, classes));
+            mgr = win;
+        }
         else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase))
         {
             var csq = new ConfigService();
