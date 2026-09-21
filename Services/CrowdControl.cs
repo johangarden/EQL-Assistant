@@ -359,6 +359,11 @@ public sealed class CrowdControl
             row.BrokeAt = time;
             row.BrokeBy = attacker;
             row.BrokeAmount = amount;
+            // The broken one is now a LOOSE mob of that name: the group keeps
+            // hitting it, and every hit must land on it — not break the next
+            // held twin (owner, 21 Sep: "when one breaks, all same-name mobs
+            // break"). It stays loose until it dies or your next landing.
+            _loose.Add(row.Mob);
             MezBroke?.Invoke(row.Label, attacker);
             Changed?.Invoke();
         }

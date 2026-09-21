@@ -3395,6 +3395,29 @@ public partial class App : Application
         Check("cc: the next landing on a loose name is the add's own row, never a refresh, and the flag clears",
             la.MezRows.Count(r => r.Mob == "a will sapper") == 2 && la.LooseNames.Count == 0);
 
+        // One break, one row (owner, 21 Sep): three twins held, the group beats
+        // on the one that broke — the other two stay mezzed.
+        var tw = new CrowdControl(lib, null) { IsSelf = n => n == "Thorrak" };
+        tw.ProcessLine(L(400, "You begin casting Mesmerization."));
+        tw.ProcessLine(L(403, "an ice bones has been mesmerized."));
+        tw.ProcessLine(L(403, "an ice bones has been mesmerized."));
+        tw.ProcessLine(L(404, "an ice bones has been mesmerized."));
+        int breaks = 0; tw.MezBroke += (_, _) => breaks++;
+        tw.NoteDamage("Garn", "an ice bones", 58, c0.AddSeconds(406));
+        tw.NoteDamage("Thorrak", "an ice bones", 120, c0.AddSeconds(407));
+        tw.NoteDamage("Garn", "an ice bones", 61, c0.AddSeconds(408));
+        var tws = tw.Take(c0.AddSeconds(409));
+        Check("cc: hits on a name with a broken twin land on the broken one — one break, two still held",
+            breaks == 1 && tws.Broken == 1 && tws.Held == 2 && tws.Loose.SequenceEqual(new[] { "an ice bones" }));
+        tw.ProcessLine(L(410, "You begin casting Mesmerization."));
+        tw.ProcessLine(L(413, "an ice bones has been mesmerized."));
+        Check("cc: the re-mez takes the broken row back, no fourth twin, the name is no longer loose",
+            tw.MezRows.Count == 3 && tw.MezRows.All(r => r.BrokeAt is null) && tw.LooseNames.Count == 0);
+        tw.NoteDamage("Garn", "an ice bones", 58, c0.AddSeconds(420));
+        tw.ProcessLine(L(425, "An ice bones has been slain by Garn!"));
+        Check("cc: the broken one dying clears the loose name and leaves the held twins",
+            tw.MezRows.Count(r => r.BrokeAt is null) == 2 && tw.LooseNames.Count == 0);
+
         // The learned clock persists with the landings.
         string ccPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_durations.json");
         try { File.Delete(ccPath); } catch { /* fresh */ }
