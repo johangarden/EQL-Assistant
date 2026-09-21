@@ -27,7 +27,7 @@ public partial class ToolbarWindow : Window
     public Action? QuestsRequested { get; set; }
     public Action? LootRequested { get; set; }
     public Action? SheetRequested { get; set; }
-    /// <summary>The anvil: the tradeskill picker, placed under the button.</summary>
+    /// <summary>The anvil: show / hide the tradeskill helper card.</summary>
     public Action<object>? TradeskillsRequested { get; set; }
 
     public ToolbarWindow(ConfigService config)

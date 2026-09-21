@@ -23,7 +23,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7" Padding="{TemplateBinding Padding}">
                             <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -37,27 +37,34 @@
         </Style>
     </Window.Resources>
 
-    <!-- Tradeskill helper (owner, 21 Sep): pick a skill, get to work. The
-         card shows the guide step you are on, its ingredients with where
-         they come from, the session, and what to move to when the game
-         says a recipe went trivial. Header: skill (dropdown) · pill · your
-         skill value · close. -->
+    <!-- Tradeskill helper (owner, 21 Sep): the anvil shows and hides it, the
+         card remembers the skill. Header: skill (the ONE place to switch) ·
+         step | ladder switch · your skill value · ✕ (hide). -->
     <Border x:Name="RootBorder" CornerRadius="8" Padding="10,7,10,9" Background="#E6141A24"
             BorderBrush="#3A4560" BorderThickness="1" Width="332">
         <StackPanel>
             <DockPanel x:Name="HeaderRow" Margin="0,0,0,6" Background="Transparent" MouseLeftButtonDown="Header_DragMove">
                 <Button x:Name="CloseBtn" DockPanel.Dock="Right" Style="{StaticResource Flat}" Click="Close_Click"
                         Foreground="#7F93AD" FontSize="10" Width="18" Height="18" Padding="0" Margin="6,0,0,0"
-                        ToolTip="Close the tradeskill helper" Content="✕"/>
+                        ToolTip="Hide the helper — the toolbar anvil brings it back on this skill" Content="✕"/>
                 <TextBlock x:Name="ValueText" DockPanel.Dock="Right" FontSize="15" FontWeight="Bold" Foreground="#E8C15A"
                            VerticalAlignment="Center" Margin="8,0,0,0"/>
-                <Border x:Name="Pill" DockPanel.Dock="Right" Padding="7,1,7,2" CornerRadius="8" Margin="6,0,0,0"
-                        Background="#232B3D" BorderBrush="#3A4560" BorderThickness="1" VerticalAlignment="Center">
-                    <TextBlock x:Name="PillText" FontSize="10" FontWeight="Bold" Foreground="#C9D4E3"/>
+                <Border x:Name="ViewSwitch" DockPanel.Dock="Right" CornerRadius="9" Padding="1" Margin="6,0,0,0"
+                        Background="#1B2130" BorderBrush="#3A4560" BorderThickness="1" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="StepBtn" Style="{StaticResource Flat}" Click="StepView_Click" Padding="7,0,7,1"
+                                ToolTip="The step you are on">
+                            <TextBlock x:Name="StepBtnText" Text="STEP" FontSize="9.5" FontWeight="Bold"/>
+                        </Button>
+                        <Button x:Name="LadderBtn" Style="{StaticResource Flat}" Click="LadderView_Click" Padding="7,0,7,1"
+                                ToolTip="Every step of the guide with its shopping / farming verdict">
+                            <TextBlock x:Name="LadderBtnText" Text="LADDER" FontSize="9.5" FontWeight="Bold"/>
+                        </Button>
+                    </StackPanel>
                 </Border>
                 <Button x:Name="SkillBtn" Style="{StaticResource Flat}" Click="Skill_Click" HorizontalAlignment="Left"
-                        ToolTip="Switch to another tradeskill" Padding="3,1,5,1">
-                    <TextBlock x:Name="SkillText" FontSize="11" FontWeight="Bold" Foreground="#C9D4E3" Text="BREWING ▼"/>
+                        ToolTip="Pick the tradeskill you are working today" Padding="3,1,5,1">
+                    <TextBlock x:Name="SkillText" FontSize="11" FontWeight="Bold" Foreground="#C9D4E3" Text="PICK A SKILL ▼"/>
                 </Button>
             </DockPanel>
 

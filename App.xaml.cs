@@ -375,7 +375,7 @@ public partial class App : Application
                 tsWin.Show();
                 tsWin.Refresh();
                 if (tsWin.LastStep != "Skull Ale") throw new Exception("tradeskill card: Brewing 87 should sit on Skull Ale, got " + tsWin.LastStep);
-                if (!tsWin.LastPill.StartsWith("FAST TRACK")) throw new Exception("tradeskill card: the pill names the tier, got " + tsWin.LastPill);
+                if (tsWin.ShowsLadder) throw new Exception("tradeskill card: opens on the step view");
                 tsWin.ApplySettings(1.0, ladder: true, bagCounts: false);
                 if (!tsWin.LineTexts.Contains("FARM 1") || !tsWin.LineTexts.Contains("ALL BOUGHT")) throw new Exception("tradeskill card: the ladder carries the sourcing tags");
                 // A header click landing on a text Run (the "/250") must not crash the drag hit-test (owner, 21 Sep).
@@ -3317,7 +3317,7 @@ public partial class App : Application
         w4.StartSession("Baking", t0);
         Check("ts: an unknown skill opens on the ladder's first step", w4.Take(t0) is { Value: null, Current: { Recipe: "Batwing Crunchies" } });
         Check("ts: config defaults — closed, step view, bag counts, notice spoken",
-            new Models.AppConfig().Overlay is { TradeskillOpen: "", TradeskillLadder: false, TradeskillBagCounts: true, TradeskillNoticeEnabled: true, TradeskillNoticeMode: "speak", TradeskillToolbarBtn: true });
+            new Models.AppConfig().Overlay is { TradeskillOpen: "", TradeskillVisible: false, TradeskillLadder: false, TradeskillBagCounts: true, TradeskillNoticeEnabled: true, TradeskillNoticeMode: "speak", TradeskillToolbarBtn: true });
         Check("ts: the phrase template", EQLOverlay.MainWindow.TradeskillPhrase("", "Metal Bits") == "Metal Bits is trivial" && EQLOverlay.MainWindow.TradeskillPhrase("Move on from {item}", "Skull Ale") == "Move on from Skull Ale");
     }
 

@@ -1174,10 +1174,10 @@
                                 <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}"
-                                       Text="A helper card you open on purpose — the toolbar anvil or ☰ → Tradeskill helper — for the skill you are working today. It reads eqlwiki's leveling ladder back as you combine: the step you are on and its trivial, each ingredient with where it comes from (bought, dropped, foraged, made in a sub-combine) and the count in your bags, the session's combines, skill-ups and coin, and what to move to when the game says a recipe went trivial. It stays until you close it and comes back on the same skill after a restart."/>
+                                       Text="A helper card for the skill you are working today. The toolbar anvil (or ☰ → Panels) shows and hides it; the skill is picked on the card itself and remembered. It reads eqlwiki's leveling ladder back as you combine: the step you are on and its trivial, each ingredient with where it comes from (bought, dropped, foraged, made in a sub-combine) and the count in your bags, the session's combines, skill-ups and coin, and what to move to when the game says a recipe went trivial. STEP | LADDER in its header switches between the step's details and the whole ladder with its shopping / farming verdicts."/>
 
                             <Border Style="{StaticResource PageSep}"/>
-                            <CheckBox x:Name="TsLadderCheck" Content="Open on the whole ladder (off = the step you are on; the card's footer flips it too)" Margin="0,4,0,0"/>
+                            <CheckBox x:Name="TsLadderCheck" Content="Open on the whole ladder (off = the step you are on; the card's STEP | LADDER switch flips it too)" Margin="0,4,0,0"/>
                             <CheckBox x:Name="TsBagCountsCheck" Content="Ingredient counts from the last inventory dump (/outputfile inventory)" Margin="0,8,0,0"/>
                             <CheckBox x:Name="TsToolbarCheck" Content="Anvil button on the toolbar" Margin="0,8,0,0"/>
 

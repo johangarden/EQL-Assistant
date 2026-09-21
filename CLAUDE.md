@@ -93,8 +93,10 @@ the affected suites (with `-Wait`) before committing.
   (`CharmsView`) + the card's "before:" line; the card counts DOWN a known
   ceiling and overruns grey past it.
 - `TradeskillWatch` + `TradeskillData` — the tradeskill helper (21 Sep), a
-  card you OPEN ON PURPOSE for one skill (toolbar anvil / ☰ → Tradeskill
-  helper; `OverlayConfig.TradeskillOpen` remembers it across restarts).
+  card you SHOW ON PURPOSE (toolbar anvil / ☰ → Panels toggle
+  `TradeskillVisible`; ✕ hides). The skill is picked on the card's own ▼
+  and remembered (`TradeskillOpen`); STEP | LADDER in the header switches
+  the step's details and the clean ladder (rows + verdict tags only).
   Data: `data/tradeskills.json` — eqlwiki's leveling ladders for the nine
   skills (hand-curated in the scratch `build-tradeskills.py`; the guides'
   shapes differ too much to parse) + every ladder recipe from the item

@@ -1874,7 +1874,8 @@ public partial class TriggerManagerWindow : Window
                 IncomingWindowSec = _incomingWindowSec,
                 IncomingOnMeter = _incomingHome == "meter",
                 IncomingFoldQuiet = IncomingFoldCheck.IsChecked == true,
-                TradeskillOpen = _config.Overlay.TradeskillOpen, // opened from the toolbar / ☰ — carried through
+                TradeskillOpen = _config.Overlay.TradeskillOpen, // picked on the card — carried through
+                TradeskillVisible = _config.Overlay.TradeskillVisible, // anvil-toggled — carried through
                 TradeskillLadder = TsLadderCheck.IsChecked == true,
                 TradeskillBagCounts = TsBagCountsCheck.IsChecked == true,
                 TradeskillToolbarBtn = TsToolbarCheck.IsChecked == true,

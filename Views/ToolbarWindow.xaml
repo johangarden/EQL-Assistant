@@ -145,7 +145,7 @@
 
                 <Button x:Name="TradeskillBtn" DockPanel.Dock="Right" Click="OnTradeskills" Style="{StaticResource IconBtn}"
                         Margin="6,0,0,0" AutomationProperties.AutomationId="TradeskillBtn"
-                        ToolTip="Tradeskill helper — pick the skill you are working today">
+                        ToolTip="Tradeskill helper — show / hide the card (it remembers the skill)">
                     <!-- an anvil in copper: horn to the left, waist, foot -->
                     <Path Fill="#D9A066" Width="14" Height="14" Stretch="Uniform"
                           Data="M2.5 6.5 L21.5 6.5 L21.5 9.5 L16 11.5 L15 15.5 L18.5 18 L18.5 20.5 L5.5 20.5 L5.5 18 L9 15.5 L8 11.5 L4.5 10 L2.5 9 Z"/>

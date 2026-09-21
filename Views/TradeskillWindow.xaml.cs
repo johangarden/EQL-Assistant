@@ -33,13 +33,11 @@ public partial class TradeskillWindow : Window
     private static readonly Brush Green = Freeze("#81C784");
     private static readonly Brush Red = Freeze("#FF8A80");
     private static readonly Brush Copper = Freeze("#D9A066");
-    private static readonly Brush Violet = Freeze("#B39DDB");
     private static readonly Brush Blue = Freeze("#4FC3F7");
     private static readonly Brush Leaf = Freeze("#8BC48A");
     private static readonly Brush Panel2 = Freeze("#151B28");
     private static readonly Brush Sunken = Freeze("#0F141E");
     private static readonly Brush Hair = Freeze("#1F2637");
-    private static readonly Brush LineBr = Freeze("#3A4560");
     private static readonly Brush TrackFill = new LinearGradientBrush(Color.FromRgb(0xB0, 0x8A, 0x3A), Color.FromRgb(0xE8, 0xC1, 0x5A), 0);
     private static readonly FontFamily Mono = new("Consolas");
 
@@ -54,7 +52,7 @@ public partial class TradeskillWindow : Window
     public Func<string, int>? BagCount { get; set; }
     /// <summary>The header dropdown picked another skill.</summary>
     public Action<string>? SkillPicked { get; set; }
-    /// <summary>The ✕ — the host closes the helper and forgets the open skill.</summary>
+    /// <summary>The ✕ — the host hides the card; the skill stays remembered.</summary>
     public Action? CloseRequested { get; set; }
     /// <summary>The step/ladder toggle flipped (persist it).</summary>
     public Action<bool>? LadderToggled { get; set; }
@@ -97,7 +95,6 @@ public partial class TradeskillWindow : Window
     public void ResetPosition() => _placement.ResetToDefault();
 
     /// <summary>Selftest / render hooks.</summary>
-    public string LastPill { get; private set; } = "";
     public string LastStep { get; private set; } = "";
     public IReadOnlyList<string> LineTexts => _texts;
     public bool ShowsLadder => _ladder;
@@ -109,32 +106,23 @@ public partial class TradeskillWindow : Window
         _texts.Clear();
         Body.Children.Clear();
         var s = _watch.Take(DateTime.Now);
+        StyleSwitch();
         if (s is null)
         {
-            SkillText.Text = "TRADESKILLS ▼";
-            PillText.Text = "PICK A SKILL"; StylePill("dim");
+            SkillText.Text = "PICK A SKILL ▼";
             ValueText.Text = "";
+            ViewSwitch.Visibility = Visibility.Collapsed;
+            LastStep = "";
             Body.Children.Add(Text("Pick the tradeskill you are working today from the ▼ — the guide's ladder, your skill and the session appear here.", Hint, 11.5, wrap: true));
             ShowOrHide();
             return;
         }
 
+        ViewSwitch.Visibility = Visibility.Visible;
         SkillText.Text = s.Skill.Name.ToUpperInvariant() + " ▼";
         ValueText.Inlines.Clear();
         ValueText.Inlines.Add(new Run(s.Value?.ToString() ?? "?"));
         ValueText.Inlines.Add(new Run($"/{s.Skill.Cap}") { FontSize = 10, Foreground = Faint });
-
-        if (s.Trivial) { PillText.Text = "TRIVIAL — MOVE ON"; StylePill("amber"); }
-        else if (s.CurrentTier is not null)
-        {
-            string tn = s.CurrentTier.Name;
-            int cut = tn.IndexOf(" (", StringComparison.Ordinal);
-            if (cut > 0) tn = tn[..cut];
-            PillText.Text = _ladder ? "LADDER" : $"{tn.ToUpperInvariant()} {s.TierIndex}/{s.TierCount}";
-            StylePill(_ladder ? "dim" : "violet");
-        }
-        else { PillText.Text = "GUIDE"; StylePill("dim"); }
-        LastPill = PillText.Text;
         LastStep = s.Current?.Title ?? "";
 
         if (s.Value is null)
@@ -146,7 +134,6 @@ public partial class TradeskillWindow : Window
         BuildStats(s);
         if (!_ladder) BuildNext(s);
         if (s.Missing) Body.Children.Add(Text("Out of an ingredient — the game refused the combine.", Red, 11, FontWeights.SemiBold, new Thickness(0, 6, 0, 0)));
-        BuildFooter();
         ShowOrHide();
     }
 
@@ -174,7 +161,19 @@ public partial class TradeskillWindow : Window
             : $"trivial {trivial} · {Math.Max(0, trivial - s.Value.Value)} to go";
         var rt = Text(right, Faint, 11); DockPanel.SetDock(rt, Dock.Right); rt.VerticalAlignment = VerticalAlignment.Center;
         name.Children.Add(rt);
-        name.Children.Add(Text(step.Title, Dim, 12.5, FontWeights.SemiBold));
+        if (s.Trivial)
+        {
+            var tag = new Border
+            {
+                Background = Freeze("#3A2E14"), BorderBrush = Freeze("#7A5B22"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(7),
+                Padding = new Thickness(6, 0, 6, 1), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock { Text = "TRIVIAL — MOVE ON", FontSize = 9.5, FontWeight = FontWeights.Bold, Foreground = Amber },
+            };
+            _texts.Add("TRIVIAL — MOVE ON");
+            DockPanel.SetDock(tag, Dock.Right);
+            name.Children.Add(tag);
+        }
+        name.Children.Add(Text(step.Title, s.Trivial ? Amber : Dim, 12.5, FontWeights.SemiBold));
         Body.Children.Add(name);
 
         Body.Children.Add(Track(s.Trivial ? 1 : s.Fraction, s.Trivial));
@@ -289,6 +288,9 @@ public partial class TradeskillWindow : Window
         Body.Children.Add(Box(tb, amber: false));
     }
 
+    /// <summary>Every step of the guide, one line each: dot (done / current /
+    /// ahead), title with the session tally, the sourcing verdict, the range.
+    /// Ingredients stay on the step view (owner: "the ladder should be cleaner").</summary>
     private void BuildLadder(TradeskillWatch.Snapshot s)
     {
         var host = new StackPanel { Margin = new Thickness(0, 2, 0, 0) };
@@ -299,12 +301,11 @@ public partial class TradeskillWindow : Window
             foreach (var step in tier.Steps)
             {
                 bool cur = ReferenceEquals(step, s.Current);
-                bool next = ReferenceEquals(step, s.Next);
                 bool done = !cur && value is int v && step.To <= v;
                 var recipe = _data.RecipeFor(step.Recipe);
                 var src = recipe is null ? null : _data.SourcingOf(recipe);
 
-                var row = new DockPanel { Margin = new Thickness(0, 2, 0, 0) };
+                var row = new DockPanel { Margin = new Thickness(0, 2, 0, 1) };
                 var range = Text($"{step.From} → {step.To}", Faint, 10.5); range.FontFamily = Mono; range.VerticalAlignment = VerticalAlignment.Center;
                 DockPanel.SetDock(range, Dock.Right); row.Children.Add(range);
                 var dot = new Ellipse
@@ -323,41 +324,9 @@ public partial class TradeskillWindow : Window
                 string title = step.Title + (ok + fail > 0 ? $"  {ok}/{ok + fail}" : "");
                 row.Children.Add(Text(title, cur ? Dim : done ? Faint : Hint, 12, cur ? FontWeights.SemiBold : FontWeights.Normal));
                 host.Children.Add(row);
-
-                if ((cur || next) && recipe is not null)
-                {
-                    var chips = Chips(recipe, counts: cur);
-                    chips.Margin = new Thickness(14, 3, 0, 0);
-                    host.Children.Add(chips);
-                    string where = WhereFor(recipe);
-                    if (where.Length > 0) host.Children.Add(Text(where, Hint, 10.5, wrap: true, margin: new Thickness(14, 2, 0, 0)));
-                }
             }
         }
-        var legend = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
-        foreach (var (k, txt) in new[] { ("vendor", "bought"), ("drop", "dropped — farm it"), ("forage", "foraged"), ("made", "made — a sub-combine"), ("tool", "tool, returned") })
-        {
-            var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 10, 2) };
-            sp.Children.Add(Glyph(k, false));
-            sp.Children.Add(Text(txt, Faint, 10, margin: new Thickness(4, 0, 0, 0)));
-            legend.Children.Add(sp);
-        }
-        var legendBox = new Border { BorderBrush = Hair, BorderThickness = new Thickness(0, 1, 0, 0), Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(0, 4, 0, 0), Child = legend };
-        host.Children.Add(legendBox);
         Body.Children.Add(host);
-    }
-
-    private void BuildFooter()
-    {
-        var btn = new Button
-        {
-            Style = (Style)FindResource("Flat"), HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(6, 1, 6, 1),
-            Content = new TextBlock { Text = _ladder ? "▴ step only" : "▾ whole ladder", FontSize = 10, Foreground = Hint },
-            ToolTip = _ladder ? "Back to the step you are on" : "Every step of the guide with its shopping / farming verdict",
-        };
-        btn.Click += (_, _) => { _ladder = !_ladder; LadderToggled?.Invoke(_ladder); Refresh(); };
-        Body.Children.Add(btn);
     }
 
     // ---- pieces ---------------------------------------------------------------------------
@@ -483,14 +452,24 @@ public partial class TradeskillWindow : Window
 
     private static string Lower(string s) => s.ToLowerInvariant();
 
-    private void StylePill(string kind)
+    /// <summary>STEP | LADDER — the picked half lit, the other quiet.</summary>
+    private void StyleSwitch()
     {
-        (PillText.Foreground, Pill.Background, Pill.BorderBrush) = kind switch
-        {
-            "amber" => (Amber, Freeze("#3A2E14"), Freeze("#7A5B22")),
-            "violet" => (Violet, Freeze("#2A2440"), Freeze("#5A4E85")),
-            _ => (Dim, Freeze("#232B3D"), LineBr),
-        };
+        StepBtn.Background = _ladder ? Brushes.Transparent : Freeze("#2A3350");
+        LadderBtn.Background = _ladder ? Freeze("#2A3350") : Brushes.Transparent;
+        StepBtnText.Foreground = _ladder ? Faint : Gold;
+        LadderBtnText.Foreground = _ladder ? Gold : Faint;
+    }
+
+    private void StepView_Click(object sender, RoutedEventArgs e) => SetView(false);
+    private void LadderView_Click(object sender, RoutedEventArgs e) => SetView(true);
+
+    private void SetView(bool ladder)
+    {
+        if (_ladder == ladder) return;
+        _ladder = ladder;
+        LadderToggled?.Invoke(_ladder);
+        Refresh();
     }
 
     // ---- chrome -----------------------------------------------------------------------------
@@ -534,6 +513,7 @@ public partial class TradeskillWindow : Window
             row.Children.Add(val);
             row.Children.Add(new TextBlock { Text = sk.Name });
             var item = new MenuItem { Header = row, IsChecked = sk.Name.Equals(_watch.Selected, StringComparison.OrdinalIgnoreCase) };
+            if (item.IsChecked) item.IsEnabled = false;
             string name = sk.Name;
             item.Click += (_, _) => SkillPicked?.Invoke(name);
             menu.Items.Add(item);
