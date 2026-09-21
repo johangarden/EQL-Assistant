@@ -307,12 +307,20 @@ public partial class App : Application
                 var rpv = new CombatParser { SelfName = "Thorrak" };
                 var rbv = new ResistBook(new ConfigService(), rpv, rbPath2);
                 rpv.ProcessLine("[Tue Sep 08 20:00:02 2026] A greater sphinx resisted your Envenomed Breath!");
-                var hw = new Views.HistoryWindow(rpv, new ConfigService(), new LootTracker(new ConfigService()), null, rbv);
+                string hbPath = Path.Combine(Path.GetTempPath(), "eql_selftest_hist_charms.json");
+                try { File.Delete(hbPath); } catch { /* fresh */ }
+                var hb = new CharmBook(null, hbPath);
+                hb.Add(new CharmBook.Episode("a greater ice bones", "Beguile Undead", "Permafrost Caverns", DateTime.Now.AddMinutes(-10), DateTime.Now.AddMinutes(-4), "broke", 1240, 9, 212, 2));
+                var hw = new Views.HistoryWindow(rpv, new ConfigService(), new LootTracker(new ConfigService()), null, rbv, hb);
                 hw.Show();
                 hw.ShowView("resists");
                 hw.UpdateLayout();
+                hw.ShowView("charms");
+                hw.UpdateLayout();
+                if (hw.CharmRows != 1) throw new Exception("history: the CHARMS view should list the one charmed mob");
                 hw.ShowView("fights");
                 hw.Close();
+                try { File.Delete(hbPath); } catch { /* temp */ }
                 try { File.Delete(rbPath2); } catch { /* temp */ }
             }
 
@@ -3169,6 +3177,8 @@ public partial class App : Application
 
         // Charm, on the lines the log actually printed.
         var cc = new CrowdControl(null, null) { IsSelf = n => n == "Thorrak" };
+        var episodes = new List<CharmBook.Episode>();
+        cc.CharmEnded += episodes.Add;
         Check("cc: the hand-added necro charms exist, Beguile Undead with its observed landing",
             cc.Find("Beguile Undead") is { Kind: CrowdControl.Kind.Charm, LandingSuffix: "moans." }
             && cc.Find("Dominate Undead") is { Kind: CrowdControl.Kind.Charm, LandingSuffix: "" } && cc.Find("Boil Blood") is null);
@@ -3187,8 +3197,11 @@ public partial class App : Application
         cc.ProcessLine(L(26, "Your Beguile Undead spell has worn off of a greater ice bones."));
         cc.ProcessLine(L(26, "Your Beguile Undead spell has worn off of a greater ice bones."));
         Check("cc: the wear-off line breaks the charm once, naming the pet", broke == 1 && brokePet == "a greater ice bones");
+        Check("cc: the episode went to the ledger — pet, spell, six seconds held, broke, 40 damage in 1 hit, 1 kill",
+            episodes is [{ Mob: "a greater ice bones", Spell: "Beguile Undead", How: "broke", PetDamage: 40, PetHits: 1, MaxHit: 40, PetKills: 1 }]
+            && Math.Abs(episodes[0].HeldSec - 6) < 0.01);
         var s1 = cc.Take(c0.AddSeconds(30));
-        Check("cc: the card reads broke with the time it held", s1.Charm is { Broke: true, Held: 10, SinceBreak: 4 } && s1.Attempt is null);
+        Check("cc: the card reads broke with the time it held — frozen at the break, not still counting", s1.Charm is { Broke: true, Held: 6, SinceBreak: 4 } && s1.Attempt is null);
         cc.ProcessLine(L(45, "You begin casting Beguile Undead."));
         cc.ProcessLine(L(50, "Your Beguile Undead spell is interrupted."));
         Check("cc: a failed recast waits behind the red card", cc.Take(c0.AddSeconds(51)).Charm is { Broke: true });
@@ -3203,6 +3216,33 @@ public partial class App : Application
         cc.ProcessLine(L(155, "a greater ice bones moans."));
         cc.ProcessLine(L(160, "You have entered Permafrost Caverns."));
         Check("cc: zoning clears the card", cc.Charm is null && !cc.Take(c0.AddSeconds(161)).Any);
+        Check("cc: zoning closes the episode as 'zoned', five seconds held, and the break earlier was recorded once",
+            episodes.Count == 2 && episodes[1] is { How: "zoned", PetHits: 0 } && Math.Abs(episodes[1].HeldSec - 5) < 0.01);
+
+        // The charm ledger (21 Sep): per-mob averages, the card's countdown.
+        string bookPath = Path.Combine(Path.GetTempPath(), "eql_selftest_charms.json");
+        try { File.Delete(bookPath); } catch { /* fresh */ }
+        var book = new CharmBook(null, bookPath);
+        foreach (var ep in episodes) book.Add(ep);
+        book.Add(episodes[0]); // replay dedupe
+        book.Add(new CharmBook.Episode("a skeleton", "Dominate Undead", "Befallen", c0, c0.AddSeconds(120), "died", 2400, 20, 300, 3));
+        var stats = book.Stats("a greater ice bones");
+        Check("ledger: per mob — two charms, avg 5.5 s, longest 6 s, one broke, 40/hit, kills carry, replay dedupes",
+            stats is { Charms: 2, Breaks: 1, Deaths: 0, Kills: 1, DamagePerHit: 40, MaxHit: 40 } && Math.Abs(stats.AvgHeldSec - 5.5) < 0.01 && stats.LongestSec == 6
+            && book.ByMob()[0].Mob == "a greater ice bones" && book.ByMob("Dominate") is [{ Mob: "a skeleton", Dps: 20, Deaths: 1 }]);
+        var book2 = new CharmBook(null, bookPath);
+        Check("ledger: episodes survive a restart", book2.Episodes.Count == 3 && book2.Stats("a skeleton")!.Zone == "Befallen");
+        try { File.Delete(bookPath); } catch { /* temp */ }
+        var holding = new CrowdControl.CharmView("a wan ghoul knight", "Beguile", 506, 960, false, false, 0, 9473, 4, 3, 41, 612);
+        var past = holding with { Held = 1000 };
+        var noCeil = holding with { Ceiling = 0 };
+        Check("card: a known ceiling counts down and depletes; past it reads +m:ss grey; none counts up",
+            Views.CharmWindow.ClockFor(holding, false) is { Clock: "7:34", Overrun: false } h && Math.Abs(h.Fill - 454.0 / 960) < 0.001
+            && Views.CharmWindow.ClockFor(past, false) is { Clock: "+0:40", Overrun: true, Fill: 1 }
+            && Views.CharmWindow.ClockFor(noCeil, false) is { Clock: "8:26↑", Overrun: false }
+            && Views.CharmWindow.ClockFor(holding, true).Spell.EndsWith("· learned")
+            && Views.CharmWindow.PaceLine(holding) == "19 DPS · 231/hit · max 612 · 41 hits"
+            && Views.CharmWindow.HistoryLine(stats).StartsWith("before: 2× · avg 0:05 · best 0:06"));
 
         // An unknown landing: assumed on the cast, named by the wear-off, learned from the emote.
         string learnPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_landings.json");

@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private CharmWindow? _charmWin;
     private MezWindow? _mezWin;
     private CrowdControl _cc = null!;
+    private CharmBook _charms = null!;
     private MoteTickerWindow? _moteTickerWin;
     private ConditionsWindow? _conditionsWin;
     private SkyHelperWindow? _skyHelperWin;
@@ -170,6 +171,8 @@ public partial class MainWindow : Window
                 || n.Equals(_combat.SelfName, StringComparison.OrdinalIgnoreCase),
         };
         _combat.DamageDealt += (att, tgt, amount, time, dot) => { if (!_suppressSct) _cc.NoteDamage(att, tgt, amount, time, dot); };
+        _charms = new CharmBook(_configService); // the charm ledger (21 Sep)
+        _cc.CharmEnded += ep => { if (!_suppressSct) _charms.Add(ep); };
         _cc.MezLoose += mob => { if (!_suppressSct && _config.Overlay.CcSpeak) _alerts.Fire($"Loose {mob} — mez it", null); };
         _cc.CharmBroke += pet =>
         {
@@ -1083,7 +1086,7 @@ public partial class MainWindow : Window
     {
         if (_charmWin is not null) { try { _charmWin.Close(); } catch { /* ignore */ } _charmWin = null; }
         if (!_config.Overlay.CharmCardVisible) return;
-        _charmWin = new CharmWindow(_cc, _configService, _config.Overlay.Opacity);
+        _charmWin = new CharmWindow(_cc, _configService, _config.Overlay.Opacity, _charms);
         _charmWin.Show();
         _charmWin.SetLocked(_vm.Locked);
         _charmWin.SetHidden(_hidden);
@@ -2157,7 +2160,7 @@ public partial class MainWindow : Window
         if (_historyWindow is null)
         {
             _historyWindow = new HistoryWindow(_combat, _configService, _loot,
-                () => _config.Overlay.MeterSoloMode, _resists);
+                () => _config.Overlay.MeterSoloMode, _resists, _charms);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }

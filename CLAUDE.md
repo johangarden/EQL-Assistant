@@ -86,6 +86,10 @@ the affected suites (with `-Wait`) before committing.
   landings (necro undead charms) open ASSUMED and are LEARNED from the
   emote after the cast once a wear-off names the mob. Both learned sets
   persist in `cc-landings.json`. Live-only. Charm break = badge + phrase.
+  Every charm that ends (broke / died / zoned / replaced / you died) is an
+  `CharmBook` episode (`charms.json`: pet, spell, zone, hold, pet hits,
+  dmg, max hit, kills) → Fight history CHARMS view + the card's "before:"
+  line; the card counts DOWN a known ceiling and overruns grey past it.
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,

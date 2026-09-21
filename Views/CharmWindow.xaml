@@ -59,6 +59,9 @@
                     <TextBlock x:Name="KillsText" Grid.Column="1" FontSize="11" Foreground="#7F93AD" HorizontalAlignment="Center"/>
                     <TextBlock x:Name="LastHitText" Grid.Column="2" FontSize="11" Foreground="#7F93AD" HorizontalAlignment="Right"/>
                 </Grid>
+                <!-- The pet's pace this charm, and what this mob did for you before. -->
+                <TextBlock x:Name="PaceText" FontSize="11" Foreground="#7F93AD" Margin="0,2,0,0"/>
+                <TextBlock x:Name="HistoryText" FontSize="11" Foreground="#5C6B82" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                 <Border x:Name="VerdictBox" CornerRadius="5" Padding="8,6" BorderThickness="1" Margin="0,8,0,0"
                         BorderBrush="#7A2E33" Background="#2A1416" Visibility="Collapsed">
                     <StackPanel>
