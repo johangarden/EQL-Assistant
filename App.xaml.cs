@@ -4620,6 +4620,21 @@ public partial class App : Application
             else if (win is Views.MezWindow mw) { mw.SetLocked(true); mw.Show(); mw.Refresh(); }
             mgr = win;
         }
+        else if (page.Equals("sct", StringComparison.OrdinalIgnoreCase))
+        {
+            // One combat-text lane, unlocked, with a crit, a spell and a proc frozen mid-flight.
+            var lane = new Views.SctLaneWindow(new ConfigService(), "sctRender", "Outgoing",
+                new SolidColorBrush(Color.FromRgb(0xFF, 0xD5, 0x4F)), new SolidColorBrush(Color.FromRgb(0x9F, 0xA8, 0xDA)), new SolidColorBrush(Color.FromRgb(0x80, 0xCB, 0xC4)),
+                1.0, 22, 500, 260, 220, -10000, -10000)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            lane.Show();
+            lane.SetLocked(false);
+            lane.FreezeForRender();
+            mgr = lane;
+        }
         else if (page.Equals("levelup", StringComparison.OrdinalIgnoreCase))
         {
             // The level-up card for a three-class combo at 44 (dividers between classes).
