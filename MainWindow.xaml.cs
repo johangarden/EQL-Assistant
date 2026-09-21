@@ -883,7 +883,7 @@ public partial class MainWindow : Window
         {
             var list = _configService.LoadRespawns();
             if (list.Any(r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) return;
-            list.Add(new Models.RespawnEntry { Name = name, Zone = zone });
+            list.Add(new Models.RespawnEntry { Name = name, Zone = MoteFarm.BaseZone(zone) }); // tier-blind: the mob lives in Guk, not in "Guk 4 (Refined)"
             _configService.SaveRespawns(list);
             // The engine holds the same trigger list instance, so re-merging the
             // timerAuto triggers makes the new respawn live immediately.
@@ -2083,14 +2083,9 @@ public partial class MainWindow : Window
     /// <summary>A "timerAuto" trigger matched (e.g. a named mob death) — start the watch.</summary>
     private void OnTimerRequested(double seconds, string name)
     {
-        if (_timerHidden)
-        {
-            _timerHidden = false;
-            _config.Overlay.TimerVisible = true;
-            _configService.SaveSettings(_config);
-        }
-        if (_hidden) UnhideAll();
-        UpdateTimerVisibility();
+        // A kill starts the clock — it never re-opens a panel you hid (owner,
+        // 21 Sep: "I turn off the panel and it comes back"). The clock runs
+        // behind the scenes; the spawn notice still speaks.
         _timer?.StartWith(seconds, name);
         _vm.Flash($"{name} down — spawn timer started.");
         Log.Info($"Auto-started spawn timer ({seconds:0}s) from trigger '{name}'.");

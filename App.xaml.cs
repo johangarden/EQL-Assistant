@@ -4909,6 +4909,14 @@ public partial class App : Application
             tw4.SetZone("Befallen 3 (Fused)");
             Check("zoning back promotes the intact clock to the pie",
                 tw4.BigState is { Mode: "Kurven", Remaining: > 150 and <= 200 });
+            // Tiers are the same zone (21 Sep): a Befallen 3 mob shows in Befallen
+            // and in Befallen 1 (Awakened) alike, and keeps the pie across tiers.
+            tw4.SetZone("Befallen");
+            Check("zones compare tier-blind: the clock stays on the pie in another tier of the same zone",
+                tw4.BigState.Mode == "Kurven" && !tw4.HiddenNames.Contains("Kurven") && tw4.HiddenNames.Contains("Vox")
+                && TimerWindow.SameZone("The Ruins of Old Guk 4 (Refined)", "The Ruins of Old Guk")
+                && TimerWindow.SameZone("Nagafen's Lair - Solo 2 (Ascended)", "Nagafen's Lair")
+                && !TimerWindow.SameZone("Befallen", "Permafrost"));
             tw4.Close();
         }
         catch (Exception ex)
