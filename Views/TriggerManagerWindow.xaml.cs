@@ -49,6 +49,11 @@ public partial class TriggerManagerWindow : Window
     public Func<IReadOnlyList<string>>? SkyDriftPreview { get; set; }
     public Func<string>? RealignSkyRequested { get; set; }
 
+    /// <summary>Tradeskills page: your learned skill values (null = never seen) and the manual set.</summary>
+    public Func<string, int?>? TradeskillValue { get; set; }
+    public Action<string, int>? TradeskillValueSet { get; set; }
+    private readonly Dictionary<string, TextBox> _tsBoxes = new(StringComparer.OrdinalIgnoreCase);
+
     private async void AuditSky_Click(object sender, RoutedEventArgs e)
     {
         if (AuditSkyRequested is null) { Status("The audit isn't available right now."); return; }
@@ -1264,6 +1269,7 @@ public partial class TriggerManagerWindow : Window
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
             ["Crowd control"] = CrowdControlPage,
+            ["Tradeskills"] = TradeskillsPage,
             ["Incoming damage"] = IncomingPage,
             ["Quest droppers"] = SkyHelperPage,
             ["Cursor ring"] = CursorRingPage,
@@ -1477,6 +1483,15 @@ public partial class TriggerManagerWindow : Window
         }
         else _incomingHomeSeg.Select(_incomingHome);
         IncomingFoldCheck.IsChecked = _config.Overlay.IncomingFoldQuiet;
+        // Tradeskills (21 Sep).
+        TsLadderCheck.IsChecked = _config.Overlay.TradeskillLadder;
+        TsBagCountsCheck.IsChecked = _config.Overlay.TradeskillBagCounts;
+        TsToolbarCheck.IsChecked = _config.Overlay.TradeskillToolbarBtn;
+        TsNoticeCheck.IsChecked = _config.Overlay.TradeskillNoticeEnabled;
+        TsModeBox.SelectedValue = _config.Overlay.TradeskillNoticeMode;
+        TsSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.TradeskillNoticeSpeak) ? "{item} is trivial" : _config.Overlay.TradeskillNoticeSpeak;
+        SyncSoundCombo(TsSoundBox, _config.Overlay.TradeskillNoticeSound);
+        BuildTradeskillTable();
         // The wrong-stance notice (14 Sep).
         StanceOnCheck.IsChecked = _config.Overlay.StanceNoticeEnabled;
         StanceModeBox.SelectedValue = _config.Overlay.StanceNoticeMode;
@@ -1547,6 +1562,58 @@ public partial class TriggerManagerWindow : Window
         bool sSound = StanceModeBox.SelectedValue as string != "speak";
         StanceSoundBox.Visibility = sSound ? Visibility.Visible : Visibility.Collapsed;
         StanceSpeakBox.Visibility = sSound ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>The nine tradeskills with their learned values; a box per skill for the ones the log never saw.</summary>
+    private void BuildTradeskillTable()
+    {
+        TsSkillsHost.Children.Clear();
+        _tsBoxes.Clear();
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        int r = 0;
+        foreach (string name in TradeskillData.Names)
+        {
+            grid.RowDefinitions.Add(new RowDefinition());
+            int? v = TradeskillValue?.Invoke(name);
+            var label = new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 3, 0, 3) };
+            Grid.SetRow(label, r); Grid.SetColumn(label, 0); grid.Children.Add(label);
+            var box = new TextBox { Text = v?.ToString() ?? "", Width = 60, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 2, 0, 2), ToolTip = "Your skill value — blank = unknown" };
+            Grid.SetRow(box, r); Grid.SetColumn(box, 1); grid.Children.Add(box);
+            _tsBoxes[name] = box;
+            var hint = new TextBlock
+            {
+                Text = v is null ? "? — not seen in the log yet" : "learned from the log",
+                Style = (Style)FindResource("Hint"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0),
+            };
+            Grid.SetRow(hint, r); Grid.SetColumn(hint, 2); grid.Children.Add(hint);
+            r++;
+        }
+        TsSkillsHost.Children.Add(grid);
+    }
+
+    /// <summary>Save: hand-typed skill values go to the engine (only what changed).</summary>
+    private void PushTradeskillValues()
+    {
+        if (TradeskillValueSet is null) return;
+        foreach (var (name, box) in _tsBoxes)
+        {
+            string t = box.Text.Trim();
+            int? was = TradeskillValue?.Invoke(name);
+            if (t.Length == 0) { if (was is not null) TradeskillValueSet(name, 0); continue; }
+            if (int.TryParse(t, out int v) && v > 0 && v <= 400 && v != was) TradeskillValueSet(name, v);
+        }
+    }
+
+    private void TsTest_Click(object sender, RoutedEventArgs e)
+    {
+        if (_alerts.Muted) { Status("Unmute to preview."); return; }
+        if (TsModeBox.SelectedValue as string == "speak")
+            _alerts.Fire(MainWindow.TradeskillPhrase(TsSpeakBox.Text, "Metal Bits"), null);
+        else if (TsSoundBox.SelectedItem is SoundPreset p && p.Path.Length > 0)
+            _alerts.Fire(null, p.Path);
     }
 
     private void StanceTest_Click(object sender, RoutedEventArgs e)
@@ -1761,6 +1828,7 @@ public partial class TriggerManagerWindow : Window
     /// (shared by the save and the dirty-check fingerprint).</summary>
     private AppConfig BuildConfigFromUi()
     {
+        PushTradeskillValues();
         return new AppConfig
         {
             CharacterName = _config.CharacterName, // auto-detected; hand-editable in config.json only
@@ -1806,6 +1874,14 @@ public partial class TriggerManagerWindow : Window
                 IncomingWindowSec = _incomingWindowSec,
                 IncomingOnMeter = _incomingHome == "meter",
                 IncomingFoldQuiet = IncomingFoldCheck.IsChecked == true,
+                TradeskillOpen = _config.Overlay.TradeskillOpen, // opened from the toolbar / ☰ — carried through
+                TradeskillLadder = TsLadderCheck.IsChecked == true,
+                TradeskillBagCounts = TsBagCountsCheck.IsChecked == true,
+                TradeskillToolbarBtn = TsToolbarCheck.IsChecked == true,
+                TradeskillNoticeEnabled = TsNoticeCheck.IsChecked == true,
+                TradeskillNoticeMode = TsModeBox.SelectedValue as string ?? "speak",
+                TradeskillNoticeSpeak = TsSpeakBox.Text.Trim(),
+                TradeskillNoticeSound = (TsSoundBox.SelectedItem as SoundPreset)?.Path ?? _config.Overlay.TradeskillNoticeSound,
                 StanceNoticeEnabled = StanceOnCheck.IsChecked == true,
                 StanceNoticeShare = _stanceShare,
                 StanceNoticeWindowSec = _stanceWindowSec,

@@ -35,6 +35,11 @@ public partial class MainWindow : Window
     private MezWindow? _mezWin;
     private CrowdControl _cc = null!;
     private CharmBook _charms = null!;
+    // The tradeskill helper (21 Sep): the wiki ladders + the combine engine + the card you open on purpose.
+    private readonly TradeskillData _tsData = new();
+    private TradeskillWatch _tradeskills = null!;
+    private TradeskillWindow? _tsWin;
+    private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _tsDumpCache;
     private MoteTickerWindow? _moteTickerWin;
     private ConditionsWindow? _conditionsWin;
     private SkyHelperWindow? _skyHelperWin;
@@ -172,6 +177,8 @@ public partial class MainWindow : Window
         };
         _combat.DamageDealt += (att, tgt, amount, time, dot) => { if (!_suppressSct) _cc.NoteDamage(att, tgt, amount, time, dot); };
         _charms = new CharmBook(_configService); // the charm ledger (21 Sep)
+        _tradeskills = new TradeskillWatch(_tsData, _configService);
+        _tradeskills.WentTrivial += p => Dispatcher.BeginInvoke(() => OnTradeskillTrivial(p));
         _cc.CharmEnded += ep => { if (!_suppressSct) _charms.Add(ep); };
         _cc.CharmAttemptFailed += a => { if (!_suppressSct) _charms.AddAttempt(a); };
         _cc.LevelLookup = _combat.ConLevelOf;
@@ -476,6 +483,7 @@ public partial class MainWindow : Window
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _session.ProcessLine(line);
+                _tradeskills.ProcessLine(line, live: false);
                 NoteLineSeen(t);
                 lines++;
             }
@@ -559,6 +567,7 @@ public partial class MainWindow : Window
                 _resists.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
+                _tradeskills.ProcessLine(line, live: false); // skill values + vendors from history
                 // Pet names ride the reparse: every "… Master." speech in the
                 // whole history teaches the known-pets ledger, so last month's
                 // pet never reads as an ally or a group member again.
@@ -1000,6 +1009,7 @@ public partial class MainWindow : Window
         RebuildIncomingWindow();
         RebuildCharmWindow();
         RebuildMezWindow();
+        RebuildTradeskillWindow();
         RebuildMoteTickerWindow();
         RebuildConditionsWindow();
         RebuildSkyHelperWindow();
@@ -1099,6 +1109,130 @@ public partial class MainWindow : Window
         _meter?.SetIncoming(onMeter ? _incoming : null, () => _combat.CurrentStance,
             _config.Overlay.IncomingWindowSec, _config.Overlay.IncomingFoldQuiet);
     }
+
+    // ---- tradeskill helper (21 Sep) -------------------------------------------
+
+    /// <summary>The card follows <see cref="OverlayConfig.TradeskillOpen"/>:
+    /// open for that skill (created once, settings applied in place), or
+    /// closed. Idempotent — the rebuild chain and every toggle call it.</summary>
+    private void RebuildTradeskillWindow()
+    {
+        _toolbarWin?.SetTradeskillButton(_config.Overlay.TradeskillToolbarBtn);
+        string open = _config.Overlay.TradeskillOpen;
+        if (open.Length == 0 || _tsData.Find(open) is null)
+        {
+            if (_tsWin is not null) { try { _tsWin.Close(); } catch { /* ignore */ } _tsWin = null; }
+            if (_tradeskills.Selected is not null) _tradeskills.EndSession();
+            return;
+        }
+        if (!open.Equals(_tradeskills.Selected, StringComparison.OrdinalIgnoreCase)) _tradeskills.StartSession(open);
+        if (_tsWin is null)
+        {
+            _tsWin = new TradeskillWindow(_tradeskills, _configService, _config.Overlay.Opacity,
+                _config.Overlay.TradeskillLadder, _config.Overlay.TradeskillBagCounts)
+            {
+                BagCount = TradeskillBagCount,
+                SkillPicked = OpenTradeskill,
+                CloseRequested = CloseTradeskill,
+                LadderToggled = on => { _config.Overlay.TradeskillLadder = on; _configService.SaveSettings(_config); },
+            };
+            _tsWin.Show();
+            _tsWin.SetLocked(_vm.Locked);
+            _tsWin.SetHidden(_hidden);
+        }
+        else _tsWin.ApplySettings(_config.Overlay.Opacity, _config.Overlay.TradeskillLadder, _config.Overlay.TradeskillBagCounts);
+    }
+
+    private void OpenTradeskill(string skill)
+    {
+        if (_tsData.Find(skill) is not { } sk) return;
+        _config.Overlay.TradeskillOpen = sk.Name;
+        _configService.SaveSettings(_config);
+        _tradeskills.StartSession(sk.Name);
+        RebuildTradeskillWindow();
+        _tsWin?.Refresh();
+        _vm.Flash($"Tradeskill helper: {sk.Name}.");
+        Log.Info($"Tradeskill helper opened on {sk.Name} (skill {_tradeskills.ValueOf(sk.Name)?.ToString() ?? "?"})");
+    }
+
+    private void CloseTradeskill()
+    {
+        _config.Overlay.TradeskillOpen = "";
+        _configService.SaveSettings(_config);
+        RebuildTradeskillWindow();
+        _vm.Flash("Tradeskill helper closed.");
+    }
+
+    /// <summary>The picker (toolbar anvil / ☰ → Tradeskill helper): the nine
+    /// skills with their known values, the open one ticked; close; settings.</summary>
+    private void ShowTradeskillMenu(UIElement? target)
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(new MenuItem { Header = "Tradeskill helper — pick a skill", IsEnabled = false });
+        foreach (var sk in _tsData.Skills)
+        {
+            var row = new DockPanel { MinWidth = 200 };
+            int? v = _tradeskills.ValueOf(sk.Name);
+            var val = new TextBlock
+            {
+                Text = v?.ToString() ?? "?", FontWeight = FontWeights.SemiBold, Margin = new Thickness(14, 0, 0, 0),
+                Foreground = new SolidColorBrush(v is null ? Color.FromRgb(0x5C, 0x6B, 0x82) : Color.FromRgb(0xE8, 0xC1, 0x5A)),
+            };
+            DockPanel.SetDock(val, Dock.Right);
+            row.Children.Add(val);
+            row.Children.Add(new TextBlock { Text = sk.Name });
+            var item = new MenuItem { Header = row, IsChecked = sk.Name.Equals(_config.Overlay.TradeskillOpen, StringComparison.OrdinalIgnoreCase) };
+            string name = sk.Name;
+            item.Click += (_, _) => OpenTradeskill(name);
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        var close = new MenuItem { Header = "Close the helper", IsEnabled = _config.Overlay.TradeskillOpen.Length > 0 };
+        close.Click += (_, _) => CloseTradeskill();
+        menu.Items.Add(close);
+        var settings = new MenuItem { Header = "Tradeskills settings…" };
+        settings.Click += (_, _) => OpenManager("Tradeskills");
+        menu.Items.Add(settings);
+        menu.PlacementTarget = target;
+        menu.Placement = target is null
+            ? System.Windows.Controls.Primitives.PlacementMode.MousePoint
+            : System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Copies of an ingredient in the last /outputfile inventory dump
+    /// (the file the Character and Sky windows read); −1 = no dump.</summary>
+    private int TradeskillBagCount(string item)
+    {
+        try
+        {
+            string logPath = _watcher?.CurrentPath ?? "";
+            if (logPath.Length == 0) return -1;
+            var (name, server) = InventoryStore.ParseLogName(logPath);
+            string? path = InventoryStore.FindDumpFile(InventoryStore.EqRootOf(logPath), name, server);
+            if (path is null || !File.Exists(path)) return -1;
+            var stamp = File.GetLastWriteTime(path);
+            if (_tsDumpCache is not { } c || c.Path != path || c.Stamp != stamp)
+                _tsDumpCache = (path, stamp, InventoryStore.CarryAll(InventoryStore.Parse(File.ReadAllText(path))).Rows);
+            return SkyWindow.CountInDump(_tsDumpCache.Value.Rows, item);
+        }
+        catch { return -1; }
+    }
+
+    /// <summary>The game said a recipe is trivial now — while the helper is
+    /// open, say so (phrase or sound), once per recipe per session.</summary>
+    private void OnTradeskillTrivial(string product)
+    {
+        var o = _config.Overlay;
+        Log.Info($"Tradeskill: {product} is trivial now.");
+        if (!o.TradeskillNoticeEnabled || _tsWin is null) return;
+        if (o.TradeskillNoticeMode == "speak") _alerts.Fire(TradeskillPhrase(o.TradeskillNoticeSpeak, product), null);
+        else if (!string.IsNullOrWhiteSpace(o.TradeskillNoticeSound)) _alerts.Fire(null, o.TradeskillNoticeSound);
+    }
+
+    /// <summary>"{item} is trivial" → "Metal Bits is trivial"; an empty template speaks the default.</summary>
+    public static string TradeskillPhrase(string template, string item) =>
+        (string.IsNullOrWhiteSpace(template) ? "{item} is trivial" : template).Replace("{item}", item, StringComparison.OrdinalIgnoreCase);
 
     private void RebuildCharmWindow()
     {
@@ -1329,6 +1463,7 @@ public partial class MainWindow : Window
         _respawnLearner.ProcessLine(line); // live-only too: stale lines would mint stale sightings
         _skyHelper.ProcessLine(line);      // ibid. — quest-dropper sightings
         _cc.ProcessLine(line);             // ibid. — charm and mez you hold
+        _tradeskills.ProcessLine(line);    // combines, skill-ups, purchases — the tradeskill helper
         _session.ProcessLine(line);    // leveling pace (rebuilt by catch-up)
         if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
         _logBus.Publish(line);
@@ -1343,6 +1478,7 @@ public partial class MainWindow : Window
     private void EndReplay()
     {
         _reparsing = false;
+        _tradeskills.SaveLearned();
         if (_deferredLive.Count == 0) return;
         var queued = _deferredLive.ToArray();
         _deferredLive.Clear();
@@ -1469,6 +1605,7 @@ public partial class MainWindow : Window
         _targetMatrix?.SetLocked(_vm.Locked);
         _enemyDotsWin?.SetLocked(_vm.Locked);
         _incomingWin?.SetLocked(_vm.Locked);
+        _tsWin?.SetLocked(_vm.Locked);
         _charmWin?.SetLocked(_vm.Locked);
         _mezWin?.SetLocked(_vm.Locked);
         _moteTickerWin?.SetLocked(_vm.Locked);
@@ -1551,6 +1688,7 @@ public partial class MainWindow : Window
         _incomingWin?.SetHidden(_hidden);
         _charmWin?.SetHidden(_hidden);
         _mezWin?.SetHidden(_hidden);
+        _tsWin?.SetHidden(_hidden);
         _moteTickerWin?.SetHidden(_hidden);
         _conditionsWin?.SetHidden(_hidden);
         _skyHelperWin?.SetHidden(_hidden);
@@ -1590,6 +1728,7 @@ public partial class MainWindow : Window
             _targetMatrix?.SetLocked(false);
             _enemyDotsWin?.SetLocked(false);
             _incomingWin?.SetLocked(false);
+            _tsWin?.SetLocked(false);
             _charmWin?.SetLocked(false);
             _mezWin?.SetLocked(false);
             _moteTickerWin?.SetLocked(false);
@@ -1607,6 +1746,7 @@ public partial class MainWindow : Window
         _targetMatrix?.ResetPosition();
         _enemyDotsWin?.ResetPosition();
         _incomingWin?.ResetPosition();
+        _tsWin?.ResetPosition();
         _charmWin?.ResetPosition();
         _mezWin?.ResetPosition();
         _moteTickerWin?.ResetPosition();
@@ -1647,6 +1787,8 @@ public partial class MainWindow : Window
                 AuditSkyRequested = AuditSkyLedgerAsync,
                 SkyDriftPreview = SkyDriftPreview,
                 RealignSkyRequested = RealignSkyLedger,
+                TradeskillValue = sk => _tradeskills.ValueOf(sk),
+                TradeskillValueSet = (sk, v) => _tradeskills.SetValue(sk, v),
             };
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
@@ -1912,7 +2054,9 @@ public partial class MainWindow : Window
             QuestsRequested = OpenSkyQuests,
             LootRequested = OpenLootHistory,
             SheetRequested = OpenCharacterSheet,
+            TradeskillsRequested = el => ShowTradeskillMenu(el as UIElement),
         };
+        _toolbarWin.SetTradeskillButton(_config.Overlay.TradeskillToolbarBtn);
         _toolbarWin.Show();
         UpdateToolbarVisibility();
     }
@@ -2007,6 +2151,9 @@ public partial class MainWindow : Window
                 if (it.Tag is Func<bool> isOn) it.IsChecked = isOn();
         };
         menu.Items.Add(panels);
+        var tsMenu = new MenuItem { Header = "Tradeskill helper…" };
+        tsMenu.Click += (_, _) => ShowTradeskillMenu(null);
+        menu.Items.Add(tsMenu);
 
         int knownLevel = KnownLevel();
         var whatsNew = new MenuItem
@@ -2552,6 +2699,7 @@ public partial class MainWindow : Window
         try { _targetMatrix?.Close(); } catch { /* ignore */ }
         try { _enemyDotsWin?.Close(); } catch { /* ignore */ }
         try { _incomingWin?.Close(); } catch { /* ignore */ }
+        try { _tsWin?.Close(); } catch { /* ignore */ }
         try { _charmWin?.Close(); } catch { /* ignore */ }
         try { _mezWin?.Close(); } catch { /* ignore */ }
         try { _moteTickerWin?.Close(); } catch { /* ignore */ }

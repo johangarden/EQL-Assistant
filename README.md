@@ -499,6 +499,6 @@ the item icons (`data\item-icons\` — the wikis' 40×40 game art) are converted
 from
 [jmoyers/everquest-companion](https://github.com/jmoyers/everquest-companion)
 (MIT License, Copyright 2026 Josh Moyers), whose data was in turn sourced from
-eqlwiki.com and wiki.project1999.com. The character sheet's +N tier math is
+eqlwiki.com and wiki.project1999.com; the tradeskill helper's leveling ladders, recipes, vendors and drop tables are eqlwiki.com's Skill and item pages. The character sheet's +N tier math is
 the wiki's own item-level slider algorithm, via Companion's verified port.
 Thanks!

@@ -365,6 +365,22 @@ public partial class App : Application
                 meter.Close();
             }
 
+            // The tradeskill helper card renders the step and the ladder (21 Sep).
+            {
+                var tsd = new TradeskillData();
+                var tsw = new TradeskillWatch(tsd, null);
+                tsw.SetValue("Brewing", 87);
+                tsw.StartSession("Brewing");
+                var tsWin = new Views.TradeskillWindow(tsw, new ConfigService(), 1.0, ladder: false, bagCounts: false) { Left = -9000, Top = -9000 };
+                tsWin.Show();
+                tsWin.Refresh();
+                if (tsWin.LastStep != "Skull Ale") throw new Exception("tradeskill card: Brewing 87 should sit on Skull Ale, got " + tsWin.LastStep);
+                if (!tsWin.LastPill.StartsWith("FAST TRACK")) throw new Exception("tradeskill card: the pill names the tier, got " + tsWin.LastPill);
+                tsWin.ApplySettings(1.0, ladder: true, bagCounts: false);
+                if (!tsWin.LineTexts.Contains("FARM 1") || !tsWin.LineTexts.Contains("ALL BOUGHT")) throw new Exception("tradeskill card: the ladder carries the sourcing tags");
+                tsWin.Close();
+            }
+
             // The crowd-control panels render the demo state.
             {
                 var ccv = new CrowdControl(null, null);
@@ -2411,6 +2427,7 @@ public partial class App : Application
                     one.Fraction == 0 && one.Percent == "0%" && (one with { Done = true }).Fraction == 1
                     && one.Title == "Replaying a.txt" && new ReparseProgress("a", 1, 1, 9, 4, 1).Fraction == 1);
                 CrowdControlChecks(Check);
+                TradeskillChecks(Check);
                 Check("reparse: the catch-up card says so, and the toolbar fill is the track times the fraction",
                     new ReparseProgress("a.txt", 1, 1, 0, 0, 0, Verb: "Catching up").Title == "Catching up a.txt"
                     && Math.Abs(new ViewModels.OverlayViewModel(new TriggerEngine(new Models.AppConfig(), new AlertService()), new Models.AppConfig())
@@ -3208,6 +3225,94 @@ public partial class App : Application
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest_engine.txt"), result);
         Environment.ExitCode = failures == 0 ? 0 : 1;
         Shutdown();
+    }
+
+    /// <summary>Tradeskill helper (21 Sep): the wiki data, the combine engine
+    /// on the 13 Aug Blacksmithing lines, the sourcing verdicts.</summary>
+    private static void TradeskillChecks(Action<string, bool> Check)
+    {
+        var data = new TradeskillData();
+        Check("ts: nine skills load, each with a ladder, and a hundred-odd recipes",
+            data.Skills.Count == 9 && data.Skills.All(s => s.Steps.Any()) && data.RecipeCount > 100);
+        var skull = data.RecipeFor("Skull Ale");
+        Check("ts: Skull Ale — trivial 151, a dropped skull that returns, bought spices",
+            skull is { Trivial: 151 }
+            && skull.Ingredients.Any(i => i.Item.Equals("Cyclops skull", StringComparison.OrdinalIgnoreCase) && i.Source == "drop" && i.Returned)
+            && skull.Ingredients.Any(i => i.Item == "Spices" && i.Source == "vendor"));
+        Check("ts: sourcing — Skull Ale is FARM 1, Short Beer is ALL BOUGHT",
+            data.SourcingOf(skull!).Tag == "FARM 1" && data.SourcingOf(data.RecipeFor("Short Beer")!).AllBought);
+        Check("ts: a made ingredient inherits its chain — Batwing Pie's dough needs an egg",
+            !data.SourcingOf(data.RecipeFor("Batwing Pie")!).AllBought);
+        Check("ts: Jewelry Making is the game's name for Jewelcrafting", data.Find("Jewelry Making")?.Name == "Jewelcrafting");
+        var fl = data.Find("Fletching")!;
+        Check("ts: the arrow steps share a product but keep their own recipes",
+            data.StepFor(fl, "CLASS 1 Wood Point Arrow", 40) is { To: 56 } && data.StepFor(fl, "CLASS 1 Wood Point Arrow", 5) is { To: 16 }
+            && data.RecipeFor(data.StepFor(fl, "CLASS 1 Wood Point Arrow", 5)!.Recipe)!.Ingredients.Any(i => i.Item == "Large Groove Nocks"));
+        Check("ts: where a drop comes from", data.WhereLine("Cyclops skull").Contains("undead cyclops"));
+
+        var t0 = new DateTime(2026, 8, 13, 9, 12, 0);
+        string L(int sec, string body) => $"[{t0.AddSeconds(sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+        var w = new TradeskillWatch(data, null);
+        w.ProcessLine(L(0, "You have entered Paineel."), live: false);
+        w.ProcessLine(L(1, "You have become better at Blacksmithing! (2)"), live: false);
+        w.ProcessLine(L(2, "You have become better at Bash! (120)"), live: false);
+        w.ProcessLine(L(3, "You purchased 40 Small Piece of Ore from Klok Lagnoz for  21 platinum 2 gold."), live: false);
+        Check("ts: a replay learns the skill, ignores Bash, remembers the vendor and its zone",
+            w.ValueOf("Blacksmithing") == 2 && w.ValueOf("Bash") is null && w.Skills.Count == 1
+            && w.VendorFor("Small Piece of Ore") is { Npc: "Klok Lagnoz", Zone: "Paineel" });
+        Check("ts: no session until a skill is opened", w.Take(t0) is null);
+        w.StartSession("Blacksmithing", t0);
+        const string trivialLine = "You can no longer advance your skill from making this item.";
+        string said = "";
+        w.WentTrivial += prod => said += prod + ";";
+        for (int i = 0; i < 4; i++)
+        {
+            w.ProcessLine(L(10 + i * 3, "You have fashioned the items together to create something new: Metal Bits."));
+            w.ProcessLine(L(11 + i * 3, $"You have become better at Blacksmithing! ({3 + i})"));
+        }
+        w.ProcessLine(L(30, "You lacked the skills to fashion Metal Bits."));
+        var s1 = w.Take(t0.AddSeconds(31))!;
+        Check("ts: the session counts combines, ok, fails and skill-ups", s1 is { Combines: 5, Ok: 4, Fail: 1, SkillUps: 4 } && w.ValueOf("Blacksmithing") == 6);
+        Check("ts: the step you are on is the product you combined, in its tier, with the next lined up",
+            s1.Current is { Recipe: "Metal Bits", To: 21 } && s1.CurrentTier?.Name.StartsWith("Getting Started") == true
+            && s1.Next is { Recipe: "Sheet Metal" } && !s1.Trivial && s1.TierIndex == 1 && s1.TierCount == 3);
+        Check("ts: pace — 5 combines for 4 points, ~19 more to 21", s1.CombinesPerPoint is > 1.2 and < 1.3 && s1.EstimateCombines == 19);
+        w.ProcessLine(L(40, "You purchased 10 Water Flask from Klok Lagnoz for  1 gold 5 silver."));
+        Check("ts: session purchases add up in copper; coins print as the two big denominations",
+            w.Take(t0.AddSeconds(41))!.SpentCopper == 150 && TradeskillWatch.Coins(21200) == "21p 2g" && TradeskillWatch.Coins(150) == "1g 5s" && TradeskillWatch.Coins(0) == "—");
+        w.ProcessLine(L(50, trivialLine));
+        w.ProcessLine(L(50, "You have fashioned the items together to create something new: Metal Bits."));
+        var s2 = w.Take(t0.AddSeconds(51))!;
+        Check("ts: the game's trivial line turns the step amber and says so", s2.Trivial && said == "Metal Bits;");
+        w.ProcessLine(L(53, trivialLine));
+        w.ProcessLine(L(53, "You have fashioned the items together to create something new: Metal Bits."));
+        Check("ts: …once per recipe", said == "Metal Bits;" && w.Take(t0.AddSeconds(54))!.Trivial);
+        w.ProcessLine(L(60, "You have fashioned the items together to create an alternate product: Sheet Metal."));
+        var s3 = w.Take(t0.AddSeconds(61))!;
+        Check("ts: a different recipe moves the step and ends the amber state", s3.Current is { Recipe: "Sheet Metal" } && !s3.Trivial && s3.Ok == 7);
+        w.ProcessLine(L(70, "Sorry, but you don't have everything you need for this recipe in your general inventory."));
+        Check("ts: the missing-ingredient line flags for 30 s", w.Take(t0.AddSeconds(71))!.Missing && !w.Take(t0.AddSeconds(120))!.Missing);
+
+        var w2 = new TradeskillWatch(data, null);
+        w2.SetValue("Brewing", 160);
+        w2.StartSession("Brewing", t0);
+        var b = w2.Take(t0)!;
+        Check("ts: with no combine yet the step is the first your skill has not passed", b.Current is { Recipe: "Ginesh" } && !b.Trivial && b.Value == 160 && b.Remaining == 8);
+        w2.SetValue("Brewing", 170);
+        Check("ts: with no combine the step moves past what the skill has passed", w2.Take(t0)!.Current is { Recipe: "Faydwer Shaker" });
+        w2.ProcessLine(L(5, "You have fashioned the items together to create something new: Ginesh."));
+        Check("ts: the recipe you are combining reads trivial by skill value alone", w2.Take(t0.AddSeconds(6))! is { Current.Recipe: "Ginesh", Trivial: true });
+        var w3 = new TradeskillWatch(data, null);
+        w3.SetValue("Pottery", 40);
+        bool set = w3.ValueOf("Pottery") == 40;
+        w3.SetValue("Pottery", 0);
+        Check("ts: the manual value can be set and cleared", set && w3.ValueOf("Pottery") is null);
+        var w4 = new TradeskillWatch(data, null);
+        w4.StartSession("Baking", t0);
+        Check("ts: an unknown skill opens on the ladder's first step", w4.Take(t0) is { Value: null, Current: { Recipe: "Batwing Crunchies" } });
+        Check("ts: config defaults — closed, step view, bag counts, notice spoken",
+            new Models.AppConfig().Overlay is { TradeskillOpen: "", TradeskillLadder: false, TradeskillBagCounts: true, TradeskillNoticeEnabled: true, TradeskillNoticeMode: "speak", TradeskillToolbarBtn: true });
+        Check("ts: the phrase template", EQLOverlay.MainWindow.TradeskillPhrase("", "Metal Bits") == "Metal Bits is trivial" && EQLOverlay.MainWindow.TradeskillPhrase("Move on from {item}", "Skull Ale") == "Move on from Skull Ale");
     }
 
     /// <summary>Crowd control (14 Sep): the charm card and mez panel engine,
@@ -4662,6 +4767,54 @@ public partial class App : Application
             meter.Show();
             meter.SetIncoming(iw, () => "defensive", 15, foldQuiet: true);
             mgr = meter;
+        }
+        else if (page.Equals("tradeskill", StringComparison.OrdinalIgnoreCase) || page.StartsWith("tradeskill:", StringComparison.OrdinalIgnoreCase))
+        {
+            // The tradeskill helper: Brewing mid-session on Skull Ale
+            // (tradeskill), the whole ladder (tradeskill:ladder), or
+            // Blacksmithing the moment Metal Bits went trivial (tradeskill:trivial).
+            var tsd = new TradeskillData();
+            var tsw = new TradeskillWatch(tsd, null);
+            var t0 = DateTime.Now.AddMinutes(-25);
+            string L(int sec, string body) => $"[{t0.AddSeconds(sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+            bool trivial = page.EndsWith(":trivial", StringComparison.OrdinalIgnoreCase);
+            tsw.ProcessLine(L(0, "You have entered Paineel."), live: false);
+            if (trivial)
+            {
+                tsw.SetValue("Blacksmithing", 38);
+                tsw.StartSession("Blacksmithing");
+                tsw.ProcessLine(L(1, "You purchased 40 Small Piece of Ore from Klok Lagnoz for  21 platinum 2 gold."));
+                int sk = 38;
+                for (int i = 0; i < 14; i++)
+                {
+                    tsw.ProcessLine(L(5 + i * 3, i % 4 == 3 ? "You lacked the skills to fashion Metal Bits." : "You have fashioned the items together to create something new: Metal Bits."));
+                    if (i % 5 == 2) tsw.ProcessLine(L(6 + i * 3, $"You have become better at Blacksmithing! ({++sk})"));
+                }
+                tsw.ProcessLine(L(60, "You can no longer advance your skill from making this item."));
+                tsw.ProcessLine(L(60, "You have fashioned the items together to create something new: Metal Bits."));
+            }
+            else
+            {
+                tsw.SetValue("Brewing", 68);
+                tsw.StartSession("Brewing");
+                tsw.ProcessLine(L(1, "You purchased 20 Vinegar from Innkeep Seke for  12 platinum 4 gold."));
+                int sk = 68;
+                for (int i = 0; i < 42; i++)
+                {
+                    tsw.ProcessLine(L(5 + i * 3, i % 4 == 1 ? "You lacked the skills to fashion Skull Ale." : "You have fashioned the items together to create something new: Skull Ale."));
+                    if (sk < 87 && i % 2 == 0) tsw.ProcessLine(L(6 + i * 3, $"You have become better at Brewing! ({++sk})"));
+                }
+            }
+            var win = new Views.TradeskillWindow(tsw, new ConfigService(), 1.0, ladder: page.EndsWith(":ladder", StringComparison.OrdinalIgnoreCase), bagCounts: false)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+                BagCount = item => item switch { "Short Beer" => 18, "Spices" => 21, "Vinegar" => 3, "Cyclops skull" => 1, "Small Piece of Ore" => 26, "Water Flask" => 12, _ => -1 },
+            };
+            win.ApplySettings(1.0, win.ShowsLadder, bagCounts: true);
+            win.Show();
+            win.Refresh();
+            mgr = win;
         }
         else if (page.Equals("incoming", StringComparison.OrdinalIgnoreCase))
         {

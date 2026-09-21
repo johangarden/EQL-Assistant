@@ -1,0 +1,10235 @@
+{
+ "source": "eqlwiki.com — Skill_* pages (leveling guides, hand-curated) and item pages (recipes, vendors, drops)",
+ "fetched": "2026-09-21",
+ "skills": [
+  {
+   "name": "Alchemy",
+   "page": "Skill_Alchemy",
+   "cap": 255,
+   "startsAt": 0,
+   "classes": "Shaman",
+   "intro": "Simple path: three vendor herbs, about 1pp a combine. Manual combines until the first success teaches the recipe.",
+   "tiers": [
+    {
+     "name": "Simple Path to 255",
+     "steps": [
+      {
+       "recipe": "Mystical Infusion",
+       "from": 1,
+       "to": 202,
+       "notes": [
+        "All three herbs are sold by Sithgok in Innothule Swamp or Sven Felligan in Everfrost Peaks."
+       ]
+      },
+      {
+       "recipe": "Potion of Mystical Aptitude",
+       "from": 202,
+       "to": 255
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Baking",
+   "page": "Skill_Baking",
+   "cap": 250,
+   "startsAt": 0,
+   "classes": "",
+   "intro": "Quick guide: bat wings and fish carry you to 135, then pies and cakes. Oven or spit for everything.",
+   "tiers": [
+    {
+     "name": "Quick Leveling Guide",
+     "steps": [
+      {
+       "recipe": "Batwing Crunchies",
+       "from": 1,
+       "to": 46
+      },
+      {
+       "recipe": "Fish Fillets",
+       "from": 46,
+       "to": 82
+      },
+      {
+       "recipe": "Fish Rolls",
+       "from": 82,
+       "to": 135
+      },
+      {
+       "recipe": "Batwing Pie",
+       "from": 135,
+       "to": 142
+      },
+      {
+       "recipe": "Wedding Cake",
+       "from": 142,
+       "to": 157
+      },
+      {
+       "recipe": "Birthday Cake",
+       "from": 157,
+       "to": 162
+      },
+      {
+       "recipe": "Dragon Steak",
+       "from": 162,
+       "to": 242,
+       "notes": [
+        "Dragon Meat drops from dragons — a raid ingredient."
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Blacksmithing",
+   "page": "Skill_Blacksmithing",
+   "cap": 250,
+   "startsAt": 0,
+   "classes": "",
+   "intro": "Metal Bits and Water Flasks carry the start; Banded to 115; then the Feir`Dal kit or Fine Plate.",
+   "tiers": [
+    {
+     "name": "Getting Started (up to 68)",
+     "steps": [
+      {
+       "recipe": "Metal Bits",
+       "from": 1,
+       "to": 21,
+       "notes": [
+        "Buy ~100 Small Piece of Ore and ~53 Water Flasks (~20pp); do ~50 Metal Bits, keep ~40 bits for later."
+       ]
+      },
+      {
+       "recipe": "Sheet Metal",
+       "from": 21,
+       "to": 31
+      },
+      {
+       "recipe": "Large Lantern",
+       "from": 41,
+       "to": 68,
+       "notes": [
+        "40 Lantern Casing Molds and 40 Bottles (~6pp); uses up the Metal Bits. Sell the lanterns back."
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Banded Armor (up to 115)",
+     "steps": [
+      {
+       "recipe": "Banded Gorget",
+       "from": 68,
+       "to": 92,
+       "notes": [
+        "Gorget and Bracer are the cheapest banded pieces (1 Sheet Metal). ~50 combines to 90+."
+       ]
+      },
+      {
+       "recipe": "Banded Gauntlets",
+       "from": 92,
+       "to": 102,
+       "notes": [
+        "Gauntlets then Helms are the cheapest of the 2-sheet pieces."
+       ]
+      },
+      {
+       "recipe": "Banded Helm",
+       "from": 102,
+       "to": 106
+      },
+      {
+       "recipe": "Banded Mail",
+       "from": 106,
+       "to": 115,
+       "notes": [
+        "3 Sheet Metal a combine; expect ~20."
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Feir`Dal Fletching Kit (up to 163)",
+     "steps": [
+      {
+       "recipe": "Feir`Dal Fletching Kit",
+       "from": 115,
+       "to": 163,
+       "notes": [
+        "~7pp a combine at the Feir`Dal Forge in Kelethin — any race can use it if not KOS to Wood Elves. Cheaper than Ornate Chain."
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Fine Plate (up to 188)",
+     "steps": [
+      {
+       "recipe": "Fine Plate Bracer",
+       "from": 142,
+       "to": 168
+      },
+      {
+       "recipe": "Fine Plate Helm",
+       "from": 168,
+       "to": 179
+      },
+      {
+       "recipe": "Fine Plate Breastplate",
+       "from": 179,
+       "to": 188
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Brewing",
+   "page": "Skill_Brewing",
+   "cap": 250,
+   "startsAt": 0,
+   "classes": "",
+   "intro": "Ale recipes are the cheap path. Qeynos and Freeport are good cities to learn in. Do not drink while brewing.",
+   "tiers": [
+    {
+     "name": "Fast Track (up to 151)",
+     "steps": [
+      {
+       "recipe": "Short Beer",
+       "from": 1,
+       "to": 31
+      },
+      {
+       "recipe": "Skull Ale",
+       "from": 31,
+       "to": 151,
+       "notes": [
+        "One Cyclops Skull (an undead cyclops, Southern Karana) does every combine — it comes back.",
+        "Spices and Vinegar are not sold in every city.",
+        "Combine by hand until the first success; then the recipe auto-combines."
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Advanced Brewing (up to 188)",
+     "steps": [
+      {
+       "recipe": "Ginesh",
+       "from": 151,
+       "to": 168,
+       "notes": [
+        "Foraged Vegetables, but cheap. Out of vegetables? Move on."
+       ]
+      },
+      {
+       "recipe": "Faydwer Shaker",
+       "from": 168,
+       "to": 188,
+       "notes": [
+        "Four drinks from four Faydwer cities."
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Master Brewing (up to 248)",
+     "steps": [
+      {
+       "recipe": "Minotaur Hero's Brew",
+       "from": 188,
+       "to": 248
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Fletching",
+   "page": "Skill_Fletching",
+   "cap": 300,
+   "startsAt": 0,
+   "classes": "",
+   "intro": "The cheapest arrows: one component sets the trivial, the other three are the cheapest going.",
+   "tiers": [
+    {
+     "name": "The Cheapest Way to Fletch",
+     "steps": [
+      {
+       "recipe": "Wood Point Arrow · large nock",
+       "from": 1,
+       "to": 16,
+       "label": "Wood Point Arrow · large nock"
+      },
+      {
+       "recipe": "Wood Point Arrow · medium nock",
+       "from": 16,
+       "to": 36,
+       "label": "Wood Point Arrow · medium nock"
+      },
+      {
+       "recipe": "Wood Point Arrow · parabolic fletch",
+       "from": 36,
+       "to": 46,
+       "label": "Wood Point Arrow · parabolic fletch"
+      },
+      {
+       "recipe": "Wood Point Arrow · small nock",
+       "from": 46,
+       "to": 56,
+       "label": "Wood Point Arrow · small nock"
+      },
+      {
+       "recipe": "Bone Point Arrow",
+       "from": 56,
+       "to": 68,
+       "label": "Bone Point Arrow"
+      },
+      {
+       "recipe": "Wood Point Arrow · shield fletch",
+       "from": 68,
+       "to": 82,
+       "label": "Wood Point Arrow · shield fletch"
+      },
+      {
+       "recipe": "Wood Hooked Arrow",
+       "from": 82,
+       "to": 102,
+       "label": "Wood Hooked Arrow"
+      },
+      {
+       "recipe": "Wood Point Arrow · wood vane",
+       "from": 102,
+       "to": 122,
+       "label": "Wood Point Arrow · wood vane"
+      },
+      {
+       "recipe": "Ceramic Point Arrow",
+       "from": 122,
+       "to": 135,
+       "label": "Ceramic Point Arrow"
+      },
+      {
+       "recipe": "Wood Point Arrow · bone vane",
+       "from": 135,
+       "to": 162,
+       "label": "Wood Point Arrow · bone vane"
+      },
+      {
+       "recipe": "Wood Point Arrow · ceramic vane",
+       "from": 162,
+       "to": 202,
+       "label": "Wood Point Arrow · ceramic vane"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Jewelcrafting",
+   "page": "Jewelcrafting",
+   "cap": 300,
+   "startsAt": 0,
+   "classes": "",
+   "intro": "Metal bar + gem in a Jeweler's Kit. Unenchanted bars skill up just the same; only enchanted jewelry has stats.",
+   "tiers": [
+    {
+     "name": "Silver (1–34)",
+     "steps": [
+      {
+       "recipe": "Silver Malachite Ring",
+       "from": 1,
+       "to": 17,
+       "label": "Silver + Malachite"
+      },
+      {
+       "recipe": "Silver Cat Eye Necklace",
+       "from": 17,
+       "to": 24,
+       "label": "Silver + Cat's Eye Agate"
+      },
+      {
+       "recipe": "Silver Rose Engagement Ring",
+       "from": 24,
+       "to": 34,
+       "label": "Silver + Star Rose Quartz"
+      }
+     ]
+    },
+    {
+     "name": "Electrum (34–111)",
+     "steps": [
+      {
+       "recipe": "Electrum Malachite Bracelet",
+       "from": 34,
+       "to": 74,
+       "label": "Electrum + Malachite"
+      },
+      {
+       "recipe": "Electrum Cat Eye Bracelet",
+       "from": 74,
+       "to": 84,
+       "label": "Electrum + Cat's Eye Agate"
+      },
+      {
+       "recipe": "Electrum Carnelian Wedding Ring",
+       "from": 84,
+       "to": 95,
+       "label": "Electrum + Carnelian"
+      },
+      {
+       "recipe": "Electrum Amber Earring",
+       "from": 95,
+       "to": 100,
+       "label": "Electrum + Amber"
+      },
+      {
+       "recipe": "Jaded Electrum Bracelet",
+       "from": 100,
+       "to": 106,
+       "label": "Electrum + Jade"
+      },
+      {
+       "recipe": "Topaz Electrum Earring",
+       "from": 106,
+       "to": 111,
+       "label": "Electrum + Topaz"
+      }
+     ]
+    },
+    {
+     "name": "Gold (111–202)",
+     "steps": [
+      {
+       "recipe": "Gold Malachite Bracelet",
+       "from": 111,
+       "to": 146,
+       "label": "Gold + Malachite"
+      },
+      {
+       "recipe": "Golden Hematite Choker",
+       "from": 146,
+       "to": 154,
+       "label": "Gold + Hematite"
+      },
+      {
+       "recipe": "Gold Onyx Pendant",
+       "from": 154,
+       "to": 162,
+       "label": "Gold + Onyx"
+      },
+      {
+       "recipe": "Golden Star Amulet",
+       "from": 162,
+       "to": 170,
+       "label": "Gold + Star Rose Quartz"
+      },
+      {
+       "recipe": "Golden Jaded Bracelet",
+       "from": 170,
+       "to": 178,
+       "label": "Gold + Jade"
+      },
+      {
+       "recipe": "Golden Topaz Earring",
+       "from": 178,
+       "to": 183,
+       "label": "Gold + Topaz"
+      },
+      {
+       "recipe": "Golden Peridot Bracelet",
+       "from": 183,
+       "to": 186,
+       "label": "Gold + Peridot"
+      },
+      {
+       "recipe": "Golden Opal Amulet",
+       "from": 186,
+       "to": 191,
+       "label": "Gold + Opal"
+      },
+      {
+       "recipe": "Golden Star Ruby Ring",
+       "from": 191,
+       "to": 199,
+       "label": "Gold + Star Ruby",
+       "notes": [
+        "The price per combine nearly triples from here."
+       ]
+      },
+      {
+       "recipe": "Fire Emerald Golden Bracelet",
+       "from": 199,
+       "to": 202,
+       "label": "Gold + Fire Emerald"
+      }
+     ]
+    },
+    {
+     "name": "Platinum (202–279)",
+     "steps": [
+      {
+       "recipe": "Platinum Malachite Ring",
+       "from": 202,
+       "to": 218
+      },
+      {
+       "recipe": "Cat Eye Platinum Necklace",
+       "from": 218,
+       "to": 228
+      },
+      {
+       "recipe": "Rose Platinum Engagement Ring",
+       "from": 228,
+       "to": 242
+      },
+      {
+       "recipe": "Platinum Topaz Necklace",
+       "from": 242,
+       "to": 255
+      },
+      {
+       "recipe": "Platinum Emerald Ring",
+       "from": 255,
+       "to": 260
+      },
+      {
+       "recipe": "Platinum Opal Engagement Ring",
+       "from": 260,
+       "to": 263
+      },
+      {
+       "recipe": "Platinum Fire Wedding Ring",
+       "from": 263,
+       "to": 268
+      },
+      {
+       "recipe": "Platinum Star Ruby Veil",
+       "from": 268,
+       "to": 271
+      },
+      {
+       "recipe": "Fire Emerald Platinum Ring",
+       "from": 271,
+       "to": 274
+      },
+      {
+       "recipe": "Sapphire Platinum Necklace",
+       "from": 274,
+       "to": 276
+      },
+      {
+       "recipe": "Platinum Ruby Veil",
+       "from": 276,
+       "to": 279
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Pottery",
+   "page": "Skill_Pottery",
+   "cap": 250,
+   "startsAt": 0,
+   "classes": "",
+   "intro": "Sketch + clay + water on a Pottery Wheel; discard the unfired combines early on, they only sell fired.",
+   "tiers": [
+    {
+     "name": "Jars and bowls",
+     "steps": [
+      {
+       "recipe": "Block of Clay",
+       "from": 1,
+       "to": 21
+      },
+      {
+       "recipe": "Unfired Medium Container",
+       "from": 21,
+       "to": 36
+      },
+      {
+       "recipe": "Unfired Large Container",
+       "from": 36,
+       "to": 41
+      },
+      {
+       "recipe": "Unfired Small Bowl",
+       "from": 41,
+       "to": 102
+      },
+      {
+       "recipe": "Unfired Medium Bowl",
+       "from": 102,
+       "to": 122
+      },
+      {
+       "recipe": "Unfired Large Bowl",
+       "from": 122,
+       "to": 148
+      }
+     ]
+    },
+    {
+     "name": "Poison vials",
+     "steps": [
+      {
+       "recipe": "Unfired Lined Poison Vial",
+       "from": 148,
+       "to": 168,
+       "notes": [
+        "The skin slot takes LQ/MQ wolf skins, MQ cat pelts, LQ bear skins — or Crow's Special Brew from Qeynos."
+       ]
+      },
+      {
+       "recipe": "Unfired Sealed Poison Vial",
+       "from": 168,
+       "to": 188
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Tailoring",
+   "page": "Skill_Tailoring",
+   "cap": 300,
+   "startsAt": 0,
+   "classes": "",
+   "intro": "Silk swatches and pelts early, Wu's fighting gear to 158, Forest Green swatches to 190.",
+   "tiers": [
+    {
+     "name": "Leveling Guide",
+     "steps": [
+      {
+       "recipe": "Silk Swatch",
+       "from": 1,
+       "to": 15
+      },
+      {
+       "recipe": "Patchwork Boots",
+       "from": 15,
+       "to": 26,
+       "notes": [
+        "Any ruined bear, wolf or cat pelt does."
+       ]
+      },
+      {
+       "recipe": "Raw Silk Headband",
+       "from": 26,
+       "to": 36
+      },
+      {
+       "recipe": "Cured Silk Mask",
+       "from": 36,
+       "to": 82,
+       "notes": [
+        "Heady Kiola is brewed (trivial 46) — brew a stack first."
+       ]
+      },
+      {
+       "recipe": "Hand Made Backpack",
+       "from": 82,
+       "to": 88
+      },
+      {
+       "recipe": "Tailored Quiver",
+       "from": 88,
+       "to": 115
+      },
+      {
+       "recipe": "Wu's Fighting Wristbands",
+       "from": 115,
+       "to": 135
+      },
+      {
+       "recipe": "Wu's Fighting Cap",
+       "from": 135,
+       "to": 142
+      },
+      {
+       "recipe": "Wu's Fighting Sleeves",
+       "from": 142,
+       "to": 151
+      },
+      {
+       "recipe": "Wu's Fighting Pantaloons",
+       "from": 151,
+       "to": 155
+      },
+      {
+       "recipe": "Wu's Fighting Shirt",
+       "from": 155,
+       "to": 158
+      },
+      {
+       "recipe": "Forest Green Silk Swatch",
+       "from": 158,
+       "to": 190,
+       "notes": [
+        "162 is the Coldain Prayer Shawl mark — a stopping point for many tailors."
+       ]
+      },
+      {
+       "recipe": "Fleeting Quiver",
+       "from": 190,
+       "to": 222
+      },
+      {
+       "recipe": "Othmir Fur Cap",
+       "from": 222,
+       "to": 262
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Tinkering",
+   "page": "Skill_Tinkering",
+   "cap": 300,
+   "startsAt": 50,
+   "classes": "Gnomes",
+   "intro": "Gnomes only, and you start at 50. Firewater is the sub-combine behind most of it.",
+   "tiers": [
+    {
+     "name": "Raising Tinkering Skill",
+     "steps": [
+      {
+       "recipe": "Flameless Lantern",
+       "from": 50,
+       "to": 68
+      },
+      {
+       "recipe": "Stalking Probe",
+       "from": 68,
+       "to": 102
+      },
+      {
+       "recipe": "Powered Gloves",
+       "from": 102,
+       "to": 122
+      },
+      {
+       "recipe": "Aqualung",
+       "from": 122,
+       "to": 148
+      },
+      {
+       "recipe": "Rebreather",
+       "from": 148,
+       "to": 175
+      },
+      {
+       "recipe": "Nantik's Anti-Gravity Unit",
+       "from": 175,
+       "to": 202
+      },
+      {
+       "recipe": "Footwarming Boots",
+       "from": 202,
+       "to": 235,
+       "notes": [
+        "Needs Small Fine Plate Boots — smithing."
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "recipes": {
+  "Mystical Infusion": {
+   "item": "Mystical Infusion",
+   "trivial": 202,
+   "yield": 1,
+   "container": "",
+   "ingredients": [
+    {
+     "item": "Sickle Leaf",
+     "count": 2,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Alchemy"
+  },
+  "Potion of Mystical Aptitude": {
+   "item": "Potion of Mystical Aptitude",
+   "trivial": 255,
+   "yield": 1,
+   "container": "Medicine Bag",
+   "ingredients": [
+    {
+     "item": "Yerbhimba",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Duskglow Vine",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Alchemy"
+  },
+  "Batwing Crunchies": {
+   "item": "Batwing Crunchies",
+   "trivial": 46,
+   "yield": 1,
+   "container": "Oven or Spit",
+   "ingredients": [
+    {
+     "item": "Bat Wing",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Frosting",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Fish Fillets": {
+   "item": "Fish Fillets",
+   "trivial": 82,
+   "yield": 2,
+   "container": "Oven",
+   "ingredients": [
+    {
+     "item": "Fresh Fish",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Jug of Sauces",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Fish Rolls": {
+   "item": "Fish Rolls",
+   "trivial": 135,
+   "yield": 1,
+   "container": "Oven",
+   "ingredients": [
+    {
+     "item": "Bat Wing",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Fresh Fish",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Batwing Pie": {
+   "item": "Batwing Pie",
+   "trivial": 142,
+   "yield": 4,
+   "container": "Oven",
+   "ingredients": [
+    {
+     "item": "Bat Wing",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Clump of Dough",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Pie Tin",
+     "count": 1,
+     "source": "made",
+     "returned": true
+    },
+    {
+     "item": "Spices",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Clump of Dough": {
+   "item": "Clump of Dough",
+   "trivial": 17,
+   "yield": 10,
+   "container": "Mixing Bowl",
+   "ingredients": [
+    {
+     "item": "Bottle of Milk",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Cup of Flour",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Alligator Egg",
+     "count": 1,
+     "source": "forage",
+     "returned": false,
+     "alternatives": [
+      "Alligator Eggs",
+      "Aviak Eggs",
+      "Basilisk Eggs",
+      "Basilisk Egg",
+      "Cockatrice Egg",
+      "Dragon Egg",
+      "Drake Egg",
+      "Griffon Eggs",
+      "Snake Egg",
+      "Wurm Egg"
+     ]
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Pie Tin": {
+   "item": "Pie Tin",
+   "trivial": 35,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Ceramic Lining",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Metal Bits",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Pie Tin Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "High Quality Firing Sheet",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Unfired Pie Tin",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Ceramic Lining": {
+   "item": "Ceramic Lining",
+   "trivial": 17,
+   "yield": 1,
+   "container": "Kiln",
+   "ingredients": [
+    {
+     "item": "Quality Firing Sheet",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Unfired Ceramic Lining",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Metal Bits": {
+   "item": "Metal Bits",
+   "trivial": 21,
+   "yield": 2,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Small Piece of Ore",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Unfired Pie Tin": {
+   "item": "Unfired Pie Tin",
+   "trivial": 115,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Block of Clay",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Pie Tin Sketch",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Wedding Cake": {
+   "item": "Wedding Cake",
+   "trivial": 157,
+   "yield": 2,
+   "container": "Oven",
+   "ingredients": [
+    {
+     "item": "Cake Round",
+     "count": 1,
+     "source": "made",
+     "returned": true
+    },
+    {
+     "item": "Clump of Dough",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Frosting",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "White Chocolate",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Cake Round": {
+   "item": "Cake Round",
+   "trivial": 17,
+   "yield": 1,
+   "container": "Kiln",
+   "ingredients": [
+    {
+     "item": "High Quality Firing Sheet",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Unfired Cake Round",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Cake Round Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Ceramic Lining",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Metal Bits",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Unfired Cake Round": {
+   "item": "Unfired Cake Round",
+   "trivial": 115,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Block of Clay",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Cake Round Sketch",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Glass Shard",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "White Chocolate": {
+   "item": "White Chocolate",
+   "trivial": 95,
+   "yield": 1,
+   "container": "Mixing Bowl",
+   "ingredients": [
+    {
+     "item": "Brownie Parts",
+     "count": 1,
+     "source": "drop",
+     "returned": false
+    },
+    {
+     "item": "Frosting",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Spices",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Birthday Cake": {
+   "item": "Birthday Cake",
+   "trivial": 162,
+   "yield": 2,
+   "container": "Oven",
+   "ingredients": [
+    {
+     "item": "Cake Round",
+     "count": 1,
+     "source": "made",
+     "returned": true
+    },
+    {
+     "item": "Clump of Dough",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Frosting",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Winter Chocolate",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Winter Chocolate": {
+   "item": "Winter Chocolate",
+   "trivial": 95,
+   "yield": 1,
+   "container": "Mixing Bowl",
+   "ingredients": [
+    {
+     "item": "Brownie Parts",
+     "count": 1,
+     "source": "drop",
+     "returned": false
+    },
+    {
+     "item": "Frosting",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Dragon Steak": {
+   "item": "Dragon Steak",
+   "trivial": 200,
+   "yield": 5,
+   "container": "Oven",
+   "ingredients": [
+    {
+     "item": "Dragon Meat",
+     "count": 1,
+     "source": "drop",
+     "returned": false
+    },
+    {
+     "item": "Jug of Sauces",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Spices",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Baking"
+  },
+  "Sheet Metal": {
+   "item": "Sheet Metal",
+   "trivial": 56,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Small Brick of Ore",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Large Lantern": {
+   "item": "Large Lantern",
+   "trivial": 68,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Bottle",
+     "count": 1,
+     "source": "vendor",
+     "returned": true
+    },
+    {
+     "item": "Lantern Casing Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Bits",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Banded Gorget": {
+   "item": "Banded Gorget",
+   "trivial": 92,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Gorget Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Sheet Metal",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Banded Gauntlets": {
+   "item": "Banded Gauntlets",
+   "trivial": 102,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Gauntlet Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Sheet Metal",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Banded Helm": {
+   "item": "Banded Helm",
+   "trivial": 106,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Helm Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Sheet Metal",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Banded Mail": {
+   "item": "Banded Mail",
+   "trivial": 115,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Mail Sectional Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Sheet Metal",
+     "count": 3,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Feir`Dal Fletching Kit": {
+   "item": "Feir`Dal Fletching Kit",
+   "trivial": 163,
+   "yield": 1,
+   "container": "Feir`Dal Forge",
+   "ingredients": [
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Small Brick of Mithril",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Hinge Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Container Base Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Container Lid Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Fine Plate Bracer": {
+   "item": "Fine Plate Bracer",
+   "trivial": 208,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Leather Padding",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Medium Quality Folded Sheet Metal",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Plate Bracer Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Smithy Hammer",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Leather Padding": {
+   "item": "Leather Padding",
+   "trivial": 31,
+   "yield": 1,
+   "container": "Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Low Quality Cat Pelt",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Silk Thread",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Low Quality Wolf Skin",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Silk Thread",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Low Quality Bear Skin",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Silk Thread",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Low Quality Cat Pelt": {
+   "item": "Low Quality Cat Pelt",
+   "trivial": 15,
+   "yield": 1,
+   "container": "Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Medium Quality Cat Pelt",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Skinning Knife",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Silk Thread": {
+   "item": "Silk Thread",
+   "trivial": 15,
+   "yield": 1,
+   "container": "Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Spiderling Silk",
+     "count": 2,
+     "source": "drop",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Low Quality Wolf Skin": {
+   "item": "Low Quality Wolf Skin",
+   "trivial": 15,
+   "yield": 1,
+   "container": "Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Medium Quality Wolf Skin",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Skinning Knife",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Low Quality Bear Skin": {
+   "item": "Low Quality Bear Skin",
+   "trivial": 15,
+   "yield": 1,
+   "container": "Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Medium Quality Bear Skin",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Skinning Knife",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Medium Quality Folded Sheet Metal": {
+   "item": "Medium Quality Folded Sheet Metal",
+   "trivial": 36,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Block of Medium Quality Ore",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Smithy Hammer",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Fine Plate Helm": {
+   "item": "Fine Plate Helm",
+   "trivial": 188,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Leather Padding",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Medium Quality Folded Sheet Metal",
+     "count": 2,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Plate Helm Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Smithy Hammer",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Fine Plate Breastplate": {
+   "item": "Fine Plate Breastplate",
+   "trivial": 228,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Breastplate Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Leather Padding",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Medium Quality Folded Sheet Metal",
+     "count": 3,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Smithy Hammer",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Blacksmithing"
+  },
+  "Short Beer": {
+   "item": "Short Beer",
+   "trivial": 31,
+   "yield": 1,
+   "container": "Brewing Barrel",
+   "ingredients": [
+    {
+     "item": "Barley",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Cask",
+     "count": 1,
+     "source": "vendor",
+     "returned": true
+    },
+    {
+     "item": "Hops",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Malt",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Brewing"
+  },
+  "Skull Ale": {
+   "item": "Skull Ale",
+   "trivial": 151,
+   "yield": 2,
+   "container": "Brewing Barrel",
+   "ingredients": [
+    {
+     "item": "Cyclops skull",
+     "count": 1,
+     "source": "drop",
+     "returned": true
+    },
+    {
+     "item": "Short Beer",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Spices",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Vinegar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Brewing"
+  },
+  "Ginesh": {
+   "item": "Ginesh",
+   "trivial": 168,
+   "yield": 2,
+   "container": "Brew Barrel",
+   "ingredients": [
+    {
+     "item": "Short Beer",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Shotglass",
+     "count": 1,
+     "source": "vendor",
+     "returned": true
+    },
+    {
+     "item": "Vegetables",
+     "count": 1,
+     "source": "forage",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Brewing"
+  },
+  "Faydwer Shaker": {
+   "item": "Faydwer Shaker",
+   "trivial": 188,
+   "yield": 1,
+   "container": "Brewing Barrel",
+   "ingredients": [
+    {
+     "item": "Cask",
+     "count": 1,
+     "source": "vendor",
+     "returned": true
+    },
+    {
+     "item": "Dwarven Ale",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Elven Wine",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Gnomish Spirits",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Mead",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Brewing"
+  },
+  "Minotaur Hero's Brew": {
+   "item": "Minotaur Hero's Brew",
+   "trivial": 248,
+   "yield": 1,
+   "container": "Brewing Barrel",
+   "ingredients": [
+    {
+     "item": "Cask",
+     "count": 1,
+     "source": "vendor",
+     "returned": true
+    },
+    {
+     "item": "Malt",
+     "count": 3,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Short Beer",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Yeast",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Brewing"
+  },
+  "CLASS 1 Wood Point Arrow": {
+   "item": "CLASS 1 Wood Point Arrow",
+   "trivial": 16,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "source": "vendor",
+     "returned": false,
+     "alternatives": [
+      "Medium Groove Nocks",
+      "Small Groove Nocks"
+     ]
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Wood Point Arrow · large nock": {
+   "item": "CLASS 1 Wood Point Arrow",
+   "trivial": 16,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Field Point Arrowheads": {
+   "item": "Field Point Arrowheads",
+   "trivial": 41,
+   "yield": 20,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Metal Bits",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "File",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "File": {
+   "item": "File",
+   "trivial": 21,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Metal Bits",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "File Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Water Flask": {
+   "item": "Water Flask",
+   "trivial": 21,
+   "yield": 1,
+   "container": "Brew Barrel",
+   "ingredients": [
+    {
+     "item": "Pod of Water",
+     "count": 4,
+     "source": "forage",
+     "returned": false
+    },
+    {
+     "item": "Bottle",
+     "count": 1,
+     "source": "vendor",
+     "returned": true
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Wood Point Arrow · medium nock": {
+   "item": "CLASS 1 Wood Point Arrow",
+   "trivial": 36,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Medium Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "CLASS 2 Wood Point Arrow": {
+   "item": "CLASS 2 Wood Point Arrow",
+   "trivial": 46,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Several Parabolic Cut Fletchings",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "source": "vendor",
+     "returned": false,
+     "alternatives": [
+      "Medium Groove Nocks",
+      "Small Groove Nocks"
+     ]
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Wood Point Arrow · parabolic fletch": {
+   "item": "CLASS 2 Wood Point Arrow",
+   "trivial": 46,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Several Parabolic Cut Fletchings",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Wood Point Arrow · small nock": {
+   "item": "CLASS 1 Wood Point Arrow",
+   "trivial": 56,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Small Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "CLASS 1 Bone Point Arrow": {
+   "item": "CLASS 1 Bone Point Arrow",
+   "trivial": 68,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Bundled Bone Arrow Shafts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "source": "vendor",
+     "returned": false,
+     "alternatives": [
+      "Medium Groove Nocks",
+      "Small Groove Nocks"
+     ]
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Bone Point Arrow": {
+   "item": "CLASS 1 Bone Point Arrow",
+   "trivial": 68,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Bone Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "CLASS 3 Wood Point Arrow": {
+   "item": "CLASS 3 Wood Point Arrow",
+   "trivial": 82,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Several Shield Cut Fletchings",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "source": "vendor",
+     "returned": false,
+     "alternatives": [
+      "Medium Groove Nocks",
+      "Small Groove Nocks"
+     ]
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Wood Point Arrow · shield fletch": {
+   "item": "CLASS 3 Wood Point Arrow",
+   "trivial": 82,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Several Shield Cut Fletchings",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "CLASS 1 Wood Hooked Arrow": {
+   "item": "CLASS 1 Wood Hooked Arrow",
+   "trivial": 102,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Hooked Arrowheads",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "source": "vendor",
+     "returned": false,
+     "alternatives": [
+      "Medium Groove Nocks",
+      "Small Groove Nocks"
+     ]
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Wood Hooked Arrow": {
+   "item": "CLASS 1 Wood Hooked Arrow",
+   "trivial": 102,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Hooked Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Medium Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Hooked Arrowheads": {
+   "item": "Hooked Arrowheads",
+   "trivial": 44,
+   "yield": 5,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "File",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Small Brick of Ore",
+     "count": 3,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "CLASS 4 Wood Point Arrow": {
+   "item": "CLASS 4 Wood Point Arrow",
+   "trivial": 122,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Set of Wooden Arrow Vanes",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "source": "vendor",
+     "returned": false,
+     "alternatives": [
+      "Medium Groove Nocks",
+      "Small Groove Nocks"
+     ]
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Wood Point Arrow · wood vane": {
+   "item": "CLASS 4 Wood Point Arrow",
+   "trivial": 122,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Set of Wooden Arrow Vanes",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "CLASS 1 Ceramic Point Arrow": {
+   "item": "CLASS 1 Ceramic Point Arrow",
+   "trivial": 135,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Bundled Ceramic Arrow Shafts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "source": "vendor",
+     "returned": false,
+     "alternatives": [
+      "Medium Groove Nocks",
+      "Small Groove Nocks"
+     ]
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Ceramic Point Arrow": {
+   "item": "CLASS 1 Ceramic Point Arrow",
+   "trivial": 135,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Ceramic Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Several Round Cut Fletchings",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "CLASS 5 Wood Point Arrow": {
+   "item": "CLASS 5 Wood Point Arrow",
+   "trivial": 162,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Set of Bone Arrow Vanes",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "source": "vendor",
+     "returned": false,
+     "alternatives": [
+      "Medium Groove Nocks",
+      "Small Groove Nocks"
+     ]
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Wood Point Arrow · bone vane": {
+   "item": "CLASS 5 Wood Point Arrow",
+   "trivial": 162,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Set of Bone Arrow Vanes",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "CLASS 6 Wood Point Arrow": {
+   "item": "CLASS 6 Wood Point Arrow",
+   "trivial": 202,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Set of Ceramic Arrow Vanes",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "source": "vendor",
+     "returned": false,
+     "alternatives": [
+      "Medium Groove Nocks",
+      "Small Groove Nocks"
+     ]
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Wood Point Arrow · ceramic vane": {
+   "item": "CLASS 6 Wood Point Arrow",
+   "trivial": 202,
+   "yield": 5,
+   "container": "Fletching Table",
+   "ingredients": [
+    {
+     "item": "Field Point Arrowheads",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Bundled Wooden Arrow Shafts",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Set of Ceramic Arrow Vanes",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Large Groove Nocks",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    }
+   ],
+   "skill": "Fletching"
+  },
+  "Silver Malachite Ring": {
+   "item": "Silver Malachite Ring",
+   "skill": "Jewelcrafting",
+   "trivial": 17,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Silver Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Malachite",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Silver Cat Eye Necklace": {
+   "item": "Silver Cat Eye Necklace",
+   "skill": "Jewelcrafting",
+   "trivial": 24,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Silver Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Cat's Eye Agate",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Silver Rose Engagement Ring": {
+   "item": "Silver Rose Engagement Ring",
+   "skill": "Jewelcrafting",
+   "trivial": 34,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Silver Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Star Rose Quartz",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Electrum Malachite Bracelet": {
+   "item": "Electrum Malachite Bracelet",
+   "skill": "Jewelcrafting",
+   "trivial": 74,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Electrum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Malachite",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Electrum Cat Eye Bracelet": {
+   "item": "Electrum Cat Eye Bracelet",
+   "skill": "Jewelcrafting",
+   "trivial": 84,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Electrum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Cat's Eye Agate",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Electrum Carnelian Wedding Ring": {
+   "item": "Electrum Carnelian Wedding Ring",
+   "skill": "Jewelcrafting",
+   "trivial": 95,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Electrum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Carnelian",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Electrum Amber Earring": {
+   "item": "Electrum Amber Earring",
+   "skill": "Jewelcrafting",
+   "trivial": 100,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Electrum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Amber",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Jaded Electrum Bracelet": {
+   "item": "Jaded Electrum Bracelet",
+   "skill": "Jewelcrafting",
+   "trivial": 106,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Electrum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Jade",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Topaz Electrum Earring": {
+   "item": "Topaz Electrum Earring",
+   "skill": "Jewelcrafting",
+   "trivial": 111,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Electrum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Topaz",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Gold Malachite Bracelet": {
+   "item": "Gold Malachite Bracelet",
+   "skill": "Jewelcrafting",
+   "trivial": 146,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Malachite",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Golden Hematite Choker": {
+   "item": "Golden Hematite Choker",
+   "skill": "Jewelcrafting",
+   "trivial": 154,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Hematite",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Gold Onyx Pendant": {
+   "item": "Gold Onyx Pendant",
+   "skill": "Jewelcrafting",
+   "trivial": 162,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Onyx",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Golden Star Amulet": {
+   "item": "Golden Star Amulet",
+   "skill": "Jewelcrafting",
+   "trivial": 170,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Star Rose Quartz",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Golden Jaded Bracelet": {
+   "item": "Golden Jaded Bracelet",
+   "skill": "Jewelcrafting",
+   "trivial": 178,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Jade",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Golden Topaz Earring": {
+   "item": "Golden Topaz Earring",
+   "skill": "Jewelcrafting",
+   "trivial": 183,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Topaz",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Golden Peridot Bracelet": {
+   "item": "Golden Peridot Bracelet",
+   "skill": "Jewelcrafting",
+   "trivial": 186,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Peridot",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Golden Opal Amulet": {
+   "item": "Golden Opal Amulet",
+   "skill": "Jewelcrafting",
+   "trivial": 191,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Opal",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Golden Star Ruby Ring": {
+   "item": "Golden Star Ruby Ring",
+   "skill": "Jewelcrafting",
+   "trivial": 199,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Star Ruby",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Fire Emerald Golden Bracelet": {
+   "item": "Fire Emerald Golden Bracelet",
+   "skill": "Jewelcrafting",
+   "trivial": 202,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Gold Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Fire Emerald",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ]
+  },
+  "Platinum Malachite Ring": {
+   "item": "Platinum Malachite Ring",
+   "trivial": 218,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Malachite",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Cat Eye Platinum Necklace": {
+   "item": "Cat Eye Platinum Necklace",
+   "trivial": 228,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Cat's Eye Agate",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Rose Platinum Engagement Ring": {
+   "item": "Rose Platinum Engagement Ring",
+   "trivial": 242,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Star Rose Quartz",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Platinum Topaz Necklace": {
+   "item": "Platinum Topaz Necklace",
+   "trivial": 255,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Topaz",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Platinum Emerald Ring": {
+   "item": "Platinum Emerald Ring",
+   "trivial": 260,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Emerald",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Platinum Opal Engagement Ring": {
+   "item": "Platinum Opal Engagement Ring",
+   "trivial": 263,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Opal",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Platinum Fire Wedding Ring": {
+   "item": "Platinum Fire Wedding Ring",
+   "trivial": 268,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Fire Opal",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Platinum Star Ruby Veil": {
+   "item": "Platinum Star Ruby Veil",
+   "trivial": 271,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Star Ruby",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Fire Emerald Platinum Ring": {
+   "item": "Fire Emerald Platinum Ring",
+   "trivial": 274,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Fire Emerald",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Sapphire Platinum Necklace": {
+   "item": "Sapphire Platinum Necklace",
+   "trivial": 276,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Sapphire",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Platinum Ruby Veil": {
+   "item": "Platinum Ruby Veil",
+   "trivial": 279,
+   "yield": 1,
+   "container": "Jeweler's Kit",
+   "ingredients": [
+    {
+     "item": "Enchanted Platinum Bar",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Ruby",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Jewelcrafting"
+  },
+  "Block of Clay": {
+   "item": "Block of Clay",
+   "trivial": 21,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Small Block of Clay",
+     "count": 3,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Pottery"
+  },
+  "Unfired Medium Container": {
+   "item": "Unfired Medium Container",
+   "trivial": 36,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Block of Clay",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Medium Jar Sketch",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Pottery"
+  },
+  "Unfired Large Container": {
+   "item": "Unfired Large Container",
+   "trivial": 41,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Block of Clay",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Jar Sketch",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Pottery"
+  },
+  "Unfired Small Bowl": {
+   "item": "Unfired Small Bowl",
+   "trivial": 102,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Bowl Sketch",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Small Block of Clay",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Pottery"
+  },
+  "Unfired Medium Bowl": {
+   "item": "Unfired Medium Bowl",
+   "trivial": 122,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Block of Clay",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Medium Bowl Sketch",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Pottery"
+  },
+  "Unfired Large Bowl": {
+   "item": "Unfired Large Bowl",
+   "trivial": 148,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Glass Shard",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Block of Clay",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Bowl Sketch",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Pottery"
+  },
+  "Unfired Lined Poison Vial": {
+   "item": "Unfired Lined Poison Vial",
+   "trivial": 168,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Lined Vial Sketch",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Skin",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Small Block of Clay",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Pottery"
+  },
+  "Unfired Sealed Poison Vial": {
+   "item": "Unfired Sealed Poison Vial",
+   "trivial": 188,
+   "yield": 1,
+   "container": "Pottery Wheel",
+   "ingredients": [
+    {
+     "item": "Skin",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Sealed Vial Sketch",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Small Block of Clay",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Pottery"
+  },
+  "Silk Swatch": {
+   "item": "Silk Swatch",
+   "trivial": 15,
+   "yield": 1,
+   "container": "",
+   "ingredients": [
+    {
+     "item": "Spider Silk",
+     "count": 2,
+     "source": "forage",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Patchwork Boots": {
+   "item": "Patchwork Boots",
+   "trivial": 26,
+   "yield": 1,
+   "container": "",
+   "ingredients": [
+    {
+     "item": "Boot Pattern",
+     "count": 1,
+     "returned": false,
+     "source": "vendor"
+    },
+    {
+     "item": "Ruined Wolf Pelt",
+     "count": 1,
+     "returned": false,
+     "source": "made"
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Ruined Wolf Pelt": {
+   "item": "Ruined Wolf Pelt",
+   "trivial": 15,
+   "yield": 1,
+   "container": "Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Low Quality Wolf Skin",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Skinning Knife",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Skinning Knife": {
+   "item": "Skinning Knife",
+   "trivial": 41,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Dagger Blade Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Hilt Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Small Brick of Ore",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Raw Silk Headband": {
+   "item": "Raw Silk Headband",
+   "trivial": 36,
+   "yield": 1,
+   "container": "Loom",
+   "ingredients": [
+    {
+     "item": "Cap Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Silk Swatch",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Cured Silk Mask": {
+   "item": "Cured Silk Mask",
+   "trivial": 82,
+   "yield": 1,
+   "container": "",
+   "ingredients": [
+    {
+     "item": "Mask Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Heady Kiola",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Silk Swatch",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Heady Kiola": {
+   "item": "Heady Kiola",
+   "trivial": 46,
+   "yield": 1,
+   "container": "Brew Barrel",
+   "ingredients": [
+    {
+     "item": "Bottle",
+     "count": 1,
+     "source": "vendor",
+     "returned": true
+    },
+    {
+     "item": "Packet of Kiola Sap",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Hand Made Backpack": {
+   "item": "Hand Made Backpack",
+   "trivial": 88,
+   "yield": 1,
+   "container": "Loom or Large Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Backpack Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "High Quality Bear Skin",
+     "count": 1,
+     "source": "drop",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Tailored Quiver": {
+   "item": "Tailored Quiver",
+   "trivial": 115,
+   "yield": 1,
+   "container": "Loom",
+   "ingredients": [
+    {
+     "item": "High Quality Cat Pelt",
+     "count": 1,
+     "source": "drop",
+     "returned": false
+    },
+    {
+     "item": "Quiver Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Wu's Fighting Wristbands": {
+   "item": "Wu's Fighting Wristbands",
+   "trivial": 135,
+   "yield": 1,
+   "container": "Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Heady Kiola",
+     "count": 4,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Silk Swatch",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Vial of Viscous Mana",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Wristband Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Wu's Fighting Cap": {
+   "item": "Wu's Fighting Cap",
+   "trivial": 142,
+   "yield": 1,
+   "container": "Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Cap Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Heady Kiola",
+     "count": 4,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Silk Swatch",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Vial of Viscous Mana",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Wu's Fighting Sleeves": {
+   "item": "Wu's Fighting Sleeves",
+   "trivial": 151,
+   "yield": 1,
+   "container": "Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Heady Kiola",
+     "count": 4,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Silk Swatch",
+     "count": 2,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Sleeve Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Vial of Viscous Mana",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Wu's Fighting Pantaloons": {
+   "item": "Wu's Fighting Pantaloons",
+   "trivial": 155,
+   "yield": 1,
+   "container": "Loom",
+   "ingredients": [
+    {
+     "item": "Heady Kiola",
+     "count": 4,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Pant Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Silk Swatch",
+     "count": 3,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Vial of Viscous Mana",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Wu's Fighting Shirt": {
+   "item": "Wu's Fighting Shirt",
+   "trivial": 158,
+   "yield": 1,
+   "container": "Loom",
+   "ingredients": [
+    {
+     "item": "Heady Kiola",
+     "count": 4,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Silk Swatch",
+     "count": 3,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Tunic Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Vial of Viscous Mana",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Forest Green Silk Swatch": {
+   "item": "Forest Green Silk Swatch",
+   "trivial": 190,
+   "yield": 1,
+   "container": "Large Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Silk Thread",
+     "count": 2,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Silk Swatch",
+     "count": 2,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Dark Green Dye",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Dark Green Dye": {
+   "item": "Dark Green Dye",
+   "trivial": 0,
+   "yield": 1,
+   "container": "Medium Clay Jar",
+   "ingredients": [
+    {
+     "item": "Resin",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Evergreen Extract",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Evergreen Extract": {
+   "item": "Evergreen Extract",
+   "trivial": 36,
+   "yield": 1,
+   "container": "Medicine Bag",
+   "ingredients": [
+    {
+     "item": "Empty Vial",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Evergreen Leaf",
+     "count": 1,
+     "source": "drop",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Fleeting Quiver": {
+   "item": "Fleeting Quiver",
+   "trivial": 222,
+   "yield": 1,
+   "container": "Large Sewing Kit",
+   "ingredients": [
+    {
+     "item": "Aviak Egg Oil",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Fleeting Quiver Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Griffon Feathers",
+     "count": 1,
+     "source": "drop",
+     "returned": false
+    },
+    {
+     "item": "High Quality Lion Skin",
+     "count": 1,
+     "source": "drop",
+     "returned": false
+    },
+    {
+     "item": "Vial of Distilled Mana",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Aviak Egg Oil": {
+   "item": "Aviak Egg Oil",
+   "trivial": 102,
+   "yield": 1,
+   "container": "Brew Barrel",
+   "ingredients": [
+    {
+     "item": "Aviak Eggs",
+     "count": 1,
+     "source": "forage",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Othmir Fur Cap": {
+   "item": "Othmir Fur Cap",
+   "trivial": 262,
+   "yield": 1,
+   "container": "Coldain Tanners Kit",
+   "ingredients": [
+    {
+     "item": "Cap Pattern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Othmir Fur",
+     "count": 2,
+     "source": "drop",
+     "returned": false
+    },
+    {
+     "item": "Silver Thread",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Vial of Clear Mana",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tailoring"
+  },
+  "Flameless Lantern": {
+   "item": "Flameless Lantern",
+   "trivial": 68,
+   "yield": 1,
+   "container": "Toolboxes",
+   "ingredients": [
+    {
+     "item": "Large Lantern",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Twine",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Firewater",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tinkering"
+  },
+  "Firewater": {
+   "item": "Firewater",
+   "trivial": 17,
+   "yield": 1,
+   "container": "",
+   "ingredients": [
+    {
+     "item": "Gnomish Spirits",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tinkering"
+  },
+  "Stalking Probe": {
+   "item": "Stalking Probe",
+   "trivial": 102,
+   "yield": 1,
+   "container": "Toolboxes",
+   "ingredients": [
+    {
+     "item": "Bottle",
+     "count": 1,
+     "source": "vendor",
+     "returned": true
+    },
+    {
+     "item": "Firewater",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Gears",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Rod",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tinkering"
+  },
+  "Powered Gloves": {
+   "item": "Powered Gloves",
+   "trivial": 122,
+   "yield": 1,
+   "container": "Toolboxes",
+   "ingredients": [
+    {
+     "item": "Gears",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Firewater",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Metal Twine",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Sprockets",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Steel Lined Gloves",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tinkering"
+  },
+  "Aqualung": {
+   "item": "Aqualung",
+   "trivial": 148,
+   "yield": 1,
+   "container": "Toolboxes",
+   "ingredients": [
+    {
+     "item": "Fine Coral Mesh",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Fresh Fish",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Gnomish Bolts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Rod",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Twine",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Silk Lined Steel Helm",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tinkering"
+  },
+  "Rebreather": {
+   "item": "Rebreather",
+   "trivial": 175,
+   "yield": 1,
+   "container": "",
+   "ingredients": [
+    {
+     "item": "Aqualung",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Firewater",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Lime Coated Meshing",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Fastening",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Platemail Helm",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Sharkskin Tubing",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tinkering"
+  },
+  "Nantik's Anti-Gravity Unit": {
+   "item": "Nantik's Anti-Gravity Unit",
+   "trivial": 202,
+   "yield": 1,
+   "container": "Toolbox",
+   "ingredients": [
+    {
+     "item": "Sheet Metal",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Rod",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Static Orb",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Fastening",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Large Black Lodestone",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tinkering"
+  },
+  "Footwarming Boots": {
+   "item": "Footwarming Boots",
+   "trivial": 235,
+   "yield": 1,
+   "container": "Toolbox",
+   "ingredients": [
+    {
+     "item": "Firewater",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Gnomish Bolts",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Rod",
+     "count": 2,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Metal Twine",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Sharkskin Tubing",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Small Fine Plate Boots",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    }
+   ],
+   "skill": "Tinkering"
+  },
+  "Small Fine Plate Boots": {
+   "item": "Small Fine Plate Boots",
+   "trivial": 228,
+   "yield": 1,
+   "container": "Forge",
+   "ingredients": [
+    {
+     "item": "Leather Padding",
+     "count": 1,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Medium Quality Folded Sheet Metal",
+     "count": 2,
+     "source": "made",
+     "returned": false
+    },
+    {
+     "item": "Small Plate Boot Mold",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Smithy Hammer",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    },
+    {
+     "item": "Water Flask",
+     "count": 1,
+     "source": "vendor",
+     "returned": false
+    }
+   ],
+   "skill": "Tinkering"
+  }
+ },
+ "items": {
+  "Alligator Egg": {
+   "drops": [
+    {
+     "zone": "Qeynos Aqueducts",
+     "mobs": [
+      "Bloated Alligator"
+     ]
+    },
+    {
+     "zone": "The Feerrott",
+     "mobs": [
+      "an alligator"
+     ]
+    }
+   ]
+  },
+  "Amber": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Katha Firespinner"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Frena Runeflash"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Tika Shockstep"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Anite Gemcutter"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Glysin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Myrcin Denuen"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Mistmoore Castle",
+     "mobs": [
+      "a dark elf noble",
+      "a dark offerer",
+      "a dark ritualist",
+      "a dark sacrificer",
+      "a ghostly ancille",
+      "a glyphed forbidder"
+     ]
+    },
+    {
+     "zone": "Clan Runnyeye",
+     "mobs": [
+      "a goblin warlord",
+      "an Evil Eye prisoner"
+     ]
+    },
+    {
+     "zone": "Crystal Caverns",
+     "mobs": [
+      "a stalag terror"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a hill giant"
+     ]
+    },
+    {
+     "zone": "The Estate of Unrest",
+     "mobs": [
+      "a carrion ghoul",
+      "a dry bone skeleton",
+      "a lurking mummy",
+      "a skeletal monk",
+      "dark boned skeleton",
+      "Torklar Battlemaster"
+     ]
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "mobs": [
+      "an ice giant"
+     ]
+    }
+   ]
+  },
+  "Aqualung": {
+   "crafted": true
+  },
+  "Aviak Egg Oil": {
+   "crafted": true
+  },
+  "Aviak Eggs": {
+   "forage": [
+    "Butcherblock Mountains",
+    "Everfrost Peaks"
+   ]
+  },
+  "Backpack Pattern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tailor"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Alga Bruntbuckler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Stitch"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Gayle Weaven"
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "npc": "Seria O`Danos"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murga"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Dionin Needlespin"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Winsa Tanner"
+    }
+   ]
+  },
+  "Barley": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork brewmaster"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Inudul Dumirgun"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Brewer Prixal"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Frothy"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Krystin Charcoal"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Gartonka"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Becka McGuzzlin"
+    },
+    {
+     "zone": "High Keep",
+     "npc": "a clerk"
+    }
+   ]
+  },
+  "Bat Wing": {
+   "vendors": [
+    {
+     "zone": "East Commonlands",
+     "npc": "Katha Firespinner"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Jeliala Glimmercharm"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Tika Shockstep"
+    },
+    {
+     "zone": "Field of Bone",
+     "npc": "Klok Acet"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Lindie Rains"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Lysa Truegreen"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Zasrin Blueflame"
+    },
+    {
+     "zone": "Kael Drakkel",
+     "npc": "Ymik"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Butcherblock Mountains",
+     "mobs": [
+      "a bat"
+     ]
+    },
+    {
+     "zone": "Mistmoore Castle",
+     "mobs": [
+      "a Mistmoore guard"
+     ]
+    },
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "a giant bat"
+     ]
+    },
+    {
+     "zone": "Misty Thicket",
+     "mobs": [
+      "a large bat"
+     ]
+    },
+    {
+     "zone": "Northern Desert of Ro",
+     "mobs": [
+      "a bat"
+     ]
+    },
+    {
+     "zone": "Paineel",
+     "mobs": [
+      "A black bat"
+     ]
+    }
+   ]
+  },
+  "Block of Clay": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork miner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork potter"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Izbal Brightblaze"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Toren"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Hoga"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Merra Clayfinger"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Shinan Orefinder"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Kyrin Steelbone"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "a muddite elder",
+      "a muddite minor",
+      "a muddite recordkeeper",
+      "Qlei"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Block of Medium Quality Ore": {
+   "vendors": [
+    {
+     "zone": "High Keep",
+     "npc": "Graham Embersmith"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Trudie Steelbone"
+    },
+    {
+     "zone": "South Qeynos",
+     "npc": "Yakem Oreslinger"
+    },
+    {
+     "zone": "Rathe Mountains",
+     "npc": "Ukla"
+    }
+   ],
+   "crafted": true
+  },
+  "Boot Pattern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tailor"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Fugan Mumfur"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Wartol"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Demicla Tanner"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murga"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tissan"
+    }
+   ]
+  },
+  "Bottle": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork brewmaster"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Gamin Griststone"
+    }
+   ],
+   "crafted": true
+  },
+  "Bottle of Milk": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork baker"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Urazun Thranon"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Gamin Griststone"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Parn Gylwyn"
+    }
+   ]
+  },
+  "Bowl Sketch": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork sketcher"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Grots"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Winoyn"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Jynsa Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nildar"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Vynugga"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Skoni"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Min Greyeagle"
+    }
+   ]
+  },
+  "Breastplate Mold": {
+   "vendors": [
+    {
+     "zone": "East Freeport",
+     "npc": "Valentin Fireheart"
+    },
+    {
+     "zone": "Northern Felwithe",
+     "npc": "Nerrisia Irontree"
+    },
+    {
+     "zone": "South Qeynos",
+     "npc": "Liln Sedder"
+    }
+   ]
+  },
+  "Brownie Parts": {
+   "drops": [
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "a brownie scout"
+     ]
+    },
+    {
+     "zone": "Lesser Faydark",
+     "mobs": [
+      "a brownie",
+      "a brownie farmer",
+      "a brownie guard",
+      "a brownie outcast",
+      "Bracken Underbrush",
+      "brownie scout"
+     ]
+    },
+    {
+     "zone": "Rivervale",
+     "mobs": [
+      "Nillipuss"
+     ]
+    }
+   ]
+  },
+  "Bundled Bone Arrow Shafts": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Bundled Ceramic Arrow Shafts": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Bundled Wooden Arrow Shafts": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Cake Round": {
+   "crafted": true
+  },
+  "Cake Round Mold": {
+   "vendors": [
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Nalda Griststone"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Gritchit"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Roghur Muleson"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Tislan"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Uaylain"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Garklog"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Jil McDaniel"
+    },
+    {
+     "zone": "Qeynos Hills",
+     "npc": "Mira Sayer"
+    }
+   ]
+  },
+  "Cake Round Sketch": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork sketcher"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Grots"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Winoyn"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Jynsa Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nildar"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Vynugga"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Skoni"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Min Greyeagle"
+    }
+   ]
+  },
+  "Cap Pattern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tailor"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Fugan Mumfur"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Wartol"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Demicla Tanner"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murga"
+    },
+    {
+     "zone": "Northern Felwithe",
+     "npc": "Merchant Tissan"
+    }
+   ]
+  },
+  "Carnelian": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Oxmod"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Katha Firespinner"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Frena Runeflash"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Anite Gemcutter"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Glysin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Myrcin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Elbsin Denuen"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Befallen",
+     "mobs": [
+      "a necro theurgist"
+     ]
+    },
+    {
+     "zone": "Clan Runnyeye",
+     "mobs": [
+      "a goblin warlord"
+     ]
+    },
+    {
+     "zone": "Cobalt Scar",
+     "mobs": [
+      "a bulthar",
+      "a bulthar herdleader",
+      "a haunted seachest"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "orc legionnaire"
+     ]
+    },
+    {
+     "zone": "Crystal Caverns",
+     "mobs": [
+      "a velium crawler",
+      "A geonid (CC)"
+     ]
+    },
+    {
+     "zone": "Dagnor's Cauldron",
+     "mobs": [
+      "an undertow skeleton"
+     ]
+    }
+   ]
+  },
+  "Cask": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork barkeep"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork brewmaster"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Vednir"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Poklon"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sass"
+    },
+    {
+     "zone": "Cobalt Scar",
+     "npc": "Blumblum Swigwater"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Innkeep Seke"
+    }
+   ]
+  },
+  "Cat's Eye Agate": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Visar Glolith"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Gilliad Coldheart"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Katha Firespinner"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Frena Runeflash"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Toxxulia Forest",
+     "mobs": [
+      "a fire beetle"
+     ]
+    },
+    {
+     "zone": "Clan Runnyeye",
+     "mobs": [
+      "a goblin warlord"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "Kizdean Gix"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "an undead reaver"
+     ]
+    },
+    {
+     "zone": "The Estate of Unrest",
+     "mobs": [
+      "a tentacle terror"
+     ]
+    },
+    {
+     "zone": "Field of Bone",
+     "mobs": [
+      "an iksar bandit",
+      "an Iksar footpad"
+     ]
+    }
+   ]
+  },
+  "Ceramic Lining": {
+   "crafted": true
+  },
+  "Clump of Dough": {
+   "crafted": true
+  },
+  "Container Base Mold": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Kaila Rucksack"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Tislan"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nluolian"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Ungia"
+    },
+    {
+     "zone": "Rivervale",
+     "npc": "Betty Brickbaker"
+    }
+   ]
+  },
+  "Container Lid Mold": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Kaila Rucksack"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Tislan"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nluolian"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Ungia"
+    },
+    {
+     "zone": "Rivervale",
+     "npc": "Betty Brickbaker"
+    }
+   ]
+  },
+  "Cup of Flour": {
+   "vendors": [
+    {
+     "zone": "Ak'anon",
+     "npc": "a clockwork baker"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Urazun Thranon"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sweetzie"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Praps Gemshard"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Parthar"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Bup"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Sissia"
+    },
+    {
+     "zone": "Misty Thicket",
+     "npc": "Bim Buskin"
+    }
+   ]
+  },
+  "Cyclops skull": {
+   "drops": [
+    {
+     "zone": "Southern Karana",
+     "mobs": [
+      "an undead cyclops"
+     ]
+    }
+   ]
+  },
+  "Dagger Blade Mold": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Clockwork SmithXIII"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Smithy Krikt"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murg"
+    },
+    {
+     "zone": "Northern Felwithe",
+     "npc": "Opal Leganyn"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Jenna Smith"
+    },
+    {
+     "zone": "Halas",
+     "npc": "April"
+    },
+    {
+     "zone": "North Kaladim",
+     "npc": "Bndainy Everhot"
+    },
+    {
+     "zone": "Neriak Commons",
+     "npc": "Sivy G`Noir"
+    }
+   ]
+  },
+  "Dark Green Dye": {
+   "crafted": true
+  },
+  "Dragon Meat": {
+   "drops": [
+    {
+     "zone": "Temple of Veeshan",
+     "mobs": [
+      "Dozekar the Cursed"
+     ]
+    },
+    {
+     "zone": "The Wakening Land",
+     "mobs": [
+      "Wuoshi"
+     ]
+    },
+    {
+     "zone": "Western Wastes",
+     "mobs": [
+      "Ayillish",
+      "Bratavar",
+      "Bufa",
+      "Cargalia",
+      "Draazak",
+      "Gafala"
+     ]
+    }
+   ]
+  },
+  "Duskglow Vine": {
+   "vendors": [
+    {
+     "zone": "Everfrost Peaks",
+     "npc": "Sven Felligan"
+    },
+    {
+     "zone": "Innothule Swamp",
+     "npc": "Sithgok"
+    },
+    {
+     "zone": "Kerra Island",
+     "npc": "Melixis"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Klok Scaleroot"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Marlyn McMerin"
+    },
+    {
+     "zone": "Thurgadin",
+     "npc": "Hulda"
+    }
+   ]
+  },
+  "Dwarven Ale": {
+   "vendors": [
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Hardat Gemshard"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Henna Treghost"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Gregor Nasin"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Ston O`Donner"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Myrissa O`Donner"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Slan ODonner"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Monita O`Donner"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Barkeep Aanlawen"
+    }
+   ]
+  },
+  "Electrum Bar": {
+   "vendors": [
+    {
+     "zone": "North Freeport",
+     "npc": "Amber (NPC)"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Oxmod"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Noresa Sparkle"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Sothure Gemcutter"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Nora"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Silspin"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Brisha Fyrestone"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Kweili"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "a muddite recordkeeper",
+      "Qlei"
+     ]
+    },
+    {
+     "zone": "Plane of Mischief",
+     "mobs": [
+      "TwentyTwo"
+     ]
+    }
+   ]
+  },
+  "Elven Wine": {
+   "vendors": [
+    {
+     "zone": "Felwithe",
+     "npc": "Wela Muselender"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Tyle Songwhisper"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Henna Treghost"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Gregor Nasin"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Ston O`Donner"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Myrissa O`Donner"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Slan ODonner"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Monita O`Donner"
+    }
+   ],
+   "crafted": true
+  },
+  "Emerald": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "Chardok",
+     "npc": "Haggle Baron Dry`dn"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Gilliad Coldheart"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Anite Gemcutter"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Glysin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Myrcin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Elbsin Denuen"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Burning Woods",
+     "mobs": [
+      "a cinder hornet",
+      "a sarnak champion",
+      "a sarnak enthusiast",
+      "a sarnak extremist",
+      "a tottering gorilla",
+      "an ash hornet"
+     ]
+    },
+    {
+     "zone": "Dreadlands",
+     "mobs": [
+      "a drachnid recluse",
+      "a drachnid silkmistress",
+      "a drachnid silkstrander",
+      "a drachnid webmaster",
+      "a drachnid widow",
+      "a drolvarg gnasher"
+     ]
+    },
+    {
+     "zone": "Erud's Crossing",
+     "mobs": [
+      "a fire elemental"
+     ]
+    },
+    {
+     "zone": "The Estate of Unrest",
+     "mobs": [
+      "mortuary fungus"
+     ]
+    },
+    {
+     "zone": "Firiona Vie",
+     "mobs": [
+      "a drachnid silkspinner",
+      "a drolvarg snarler",
+      "froglok shin knight",
+      "froglok tsu shaman",
+      "goblin raider"
+     ]
+    },
+    {
+     "zone": "Frontier Mountains",
+     "mobs": [
+      "a mountain giant tump",
+      "goblin raider"
+     ]
+    }
+   ]
+  },
+  "Empty Vial": {
+   "vendors": [
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Godbin Strumharp"
+    },
+    {
+     "zone": "Rathe Mountains",
+     "npc": "Ukla"
+    }
+   ]
+  },
+  "Enchanted Platinum Bar": {},
+  "Evergreen Extract": {
+   "crafted": true
+  },
+  "Evergreen Leaf": {
+   "drops": [
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "{{Loc|Greater Faydark|(-135, 1)(135, -1)(506, -631)(330, -730)(115, -1310)(75, 996, 1)(-2312, -1131, 0)(-1500, 2210, -10)(-1900, -2100, 0)(2110, 30, -40)|Ground Spawns (Confirmed)}}",
+      "* {{Loc|Greater Faydark|-135, 1|(-135, 1)}} - 1 spawn, Confirmed",
+      "* {{Loc|Greater Faydark|135, -1|(135, -1)}} - 1 spawn, Confirmed",
+      "* {{Loc|Greater Faydark|506, -631|(506, -631)}} - 3-4 spawns, Confirmed",
+      "* {{Loc|Greater Faydark|330, -730|(316, -736)}} - 2-3 spawns, Confirmed",
+      "* {{Loc|Greater Faydark|115, -1310|(115, -1310)}} - 1 or 2 spawns, Confirmed (Has also been at 115, -1400)"
+     ]
+    }
+   ]
+  },
+  "Field Point Arrowheads": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ],
+   "crafted": true
+  },
+  "File": {
+   "crafted": true
+  },
+  "File Mold": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork miner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Kaila Rucksack"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Smithy Vyx"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Jillian Dayson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nluolian"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Greta O`Reilly"
+    },
+    {
+     "zone": "Neriak Commons",
+     "npc": "Glazn D`Unnar"
+    }
+   ]
+  },
+  "Fine Coral Mesh": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Leala Swiftarrow"
+    },
+    {
+     "zone": "Kael Drakkel",
+     "npc": "Bendad the Trader"
+    },
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Fire Emerald": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Oxmod"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Sothure Gemcutter"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Silspin"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Brisha Fyrestone"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Amber (NPC)"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Kweili"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Burning Woods",
+     "mobs": [
+      "a forest giant verdant",
+      "a sarnak zealot",
+      "a scoriae hornet",
+      "a tatterback ape",
+      "an ember hornet",
+      "greater plague skeleton"
+     ]
+    },
+    {
+     "zone": "Chardok",
+     "mobs": [
+      "a Di`Zok Legionnaire"
+     ]
+    },
+    {
+     "zone": "City of Mist",
+     "mobs": [
+      "a fog golem",
+      "a haze golem",
+      "a mist golem",
+      "a phantom",
+      "a shadow",
+      "a vapor golem"
+     ]
+    },
+    {
+     "zone": "Crystal Caverns",
+     "mobs": [
+      "a geonid"
+     ]
+    },
+    {
+     "zone": "High Keep",
+     "mobs": [
+      "Captain Boshinko"
+     ]
+    },
+    {
+     "zone": "Erud's Crossing",
+     "mobs": [
+      "a killer shark"
+     ]
+    }
+   ]
+  },
+  "Fire Opal": {
+   "drops": [
+    {
+     "zone": "Burning Woods",
+     "mobs": [
+      "a sarnak zealot",
+      "a scoriae hornet",
+      "a tatterback ape",
+      "an ember hornet"
+     ]
+    },
+    {
+     "zone": "Chardok",
+     "mobs": [
+      "a Di`Zok Legionnaire"
+     ]
+    },
+    {
+     "zone": "City of Mist",
+     "mobs": [
+      "a phantom"
+     ]
+    },
+    {
+     "zone": "Crystal Caverns",
+     "mobs": [
+      "a geonid"
+     ]
+    },
+    {
+     "zone": "East Karana",
+     "mobs": [
+      "Proon"
+     ]
+    },
+    {
+     "zone": "Erud's Crossing",
+     "mobs": [
+      "a killer shark"
+     ]
+    }
+   ]
+  },
+  "Firewater": {
+   "crafted": true
+  },
+  "Fleeting Quiver Pattern": {
+   "vendors": [
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Stitch"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Dyona Rossook"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Gaeadin"
+    },
+    {
+     "zone": "Misty Thicket",
+     "npc": "Tipa Lighten"
+    },
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant IX"
+    },
+    {
+     "zone": "Rathe Mountains",
+     "npc": "Zok Gleeup"
+    },
+    {
+     "zone": "Rathe Mountains",
+     "npc": "Zok Lubump"
+    }
+   ]
+  },
+  "Fresh Fish": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork grocer"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Maula Fishcatcher"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Sharna"
+    },
+    {
+     "zone": "Erud's Crossing",
+     "npc": "Renna"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Kogg"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Elytan Rantas"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Tam Slyspan"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Mistmoore Castle",
+     "mobs": [
+      "a Mistmoore guard"
+     ]
+    },
+    {
+     "zone": "Cabilis",
+     "mobs": [
+      "a pygmy barracuda"
+     ]
+    },
+    {
+     "zone": "Erud's Crossing",
+     "mobs": [
+      "a killer shark",
+      "a shark",
+      "Hojo",
+      "Jarra",
+      "Kala",
+      "Milla"
+     ]
+    },
+    {
+     "zone": "Kedge Keep",
+     "mobs": [
+      "a cerulean sailfin",
+      "a cobalt sailfin",
+      "a crimson sailfin",
+      "a gloomstalker mermaid",
+      "a gloomwater mermaid",
+      "a lancer swordfish"
+     ]
+    },
+    {
+     "zone": "Kithicor Forest",
+     "mobs": [
+      "a large piranha"
+     ]
+    },
+    {
+     "zone": "Lake of Ill Omen",
+     "mobs": [
+      "a bloodgill barracuda"
+     ]
+    }
+   ]
+  },
+  "Frosting": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork baker"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Urazun Thranon"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sweetzie"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Praps Gemshard"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Parthar"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Bup"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Pincia Brownloe"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Sissia"
+    }
+   ]
+  },
+  "Gauntlet Mold": {
+   "vendors": [
+    {
+     "zone": "East Freeport",
+     "npc": "Issilyn Ristan"
+    },
+    {
+     "zone": "Toxxulia Forest",
+     "npc": "Win Karnam"
+    },
+    {
+     "zone": "Qeynos Hills",
+     "npc": "Marton Sayer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Linolyen"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Nalgoz"
+    }
+   ]
+  },
+  "Gears": {
+   "vendors": [
+    {
+     "zone": "Firiona Vie",
+     "npc": "Leala Swiftarrow"
+    },
+    {
+     "zone": "Kael Drakkel",
+     "npc": "Bendad the Trader"
+    },
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Glass Shard": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork potter"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Izbal Brightblaze"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Hoga"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Merra Clayfinger"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Gurb Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Legweien"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Merin"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Winn Greenbane"
+    }
+   ]
+  },
+  "Gnomish Bolts": {
+   "vendors": [
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Gnomish Spirits": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork barkeep"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Hardat Gemshard"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Henna Treghost"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Gregor Nasin"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Ston O`Donner"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Myrissa O`Donner"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Slan ODonner"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Monita O`Donner"
+    }
+   ],
+   "crafted": true
+  },
+  "Gold Bar": {
+   "vendors": [
+    {
+     "zone": "North Freeport",
+     "npc": "Amber (NPC)"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Oxmod"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Noresa Sparkle"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Sothure Gemcutter"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Nora"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Silspin"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Brisha Fyrestone"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Kweili"
+    }
+   ]
+  },
+  "Gorget Mold": {
+   "vendors": [
+    {
+     "zone": "East Freeport",
+     "npc": "Issilyn Ristan"
+    },
+    {
+     "zone": "Toxxulia Forest",
+     "npc": "Win Karnam"
+    },
+    {
+     "zone": "Qeynos Hills",
+     "npc": "Marton Sayer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Linolyen"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Nalgoz"
+    }
+   ]
+  },
+  "Griffon Feathers": {
+   "drops": [
+    {
+     "zone": "West Commonlands",
+     "mobs": [
+      "a griffin"
+     ]
+    },
+    {
+     "zone": "East Commonlands",
+     "mobs": [
+      "a griffin"
+     ]
+    },
+    {
+     "zone": "Northern Karana",
+     "mobs": [
+      "a griffawn",
+      "a griffenne",
+      "a griffon",
+      "Callowwing",
+      "GrimFeather"
+     ]
+    }
+   ]
+  },
+  "Heady Kiola": {
+   "crafted": true
+  },
+  "Helm Mold": {
+   "vendors": [
+    {
+     "zone": "East Freeport",
+     "npc": "Issilyn Ristan"
+    },
+    {
+     "zone": "Toxxulia Forest",
+     "npc": "Win Karnam"
+    },
+    {
+     "zone": "Qeynos Hills",
+     "npc": "Marton Sayer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Linolyen"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Nalgoz"
+    }
+   ]
+  },
+  "Hematite": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Pardor the Blessed"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Katha Firespinner"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Tika Shockstep"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Anite Gemcutter"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Glysin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Myrcin Denuen"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "a goblin lookout",
+      "a goblin sentry",
+      "a goblin veteran"
+     ]
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "mobs": [
+      "an emerald drake"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "an undead reaver"
+     ]
+    },
+    {
+     "zone": "The Estate of Unrest",
+     "mobs": [
+      "a dark terror",
+      "a tentacle terror"
+     ]
+    },
+    {
+     "zone": "Field of Bone",
+     "mobs": [
+      "an Iksar footpad"
+     ]
+    },
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "a bandit lookout",
+      "a faerie maiden",
+      "a pixie trickster"
+     ]
+    }
+   ]
+  },
+  "High Quality Bear Skin": {
+   "drops": [
+    {
+     "zone": "Blackburrow",
+     "mobs": [
+      "a grizzly bear"
+     ]
+    },
+    {
+     "zone": "East Commonlands",
+     "mobs": [
+      "a black bear",
+      "a young kodiak"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a brown bear"
+     ]
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "mobs": [
+      "a glacier bear",
+      "a polar bear",
+      "a polar bear cub"
+     ]
+    },
+    {
+     "zone": "Misty Thicket",
+     "mobs": [
+      "a young kodiak"
+     ]
+    },
+    {
+     "zone": "Nektulos Forest",
+     "mobs": [
+      "a black bear",
+      "a young kodiak"
+     ]
+    }
+   ]
+  },
+  "High Quality Cat Pelt": {
+   "drops": [
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a plains cat",
+      "a puma",
+      "a lion",
+      "a lioness",
+      "a young plains cat"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a lion",
+      "a lion patriarch",
+      "a lioness",
+      "a rogue lion"
+     ]
+    },
+    {
+     "zone": "Lake of Ill Omen",
+     "mobs": [
+      "a sabertooth cat",
+      "a sabertooth cub",
+      "a sabertooth grimalkin",
+      "a sabertooth tiger",
+      "a sabertooth tigress"
+     ]
+    },
+    {
+     "zone": "Northern Karana",
+     "mobs": [
+      "a lion",
+      "a lioness"
+     ]
+    },
+    {
+     "zone": "Northern Desert of Ro",
+     "mobs": [
+      "a puma"
+     ]
+    },
+    {
+     "zone": "Southern Karana",
+     "mobs": [
+      "a lion",
+      "a lioness"
+     ]
+    }
+   ]
+  },
+  "High Quality Firing Sheet": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork potter"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Izbal Brightblaze"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Hoga"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Merra Clayfinger"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Gurb Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Legweien"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Merin"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Winn Greenbane"
+    }
+   ]
+  },
+  "High Quality Lion Skin": {
+   "drops": [
+    {
+     "zone": "Northern Karana",
+     "mobs": [
+      "a highland lion"
+     ]
+    }
+   ]
+  },
+  "Hilt Mold": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Clockwork SmithXIII"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork armorer"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork armorer"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Kaila Rucksack"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Smithy Vyx"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Smithy Krikt"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murg"
+    },
+    {
+     "zone": "Northern Felwithe",
+     "npc": "Opal Leganyn"
+    }
+   ]
+  },
+  "Hinge Mold": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Kaila Rucksack"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Nalda Griststone"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Gritchit"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Tislan"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Roghur Muleson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Uaylain"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nluolian"
+    }
+   ]
+  },
+  "Hooked Arrowheads": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ],
+   "crafted": true
+  },
+  "Hops": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork brewmaster"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Inudul Dumirgun"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Brewer Prixal"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Frothy"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Gregor Nasin"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Krystin Charcoal"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Gartonka"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Becka McGuzzlin"
+    }
+   ]
+  },
+  "Jade": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Anite Gemcutter"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Glysin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Myrcin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Elbsin Denuen"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tyslin"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tyslin"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Befallen",
+     "mobs": [
+      "an elf skeleton"
+     ]
+    },
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "an evil eye",
+      "Lord Sviir",
+      "Lord Syrkl"
+     ]
+    },
+    {
+     "zone": "Clan Runnyeye",
+     "mobs": [
+      "a goblin warlord"
+     ]
+    },
+    {
+     "zone": "Dreadlands",
+     "mobs": [
+      "a tundra yeti"
+     ]
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "mobs": [
+      "an ice giant",
+      "Karg IceBear"
+     ]
+    },
+    {
+     "zone": "Kaladim",
+     "mobs": [
+      "Guard Dinler"
+     ]
+    }
+   ]
+  },
+  "Jug of Sauces": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork baker"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Urazun Thranon"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sweetzie"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Praps Gemshard"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Parthar"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Bup"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Pincia Brownloe"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Sissia"
+    }
+   ]
+  },
+  "Lantern Casing Mold": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Kaila Rucksack"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Nalda Griststone"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Gritchit"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Smithy Vyx"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Tislan"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Roghur Muleson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Uaylain"
+    }
+   ]
+  },
+  "Large Black Lodestone": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "a mechanical merchant"
+    }
+   ]
+  },
+  "Large Block of Clay": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork miner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork potter"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Izbal Brightblaze"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Toren"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Hoga"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Merra Clayfinger"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Shinan Orefinder"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Kyrin Steelbone"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "a muddite elder",
+      "a muddite minor"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Large Bowl Sketch": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork sketcher"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Grots"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Winoyn"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Jynsa Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nildar"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Vynugga"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Skoni"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Min Greyeagle"
+    }
+   ]
+  },
+  "Large Groove Nocks": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Large Jar Sketch": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork sketcher"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Grots"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Winoyn"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Jynsa Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nildar"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Vynugga"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Skoni"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Min Greyeagle"
+    }
+   ]
+  },
+  "Large Lantern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Iglan Thranon"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Gamin Griststone"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Parn Gylwyn"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Felen Razdal"
+    }
+   ],
+   "crafted": true
+  },
+  "Leather Padding": {
+   "crafted": true
+  },
+  "Lime Coated Meshing": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Lined Vial Sketch": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork potter"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Izbal Brightblaze"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Hoga"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Merra Clayfinger"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Gurb Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Legweien"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Merin"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Winn Greenbane"
+    }
+   ]
+  },
+  "Low Quality Bear Skin": {
+   "drops": [
+    {
+     "zone": "Blackburrow",
+     "mobs": [
+      "a grizzly bear"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a black bear",
+      "a kodiak",
+      "a young kodiak"
+     ]
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "mobs": [
+      "a glacier bear",
+      "a polar bear",
+      "a polar bear cub",
+      "Iceberg"
+     ]
+    },
+    {
+     "zone": "Misty Thicket",
+     "mobs": [
+      "a young kodiak"
+     ]
+    },
+    {
+     "zone": "Rathe Mountains",
+     "mobs": [
+      "a black bear",
+      "a brown bear",
+      "a grizzly bear"
+     ]
+    },
+    {
+     "zone": "Nektulos Forest",
+     "mobs": [
+      "a black bear",
+      "a young kodiak"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Low Quality Cat Pelt": {
+   "drops": [
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a puma",
+      "a young plains cat"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a lion",
+      "a lioness"
+     ]
+    },
+    {
+     "zone": "Northern Desert of Ro",
+     "mobs": [
+      "a puma"
+     ]
+    },
+    {
+     "zone": "Southern Karana",
+     "mobs": [
+      "a lion",
+      "a lioness"
+     ]
+    },
+    {
+     "zone": "Southern Desert of Ro",
+     "mobs": [
+      "a puma"
+     ]
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "mobs": [
+      "a mountain lion",
+      "a small mountain lion"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Low Quality Wolf Skin": {
+   "drops": [
+    {
+     "zone": "Mistmoore Castle",
+     "mobs": [
+      "a blood wolf"
+     ]
+    },
+    {
+     "zone": "East Commonlands",
+     "mobs": [
+      "a black wolf",
+      "a shadow wolf"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a silvermist wolf",
+      "a war wolf"
+     ]
+    },
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "a black wolf"
+     ]
+    },
+    {
+     "zone": "Lesser Faydark",
+     "mobs": [
+      "a mist wolf"
+     ]
+    },
+    {
+     "zone": "Misty Thicket",
+     "mobs": [
+      "a black wolf"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Mail Sectional Mold": {
+   "vendors": [
+    {
+     "zone": "East Freeport",
+     "npc": "Issilyn Ristan"
+    },
+    {
+     "zone": "Toxxulia Forest",
+     "npc": "Win Karnam"
+    },
+    {
+     "zone": "Qeynos Hills",
+     "npc": "Marton Sayer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Linolyen"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Nalgoz"
+    }
+   ]
+  },
+  "Malachite": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "Dreadlands",
+     "npc": "Klok F`tshai"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Katha Firespinner"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Lyth Spellstar"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Frena Runeflash"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Anite Gemcutter"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Butcherblock Mountains",
+     "mobs": [
+      "a goblin",
+      "an emerald drake"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "Kizdean Gix"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "an undead reaver"
+     ]
+    },
+    {
+     "zone": "The Estate of Unrest",
+     "mobs": [
+      "a tentacle terror"
+     ]
+    },
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "a goblin lookout",
+      "a goblin sentry",
+      "a goblin veteran"
+     ]
+    },
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "a bandit",
+      "a bandit lookout",
+      "a brownie scout",
+      "a pixie trickster"
+     ]
+    }
+   ]
+  },
+  "Malt": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork brewmaster"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Inudul Dumirgun"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sass"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Brewer Prixal"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Frothy"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Krystin Charcoal"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Barkeep Tuviena"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Gartonka"
+    }
+   ]
+  },
+  "Mask Pattern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tailor"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Alga Bruntbuckler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Wartol"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Gayle Weaven"
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "npc": "Seria O`Danos"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murga"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Erica Swiftweave"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Dionin Needlespin"
+    }
+   ]
+  },
+  "Mead": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork barkeep"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Gamin Griststone"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Parn Gylwyn"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Ak'Anon",
+     "mobs": [
+      "clockwork scrubber"
+     ]
+    },
+    {
+     "zone": "Befallen",
+     "mobs": [
+      "a sturdy skeleton"
+     ]
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "mobs": [
+      "a goblin whelp"
+     ]
+    },
+    {
+     "zone": "Crushbone",
+     "mobs": [
+      "orc pawn"
+     ]
+    },
+    {
+     "zone": "Freeport",
+     "mobs": [
+      "Jak Sindin"
+     ]
+    },
+    {
+     "zone": "The Estate of Unrest",
+     "mobs": [
+      "a festering hag"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Medium Bowl Sketch": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork sketcher"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Grots"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Winoyn"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Jynsa Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nildar"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Vynugga"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Skoni"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Min Greyeagle"
+    }
+   ]
+  },
+  "Medium Groove Nocks": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Field of Bone",
+     "npc": "Klok Acet"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    }
+   ]
+  },
+  "Medium Jar Sketch": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork sketcher"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Grots"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Winoyn"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Jynsa Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nildar"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Vynugga"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Skoni"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Min Greyeagle"
+    }
+   ]
+  },
+  "Medium Quality Bear Skin": {
+   "drops": [
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a black bear",
+      "a kodiak",
+      "a young kodiak"
+     ]
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "mobs": [
+      "a glacier bear",
+      "a polar bear",
+      "a polar bear cub"
+     ]
+    },
+    {
+     "zone": "Misty Thicket",
+     "mobs": [
+      "a young kodiak"
+     ]
+    },
+    {
+     "zone": "Rathe Mountains",
+     "mobs": [
+      "a black bear",
+      "a brown bear",
+      "a grizzly bear"
+     ]
+    },
+    {
+     "zone": "Nektulos Forest",
+     "mobs": [
+      "a black bear",
+      "a young kodiak"
+     ]
+    },
+    {
+     "zone": "Permafrost",
+     "mobs": [
+      "a giant polar bear"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Medium Quality Cat Pelt": {
+   "drops": [
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a plains cat",
+      "a puma",
+      "a lion",
+      "a lioness",
+      "a young plains cat"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a lion",
+      "a lion patriarch",
+      "a lioness",
+      "a rogue lion"
+     ]
+    },
+    {
+     "zone": "Lake of Ill Omen",
+     "mobs": [
+      "a sabertooth cat",
+      "a sabertooth cub",
+      "a sabertooth grimalkin",
+      "a sabertooth kit",
+      "a sabertooth tiger",
+      "a sabertooth tigress"
+     ]
+    },
+    {
+     "zone": "Northern Karana",
+     "mobs": [
+      "a lion",
+      "a lioness"
+     ]
+    },
+    {
+     "zone": "Northern Desert of Ro",
+     "mobs": [
+      "a puma"
+     ]
+    },
+    {
+     "zone": "Southern Karana",
+     "mobs": [
+      "a lion",
+      "a lioness"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Medium Quality Folded Sheet Metal": {
+   "vendors": [
+    {
+     "zone": "South Qeynos",
+     "npc": "Liln Sedder"
+    }
+   ],
+   "crafted": true
+  },
+  "Medium Quality Wolf Skin": {
+   "drops": [
+    {
+     "zone": "Mistmoore Castle",
+     "mobs": [
+      "a blood wolf"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a black wolf",
+      "a shadow wolf"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a silvermist wolf",
+      "a war wolf",
+      "A dark stalker"
+     ]
+    },
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "a black wolf"
+     ]
+    },
+    {
+     "zone": "Lesser Faydark",
+     "mobs": [
+      "a mist wolf"
+     ]
+    },
+    {
+     "zone": "Misty Thicket",
+     "mobs": [
+      "a black wolf"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Metal Bits": {
+   "crafted": true
+  },
+  "Metal Fastening": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Leala Swiftarrow"
+    },
+    {
+     "zone": "Kael Drakkel",
+     "npc": "Bendad the Trader"
+    },
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Metal Rod": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Kael Drakkel",
+     "npc": "Bendad the Trader"
+    },
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "a mechanical merchant"
+    }
+   ]
+  },
+  "Metal Twine": {
+   "vendors": [
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Onyx": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Katha Firespinner"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Anite Gemcutter"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Glysin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Myrcin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Elbsin Denuen"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tyslin"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Butcherblock Mountains",
+     "mobs": [
+      "An emerald drake"
+     ]
+    },
+    {
+     "zone": "Befallen",
+     "mobs": [
+      "the thaumaturgist"
+     ]
+    },
+    {
+     "zone": "City of Mist",
+     "mobs": [
+      "a phantom"
+     ]
+    },
+    {
+     "zone": "Clan Runnyeye",
+     "mobs": [
+      "a goblin warlord",
+      "{{VeliousGray| [[a haunted seachest]] }}"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a hill giant",
+      "orc oracle",
+      "Sergeant Slate"
+     ]
+    },
+    {
+     "zone": "Dagnor's Cauldron",
+     "mobs": [
+      "an undertow skeleton"
+     ]
+    }
+   ]
+  },
+  "Opal": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tyslin"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tyslin"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Brackin Nartoise"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Drake Mountainstorm"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Aimie Moonspin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Laedar"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Burning Woods",
+     "mobs": [
+      "a cinder hornet",
+      "a forest giant arbor",
+      "a sarnak champion",
+      "a sarnak enthusiast",
+      "a sarnak extremist",
+      "a tottering gorilla"
+     ]
+    },
+    {
+     "zone": "Cobalt Scar",
+     "mobs": [
+      "a wyvern",
+      "an Othmir Warrior"
+     ]
+    },
+    {
+     "zone": "Crystal Caverns",
+     "mobs": [
+      "a stalag terror"
+     ]
+    },
+    {
+     "zone": "Dragon Necropolis",
+     "mobs": [
+      "a dragon construct",
+      "an amorphous mass",
+      "an entropy serpent"
+     ]
+    },
+    {
+     "zone": "Dreadlands",
+     "mobs": [
+      "a drachnid recluse",
+      "a drachnid silkmistress",
+      "a drachnid silkstrander",
+      "a drachnid webmaster",
+      "a drachnid widow",
+      "a dread widow"
+     ]
+    },
+    {
+     "zone": "Emerald Jungle",
+     "mobs": [
+      "a raging gorilla"
+     ]
+    }
+   ]
+  },
+  "Othmir Fur": {
+   "drops": [
+    {
+     "zone": "Cobalt Scar",
+     "mobs": [
+      "a shellfish collector",
+      "an Othmir Pup",
+      "an Othmir Shaman",
+      "an Othmir Warrior",
+      "Chief Kalan"
+     ]
+    }
+   ]
+  },
+  "Packet of Kiola Sap": {
+   "vendors": [
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sass"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Innkeep Seke"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Innkeep Redthorn"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Gilliad Coldheart"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Innkeep Leo"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Innkeep Elora"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Innkeep Fenia"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Innkeep Calen"
+    }
+   ]
+  },
+  "Pant Pattern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tailor"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Fugan Mumfur"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Wartol"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Demicla Tanner"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murga"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tissan"
+    }
+   ]
+  },
+  "Peridot": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Visar Glolith"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Pardor the Blessed"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Katha Firespinner"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Burning Woods",
+     "mobs": [
+      "a cinder hornet",
+      "a sarnak champion",
+      "a sarnak enthusiast",
+      "a sarnak extremist",
+      "a tottering gorilla",
+      "an ash hornet"
+     ]
+    },
+    {
+     "zone": "City of Mist",
+     "mobs": [
+      "a phantom",
+      "a vapor golem",
+      "greater spurbone"
+     ]
+    },
+    {
+     "zone": "Cobalt Scar",
+     "mobs": [
+      "a siren enticer",
+      "a wyvern"
+     ]
+    },
+    {
+     "zone": "Crypt of Dalnir",
+     "mobs": [
+      "a coerced goblin"
+     ]
+    },
+    {
+     "zone": "Crystal Caverns",
+     "mobs": [
+      "a stalag terror"
+     ]
+    },
+    {
+     "zone": "Dragon Necropolis",
+     "mobs": [
+      "a dragon construct",
+      "an amorphous mass",
+      "an entropy serpent"
+     ]
+    }
+   ]
+  },
+  "Pie Tin": {
+   "crafted": true
+  },
+  "Pie Tin Mold": {
+   "vendors": [
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Nalda Griststone"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Gritchit"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Roghur Muleson"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Tislan"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Uaylain"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Garklog"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Jil McDaniel"
+    },
+    {
+     "zone": "Qeynos Hills",
+     "npc": "Mira Sayer"
+    }
+   ]
+  },
+  "Pie Tin Sketch": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork sketcher"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Grots"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Winoyn"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Jynsa Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Nildar"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Vynugga"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Skoni"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Min Greyeagle"
+    }
+   ]
+  },
+  "Plate Bracer Mold": {
+   "vendors": [
+    {
+     "zone": "Northern Felwithe",
+     "npc": "Nerrisia Irontree"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Valentin Fireheart"
+    },
+    {
+     "zone": "South Qeynos",
+     "npc": "Liln Sedder"
+    }
+   ]
+  },
+  "Plate Helm Mold": {
+   "vendors": [
+    {
+     "zone": "Northern Felwithe",
+     "npc": "Nerrisia Irontree"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Valentin Fireheart"
+    },
+    {
+     "zone": "South Qeynos",
+     "npc": "Liln Sedder"
+    }
+   ]
+  },
+  "Platemail Helm": {
+   "vendors": [
+    {
+     "zone": "Erudin",
+     "npc": "Jagen Kindlor"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Irontree"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Gearin Gaxx"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Ikthar Fireheart"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tananie"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tegdian"
+    },
+    {
+     "zone": "Paineel",
+     "npc": "Faratain"
+    },
+    {
+     "zone": "South Qeynos",
+     "npc": "Meera Lylon"
+    }
+   ]
+  },
+  "Pod of Water": {
+   "forage": [
+    "Butcherblock Mountains",
+    "Chardok",
+    "Dagnor's Cauldron",
+    "East Commonlands",
+    "Freeport",
+    "The Estate of Unrest"
+   ]
+  },
+  "Quality Firing Sheet": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork potter"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Izbal Brightblaze"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Hoga"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Merra Clayfinger"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Gurb Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Legweien"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Merin"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Winn Greenbane"
+    }
+   ]
+  },
+  "Quiver Pattern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tailor"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Alga Bruntbuckler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Stitch"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Gayle Weaven"
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "npc": "Seria O`Danos"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murga"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Dionin Needlespin"
+    },
+    {
+     "zone": "East Freeport",
+     "npc": "Winsa Tanner"
+    }
+   ]
+  },
+  "Resin": {
+   "vendors": [
+    {
+     "zone": "Rathe Mountains",
+     "npc": "Ukla"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Godbin Strumharp"
+    }
+   ]
+  },
+  "Ruby": {
+   "vendors": [
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Anite Gemcutter"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Glysin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Myrcin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Elbsin Denuen"
+    },
+    {
+     "zone": "South Felwithe",
+     "npc": "Merchant Tyslin (South Felwithe)"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Drake Mountainstorm"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Aimie Moonspin"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Chardok",
+     "mobs": [
+      "a Di`Zok Dragoon",
+      "a Reanimated Berserker",
+      "A Shai`din Conscript",
+      "A Shai`din Nightfear",
+      "An Enslaved Iksar Miner"
+     ]
+    },
+    {
+     "zone": "Kedge Keep",
+     "mobs": [
+      "Phinigel Autropos"
+     ]
+    },
+    {
+     "zone": "Old Sebilis",
+     "mobs": [
+      "a leprous scarab",
+      "a necrosis scarab",
+      "a pox scarab",
+      "a sebilite golem",
+      "a sepsis scarab",
+      "an iksar necromancer"
+     ]
+    },
+    {
+     "zone": "Plane of Fear",
+     "mobs": [
+      "a boogeyman",
+      "a glare lord",
+      "a samhain",
+      "Amygdalan knight"
+     ]
+    },
+    {
+     "zone": "Plane of Hate",
+     "mobs": [
+      "a forsaken revenant",
+      "a hatebone drake",
+      "a haunted chest",
+      "a kiraikuei",
+      "a loathling lich",
+      "a repulsive rat"
+     ]
+    },
+    {
+     "zone": "Plane of Mischief",
+     "mobs": [
+      "a clever sphinx",
+      "a dastardly rascal",
+      "a false treasure chest",
+      "A Mischievous Performer"
+     ]
+    }
+   ]
+  },
+  "Ruined Wolf Pelt": {
+   "drops": [
+    {
+     "zone": "Mistmoore Castle",
+     "mobs": [
+      "a blood wolf"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a black wolf",
+      "a shadow wolf"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a silvermist wolf",
+      "a war wolf"
+     ]
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "mobs": [
+      "a white wolf"
+     ]
+    },
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "a black wolf"
+     ]
+    },
+    {
+     "zone": "Kithicor Forest",
+     "mobs": [
+      "enraged dread wolf"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Sapphire": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Oxmod"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Sothure Gemcutter"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Silspin"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Brisha Fyrestone"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Jade (Merchant)"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Kweili"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Rezslog"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Burning Woods",
+     "mobs": [
+      "a sarnak zealot",
+      "a scoriae hornet",
+      "a tatterback ape",
+      "an ember hornet"
+     ]
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "mobs": [
+      "Nyzil Bloodforge"
+     ]
+    },
+    {
+     "zone": "Chardok",
+     "mobs": [
+      "a Chokidai Sniffer",
+      "a Di`Zok Legionnaire",
+      "a Reanimated Conscript",
+      "A Reanimated Partisan"
+     ]
+    },
+    {
+     "zone": "City of Mist",
+     "mobs": [
+      "a phantom"
+     ]
+    },
+    {
+     "zone": "Clan Runnyeye",
+     "mobs": [
+      "Battlewizard Unak"
+     ]
+    },
+    {
+     "zone": "Cobalt Scar",
+     "mobs": [
+      "Azureake"
+     ]
+    }
+   ]
+  },
+  "Sealed Vial Sketch": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork potter"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Izbal Brightblaze"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Hoga"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Merra Clayfinger"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Gurb Smithson"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Legweien"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Merin"
+    },
+    {
+     "zone": "Highpass Hold",
+     "npc": "Winn Greenbane"
+    }
+   ]
+  },
+  "Set of Bone Arrow Vanes": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Set of Ceramic Arrow Vanes": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Set of Wooden Arrow Vanes": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Ping Fuzzlecutter"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    }
+   ]
+  },
+  "Several Parabolic Cut Fletchings": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Several Round Cut Fletchings": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Several Shield Cut Fletchings": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Sharkskin Tubing": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Leala Swiftarrow"
+    },
+    {
+     "zone": "Kael Drakkel",
+     "npc": "Bendad the Trader"
+    },
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Sheet Metal": {
+   "vendors": [
+    {
+     "zone": "East Freeport",
+     "npc": "Issilyn Ristan"
+    },
+    {
+     "zone": "Toxxulia Forest",
+     "npc": "Win Karnam"
+    },
+    {
+     "zone": "Qeynos Hills",
+     "npc": "Marton Sayer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Linolyen"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Nalgoz"
+    }
+   ],
+   "crafted": true
+  },
+  "Short Beer": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork barkeep"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sass"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Innkeep Seke"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Innkeep Roster"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Innkeep Redthorn"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Innkeep Olissa"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Hardat Gemshard"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Grabble Coldheart"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Butcherblock Mountains",
+     "mobs": [
+      "a goblin shaman",
+      "a goblin whelp"
+     ]
+    },
+    {
+     "zone": "Crushbone",
+     "mobs": [
+      "orc pawn"
+     ]
+    },
+    {
+     "zone": "The Estate of Unrest",
+     "mobs": [
+      "a festering hag",
+      "a greater skeleton"
+     ]
+    },
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "a bandit",
+      "a bandit lookout"
+     ]
+    },
+    {
+     "zone": "Lesser Faydark",
+     "mobs": [
+      "Dragoon Szorn",
+      "Shayla Nybright",
+      "Tayla Nybright",
+      "Teir`Dal Elite"
+     ]
+    },
+    {
+     "zone": "Misty Thicket",
+     "mobs": [
+      "A Goblin Warrior"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Shotglass": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork barkeep"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork brewmaster"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Poklon"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sass"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Innkeep Seke"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Innkeep Redthorn"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Hardat Gemshard"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Grabble Coldheart"
+    }
+   ]
+  },
+  "Sickle Leaf": {
+   "vendors": [
+    {
+     "zone": "Everfrost Peaks",
+     "npc": "Sven Felligan"
+    },
+    {
+     "zone": "Innothule Swamp",
+     "npc": "Sithgok"
+    },
+    {
+     "zone": "Kerra Island",
+     "npc": "Melixis"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Klok Scaleroot"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Marlyn McMerin"
+    },
+    {
+     "zone": "Thurgadin",
+     "npc": "Hulda"
+    }
+   ]
+  },
+  "Silk Lined Steel Helm": {
+   "vendors": [
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Silk Swatch": {
+   "crafted": true
+  },
+  "Silk Thread": {
+   "crafted": true
+  },
+  "Silver Bar": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Amber (NPC)"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Oxmod"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Noresa Sparkle"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Sothure Gemcutter"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Nora"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Silspin"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Brisha Fyrestone"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "a muddite elder",
+      "a muddite minor",
+      "a muddite recordkeeper",
+      "Qlei"
+     ]
+    }
+   ]
+  },
+  "Silver Thread": {
+   "vendors": [
+    {
+     "zone": "West Cabilis",
+     "npc": "Kamzar"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Galbasi Weaver"
+    },
+    {
+     "zone": "Paineel",
+     "npc": "Pardas Nalue"
+    },
+    {
+     "zone": "Thurgadin",
+     "npc": "Kyla Frostbeard"
+    },
+    {
+     "zone": "Thurgadin",
+     "npc": "Cobi Frostbeard"
+    }
+   ]
+  },
+  "Skin": {},
+  "Skinning Knife": {
+   "crafted": true
+  },
+  "Sleeve Pattern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tailor"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Fugan Mumfur"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Wartol"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Demicla Tanner"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murga"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tissan"
+    }
+   ]
+  },
+  "Small Block of Clay": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork miner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork potter"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Izbal Brightblaze"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Toren"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Hoga"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Merra Clayfinger"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Shinan Orefinder"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Kyrin Steelbone"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "a muddite elder",
+      "a muddite recordkeeper"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Small Brick of Mithril": {
+   "vendors": [
+    {
+     "zone": "Felwithe",
+     "npc": "Tanalin Silverkale"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Opal Leganyn"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Niwiny"
+    }
+   ]
+  },
+  "Small Brick of Ore": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork miner"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Toren"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Shinan Orefinder"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Kyrin Steelbone"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Okun"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Greta O`Reilly"
+    },
+    {
+     "zone": "High Keep",
+     "npc": "Miner Harton"
+    },
+    {
+     "zone": "North Kaladim",
+     "npc": "Bloarn Norkhitter"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "a muddite elder",
+      "a muddite minor"
+     ]
+    },
+    {
+     "zone": "Lavastorm Mountains",
+     "mobs": [
+      "a rock dervish"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "Small Fine Plate Boots": {
+   "crafted": true
+  },
+  "Small Groove Nocks": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork bowyer"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Zotalz"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Joryd Longarms"
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "npc": "Bryan"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Longarrow"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Fleceal Summer"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Lanin"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Tiladinya"
+    }
+   ]
+  },
+  "Small Piece of Ore": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork miner"
+    },
+    {
+     "zone": "Cabilis (East)",
+     "npc": "Klok Toren"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Shinan Orefinder"
+    },
+    {
+     "zone": "Freeport (North)",
+     "npc": "Kyrin Steelbone"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Okun"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Greta O`Reilly"
+    },
+    {
+     "zone": "Halas",
+     "npc": "April"
+    },
+    {
+     "zone": "High Keep",
+     "npc": "Miner Harton"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Beholder's Maze",
+     "mobs": [
+      "a muddite elder",
+      "a muddite minor",
+      "a muddite recordkeeper"
+     ]
+    }
+   ]
+  },
+  "Small Plate Boot Mold": {
+   "vendors": [
+    {
+     "zone": "Neriak Commons",
+     "npc": "Trista N`Ryt"
+    },
+    {
+     "zone": "Neriak Third Gate",
+     "npc": "Krystiana N`Ryt"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork armorer"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork armorer"
+    },
+    {
+     "zone": "North Kaladim",
+     "npc": "Tortuk Everhot"
+    }
+   ]
+  },
+  "Smithy Hammer": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork miner"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Toren"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Shinan Orefinder"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Kyrin Steelbone"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Trudie Steelbone"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Okun"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Greta O`Reilly"
+    },
+    {
+     "zone": "High Keep",
+     "npc": "Miner Harton"
+    }
+   ]
+  },
+  "Spices": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork baker"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Urazun Thranon"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sweetzie"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Praps Gemshard"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Parthar"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Bup"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Pincia Brownloe"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Sissia"
+    }
+   ]
+  },
+  "Spider Silk": {
+   "drops": [
+    {
+     "zone": "Butcherblock Mountains",
+     "mobs": [
+      "a large spider"
+     ]
+    },
+    {
+     "zone": "Mistmoore Castle",
+     "mobs": [
+      "a Mistmoore guard"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a giant spider"
+     ]
+    },
+    {
+     "zone": "Dreadlands",
+     "mobs": [
+      "a drachnid recluse",
+      "a drachnid silkmistress",
+      "a drachnid silkstrander",
+      "a drachnid webmaster",
+      "a drachnid widow",
+      "a dread widow"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a carrion spider",
+      "a crag spider"
+     ]
+    },
+    {
+     "zone": "Erud's Crossing",
+     "mobs": [
+      "a kerra spider"
+     ]
+    }
+   ],
+   "forage": [
+    "Mistmoore Castle",
+    "Erud's Crossing",
+    "Everfrost Peaks",
+    "Field of Bone",
+    "Nektulos Forest",
+    "Southern Desert of Ro"
+   ]
+  },
+  "Spiderling Silk": {
+   "drops": [
+    {
+     "zone": "Ak'Anon",
+     "mobs": [
+      "a rock spider"
+     ]
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "mobs": [
+      "a rock spiderling"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a spiderling"
+     ]
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "mobs": [
+      "a wooly spiderling"
+     ]
+    },
+    {
+     "zone": "Field of Bone",
+     "mobs": [
+      "bonecrawler hatchling",
+      "burynaibane spider"
+     ]
+    },
+    {
+     "zone": "Greater Faydark",
+     "mobs": [
+      "a widow hatchling"
+     ]
+    }
+   ],
+   "forage": [
+    "Commonlands",
+    "Steamfont Mountains",
+    "Western Plains of Karana"
+   ]
+  },
+  "Sprockets": {
+   "vendors": [
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Ak'Anon",
+     "mobs": [
+      "a mechanic"
+     ]
+    }
+   ]
+  },
+  "Star Rose Quartz": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sass"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Katha Firespinner"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Jeliala Glimmercharm"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Frena Runeflash"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Gwynora Armista"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Befallen",
+     "mobs": [
+      "the thaumaturgist"
+     ]
+    },
+    {
+     "zone": "Blackburrow",
+     "mobs": [
+      "a gnoll shaman",
+      "Lord Elgnub",
+      "{{VeliousGray| [[a bulthar]] }}",
+      "{{VeliousGray| [[a haunted seachest]] }}"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "a Dervish Cutthroat",
+      "a hill giant",
+      "Guard Reskin"
+     ]
+    },
+    {
+     "zone": "Dagnor's Cauldron",
+     "mobs": [
+      "an undertow skeleton"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a hill giant",
+      "an undead reaver",
+      "Tarbul Earthstrider"
+     ]
+    },
+    {
+     "zone": "Erud's Crossing",
+     "mobs": [
+      "a shark"
+     ]
+    }
+   ]
+  },
+  "Star Ruby": {
+   "vendors": [
+    {
+     "zone": "Erudin Palace",
+     "npc": "Sothure Gemcutter"
+    },
+    {
+     "zone": "West Commonlands",
+     "npc": "Noresa Sparkle"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Silspin"
+    },
+    {
+     "zone": "North Freeport",
+     "npc": "Amber (NPC)"
+    },
+    {
+     "zone": "Greater Faydark",
+     "npc": "Merchant Kweili"
+    },
+    {
+     "zone": "Neriak Foreign Quarter",
+     "npc": "Canarie"
+    },
+    {
+     "zone": "North Qeynos",
+     "npc": "Ziska Ironforge"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Burning Woods",
+     "mobs": [
+      "a sarnak zealot",
+      "a scoriae hornet",
+      "a tatterback ape",
+      "an ember hornet",
+      "greater plague skeleton",
+      "plaguebone skeleton"
+     ]
+    },
+    {
+     "zone": "Chardok",
+     "mobs": [
+      "a Di`Zok Legionnaire",
+      "A Reanimated Partisan"
+     ]
+    },
+    {
+     "zone": "City of Mist",
+     "mobs": [
+      "a fog golem",
+      "a haze golem",
+      "a mist golem",
+      "a phantom",
+      "a shadow",
+      "a vapor golem"
+     ]
+    },
+    {
+     "zone": "Clan Runnyeye",
+     "mobs": [
+      "Battlelord Paluk"
+     ]
+    },
+    {
+     "zone": "Great Divide",
+     "mobs": [
+      "a crystaline shardwurm",
+      "an ancient shardwurm"
+     ]
+    },
+    {
+     "zone": "Howling Stones",
+     "mobs": [
+      "a bile golem",
+      "a sepulcher spectre",
+      "a bottomless feaster"
+     ]
+    }
+   ]
+  },
+  "Static Orb": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Leala Swiftarrow"
+    },
+    {
+     "zone": "Kael Drakkel",
+     "npc": "Bendad the Trader"
+    },
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Steel Lined Gloves": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Leala Swiftarrow"
+    },
+    {
+     "zone": "Kael Drakkel",
+     "npc": "Bendad the Trader"
+    },
+    {
+     "zone": "The Overthere",
+     "npc": "Tin Merchant V"
+    },
+    {
+     "zone": "Steamfont Mountains",
+     "npc": "Bom Knotwood"
+    }
+   ]
+  },
+  "Topaz": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork jeweler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Ixmid"
+    },
+    {
+     "zone": "Dreadlands",
+     "npc": "Klok F`tshai"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Anite Gemcutter"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Glysin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Myrcin Denuen"
+    },
+    {
+     "zone": "Erudin Palace",
+     "npc": "Elbsin Denuen"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tyslin"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "Mistmoore Castle",
+     "mobs": [
+      "a dark elf noble",
+      "a dark offerer",
+      "a dark ritualist",
+      "a dark sacrificer",
+      "a ghostly ancille",
+      "a glyphed forbidder"
+     ]
+    },
+    {
+     "zone": "Clan Runnyeye",
+     "mobs": [
+      "a goblin warlord"
+     ]
+    },
+    {
+     "zone": "Commonlands",
+     "mobs": [
+      "Shadow Treebright",
+      "Sil Silverstar",
+      "Veli Greenwhisper",
+      "Vuli Greenwhisper",
+      "{{VeliousGray| [[a crystal crawler]] }}",
+      "{{VeliousGray| [[a crystal spider]] }}"
+     ]
+    },
+    {
+     "zone": "Eastern Plains of Karana",
+     "mobs": [
+      "a hill giant",
+      "Splintered Claw"
+     ]
+    },
+    {
+     "zone": "The Estate of Unrest",
+     "mobs": [
+      "a carrion ghoul",
+      "a dry bone skeleton",
+      "a lurking mummy",
+      "a skeletal monk",
+      "a werebat",
+      "dark boned skeleton"
+     ]
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "mobs": [
+      "an ice giant",
+      "Karg IceBear"
+     ]
+    }
+   ]
+  },
+  "Tunic Pattern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tanner"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tailor"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Fugan Mumfur"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Wartol"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Demicla Tanner"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murga"
+    },
+    {
+     "zone": "Felwithe",
+     "npc": "Merchant Tissan"
+    }
+   ]
+  },
+  "Unfired Cake Round": {
+   "crafted": true
+  },
+  "Unfired Ceramic Lining": {
+   "crafted": true
+  },
+  "Unfired Pie Tin": {
+   "crafted": true
+  },
+  "Vegetables": {
+   "forage": [
+    "Misty Thicket",
+    "The Estate of Unrest"
+   ]
+  },
+  "Vial of Clear Mana": {},
+  "Vial of Distilled Mana": {},
+  "Vial of Viscous Mana": {},
+  "Vinegar": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork baker"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Urazun Thranon"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sweetzie"
+    },
+    {
+     "zone": "Crystal Caverns",
+     "npc": "Praps Gemshard"
+    },
+    {
+     "zone": "East Commonlands",
+     "npc": "Parthar"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Bup"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Pincia Brownloe"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Sissia"
+    }
+   ]
+  },
+  "Water Flask": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "Rylin Coil"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork grocer"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork merchant"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Iglan Thranon"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Gamin Griststone"
+    }
+   ],
+   "drops": [
+    {
+     "zone": "?",
+     "mobs": [
+      "Newbie Mobs"
+     ]
+    }
+   ],
+   "crafted": true
+  },
+  "White Chocolate": {
+   "crafted": true
+  },
+  "Winter Chocolate": {
+   "crafted": true
+  },
+  "Wristband Pattern": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork tailor"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Alga Bruntbuckler"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Wartol"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Stitch"
+    },
+    {
+     "zone": "Erudin",
+     "npc": "Gayle Weaven"
+    },
+    {
+     "zone": "Everfrost Peaks",
+     "npc": "Seria O`Danos"
+    },
+    {
+     "zone": "The Feerrott",
+     "npc": "Murga"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Erica Swiftweave"
+    }
+   ]
+  },
+  "Yeast": {
+   "vendors": [
+    {
+     "zone": "Ak'Anon",
+     "npc": "a clockwork brewmaster"
+    },
+    {
+     "zone": "Butcherblock Mountains",
+     "npc": "Inudul Dumirgun"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Klok Sass"
+    },
+    {
+     "zone": "East Cabilis",
+     "npc": "Brewer Prixal"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Frothy"
+    },
+    {
+     "zone": "West Freeport",
+     "npc": "Krystin Charcoal"
+    },
+    {
+     "zone": "Grobb",
+     "npc": "Gartonka"
+    },
+    {
+     "zone": "Halas",
+     "npc": "Becka McGuzzlin"
+    }
+   ]
+  },
+  "Yerbhimba": {
+   "vendors": [
+    {
+     "zone": "Everfrost Peaks",
+     "npc": "Sven Felligan"
+    },
+    {
+     "zone": "Innothule Swamp",
+     "npc": "Sithgok"
+    },
+    {
+     "zone": "Kerra Island",
+     "npc": "Melixis"
+    },
+    {
+     "zone": "West Cabilis",
+     "npc": "Klok Scaleroot"
+    },
+    {
+     "zone": "Firiona Vie",
+     "npc": "Marlyn McMerin"
+    },
+    {
+     "zone": "Thurgadin",
+     "npc": "Hulda"
+    }
+   ]
+  }
+ }
+}
