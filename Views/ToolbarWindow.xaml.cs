@@ -63,4 +63,8 @@ public partial class ToolbarWindow : Window
 
     /// <summary>Manager → Tradeskills → "Anvil button on the toolbar".</summary>
     public void SetTradeskillButton(bool on) => TradeskillBtn.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>Selftest hooks: a door key's laid-out height (22, or 32 with labels) and the quest badge.</summary>
+    internal double KeyHeightForTest => SheetBtn.Height; // the style value: 22, or 32 under the labels trigger
+    internal bool QuestBadgeShownForTest => QuestBadge.Visibility == Visibility.Visible;
 }

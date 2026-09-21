@@ -500,6 +500,7 @@
 
                             <TextBlock Text="Opacity (0.1 – 1.0, lower = more see-through)" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="OpacityBox" Width="120" HorizontalAlignment="Left"/>
+                            <CheckBox x:Name="ToolbarLabelsCheck" Content="Toolbar: a label under every key (taller bar — the compact bar is the one to live with)" Margin="0,10,0,0"/>
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
                             <CheckBox x:Name="HideWhenGameAwayCheck" Content="Hide the overlay while the game isn't in front (panels and pinned pages return when you click back into the game)"

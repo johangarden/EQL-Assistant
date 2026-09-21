@@ -40,6 +40,9 @@ public partial class MainWindow : Window
     private TradeskillWatch _tradeskills = null!;
     private TradeskillWindow? _tsWin;
     private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _tsDumpCache;
+    // Toolbar news badges (21 Sep): live drops / raid kills since their window was last opened.
+    private int _lootNew, _raidNew;
+    private bool _badgeHooks;
     private MoteTickerWindow? _moteTickerWin;
     private ConditionsWindow? _conditionsWin;
     private SkyHelperWindow? _skyHelperWin;
@@ -1119,6 +1122,7 @@ public partial class MainWindow : Window
     private void RebuildTradeskillWindow()
     {
         _toolbarWin?.SetTradeskillButton(_config.Overlay.TradeskillToolbarBtn);
+        if (_vm is not null) _vm.TradeskillOpen = _config.Overlay.TradeskillVisible;
         if (!_config.Overlay.TradeskillVisible)
         {
             if (_tsWin is not null) { try { _tsWin.Close(); } catch { /* ignore */ } _tsWin = null; }
@@ -1968,6 +1972,7 @@ public partial class MainWindow : Window
         if (_toolbarWin is not null)
         {
             _toolbarWin.DataContext = _vm; // rebound: the VM was rebuilt above
+            SyncToolbarVm();
             _toolbarWin.ReloadPlacement();
             UpdateToolbarVisibility();
         }
@@ -2027,6 +2032,8 @@ public partial class MainWindow : Window
         };
         _toolbarWin.SetTradeskillButton(_config.Overlay.TradeskillToolbarBtn);
         _toolbarWin.Show();
+        HookBadges();
+        SyncToolbarVm();
         UpdateToolbarVisibility();
     }
 
@@ -2313,8 +2320,50 @@ public partial class MainWindow : Window
         _historyWindow.SelectFight(endedAt, label);
     }
 
+    // ---- toolbar state + badges (21 Sep) ---------------------------------------
+
+    /// <summary>The view-model carries the toolbar's states; it is rebuilt on
+    /// every settings apply, so this runs after each rebuild too.</summary>
+    private void SyncToolbarVm()
+    {
+        _vm.ToolbarLabels = _config.Overlay.ToolbarLabels;
+        _vm.TradeskillOpen = _config.Overlay.TradeskillVisible;
+        _vm.Muted = _alerts.Muted;
+        SyncBadges();
+    }
+
+    /// <summary>Quests ready to hand in (standing); drops and raid kills since
+    /// their window was last looked at (live lines only, never replays).</summary>
+    private void SyncBadges()
+    {
+        _vm.QuestBadge = ReadyQuestCount();
+        _vm.LootBadge = _lootWindow is null ? _lootNew : 0;
+        _vm.RaidBadge = _raidsWindow is null ? _raidNew : 0;
+    }
+
+    private int ReadyQuestCount()
+    {
+        try
+        {
+            return _skyQuests.Quests.Count(q => !_skyQuests.IsCompleted(q)
+                && _skyQuests.Progress(q) is { Need: > 0 } pr && pr.Have >= pr.Need);
+        }
+        catch { return 0; }
+    }
+
+    private void HookBadges()
+    {
+        if (_badgeHooks) return;
+        _badgeHooks = true;
+        _loot.Added += _ => { if (!_reparsing && _lootWindow is null) { _lootNew++; Dispatcher.BeginInvoke(SyncBadges); } };
+        _raids.KillRecorded += (_, _) => { if (!_reparsing && _raidsWindow is null) { _raidNew++; Dispatcher.BeginInvoke(SyncBadges); } };
+        _skyQuests.Changed += () => Dispatcher.BeginInvoke(SyncBadges);
+    }
+
     private void OpenRaidKills()
     {
+        _raidNew = 0;
+        SyncBadges();
         if (_raidsWindow is null)
         {
             _raidsWindow = new RaidKillsWindow(_raids) { OpenFightRequested = OpenFightHistory };
@@ -2328,6 +2377,8 @@ public partial class MainWindow : Window
 
     private void OpenLootHistory()
     {
+        _lootNew = 0;
+        SyncBadges();
         if (_lootWindow is null)
         {
             // The Loot window also hosts the item browser (All items ·

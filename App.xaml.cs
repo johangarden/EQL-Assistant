@@ -365,6 +365,31 @@ public partial class App : Application
                 meter.Close();
             }
 
+            // The toolbar in its card chrome (21 Sep): keys grow with labels, the
+            // badges show counts, the log dot follows the status and the catch-up.
+            {
+                var cfgT = new ConfigService().LoadSettings();
+                var vmT = new ViewModels.OverlayViewModel(new TriggerEngine(cfgT, new AlertService()), cfgT) { QuestBadge = 2 };
+                var tb = new Views.ToolbarWindow(new ConfigService()) { DataContext = vmT, Left = -9000, Top = -9000 };
+                tb.Show();
+                tb.UpdateLayout();
+                // Bindings and Style DataTriggers resolve on the dispatcher, which
+                // the synchronous selftest never pumps — the toolbar:working and
+                // toolbar:labels renders cover the badges, colours and key sizes.
+                var vmL = new ViewModels.OverlayViewModel(new TriggerEngine(cfgT, new AlertService()), cfgT) { ToolbarLabels = true, Muted = true, Locked = true };
+                var tbL = new Views.ToolbarWindow(new ConfigService()) { DataContext = vmL, Left = -9000, Top = -9000 };
+                tbL.Show();
+                tbL.Close();
+                if (vmT.LogDot != "off") throw new Exception("toolbar: the log dot starts off, got " + vmT.LogDot);
+                vmT.LogStatus = "Following eqlog_Thorrak_paineel.txt";
+                if (vmT.LogDot != "on") throw new Exception("toolbar: following → the dot is on");
+                vmT.Progress = new ReparseProgress("x", 1, 1, 1, 2, 10, Verb: "Catching up");
+                if (vmT.LogDot != "catch") throw new Exception("toolbar: a catch-up → the dot is gold");
+                vmT.Progress = null;
+                if (vmT.LogDot != "on" || ViewModels.OverlayViewModel.BadgeText(120) != "99+") throw new Exception("toolbar: the dot returns to on; badges cap at 99+");
+                tb.Close();
+            }
+
             // The tradeskill helper card renders the step and the ladder (21 Sep).
             {
                 var tsd = new TradeskillData();
@@ -4687,20 +4712,30 @@ public partial class App : Application
         // "character:<tab>" renders the Character window on a tab instead
         // (the selftest's inventory fixture in %TEMP% feeds it when present).
         if (page.Equals("toolbar", StringComparison.OrdinalIgnoreCase)
-            || page.Equals("toolbar:hidden", StringComparison.OrdinalIgnoreCase)
-            || page.Equals("toolbar:catchup", StringComparison.OrdinalIgnoreCase))
+            || page.StartsWith("toolbar:", StringComparison.OrdinalIgnoreCase))
         {
             // The toolbar with a live view-model: "toolbar:hidden" shows the
             // eye in its panels-hidden state, "toolbar:catchup" the progress
-            // card of a catch-up mid-run.
+            // card of a catch-up mid-run, "toolbar:working" locked + muted +
+            // the tradeskill card open + badges, "toolbar:labels" the same
+            // with a label under every key.
             var cs0 = new ConfigService();
             var cfg0 = cs0.LoadSettings();
+            bool working = page.EndsWith(":working", StringComparison.OrdinalIgnoreCase) || page.EndsWith(":labels", StringComparison.OrdinalIgnoreCase);
             var vm = new ViewModels.OverlayViewModel(new TriggerEngine(cfg0, new AlertService()), cfg0)
             {
                 PanelsHidden = page.EndsWith(":hidden", StringComparison.OrdinalIgnoreCase),
                 Progress = page.EndsWith(":catchup", StringComparison.OrdinalIgnoreCase)
                     ? new ReparseProgress("eqlog_Thorrak_paineel.txt", 1, 1, 61_300_000, 142_000_000, 41_200, Verb: "Catching up")
                     : null,
+                LogStatus = "Following eqlog_Thorrak_paineel.txt",
+                LoadoutName = working ? "Charm ENC" : "Default",
+                ToolbarLabels = page.EndsWith(":labels", StringComparison.OrdinalIgnoreCase),
+                Locked = working,
+                Muted = working,
+                TradeskillOpen = working,
+                QuestBadge = working ? 2 : 0,
+                LootBadge = working ? 5 : 0,
             };
             var tb = new Views.ToolbarWindow(cs0)
             {

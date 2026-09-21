@@ -1425,6 +1425,7 @@ public partial class TriggerManagerWindow : Window
         MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
+        ToolbarLabelsCheck.IsChecked = _config.Overlay.ToolbarLabels;
         HideWhenGameAwayCheck.IsChecked = _config.Overlay.HideWhenGameAway;
         ConCardCheck.IsChecked = _config.Overlay.ConCardVisible;
         LoadCursorRingCard();
@@ -1865,6 +1866,7 @@ public partial class TriggerManagerWindow : Window
                 VoiceRate = int.TryParse(VoiceRateBox.SelectedValue as string, out int vr) ? vr : 0,
                 DeathRecapAuto = DeathRecapCheck.IsChecked == true,
                 ToolbarVisible = _config.Overlay.ToolbarVisible, // tray-toggled — carried through
+                ToolbarLabels = ToolbarLabelsCheck.IsChecked == true,
                 BarsVisible = _config.Overlay.BarsVisible,       // tray-toggled — carried through
                 SelfMatrixVisible = _config.Overlay.SelfMatrixVisible,     // tray-toggled
                 TargetMatrixVisible = _config.Overlay.TargetMatrixVisible, // tray-toggled

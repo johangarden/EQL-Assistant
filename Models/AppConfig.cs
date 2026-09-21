@@ -195,6 +195,10 @@ public sealed class OverlayConfig
     public bool TradeskillBagCounts { get; set; } = true;
     /// <summary>The anvil button on the toolbar (☰ → Tradeskill helper always works).</summary>
     public bool TradeskillToolbarBtn { get; set; } = true;
+
+    /// <summary>Toolbar (21 Sep, card chrome): a five-letter label under every
+    /// key — taller 34×32 keys; off = the compact 22 px bar.</summary>
+    public bool ToolbarLabels { get; set; } = false;
     /// <summary>Say so when the game prints that a recipe went trivial (once per recipe, helper open).</summary>
     public bool TradeskillNoticeEnabled { get; set; } = true;
     public string TradeskillNoticeMode { get; set; } = "speak";

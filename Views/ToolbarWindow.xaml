@@ -14,176 +14,402 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- The card chrome (owner, 21 Sep — "redo the entire toolbar like the
+             bar in the tradeskill mock"): one dark track, every button a KEY
+             in its own hairline frame, and STATE in the frame's colour — gold
+             when a toggle is on (locked, panels shown, card open), red when
+             something wants attention (muted, panels hidden). Labels under
+             the keys are a General-page toggle (ToolbarLabels): 34×32 keys. -->
+        <Style x:Key="Key" TargetType="Button">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Background" Value="#232B3D"/>
+            <Setter Property="BorderBrush" Value="#3A4560"/>
+            <Setter Property="Foreground" Value="#9FB0C6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="#2A3350"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ToolbarLabels}" Value="True">
+                    <Setter Property="Width" Value="34"/>
+                    <Setter Property="Height" Value="32"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- gold: a toggle that is on -->
+        <Style x:Key="KeyOn" TargetType="Button" BasedOn="{StaticResource Key}">
+            <Setter Property="Background" Value="#2A2210"/>
+            <Setter Property="BorderBrush" Value="#7A5B22"/>
+            <Setter Property="Foreground" Value="#E8C15A"/>
+        </Style>
+
+        <!-- the five-letter word under a key (labels mode) -->
+        <Style x:Key="KeyLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="7.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,2,0,0"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="#5C6B82"/>
+            <Setter Property="Visibility" Value="{Binding ToolbarLabels, Converter={StaticResource BoolToVis}}"/>
+        </Style>
+        <!-- a state key's label says the state, in the key's own colour -->
+        <Style x:Key="StateLabel" TargetType="TextBlock" BasedOn="{StaticResource KeyLabel}">
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        </Style>
+        <Style x:Key="Glyph" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="Sep" TargetType="Border">
+            <Setter Property="Width" Value="1"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="Background" Value="#3A4560"/>
+            <Setter Property="Margin" Value="8,0,2,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <!-- a door with news: a small gold count on the key's corner -->
+        <Style x:Key="Badge" TargetType="Border">
+            <Setter Property="Background" Value="#E8C15A"/>
+            <Setter Property="BorderBrush" Value="#141A24"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="MinWidth" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="Padding" Value="3,0"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="Margin" Value="0,-4,-4,0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style x:Key="BadgeText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="8"/>
+            <Setter Property="FontWeight" Value="ExtraBold"/>
+            <Setter Property="Foreground" Value="#1A1405"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
     </Window.Resources>
 
     <!-- The app's command strip: always visible and clickable, locked or not.
          The padlock governs the OTHER panels; hide this one via cog/tray → Panels.
-         One row, four zones: app · features · create-trigger (isolated — the
-         most common play-time task) · state (mute · lock · cog, where the cog
-         carries the whole menu). -->
+         Groups: quit + loadout/log dot · five doors · create trigger · three
+         states + menu. -->
     <StackPanel>
-        <Border Background="#E01B2130" CornerRadius="5" Padding="8,5" Width="412"
-                MouseLeftButtonDown="Root_DragMove">
-            <DockPanel LastChildFill="True">
-                <Button DockPanel.Dock="Left" Content="✕" Click="OnQuit" Style="{StaticResource CloseBtn}"
-                        ToolTip="Quit EQL Assistant"/>
+        <Border x:Name="Track" Background="#F5141A24" BorderBrush="#3A4560" BorderThickness="1" CornerRadius="8"
+                Padding="7,5" MouseLeftButtonDown="Root_DragMove">
+            <StackPanel Orientation="Horizontal">
+                <Button Click="OnQuit" Style="{StaticResource Key}" Width="22" Height="22" Margin="0"
+                        Background="#2A1416" BorderBrush="#4A2226" Foreground="#C0666B"
+                        AutomationProperties.AutomationId="QuitBtn" ToolTip="Quit EQL Assistant">
+                    <TextBlock Text="✕" FontSize="11" FontWeight="Bold"/>
+                </Button>
 
-                <!-- the state cluster: the cog opens the menu (Settings lives inside) -->
-                <Button DockPanel.Dock="Right" Click="OnMenu" Style="{StaticResource IconBtn}"
-                        Margin="6,0,0,0" FontFamily="Segoe MDL2 Assets" Content="&#xE713;"
-                        AutomationProperties.AutomationId="MainMenuBtn"
-                        ToolTip="Menu — settings, panel toggles, loadouts, catch-up"/>
+                <!-- the loadout's name, and the one status the toolbar never
+                     showed: the log dot — green followed, grey nothing read,
+                     gold while catching up -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="7,0,0,0"
+                            ToolTip="{Binding LogStatus}">
+                    <Ellipse Width="6" Height="6" Margin="0,0,5,0" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="#5C6B82"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding LogDot}" Value="on">
+                                        <Setter Property="Fill" Value="#81C784"/>
+                                        <Setter Property="Effect">
+                                            <Setter.Value><DropShadowEffect Color="#81C784" BlurRadius="7" ShadowDepth="0" Opacity="0.9"/></Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding LogDot}" Value="catch">
+                                        <Setter Property="Fill" Value="#E8C15A"/>
+                                        <Setter Property="Effect">
+                                            <Setter.Value><DropShadowEffect Color="#E8C15A" BlurRadius="7" ShadowDepth="0" Opacity="0.9"/></Setter.Value>
+                                        </Setter>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding LoadoutName}" Foreground="#7F93AD" FontSize="10.5"
+                               VerticalAlignment="Center" MaxWidth="96" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
 
-                <Button DockPanel.Dock="Right" Click="OnLock" Margin="6,0,0,0"
-                        FontFamily="Segoe MDL2 Assets"
-                        AutomationProperties.AutomationId="LockBtn"
-                        ToolTip="Lock / unlock all panels (Ctrl+Alt+L)">
+                <Border Style="{StaticResource Sep}"/>
+
+                <!-- the doors: play-time windows, one click each. Colours are
+                     identities, not states — only the anvil lights up, because
+                     its card is a toggle. -->
+                <Button x:Name="TradeskillBtn" Click="OnTradeskills" AutomationProperties.AutomationId="TradeskillBtn"
+                        ToolTip="Tradeskill helper — show / hide the card (it remembers the skill)">
                     <Button.Style>
-                        <!-- The glyph mirrors the CURRENT state: closed lock when
-                             locked, open lock when unlocked — with an accent CTA
-                             background reminding you to lock before playing. -->
-                        <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
-                            <Setter Property="Content" Value="&#xE72E;"/>
+                        <Style TargetType="Button" BasedOn="{StaticResource Key}">
+                            <Setter Property="Foreground" Value="#D9A066"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsUnlocked}" Value="True">
-                                    <Setter Property="Content" Value="&#xE785;"/>
-                                    <Setter Property="Background" Value="{StaticResource Brush.Accent}"/>
-                                    <Setter Property="Foreground" Value="White"/>
+                                <DataTrigger Binding="{Binding TradeskillOpen}" Value="True">
+                                    <Setter Property="Background" Value="#2A2210"/>
+                                    <Setter Property="BorderBrush" Value="#7A5B22"/>
+                                    <Setter Property="Foreground" Value="#E8C15A"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </Button.Style>
+                    <StackPanel>
+                        <!-- an anvil in copper: horn to the left, waist, foot -->
+                        <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Width="14" Height="14" Stretch="Uniform"
+                              Data="M2.5 6.5 L21.5 6.5 L21.5 9.5 L16 11.5 L15 15.5 L18.5 18 L18.5 20.5 L5.5 20.5 L5.5 18 L9 15.5 L8 11.5 L4.5 10 L2.5 9 Z"/>
+                        <TextBlock Style="{StaticResource StateLabel}" Text="CRAFT"/>
+                    </StackPanel>
                 </Button>
 
-                <Button DockPanel.Dock="Right" Click="OnPanels" Margin="6,0,0,0"
-                        FontFamily="Segoe MDL2 Assets"
-                        AutomationProperties.AutomationId="PanelsBtn"
-                        ToolTip="Hide / show every panel — the toolbar stays (Ctrl+Alt+P)">
-                    <Button.Style>
-                        <!-- Eye open = panels showing; eye struck = hidden, in the
-                             same amber the mute uses for "something is off". -->
-                        <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
-                            <Setter Property="Content" Value="&#xE7B3;"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding PanelsHidden}" Value="True">
-                                    <Setter Property="Content" Value="&#xED1A;"/>
-                                    <Setter Property="Foreground" Value="#FFB74D"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
+                <Button x:Name="SheetBtn" Click="OnSheet" Style="{StaticResource Key}" AutomationProperties.AutomationId="SheetBtn"
+                        ToolTip="Character — sheet, all items, exaltations and the focus board">
+                    <StackPanel>
+                        <!-- a knight's great helm in steel: dome, eye slits either
+                             side of the nose bar, breath slit (EvenOdd holes) -->
+                        <Path Fill="#AEB8C4" Width="14" Height="14" Stretch="Uniform"
+                              Data="M12 2.5 C6.8 2.5 4.5 6.5 4.5 11 L4.5 21.5 L19.5 21.5 L19.5 11 C19.5 6.5 17.2 2.5 12 2.5 Z M6.8 9.6 L11.2 9.6 L11.2 11.4 L6.8 11.4 Z M12.8 9.6 L17.2 9.6 L17.2 11.4 L12.8 11.4 Z M11.2 13.4 L12.8 13.4 L12.8 18.6 L11.2 18.6 Z"/>
+                        <TextBlock Style="{StaticResource KeyLabel}" Text="CHAR"/>
+                    </StackPanel>
                 </Button>
 
-                <Button DockPanel.Dock="Right" Click="OnMute" Margin="6,0,0,0"
-                        FontFamily="Segoe MDL2 Assets"
-                        AutomationProperties.AutomationId="MuteBtn"
-                        ToolTip="Mute / unmute alerts (Ctrl+Alt+S)">
-                    <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource IconBtn}">
-                            <Setter Property="Content" Value="&#xE767;"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Muted}" Value="True">
-                                    <Setter Property="Content" Value="&#xE74F;"/>
-                                    <Setter Property="Foreground" Value="#FFB74D"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
+                <Grid>
+                    <Button Click="OnRaid" Style="{StaticResource Key}" AutomationProperties.AutomationId="RaidBtn"
+                            ToolTip="Raid kills — targets, weekly lockout, drops">
+                        <StackPanel>
+                            <!-- a war banner, the raid-target flag: pole + swallow-tailed pennant -->
+                            <Path Fill="#E57373" Width="14" Height="14" Stretch="Uniform"
+                                  Data="F1 M5.2 2 L7 2 L7 22 L5.2 22 Z M7 3.4 L20.8 3.4 L16.6 8.2 L20.8 13 L7 13 Z"/>
+                            <TextBlock Style="{StaticResource KeyLabel}" Text="RAID"/>
+                        </StackPanel>
+                    </Button>
+                    <Border x:Name="RaidBadge" Style="{StaticResource Badge}"
+                            Visibility="{Binding RaidBadgeVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Style="{StaticResource BadgeText}" Text="{Binding RaidBadgeText}"/>
+                    </Border>
+                </Grid>
 
-                <Border DockPanel.Dock="Right" Width="1" Height="18" Background="#3A4560" Margin="6,0,0,0"/>
+                <Grid>
+                    <Button Click="OnQuests" Style="{StaticResource Key}" AutomationProperties.AutomationId="QuestsBtn"
+                            ToolTip="Quests — tracking, droppers and turn-in progress (the badge counts quests ready to hand in)">
+                        <StackPanel>
+                            <!-- the classic quest-giver "!" -->
+                            <Path Fill="#FFD100" Width="14" Height="14" Stretch="Uniform"
+                                  Data="M9.6 2 L14.4 2 L13.3 15 L10.7 15 Z M12 17.4 A2.4 2.4 0 1 0 12 22.2 A2.4 2.4 0 1 0 12 17.4 Z"/>
+                            <TextBlock Style="{StaticResource KeyLabel}" Text="QUEST"/>
+                        </StackPanel>
+                    </Button>
+                    <Border x:Name="QuestBadge" Style="{StaticResource Badge}"
+                            Visibility="{Binding QuestBadgeVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Style="{StaticResource BadgeText}" Text="{Binding QuestBadgeText}"/>
+                    </Border>
+                </Grid>
+
+                <Grid>
+                    <Button Click="OnLoot" Style="{StaticResource Key}" AutomationProperties.AutomationId="LootBtn"
+                            ToolTip="Loot &amp; Inventory — drop log, mote farming, and everything you own (the badge counts drops since you last looked)">
+                        <StackPanel>
+                            <!-- a leather loot sack: tuft, cinch band, round body -->
+                            <Path Fill="#C68B4F" Width="14" Height="14" Stretch="Uniform"
+                                  Data="M10 2.2 Q12 0.8 14 2.2 L13.2 4.4 L10.8 4.4 Z M9.6 5 L14.4 5 L14.4 6.6 L9.6 6.6 Z M12 7.2 C7 9 4.8 13 4.8 16.4 C4.8 20.4 8.2 22 12 22 C15.8 22 19.2 20.4 19.2 16.4 C19.2 13 17 9 12 7.2 Z"/>
+                            <TextBlock Style="{StaticResource KeyLabel}" Text="LOOT"/>
+                        </StackPanel>
+                    </Button>
+                    <Border x:Name="LootBadge" Style="{StaticResource Badge}"
+                            Visibility="{Binding LootBadgeVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Style="{StaticResource BadgeText}" Text="{Binding LootBadgeText}"/>
+                    </Border>
+                </Grid>
+
+                <Border Style="{StaticResource Sep}"/>
 
                 <!-- create trigger: isolated between its separators — the most
                      common play-time task gets its own door -->
-                <Button DockPanel.Dock="Right" Click="OnCreateTrigger" Style="{StaticResource IconBtn}"
-                        Margin="6,0,0,0" AutomationProperties.AutomationId="CreateTriggerBtn"
+                <Button Click="OnCreateTrigger" Style="{StaticResource Key}" AutomationProperties.AutomationId="CreateTriggerBtn"
                         ToolTip="Create trigger — turn a log line into a bar, flash or timer">
-                    <!-- a bolt: the trigger fires -->
-                    <Path Fill="#4FC3F7" Width="14" Height="14" Stretch="Uniform"
-                          Data="M13.5 2 L6 13 L10.6 13 L9 22 L17 10.5 L12.2 10.5 Z"/>
+                    <StackPanel>
+                        <!-- a bolt: the trigger fires -->
+                        <Path Fill="#4FC3F7" Width="14" Height="14" Stretch="Uniform"
+                              Data="M13.5 2 L6 13 L10.6 13 L9 22 L17 10.5 L12.2 10.5 Z"/>
+                        <TextBlock Style="{StaticResource KeyLabel}" Text="TRIGGER"/>
+                    </StackPanel>
                 </Button>
 
-                <Border DockPanel.Dock="Right" Width="1" Height="18" Background="#3A4560" Margin="6,0,0,0"/>
+                <Border Style="{StaticResource Sep}"/>
 
-                <!-- feature shortcuts: the play-time windows, one click each -->
-                <Button DockPanel.Dock="Right" Click="OnLoot" Style="{StaticResource IconBtn}"
-                        Margin="6,0,0,0" AutomationProperties.AutomationId="LootBtn"
-                        ToolTip="Loot &amp; Inventory — drop log, mote farming, and everything you own">
-                    <!-- A leather loot sack: tuft, cinch band, round body —
-                         chunky enough to survive 14px. -->
-                    <Path Fill="#C68B4F" Width="14" Height="14" Stretch="Uniform"
-                          Data="M10 2.2 Q12 0.8 14 2.2 L13.2 4.4 L10.8 4.4 Z M9.6 5 L14.4 5 L14.4 6.6 L9.6 6.6 Z M12 7.2 C7 9 4.8 13 4.8 16.4 C4.8 20.4 8.2 22 12 22 C15.8 22 19.2 20.4 19.2 16.4 C19.2 13 17 9 12 7.2 Z"/>
-                </Button>
-                <Button DockPanel.Dock="Right" Click="OnQuests" Style="{StaticResource IconBtn}"
-                        Margin="6,0,0,0" AutomationProperties.AutomationId="QuestsBtn"
-                        ToolTip="Quests — tracking, droppers and turn-in progress">
-                    <!-- The classic quest-giver "!": a tapered bar + dot, in
-                         the quest-giver's own bright yellow. -->
-                    <Path Fill="#FFD100" Width="14" Height="14" Stretch="Uniform"
-                          Data="M9.6 2 L14.4 2 L13.3 15 L10.7 15 Z M12 17.4 A2.4 2.4 0 1 0 12 22.2 A2.4 2.4 0 1 0 12 17.4 Z"/>
-                </Button>
-                <Button DockPanel.Dock="Right" Click="OnRaid" Style="{StaticResource IconBtn}"
-                        Margin="6,0,0,0" AutomationProperties.AutomationId="RaidBtn"
-                        ToolTip="Raid kills — targets, weekly lockout, drops">
-                    <!-- a war banner, the raid-target flag: pole + swallow-tailed
-                         pennant — crossed swords read as a close-X at 14px, and
-                         the skull before them sat head-to-head with the helm. -->
-                    <Path Fill="#E57373" Width="14" Height="14" Stretch="Uniform"
-                          Data="F1 M5.2 2 L7 2 L7 22 L5.2 22 Z M7 3.4 L20.8 3.4 L16.6 8.2 L20.8 13 L7 13 Z"/>
-                </Button>
-
-                <!-- the Character window: paper-doll, all items, exaltations,
-                     focus board — one window, the helm is its door -->
-                <Button DockPanel.Dock="Right" Click="OnSheet" Style="{StaticResource IconBtn}"
-                        Margin="6,0,0,0" AutomationProperties.AutomationId="SheetBtn"
-                        ToolTip="Character — sheet, all items, exaltations and the focus board">
-                    <!-- a knight's great helm in steel: dome, eye slits either
-                         side of the nose bar, breath slit (EvenOdd holes) -->
-                    <Path Fill="#AEB8C4" Width="14" Height="14" Stretch="Uniform"
-                          Data="M12 2.5 C6.8 2.5 4.5 6.5 4.5 11 L4.5 21.5 L19.5 21.5 L19.5 11 C19.5 6.5 17.2 2.5 12 2.5 Z M6.8 9.6 L11.2 9.6 L11.2 11.4 L6.8 11.4 Z M12.8 9.6 L17.2 9.6 L17.2 11.4 L12.8 11.4 Z M11.2 13.4 L12.8 13.4 L12.8 18.6 L11.2 18.6 Z"/>
-                </Button>
-
-                <Button x:Name="TradeskillBtn" DockPanel.Dock="Right" Click="OnTradeskills" Style="{StaticResource IconBtn}"
-                        Margin="6,0,0,0" AutomationProperties.AutomationId="TradeskillBtn"
-                        ToolTip="Tradeskill helper — show / hide the card (it remembers the skill)">
-                    <!-- an anvil in copper: horn to the left, waist, foot -->
-                    <Path Fill="#D9A066" Width="14" Height="14" Stretch="Uniform"
-                          Data="M2.5 6.5 L21.5 6.5 L21.5 9.5 L16 11.5 L15 15.5 L18.5 18 L18.5 20.5 L5.5 20.5 L5.5 18 L9 15.5 L8 11.5 L4.5 10 L2.5 9 Z"/>
+                <!-- the state cluster: red when muted (the state you forget and regret) -->
+                <Button Click="OnMute" AutomationProperties.AutomationId="MuteBtn" ToolTip="Mute / unmute alerts (Ctrl+Alt+S)">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Key}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Muted}" Value="True">
+                                    <Setter Property="Background" Value="#3A1B1E"/>
+                                    <Setter Property="BorderBrush" Value="#7A2E33"/>
+                                    <Setter Property="Foreground" Value="#FF8A80"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Glyph}">
+                                    <Setter Property="Text" Value="&#xE767;"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Muted}" Value="True"><Setter Property="Text" Value="&#xE74F;"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource StateLabel}">
+                                    <Setter Property="Text" Value="SOUND"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Muted}" Value="True"><Setter Property="Text" Value="MUTED"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
                 </Button>
 
-                <!-- fill: the active loadout's NAME only, kept short — switching
-                     lives in the ☰ menu's Loadout submenu (one picker is enough). -->
-                <TextBlock Text="{Binding LoadoutName}" Foreground="#6E7C93" FontSize="10"
-                           VerticalAlignment="Center" Margin="8,0,6,0" MaxWidth="86"
-                           TextTrimming="CharacterEllipsis"
-                           ToolTip="{Binding LoadoutName}"/>
-            </DockPanel>
+                <!-- eye: gold while panels show, red struck when every panel is hidden -->
+                <Button Click="OnPanels" AutomationProperties.AutomationId="PanelsBtn" ToolTip="Hide / show every panel — the toolbar stays (Ctrl+Alt+P)">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource KeyOn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PanelsHidden}" Value="True">
+                                    <Setter Property="Background" Value="#3A1B1E"/>
+                                    <Setter Property="BorderBrush" Value="#7A2E33"/>
+                                    <Setter Property="Foreground" Value="#FF8A80"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Glyph}">
+                                    <Setter Property="Text" Value="&#xE7B3;"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PanelsHidden}" Value="True"><Setter Property="Text" Value="&#xED1A;"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource StateLabel}">
+                                    <Setter Property="Text" Value="SHOWN"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PanelsHidden}" Value="True"><Setter Property="Text" Value="HIDDEN"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Button>
+
+                <!-- padlock: gold when locked (game-ready), quiet when open -->
+                <Button Click="OnLock" AutomationProperties.AutomationId="LockBtn" ToolTip="Lock / unlock all panels (Ctrl+Alt+L)">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource KeyOn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsUnlocked}" Value="True">
+                                    <Setter Property="Background" Value="#232B3D"/>
+                                    <Setter Property="BorderBrush" Value="#3A4560"/>
+                                    <Setter Property="Foreground" Value="#9FB0C6"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Glyph}">
+                                    <Setter Property="Text" Value="&#xE72E;"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsUnlocked}" Value="True"><Setter Property="Text" Value="&#xE785;"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource StateLabel}">
+                                    <Setter Property="Text" Value="LOCKED"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsUnlocked}" Value="True"><Setter Property="Text" Value="OPEN"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Button>
+
+                <Button Click="OnMenu" Style="{StaticResource Key}" AutomationProperties.AutomationId="MainMenuBtn"
+                        ToolTip="Menu — settings, panel toggles, loadouts, catch-up">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE713;"/>
+                        <TextBlock Style="{StaticResource KeyLabel}" Text="MENU"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </Border>
 
         <!-- Toast: short-lived confirmations ("Switched to: Raid", "Pet
-             detected: Lober") — fades after ~4s instead of a permanent line. -->
-        <Border Background="#E01B2130" CornerRadius="5" Padding="9,4" Margin="0,4,0,0"
-                HorizontalAlignment="Left" MaxWidth="384"
+             detected: Lober") — fades after ~4s. Same chrome as the track. -->
+        <Border Background="#F5141A24" BorderBrush="#3A4560" BorderThickness="1" CornerRadius="8" Padding="9,5" Margin="0,5,0,0"
+                HorizontalAlignment="Left" Width="{Binding ActualWidth, ElementName=Track}"
                 Visibility="{Binding ToastVisible, Converter={StaticResource BoolToVis}}">
             <TextBlock Text="{Binding Toast}" Foreground="#C9D4E3" FontSize="11" TextWrapping="Wrap"/>
         </Border>
 
         <!-- Progress: the startup catch-up (or the menu's "Catch up from
              today's log") — file, thin gold bar by bytes, percent, lines. -->
-        <Border Background="#E01B2130" CornerRadius="5" Padding="9,5" Margin="0,4,0,0"
-                HorizontalAlignment="Left" Width="384"
+        <Border Background="#F5141A24" BorderBrush="#3A4560" BorderThickness="1" CornerRadius="8" Padding="9,6" Margin="0,5,0,0"
+                HorizontalAlignment="Left" Width="{Binding ActualWidth, ElementName=Track}"
                 Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}">
             <StackPanel>
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressPercent}" Foreground="#FFD54F"
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressPercent}" Foreground="#E8C15A"
                                FontWeight="Bold" FontSize="11" Margin="8,0,0,0"/>
                     <TextBlock Text="{Binding ProgressTitle}" Foreground="#C9D4E3" FontSize="11"
                                TextTrimming="CharacterEllipsis"/>
                 </DockPanel>
-                <Grid Height="5" Margin="0,4,0,3" Width="366" HorizontalAlignment="Left">
-                    <Border Background="#10151F" CornerRadius="2.5"/>
-                    <Border Background="#FFD54F" CornerRadius="2.5" HorizontalAlignment="Left"
-                            Width="{Binding ProgressFill}"/>
+                <Grid Height="5" Margin="0,5,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="{Binding ProgressFraction, Converter={StaticResource FillStar}}"/>
+                        <ColumnDefinition Width="{Binding ProgressFraction, Converter={StaticResource RestStar}}"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.ColumnSpan="2" Background="#0F141E" CornerRadius="2.5"/>
+                    <Border Grid.Column="0" CornerRadius="2.5">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#B08A3A" Offset="0"/>
+                                <GradientStop Color="#E8C15A" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
                 </Grid>
                 <TextBlock Text="{Binding ProgressDetail}" Foreground="#7F93AD" FontSize="10"/>
             </StackPanel>

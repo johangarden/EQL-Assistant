@@ -34,7 +34,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` the toolbar (eye struck; catch-up progress card), `quests:lines` the Notable quests pack, `recap` a synthetic death recap, `incoming` the incoming-damage panel, `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `levelup` the level-up card, `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` the Notable quests pack, `recap` a synthetic death recap, `incoming` the incoming-damage panel, `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `levelup` the level-up card, `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous
@@ -216,6 +216,15 @@ these, so merged cross-machine history survives a reset).
   `SpellLibrary.HealLibraryTriggers` repairs old/broken library triggers on
   every load (types + patterns; corrected spells graduate from begin-cast to
   landing timing); hand-edited values are never touched.
+- **Toolbar chrome** (21 Sep): one dark track, every button a KEY in its own
+  hairline frame; STATE lives in the frame colour — gold = a toggle is on
+  (locked, panels shown, tradeskill card open), red = something you will
+  regret forgetting (muted, panels hidden). Door colours are identities, not
+  states. A gold BADGE on a door = news (quests ready to hand in; drops /
+  raid kills since that window was last opened — live lines only). The LOG
+  DOT by the loadout name: green following, grey nothing read, gold during a
+  catch-up (`OverlayViewModel.LogDot`). `ToolbarLabels` (General page) grows
+  the keys to 34×32 with a word under each; state keys' words say the state.
 - **Panels**: every panel window with a `DispatcherTimer` MUST stop it on
   `Closed`; prefer in-place `ApplySettings` over rebuild for stateful panels
   (rebuilding the repop watch once caused ghost beeps). Manager saves must
