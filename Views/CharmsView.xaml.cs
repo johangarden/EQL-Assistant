@@ -47,7 +47,18 @@ public partial class CharmsView : UserControl
     {
         MobsHost.Children.Clear();
         RecentHost.Children.Clear();
-        if (_book is null) { SummaryText.Text = ""; RowCount = 0; return; }
+        if (_book is null)
+        {
+            SummaryText.Text = "";
+            RowCount = 0;
+            MobsHost.Children.Add(new TextBlock
+            {
+                Text = "No charms recorded yet — the charm card writes a line here each time a charm ends.",
+                Foreground = DimFg, FontSize = 12, Margin = new Thickness(2, 4, 0, 0), TextWrapping = TextWrapping.Wrap,
+            });
+            RecentHost.Children.Add(new TextBlock { Text = "—", Foreground = DimFg, FontSize = 12, Margin = new Thickness(2, 4, 0, 0) });
+            return;
+        }
         string q = SearchBox.Text.Trim();
         var rows = _book.ByMob(q);
         RowCount = rows.Count;

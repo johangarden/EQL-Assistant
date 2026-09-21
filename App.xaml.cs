@@ -4600,7 +4600,18 @@ public partial class App : Application
         }
         else if (page.StartsWith("character:", StringComparison.OrdinalIgnoreCase))
         {
-            var inv = new Views.InventoryWindow(Path.Combine(Path.GetTempPath(), "eql_selftest_inv"), "Testchar", "paineel")
+            // "character:charms" shows the ledger on demo rows.
+            CharmBook? demoBook = null;
+            if (page.Equals("character:charms", StringComparison.OrdinalIgnoreCase))
+            {
+                demoBook = new CharmBook(null, null);
+                var t = DateTime.Now;
+                demoBook.Add(new CharmBook.Episode("a wan ghoul knight", "Beguile", "The Plane of Hate", t.AddMinutes(-52), t.AddMinutes(-36), "broke", 9473, 41, 612, 4, 48, "Beguile", 3400, 50));
+                demoBook.Add(new CharmBook.Episode("a wan ghoul knight", "Beguile", "The Plane of Hate", t.AddMinutes(-30), t.AddMinutes(-24), "died", 2210, 12, 380, 1, 48, "Beguile", 5100, 50));
+                demoBook.Add(new CharmBook.Episode("a greater ice bones", "Beguile Undead", "Permafrost Caverns", t.AddDays(-3), t.AddDays(-3).AddSeconds(6), "broke", 40, 1, 40, 1, 44, "Beguile Undead", 0, 47));
+                demoBook.AddAttempt(new CharmBook.Attempt("a greater ice bones", "Beguile Undead", "resisted", t.AddDays(-3).AddMinutes(-1), "Permafrost Caverns"));
+            }
+            var inv = new Views.InventoryWindow(Path.Combine(Path.GetTempPath(), "eql_selftest_inv"), "Testchar", "paineel", null, demoBook)
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
