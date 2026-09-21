@@ -944,6 +944,7 @@ public partial class MainWindow : Window
             _configService.SaveSettings(_config);
         };
         _meter.Show();
+        ApplyIncomingHome();
         UpdateMeterVisibility();
     }
 
@@ -1079,12 +1080,24 @@ public partial class MainWindow : Window
     private void RebuildIncomingWindow()
     {
         if (_incomingWin is not null) { try { _incomingWin.Close(); } catch { /* ignore */ } _incomingWin = null; }
-        if (!_config.Overlay.IncomingVisible) return;
+        _incoming.WindowSec = _config.Overlay.IncomingWindowSec;
+        ApplyIncomingHome();
+        if (!_config.Overlay.IncomingVisible || _config.Overlay.IncomingOnMeter) return;
         _incomingWin = new IncomingWindow(_incoming, () => _combat.CurrentStance, _configService,
             _config.Overlay.Opacity, _config.Overlay.IncomingWindowSec);
         _incomingWin.Show();
         _incomingWin.SetLocked(_vm.Locked);
         _incomingWin.SetHidden(_hidden);
+    }
+
+    /// <summary>Where the incoming chart lives (21 Sep): on the meter it is the
+    /// card's cap and the standalone window is never built; off the meter the
+    /// cap collapses. Idempotent — called from both rebuilds.</summary>
+    private void ApplyIncomingHome()
+    {
+        bool onMeter = _config.Overlay.IncomingVisible && _config.Overlay.IncomingOnMeter;
+        _meter?.SetIncoming(onMeter ? _incoming : null, () => _combat.CurrentStance,
+            _config.Overlay.IncomingWindowSec, _config.Overlay.IncomingFoldQuiet);
     }
 
     private void RebuildCharmWindow()

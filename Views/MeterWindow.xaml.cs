@@ -51,6 +51,35 @@ public partial class MeterWindow : Window
     /// <summary>The resist book, so the meter's own Fight history carries the Resists view.</summary>
     public ResistBook? Resists { get; set; }
 
+    // The incoming-damage chart docked as the card's cap (21 Sep). Null watch
+    // = the chart lives in its own window (or is off) and the cap is collapsed.
+    private IncomingWatch? _incomingWatch;
+    private Func<string> _stance = () => "";
+
+    /// <summary>Host the incoming-damage chart on top of the card (Manager →
+    /// Incoming damage → "Top of the DPS meter"); null takes it off again.</summary>
+    public void SetIncoming(IncomingWatch? watch, Func<string> stance, int windowSec, bool foldQuiet)
+    {
+        _incomingWatch = watch;
+        _stance = stance;
+        if (watch is not null) watch.WindowSec = windowSec;
+        IncomingCap.FoldQuiet = foldQuiet;
+        IncomingCapHost.Visibility = watch is null ? Visibility.Collapsed : Visibility.Visible;
+        RefreshCap();
+    }
+
+    /// <summary>The cap's verdict / pill / body state after the last paint — selftest.</summary>
+    public string IncomingCapKind => IncomingCap.LastKind;
+    public string IncomingCapChip => IncomingCap.LastChip;
+    public bool IncomingCapBodyShown => IncomingCap.BodyShown;
+    public bool IncomingCapShown => IncomingCapHost.Visibility == Visibility.Visible;
+
+    private void RefreshCap()
+    {
+        if (_incomingWatch is null) return;
+        IncomingCap.Paint(_incomingWatch.Take(DateTime.Now, _stance()));
+    }
+
     /// <summary>Raised when the SOLO/GROUP button flips, so the choice persists.</summary>
     public event Action<bool>? SoloModeChanged;
 
@@ -243,6 +272,7 @@ public partial class MeterWindow : Window
 
     private void Refresh()
     {
+        RefreshCap();
         _parser.Tick(DateTime.Now);
 
         string metric = _showHealing ? "HPS" : "DPS";

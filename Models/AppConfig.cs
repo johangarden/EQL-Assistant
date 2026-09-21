@@ -158,6 +158,15 @@ public sealed class OverlayConfig
     /// <summary>The panel's window in seconds (10 or 15).</summary>
     public int IncomingWindowSec { get; set; } = 15;
 
+    /// <summary>Where the chart lives (21 Sep): false = its own floating
+    /// panel (today's), true = painted as the cap of the DPS meter card —
+    /// one card, one drag, shows and hides with the meter.</summary>
+    public bool IncomingOnMeter { get; set; } = false;
+
+    /// <summary>On the meter: fold the cap to its header row while nothing
+    /// hits you (off = keep a one-line placeholder under it).</summary>
+    public bool IncomingFoldQuiet { get; set; } = true;
+
     /// <summary>The wrong-stance notice (14 Sep): when one kind is at least
     /// <see cref="StanceNoticeShare"/>% of the damage taken over the last
     /// <see cref="StanceNoticeWindowSec"/> s and the other stance would halve

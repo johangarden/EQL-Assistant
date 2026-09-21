@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:EQLOverlay.ViewModels"
+        xmlns:local="clr-namespace:EQLOverlay.Views"
         Title="EQL Assistant — DPS Meter"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -51,6 +52,16 @@
             Background="#D6141A24" BorderBrush="#3A4560" BorderThickness="1"
             MouseLeftButtonDown="Card_DragMove">
         <StackPanel Width="272">
+
+            <!-- The incoming-damage chart as the meter's cap (owner, 21 Sep:
+                 Manager → Incoming damage → "Top of the DPS meter"): a darker
+                 band flush with the card's top, hairline under it. Folds to
+                 its header while nothing hits you. -->
+            <Border x:Name="IncomingCapHost" Visibility="Collapsed" Margin="-10,-10,-10,8"
+                    Background="#5A0F141E" BorderBrush="#3A4560" BorderThickness="0,0,0,1"
+                    CornerRadius="10,10,0,0" Padding="10,8,10,7">
+                <local:IncomingStrip x:Name="IncomingCap" Compact="True"/>
+            </Border>
 
             <DockPanel Margin="0,0,0,2">
                 <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Click="OnClear"

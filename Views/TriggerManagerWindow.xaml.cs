@@ -287,6 +287,8 @@ public partial class TriggerManagerWindow : Window
 
     private int _incomingWindowSec = 15;
     private Segmented? _incomingSeg;
+    private Segmented? _incomingHomeSeg;
+    private string _incomingHome = "panel";
     private int _stanceShare = 75, _stanceWindowSec = 10;
     private Segmented? _stanceShareSeg, _stanceWindowSeg;
 
@@ -1461,6 +1463,20 @@ public partial class TriggerManagerWindow : Window
             IncomingWindowHost.Children.Add(_incomingSeg);
         }
         else _incomingSeg.Select(_incomingWindowSec.ToString());
+        // Where the chart lives (21 Sep): its own panel or the meter's cap.
+        _incomingHome = _config.Overlay.IncomingOnMeter ? "meter" : "panel";
+        if (_incomingHomeSeg is null)
+        {
+            _incomingHomeSeg = new Segmented(new[]
+            {
+                new Segmented.Option("panel", "Own panel"),
+                new Segmented.Option("meter", "Top of the DPS meter"),
+            }, _incomingHome, "#E8C15A") { Margin = new Thickness(0) };
+            _incomingHomeSeg.Changed += id => _incomingHome = id;
+            IncomingHomeHost.Children.Add(_incomingHomeSeg);
+        }
+        else _incomingHomeSeg.Select(_incomingHome);
+        IncomingFoldCheck.IsChecked = _config.Overlay.IncomingFoldQuiet;
         // The wrong-stance notice (14 Sep).
         StanceOnCheck.IsChecked = _config.Overlay.StanceNoticeEnabled;
         StanceModeBox.SelectedValue = _config.Overlay.StanceNoticeMode;
@@ -1788,6 +1804,8 @@ public partial class TriggerManagerWindow : Window
                 EnemyDotsVisible = EnemyDotsVisibleCheck.IsChecked == true,
                 IncomingVisible = IncomingVisibleCheck.IsChecked == true,
                 IncomingWindowSec = _incomingWindowSec,
+                IncomingOnMeter = _incomingHome == "meter",
+                IncomingFoldQuiet = IncomingFoldCheck.IsChecked == true,
                 StanceNoticeEnabled = StanceOnCheck.IsChecked == true,
                 StanceNoticeShare = _stanceShare,
                 StanceNoticeWindowSec = _stanceWindowSec,

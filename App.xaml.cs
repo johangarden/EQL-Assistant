@@ -340,6 +340,31 @@ public partial class App : Application
                 win.Close();
             }
 
+            // The same chart as the DPS meter's cap (21 Sep): collapsed until
+            // hosted, folded to its header while quiet, unfolds and reads the
+            // verdict on the first hits, and comes off again.
+            {
+                var iwv = new IncomingWatch();
+                var mp2 = new CombatParser { SelfName = "Thorrak" };
+                var meter = new Views.MeterWindow(new ConfigService(), mp2, new LootTracker(new ConfigService()), 1.0,
+                    Array.Empty<string>(), false, false, soloMode: true) { Left = -9000, Top = -9000 };
+                meter.Show();
+                if (meter.IncomingCapShown) throw new Exception("meter cap: shown before the chart was hosted");
+                meter.SetIncoming(iwv, () => "defensive", 15, foldQuiet: true);
+                if (!meter.IncomingCapShown) throw new Exception("meter cap: hosting should show the cap");
+                if (meter.IncomingCapBodyShown) throw new Exception("meter cap: quiet should fold to the header");
+                if (meter.IncomingCapKind != "") throw new Exception("meter cap: quiet state should carry no verdict");
+                iwv.Add(DateTime.Now.AddSeconds(-2), 400, spell: true);
+                iwv.Add(DateTime.Now.AddSeconds(-1), 100, spell: false);
+                meter.SetIncoming(iwv, () => "defensive", 15, foldQuiet: true);
+                if (!meter.IncomingCapBodyShown) throw new Exception("meter cap: hits should unfold the chart");
+                if (meter.IncomingCapKind != "switch") throw new Exception("meter cap: spell-heavy in defensive should read switch, got " + meter.IncomingCapKind);
+                if (meter.IncomingCapChip != "DEFENSIVE ▸ MAGE HUNTER") throw new Exception("meter cap: the pill should name the stance, got " + meter.IncomingCapChip);
+                meter.SetIncoming(null, () => "defensive", 15, foldQuiet: true);
+                if (meter.IncomingCapShown) throw new Exception("meter cap: un-hosting should collapse the cap");
+                meter.Close();
+            }
+
             // The crowd-control panels render the demo state.
             {
                 var ccv = new CrowdControl(null, null);
@@ -4602,6 +4627,41 @@ public partial class App : Application
             };
             recap.Show();
             mgr = recap;
+        }
+        else if (page.Equals("meter:incoming", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("meter:incoming:quiet", StringComparison.OrdinalIgnoreCase))
+        {
+            // The DPS meter with the incoming chart docked as its cap: a
+            // spell-heavy window mid-fight, or folded to the header while quiet.
+            var mp = new CombatParser { SelfName = "Thorrak", PetName = "Garn" };
+            for (int i = 0; i < 6; i++)
+            {
+                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2:00} 2026] Thorrak slashes a thunder spirit princess for {280 + i * 15} points of damage.");
+                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] Garn bites a thunder spirit princess for {90 + i * 5} points of damage.");
+                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] Thorrak hit a thunder spirit princess for {160 + i * 10} points of disease damage by Spear of Disease.");
+                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] a thunder spirit princess hit YOU for {300 + i * 20} points of cold damage by Frost Spear.");
+            }
+            var iw = new IncomingWatch();
+            if (!page.EndsWith(":quiet", StringComparison.OrdinalIgnoreCase))
+            {
+                var now = DateTime.Now;
+                double[] m = { 80, 300, 500, 0, 0, 60, 0, 40, 180, 0, 0, 0, 0, 0, 100 };
+                double[] sp = { 100, 0, 0, 400, 0, 0, 420, 0, 0, 80, 0, 0, 550, 550, 0 };
+                for (int i = 0; i < 15; i++)
+                {
+                    if (m[i] > 0) iw.Add(now.AddSeconds(-(14 - i)), m[i], spell: false);
+                    if (sp[i] > 0) iw.Add(now.AddSeconds(-(14 - i)), sp[i], spell: true);
+                }
+            }
+            var meter = new Views.MeterWindow(new ConfigService(), mp, new LootTracker(new ConfigService()), 1.0,
+                Array.Empty<string>(), false, false, soloMode: true)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            meter.Show();
+            meter.SetIncoming(iw, () => "defensive", 15, foldQuiet: true);
+            mgr = meter;
         }
         else if (page.Equals("incoming", StringComparison.OrdinalIgnoreCase))
         {

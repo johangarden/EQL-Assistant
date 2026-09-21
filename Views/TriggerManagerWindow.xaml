@@ -1107,6 +1107,11 @@
 
                             <Border Style="{StaticResource PageSep}"/>
                             <CheckBox x:Name="IncomingVisibleCheck" Content="Show the panel" Margin="0,4,0,0"/>
+                            <TextBlock Text="Where it lives" Style="{StaticResource FieldLabel}"/>
+                            <StackPanel x:Name="IncomingHomeHost" Orientation="Horizontal"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
+                                       Text="Own panel is the free-floating card with its own corner. On the DPS meter the same chart is painted as a cap on the meter card — one card, one drag, one opacity; it shows and hides with the meter, and your standalone corner is remembered for when you switch back."/>
+                            <CheckBox x:Name="IncomingFoldCheck" Content="On the meter, fold to one line while nothing hits you" Margin="0,8,0,0"/>
                             <TextBlock Text="Window" Style="{StaticResource FieldLabel}"/>
                             <StackPanel x:Name="IncomingWindowHost" Orientation="Horizontal"/>
                             <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
