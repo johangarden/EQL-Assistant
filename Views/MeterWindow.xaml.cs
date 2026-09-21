@@ -333,11 +333,11 @@ public partial class MeterWindow : Window
         // for things that deal damage. The drill-down keeps the resist rows.
         mine = mine.Where(r => r.Total > 0 || r.Hits > 0).ToList();
 
-        bool hasPet = !string.IsNullOrWhiteSpace(_parser.PetName);
+        bool hasPet = !string.IsNullOrWhiteSpace(_parser.ActivePet);
         var pet = hasPet
             ? _showHealing
-                ? _parser.GetHealAbilityRows(_parser.PetName)
-                : _parser.GetAbilityRows(_parser.PetName)
+                ? _parser.GetHealAbilityRows(_parser.ActivePet)
+                : _parser.GetAbilityRows(_parser.ActivePet)
             : new List<CombatParser.Row>();
 
         double dur = _parser.DurationSeconds;
@@ -378,7 +378,7 @@ public partial class MeterWindow : Window
                 double t = total;
                 fills.Add(vm =>
                 {
-                    vm.Name = (_petExpanded ? "▼ " : "▶ ") + $"{_parser.PetName.Trim()} (pet)";
+                    vm.Name = (_petExpanded ? "▼ " : "▶ ") + $"{_parser.ActivePet} (pet)";
                     vm.Fraction = t / top;
                     double pct = combined > 0 ? t / combined * 100 : 0;
                     vm.ValueText = $"{FormatDps(dur > 0 ? t / dur : 0)}  ({FormatNum(t)}, {pct:0}%)";
@@ -416,7 +416,7 @@ public partial class MeterWindow : Window
                 bool pet2 = isPet;
                 fills.Add(vm =>
                 {
-                    vm.Name = pet2 ? $"{_parser.PetName.Trim()} (pet)" : _parser.SelfName.Trim();
+                    vm.Name = pet2 ? $"{_parser.ActivePet} (pet)" : _parser.SelfName.Trim();
                     vm.Fraction = total / top;
                     double pct = combined > 0 ? total / combined * 100 : 0;
                     vm.ValueText = $"{FormatDps(dur > 0 ? total / dur : 0)}  ({FormatNum(total)}, {pct:0}%)";
@@ -566,11 +566,11 @@ public partial class MeterWindow : Window
             ? $"{FormatDps(_parser.IncomingSelfDps)} dps · {FormatNum(_parser.IncomingSelfTotal)}"
             : "—";
 
-        bool hasPet = !string.IsNullOrWhiteSpace(_parser.PetName);
+        bool hasPet = !string.IsNullOrWhiteSpace(_parser.ActivePet);
         IncomingPetRow.Visibility = hasPet ? Visibility.Visible : Visibility.Collapsed;
         if (hasPet)
         {
-            IncomingPetLabel.Text = _parser.PetName.Trim() + " (pet)";
+            IncomingPetLabel.Text = _parser.ActivePet + " (pet)";
             IncomingPetValue.Text = _parser.HasData
                 ? $"{FormatDps(_parser.IncomingPetDps)} dps · {FormatNum(_parser.IncomingPetTotal)}"
                 : "—";

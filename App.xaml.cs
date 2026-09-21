@@ -3733,6 +3733,23 @@ public partial class App : Application
                 && RaidKills.ParseDifficulty("Blackburrow 1 (Awakened)") == 1
                 && RaidKills.ParseDifficulty("Clan Crushbone 4 (Refined)") == 4);
 
+            // A charmed mob is the meter's pet while the charm holds (21 Sep).
+            {
+                var cpp = new CombatParser { SelfName = "Thorrak", PetName = "Garn" };
+                var cpSct = new List<CombatParser.SctHit>();
+                cpp.SctEvent += cpSct.Add;
+                cpp.CharmedPet = "a wan ghoul knight";
+                cpp.ProcessLine("[Mon Sep 21 20:00:00 2026] A wan ghoul knight slashes a scorn banshee for 210 points of damage.");
+                cpp.ProcessLine("[Mon Sep 21 20:00:01 2026] A scorn banshee hits a wan ghoul knight for 90 points of damage.");
+                Check("charmed pet: the meter follows the charmed mob, its hits are pet damage, hits on it are pet incoming",
+                    cpp.ActivePet == "a wan ghoul knight" && cpp.IsPet("A wan ghoul knight")
+                    && cpSct.Any(h => h is { Kind: CombatParser.SctKind.OutgoingPet, Amount: 210 })
+                    && cpSct.Any(h => h is { Kind: CombatParser.SctKind.IncomingPet, Amount: 90 })
+                    && cpp.GetAbilityRows("a wan ghoul knight").Any(r => r.Total == 210));
+                cpp.CharmedPet = "";
+                Check("charmed pet: the charm gone, the summoned pet is the pet again", cpp.ActivePet == "Garn" && !cpp.IsPet("a wan ghoul knight"));
+            }
+
             // Raid-kill death-line parsing (level suffixes stripped).
             Check("raid kill: slain-by line",
                 RaidKills.TryParseKill("Lady Vox has been slain by Johan!", out var mob1) && mob1 == "Lady Vox");

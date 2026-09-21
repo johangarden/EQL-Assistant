@@ -22,6 +22,18 @@ public sealed class CombatParser
     /// <summary>Optional pet name — enables the pet line in the incoming footer.</summary>
     public string PetName { get; set; } = "";
 
+    /// <summary>The mob you hold charmed right now ("" = none) — set by the
+    /// crowd-control engine while the charm holds. A charmed mob IS your pet:
+    /// its hits fold under you on the meter, its kills are yours (owner, 21
+    /// Sep). Same-name twins are told apart by role in the damage line only
+    /// as far as the line allows: the pet is the attacker of anything that
+    /// is not you.</summary>
+    public string CharmedPet { get; set; } = "";
+
+    /// <summary>The pet the meter follows: the charmed mob while a charm
+    /// holds, else the summoned pet.</summary>
+    public string ActivePet => CharmedPet.Trim().Length > 0 ? CharmedPet.Trim() : PetName.Trim();
+
     // Every pet name seen — a re-summon gets a NEW random name, and a fight
     // can hold several (pet dies, you summon again). Without this memory the
     // old pets read as strangers and solo fights get tagged "group".
@@ -1533,7 +1545,7 @@ public sealed class CombatParser
         // dealt or took damage — or you healed while an actual enemy was in
         // the fight (a pure-healer raid counts; your regen ticking between
         // pulls, or a mob beating on a passer-by, never does).
-        string pet = PetName.Trim();
+        string pet = ActivePet;
         bool selfDamage = _incomingSelf > 0 || _incomingPet > 0
             || _damage.ContainsKey(Self())
             || (pet.Length > 0 && _damage.ContainsKey(pet));
@@ -1573,11 +1585,11 @@ public sealed class CombatParser
             Classes = _classesAtStart,
             Level = _levelAtStart,
             BuffsAtStart = new List<string>(_buffsAtStart),
-            Pet = PetName.Trim(),
+            Pet = ActivePet,
         };
         foreach (var (mob, lvl) in MatchConLevels(rec.Damage)) rec.EnemyLevels[mob] = lvl;
         foreach (var name in rec.Damage.Concat(rec.Healing)
-                     .Where(r => !r.Enemy && _knownPets.Contains(r.Name))
+                     .Where(r => !r.Enemy && (_knownPets.Contains(r.Name) || (CharmedPet.Length > 0 && r.Name.Equals(CharmedPet.Trim(), StringComparison.OrdinalIgnoreCase))))
                      .Select(r => r.Name).Distinct(StringComparer.OrdinalIgnoreCase))
             rec.Pets.Add(name);
         // Filter at the freeze, not just at insert: pet knowledge can ARRIVE
@@ -2003,6 +2015,7 @@ public sealed class CombatParser
     public bool IsPet(string name) =>
         (!string.IsNullOrWhiteSpace(PetName)
          && name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
+        || (CharmedPet.Length > 0 && name.Trim().Equals(CharmedPet.Trim(), StringComparison.OrdinalIgnoreCase))
         || _knownPets.Contains(name.Trim());
 
     private static double Amount(Match m, string group) =>

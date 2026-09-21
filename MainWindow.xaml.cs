@@ -177,6 +177,8 @@ public partial class MainWindow : Window
         _cc.LevelLookup = _combat.ConLevelOf;
         _cc.OwnLevel = () => _combat.CurrentLevel;
         _cc.MezLoose += mob => { if (!_suppressSct && _config.Overlay.CcSpeak) _alerts.Fire($"Loose {mob} — mez it", null); };
+        // The charmed mob is the meter's pet while the charm holds (21 Sep).
+        _cc.Changed += () => _combat.CharmedPet = _cc.Charm is { BrokeAt: null } cp && cp.Pet != "your target" ? cp.Pet : "";
         _cc.CharmBroke += pet =>
         {
             if (_suppressSct) return;
