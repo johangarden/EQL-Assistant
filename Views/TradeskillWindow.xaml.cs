@@ -507,12 +507,15 @@ public partial class TradeskillWindow : Window
         if (e.ButtonState == MouseButtonState.Pressed && !_locked) DragMove();
     }
 
-    private static Button? FindAncestorButton(DependencyObject d)
+    /// <summary>A click's source may be a text Run (the value's "/250") — not
+    /// a Visual, so the walk goes logical until it reaches one.</summary>
+    internal static Button? FindAncestorButton(DependencyObject? d)
     {
         while (d is not null)
         {
             if (d is Button b) return b;
-            d = VisualTreeHelper.GetParent(d);
+            DependencyObject? next = d is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(d) : null;
+            d = next ?? LogicalTreeHelper.GetParent(d); // content elements, and visuals with no template applied yet
         }
         return null;
     }

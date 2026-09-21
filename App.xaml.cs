@@ -378,6 +378,12 @@ public partial class App : Application
                 if (!tsWin.LastPill.StartsWith("FAST TRACK")) throw new Exception("tradeskill card: the pill names the tier, got " + tsWin.LastPill);
                 tsWin.ApplySettings(1.0, ladder: true, bagCounts: false);
                 if (!tsWin.LineTexts.Contains("FARM 1") || !tsWin.LineTexts.Contains("ALL BOUGHT")) throw new Exception("tradeskill card: the ladder carries the sourcing tags");
+                // A header click landing on a text Run (the "/250") must not crash the drag hit-test (owner, 21 Sep).
+                var run = new System.Windows.Documents.Run("x");
+                var tbHost = new TextBlock(); tbHost.Inlines.Add(run);
+                var btnHost = new Button { Content = tbHost };
+                if (Views.TradeskillWindow.FindAncestorButton(run) != btnHost) throw new Exception("tradeskill card: a Run inside a button should find its button");
+                if (Views.TradeskillWindow.FindAncestorButton(new System.Windows.Documents.Run("loose")) is not null) throw new Exception("tradeskill card: a loose Run has no button");
                 tsWin.Close();
             }
 
