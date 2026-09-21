@@ -173,6 +173,9 @@ public partial class MainWindow : Window
         _combat.DamageDealt += (att, tgt, amount, time, dot) => { if (!_suppressSct) _cc.NoteDamage(att, tgt, amount, time, dot); };
         _charms = new CharmBook(_configService); // the charm ledger (21 Sep)
         _cc.CharmEnded += ep => { if (!_suppressSct) _charms.Add(ep); };
+        _cc.CharmAttemptFailed += a => { if (!_suppressSct) _charms.AddAttempt(a); };
+        _cc.LevelLookup = _combat.ConLevelOf;
+        _cc.OwnLevel = () => _combat.CurrentLevel;
         _cc.MezLoose += mob => { if (!_suppressSct && _config.Overlay.CcSpeak) _alerts.Fire($"Loose {mob} — mez it", null); };
         _cc.CharmBroke += pet =>
         {
@@ -2160,7 +2163,7 @@ public partial class MainWindow : Window
         if (_historyWindow is null)
         {
             _historyWindow = new HistoryWindow(_combat, _configService, _loot,
-                () => _config.Overlay.MeterSoloMode, _resists, _charms);
+                () => _config.Overlay.MeterSoloMode, _resists);
             _historyWindow.Closed += (_, _) => _historyWindow = null;
             _historyWindow.Show();
         }
@@ -2210,7 +2213,7 @@ public partial class MainWindow : Window
             string logPath = _watcher?.CurrentPath ?? "";
             var (name, server) = InventoryStore.ParseLogName(logPath);
             _inventoryWindow = new Views.InventoryWindow(
-                InventoryStore.EqRootOf(logPath), name, server, _session);
+                InventoryStore.EqRootOf(logPath), name, server, _session, _charms);
             _inventoryWindow.Closed += (_, _) => _inventoryWindow = null;
             _inventoryWindow.Show();
         }

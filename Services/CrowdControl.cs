@@ -41,8 +41,12 @@ public sealed class CrowdControl
         public double PetDamage;
         public int PetHits;
         public double MaxHit;
+        public double PetTaken; // what the pet took meanwhile
         public int PetKills;
         public DateTime? LastPetHit;
+        public string Cast = "";  // the cast as printed, rank included
+        public int MobLevel;
+        public int YourLevel;
         public bool Recorded;   // its episode went to the CharmBook
     }
 
@@ -91,7 +95,13 @@ public sealed class CrowdControl
     public event Action<string>? CharmBroke;
     /// <summary>A charm ended, however it ended — the ledger's episode.</summary>
     public event Action<CharmBook.Episode>? CharmEnded;
+    /// <summary>A charm never landed: (mob, spell as cast, how, when, zone).</summary>
+    public event Action<CharmBook.Attempt>? CharmAttemptFailed;
+    /// <summary>The mob's /con level and your own level — set by the host (parser).</summary>
+    public Func<string, int>? LevelLookup { get; set; }
+    public Func<int>? OwnLevel { get; set; }
     private string _zone = "";
+    private string _pendingCast = "";
     /// <summary>A mez broke early: (mob label, who hit it).</summary>
     public event Action<string, string>? MezBroke;
     /// <summary>A mez entered its last stretch: (mob label) — "re-mez now".</summary>
@@ -237,6 +247,7 @@ public sealed class CrowdControl
             var def = Find(cast.Groups["s"].Value);
             if (def is null) return;
             _pending = (def, time);
+            _pendingCast = cast.Groups["s"].Value.Trim();
             _pendingLandedAt = null;
             _tails[def.Spell] = new List<string>();
             if (def.LandingSuffix.Length == 0) OpenAssumed(def, time);
@@ -335,6 +346,8 @@ public sealed class CrowdControl
             if (amount > c.MaxHit) c.MaxHit = amount;
             c.LastPetHit = time;
         }
+        else if (Charm is { BrokeAt: null } ct && Same(target, ct.Pet) && !Same(attacker, ct.Pet))
+            ct.PetTaken += amount; // a same-name mob hitting the pet reads as the pet taking it — the honest half
         // A DoT keeps ticking on a mezzed mob's behalf — not an act. A melee hit
         // or a nuke from a held name is.
         if (!dot && _mez.Count > 0) NoteActing(attacker, time);
@@ -375,7 +388,12 @@ public sealed class CrowdControl
         if (def.Kind == Kind.Charm)
         {
             EndCharm("replaced", time); // a new charm while one holds: the old one's episode closes
-            Charm = new CharmState { Pet = mob, Spell = def.Spell, Since = time, Ceiling = DurationFor(def), Assumed = assumed };
+            Charm = new CharmState
+            {
+                Pet = mob, Spell = def.Spell, Since = time, Ceiling = DurationFor(def), Assumed = assumed,
+                Cast = _pendingCast.Length > 0 ? _pendingCast : def.Spell,
+                MobLevel = LevelLookup?.Invoke(mob) ?? 0, YourLevel = OwnLevel?.Invoke() ?? 0,
+            };
             LastAttempt = null;
         }
         else
@@ -421,6 +439,8 @@ public sealed class CrowdControl
             // An assumed card opened on this very cast was a guess — it's off.
             if (Charm is { Assumed: true } c && pendingWas && (time - c.Since).TotalSeconds <= CastWindowSec) Charm = null;
             if (Charm is null) LastAttempt = new Attempt(def.Spell, target, how, time);
+            if (target.Length > 0)
+                CharmAttemptFailed?.Invoke(new CharmBook.Attempt(target, _pendingCast.Length > 0 ? _pendingCast : def.Spell, how, time, _zone));
         }
         else
         {
@@ -505,8 +525,9 @@ public sealed class CrowdControl
         c.Recorded = true;
         if (c.Pet == "your target") return;
         DateTime end = c.BrokeAt ?? time;
+        int level = c.MobLevel > 0 ? c.MobLevel : LevelLookup?.Invoke(c.Pet) ?? 0; // a /con mid-charm counts
         CharmEnded?.Invoke(new CharmBook.Episode(c.Pet, c.Spell, _zone, c.Since, end, how,
-            c.PetDamage, c.PetHits, c.MaxHit, c.PetKills));
+            c.PetDamage, c.PetHits, c.MaxHit, c.PetKills, level, c.Cast, c.PetTaken, c.YourLevel));
     }
 
     /// <summary>An unknown landing learns itself: among the lines that followed

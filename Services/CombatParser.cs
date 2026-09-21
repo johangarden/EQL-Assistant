@@ -867,6 +867,9 @@ public sealed class CombatParser
         _ => kind.Length > 1 ? char.ToUpperInvariant(kind[0]) + kind[1..].ToLowerInvariant() : kind,
     };
 
+    /// <summary>The level your last /con of this mob printed (0 = never conned).</summary>
+    public int ConLevelOf(string mob) => _conLevels.GetValueOrDefault(mob.Trim(), 0);
+
     /// <summary>Con levels for the enemies this fight actually recorded.</summary>
     private Dictionary<string, int> MatchConLevels(List<Row> damage)
     {

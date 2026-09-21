@@ -241,12 +241,20 @@ public partial class App : Application
             Directory.CreateDirectory(invDir);
             File.WriteAllText(Path.Combine(invDir, "Testchar_paineel-Inventory.txt"),
                 "Location\tName\tID\tCount\tSlots\r\nHead\tValorium Helmet +1\t4851\t1\t10\r\n");
-            var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel");
+            string hbPath = Path.Combine(Path.GetTempPath(), "eql_selftest_char_charms.json");
+            try { File.Delete(hbPath); } catch { /* fresh */ }
+            var hb = new CharmBook(null, hbPath);
+            hb.Add(new CharmBook.Episode("a greater ice bones", "Beguile Undead", "Permafrost Caverns", DateTime.Now.AddMinutes(-10), DateTime.Now.AddMinutes(-4), "broke", 1240, 9, 212, 2, 44, "Beguile Undead", 380, 47));
+            hb.AddAttempt(new CharmBook.Attempt("a greater ice bones", "Beguile Undead", "resisted", DateTime.Now.AddMinutes(-12), "Permafrost Caverns"));
+            var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel", null, hb);
             invWin.Show();
             invWin.ShowFocusTab(); // instantiate the audit-board template
             invWin.ShowTab("bis");  // and the best-in-slot board
+            invWin.ShowTab("charms"); // and the charm ledger (21 Sep)
             invWin.UpdateLayout();
+            if (invWin.CharmRowsForTest != 1) throw new Exception("character: the Charmed pets tab should list the one charmed mob");
             invWin.Close();
+            try { File.Delete(hbPath); } catch { /* temp */ }
 
             // The Loot window hosts the browser tabs of the same panel: the
             // ledger list, exaltations and the armor-set board (owns a
@@ -307,20 +315,12 @@ public partial class App : Application
                 var rpv = new CombatParser { SelfName = "Thorrak" };
                 var rbv = new ResistBook(new ConfigService(), rpv, rbPath2);
                 rpv.ProcessLine("[Tue Sep 08 20:00:02 2026] A greater sphinx resisted your Envenomed Breath!");
-                string hbPath = Path.Combine(Path.GetTempPath(), "eql_selftest_hist_charms.json");
-                try { File.Delete(hbPath); } catch { /* fresh */ }
-                var hb = new CharmBook(null, hbPath);
-                hb.Add(new CharmBook.Episode("a greater ice bones", "Beguile Undead", "Permafrost Caverns", DateTime.Now.AddMinutes(-10), DateTime.Now.AddMinutes(-4), "broke", 1240, 9, 212, 2));
-                var hw = new Views.HistoryWindow(rpv, new ConfigService(), new LootTracker(new ConfigService()), null, rbv, hb);
+                var hw = new Views.HistoryWindow(rpv, new ConfigService(), new LootTracker(new ConfigService()), null, rbv);
                 hw.Show();
                 hw.ShowView("resists");
                 hw.UpdateLayout();
-                hw.ShowView("charms");
-                hw.UpdateLayout();
-                if (hw.CharmRows != 1) throw new Exception("history: the CHARMS view should list the one charmed mob");
                 hw.ShowView("fights");
                 hw.Close();
-                try { File.Delete(hbPath); } catch { /* temp */ }
                 try { File.Delete(rbPath2); } catch { /* temp */ }
             }
 
@@ -3230,8 +3230,29 @@ public partial class App : Application
         Check("ledger: per mob — two charms, avg 5.5 s, longest 6 s, one broke, 40/hit, kills carry, replay dedupes",
             stats is { Charms: 2, Breaks: 1, Deaths: 0, Kills: 1, DamagePerHit: 40, MaxHit: 40 } && Math.Abs(stats.AvgHeldSec - 5.5) < 0.01 && stats.LongestSec == 6
             && book.ByMob()[0].Mob == "a greater ice bones" && book.ByMob("Dominate") is [{ Mob: "a skeleton", Dps: 20, Deaths: 1 }]);
+        book.AddAttempt(new CharmBook.Attempt("a skeleton", "Dominate Undead", "resisted", c0.AddSeconds(-30), "Befallen"));
+        book.AddAttempt(new CharmBook.Attempt("a skeleton", "Dominate Undead", "resisted", c0.AddSeconds(-30), "Befallen")); // replay
+        book.AddAttempt(new CharmBook.Attempt("", "Dominate Undead", "interrupted", c0.AddSeconds(-20), "Befallen")); // no mob — nothing to learn
         var book2 = new CharmBook(null, bookPath);
-        Check("ledger: episodes survive a restart", book2.Episodes.Count == 3 && book2.Stats("a skeleton")!.Zone == "Befallen");
+        Check("ledger: episodes and attempts survive a restart; a resist counts once per mob, a nameless interrupt not at all",
+            book2.Episodes.Count == 3 && book2.Stats("a skeleton") is { Zone: "Befallen", Resisted: 1 } && book2.Attempts.Count == 1
+            && book2.Stats("a greater ice bones")!.Resisted == 0);
+        // The five fields (21 Sep): mob level from /con, the cast's rank, damage the pet took, your level, resists.
+        var cf5 = new CrowdControl(null, null) { IsSelf = n => n == "Thorrak", LevelLookup = m => m == "a greater ice bones" ? 44 : 0, OwnLevel = () => 47 };
+        var eps5 = new List<CharmBook.Episode>(); var att5 = new List<CharmBook.Attempt>();
+        cf5.CharmEnded += eps5.Add; cf5.CharmAttemptFailed += att5.Add;
+        cf5.ProcessLine(L(0, "You have entered Permafrost Caverns."));
+        cf5.ProcessLine(L(10, "You begin casting Beguile Undead."));
+        cf5.ProcessLine(L(14, "a greater ice bones resisted your Beguile Undead!"));
+        cf5.ProcessLine(L(20, "You begin casting Beguile Undead."));
+        cf5.ProcessLine(L(25, "a greater ice bones moans."));
+        cf5.NoteDamage("A greater ice bones", "an ice bones", 40, c0.AddSeconds(26));
+        cf5.NoteDamage("an ice bones", "a greater ice bones", 15, c0.AddSeconds(27));
+        cf5.NoteDamage("A greater ice bones", "a greater ice bones", 9, c0.AddSeconds(28)); // same-name twin: the pet's hit
+        cf5.ProcessLine(L(40, "Your Beguile Undead spell has worn off of a greater ice bones."));
+        Check("cc: the episode carries the /con level, the cast as printed, what the pet took and your level; the resist is an attempt",
+            eps5 is [{ MobLevel: 44, Rank: "Beguile Undead", PetTaken: 15, YourLevel: 47, Zone: "Permafrost Caverns", PetHits: 2, PetDamage: 49 }]
+            && att5 is [{ Mob: "a greater ice bones", How: "resisted", Zone: "Permafrost Caverns" }]);
         try { File.Delete(bookPath); } catch { /* temp */ }
         var holding = new CrowdControl.CharmView("a wan ghoul knight", "Beguile", 506, 960, false, false, 0, 9473, 4, 3, 41, 612);
         var past = holding with { Held = 1000 };

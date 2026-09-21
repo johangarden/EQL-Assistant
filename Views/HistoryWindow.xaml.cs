@@ -40,21 +40,14 @@ public partial class HistoryWindow : Window
 
 
     private readonly ResistBook? _resists;
-    private readonly CharmBook? _charms;
     private bool _resistThisZone;
     private Segmented? _resistZoneSeg;
 
     public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot,
-        Func<bool>? soloMode = null, ResistBook? resists = null, CharmBook? charms = null)
+        Func<bool>? soloMode = null, ResistBook? resists = null)
     {
         InitializeComponent();
         _resists = resists;
-        _charms = charms;
-        if (_charms is not null)
-        {
-            _charms.Changed += OnCharmsChanged;
-            Closed += (_, _) => _charms.Changed -= OnCharmsChanged;
-        }
         if (_resists is not null)
         {
             _resists.Changed += OnResistsChanged;
@@ -423,7 +416,6 @@ public partial class HistoryWindow : Window
         StylePills();
         if (_view == "parses") BuildParses();
         if (_view == "resists") BuildResists();
-        if (_view == "charms") BuildCharms();
     }
 
     /// <summary>Selftest + deep links: switch to a view by id.</summary>
@@ -433,7 +425,6 @@ public partial class HistoryWindow : Window
         StylePills();
         if (_view == "parses") BuildParses();
         if (_view == "resists") BuildResists();
-        if (_view == "charms") BuildCharms();
     }
 
     private void OnResistsChanged()
@@ -441,60 +432,6 @@ public partial class HistoryWindow : Window
         if (_view == "resists") Dispatcher.BeginInvoke(BuildResists);
     }
 
-    private void OnCharmsChanged()
-    {
-        if (_view == "charms") Dispatcher.BeginInvoke(BuildCharms);
-    }
-
-    private void CharmSearch_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_view == "charms") BuildCharms();
-    }
-
-    /// <summary>Rows painted last — selftest.</summary>
-    public int CharmRows { get; private set; }
-
-    private void BuildCharms()
-    {
-        if (_charms is null) return;
-        CharmsHost.Children.Clear();
-        var rows = _charms.ByMob(CharmSearch.Text.Trim());
-        CharmRows = rows.Count;
-        if (rows.Count == 0)
-        {
-            CharmsHost.Children.Add(new System.Windows.Controls.TextBlock
-            {
-                Text = CharmSearch.Text.Trim().Length > 0 ? "Nothing matches the filter." : "No charms recorded yet — the card writes one line here each time a charm ends.",
-                Foreground = ParseDimFg, FontSize = 12, Margin = new Thickness(2, 6, 0, 0),
-            });
-            return;
-        }
-        var grid = new System.Windows.Controls.Grid();
-        double[] widths = { 0, 64, 74, 74, 60, 72, 64, 56, 70 };
-        foreach (double w in widths)
-            grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition
-            { Width = w > 0 ? new GridLength(w) : new GridLength(1, GridUnitType.Star) });
-        string[] heads = { "MOB", "CHARMS", "AVG HOLD", "LONGEST", "BROKE", "DMG/HIT", "DPS", "KILLS", "LAST" };
-        grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-        for (int c = 0; c < heads.Length; c++)
-            PCell(grid, heads[c], 0, c, ParseHeadFg, size: 9.5, bold: true, right: c > 0 && c < 8);
-        int row = 1;
-        foreach (var s in rows)
-        {
-            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-            PCell(grid, s.Mob + (s.Zone.Length > 0 ? $"  ·  {s.Zone}" : ""), row, 0, ParseValFg);
-            PCell(grid, s.Charms.ToString(), row, 1, ParseValFg, right: true);
-            PCell(grid, CharmWindow.Clock(s.AvgHeldSec), row, 2, ParseValFg, right: true);
-            PCell(grid, CharmWindow.Clock(s.LongestSec), row, 3, ParseBest, right: true, bold: true);
-            PCell(grid, $"{s.Breaks}/{s.Charms}", row, 4, s.Breaks > 0 ? ParseWorse : ParseDimFg, right: true);
-            PCell(grid, s.DamagePerHit > 0 ? s.DamagePerHit.ToString("N0") : "—", row, 5, ParseValFg, right: true);
-            PCell(grid, s.Dps > 0 ? s.Dps.ToString("0") : "—", row, 6, ParseValFg, right: true);
-            PCell(grid, s.Kills.ToString(), row, 7, s.Kills > 0 ? ParseValFg : ParseDimFg, right: true);
-            PCell(grid, s.Last.ToString("d MMM HH:mm"), row, 8, ParseDimFg);
-            row++;
-        }
-        CharmsHost.Children.Add(grid);
-    }
 
     private void ResistSearch_Changed(object sender, RoutedEventArgs e)
     {
@@ -505,7 +442,6 @@ public partial class HistoryWindow : Window
     {
         bool parses = _view == "parses";
         bool resists = _view == "resists";
-        bool charms = _view == "charms";
         var items = new List<MenuTabs.Item>
         {
             new("fights", "Fights"),
@@ -515,24 +451,17 @@ public partial class HistoryWindow : Window
         if (_resists is not null)
             items.Add(new MenuTabs.Item("resists", "Resists",
                 Tip: "Per mob, per spell: how many of your casts landed and how many were resisted — from the log's own words"));
-        if (_charms is not null)
-            items.Add(new MenuTabs.Item("charms", "Charms",
-                Tip: "Every mob you have charmed: how often, how long it held, how many broke, what the pet dealt per hit and per second"));
         MenuTabs.Render(MenuRow, items, _view, id =>
         {
             _view = id;
             StylePills();
             if (_view == "parses") BuildParses();
             if (_view == "resists") BuildResists();
-            if (_view == "charms") BuildCharms();
         });
-        FightsView.Visibility = parses || resists || charms ? Visibility.Collapsed : Visibility.Visible;
+        FightsView.Visibility = parses || resists ? Visibility.Collapsed : Visibility.Visible;
         ParsesView.Visibility = parses ? Visibility.Visible : Visibility.Collapsed;
         ResistsView.Visibility = resists ? Visibility.Visible : Visibility.Collapsed;
-        CharmsView.Visibility = charms ? Visibility.Visible : Visibility.Collapsed;
-        HintText.Text = charms
-            ? "One line per mob you have charmed, most-charmed first: how many charms, the average and longest hold (landing to break), how many broke on their own versus died or zoned, the pet's damage per hit and per second while charmed, and its kills. Written live by the charm card as each charm ends."
-            : resists
+        HintText.Text = resists
             ? "Every mob you have cast on, per spell: casts that landed against casts it resisted, from \"X resisted your Y!\" and your own damage and landing lines. A verdict only past 5 casts — ≥30% resisted reads resistant, ≥60% nearly immune. Levels come from /con, the school from the damage line. Reparse fills it from your whole log."
             : parses
             ? "Every recorded fight (kept + this session) grouped by mob and instance tier (a T4 kill never compares against a T0 one), newest first. Δ compares each row to the one before it on the same mob — DPS for target dummies, kill time for everything else; the best value per mob reads green. Click a row to open that fight's report."

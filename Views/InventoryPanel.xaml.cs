@@ -67,7 +67,12 @@ public partial class InventoryPanel : UserControl
         ("focus", "Focus effects"),
         ("sets", "Armor sets"),
         ("bis", "BiS Finder"),
+        ("charms", "Charmed pets"),
     };
+
+    /// <summary>The charm ledger behind the Charmed pets tab (Character window only).</summary>
+    public CharmBook? Charms { get; set; }
+    public int CharmRowsForTest => CharmsTab.RowCount;
 
     private static readonly Brush SegOnBg = Freeze("#16283E");
     private static readonly Brush SegOnFg = Freeze("#4FC3F7");
@@ -378,6 +383,7 @@ public partial class InventoryPanel : UserControl
             string text = id switch
             {
                 "sheet" or "bis" => label,
+                "charms" => Charms is { Episodes.Count: > 0 } ? $"{label}  {Charms.Episodes.Select(e => e.Mob).Distinct(StringComparer.OrdinalIgnoreCase).Count()}" : label,
                 "focus" => $"{label}  {scored.Count(a => a.Status == 2)}/{scored.Count}",
                 _ => $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}",
             };
@@ -392,6 +398,7 @@ public partial class InventoryPanel : UserControl
     {
         if (id != "sheet") SheetView.CloseDrawer(); // the extension is sheet-only
         if (id == "bis") BisView.ResetCombo(KnownClasses()); // start from who you are
+        if (id == "charms") CharmsTab.Init(Charms);
         _tab = id;
         BuildTabs();
         _lane = null; // a lane picked on one tab means nothing on another
@@ -420,7 +427,7 @@ public partial class InventoryPanel : UserControl
     {
         // The audit boards are not row-backed (and the sheet is not
         // list-backed); place is spelled per family / per slot instead.
-        if (_tab is "focus" or "sheet" or "sets" or "bis")
+        if (_tab is "focus" or "sheet" or "sets" or "bis" or "charms")
         {
             LanePanel.Children.Clear();
             LanePanel.Visibility = Visibility.Collapsed;
@@ -576,10 +583,12 @@ public partial class InventoryPanel : UserControl
         // no search, no lanes.
         bool sheet = _tab == "sheet" && _dump is not null;
         bool bis = _tab == "bis" && _dump is not null;
+        bool charms = _tab == "charms"; // the ledger needs no dump
         SheetView.Visibility = sheet ? Visibility.Visible : Visibility.Collapsed;
         BisView.Visibility = bis ? Visibility.Visible : Visibility.Collapsed;
-        SearchRow.Visibility = sheet || bis ? Visibility.Collapsed : Visibility.Visible;
-        if (sheet || bis)
+        CharmsTab.Visibility = charms ? Visibility.Visible : Visibility.Collapsed;
+        SearchRow.Visibility = sheet || bis || charms ? Visibility.Collapsed : Visibility.Visible;
+        if (sheet || bis || charms)
         {
             ResultsList.Visibility = Visibility.Collapsed;
             FocusList.Visibility = Visibility.Collapsed;
