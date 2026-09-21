@@ -724,6 +724,23 @@ public partial class App : Application
             Check("classes: a /who inside the suspicion window is not wiped by it",
                 wc.CurrentClasses == "SHD/BER" && wc.CurrentLevel == 30);
             Check("classes: the /who nag fired once per convicted swap", swaps == 2);
+            // A spell upgrade rewrites the spellbook too (21 Sep): the merge line
+            // explains the refresh that follows; an item merge does not.
+            wc.Replay($"[{FT(1100)}] You have successfully merged two items together to create a new item: Drain Spirit V");
+            wc.Replay($"[{FT(1102)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(1103)}] You have successfully merged two items together to create a new item: Drain Spirit VI");
+            wc.Replay($"[{FT(1104)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(1112)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: spell upgrades never read as a swap — the combo stays",
+                wc.CurrentClasses == "SHD/BER" && wc.CurrentLevel == 30 && swaps == 2);
+            wc.Replay($"[{FT(1200)}] You have finished scribing Lich.");
+            wc.Replay($"[{FT(1201)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(1210)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: a fresh scribe explains its refresh too", wc.CurrentClasses == "SHD/BER" && swaps == 2);
+            wc.Replay($"[{FT(1300)}] You have successfully merged two items together to create a new item: Efreeti War Maul +2");
+            wc.Replay($"[{FT(1301)}] Your spellbook has been updated!");
+            wc.Replay($"[{FT(1310)}] You are as quiet as a cat stalking its prey.");
+            Check("classes: an ITEM merge explains nothing — a refresh after it is still a swap", wc.CurrentClasses == "" && swaps == 3);
 
             // ---- instance tiers ride the zone name (Johan, 1 Sep 2026):
             // "Nagafen's Lair - Solo 4 (Refined)" = tier 4; no suffix = base.

@@ -811,6 +811,15 @@ public sealed class CombatParser
     private DateTime _grantBurstStart = DateTime.MinValue;
     private int _grantCount;
     private DateTime _swapSuspectAt = DateTime.MinValue;
+    /// <summary>The last spell upgrade or scribe: a spellbook refresh that
+    /// follows one is that, not a swap (owner, 21 Sep: every spell merge
+    /// nagged "/who" and blanked the combo — 25 of the log's 84 refreshes
+    /// trailed a merge). A rank tail ("Drain Spirit V") marks a SPELL merge.</summary>
+    private DateTime _spellChangeAt = DateTime.MinValue;
+    private const double SpellChangeAcquitSec = 20;
+    private static readonly Regex SpellMergeRx = new(
+        @"^You have successfully merged two items together to create a new item: .+ [IVX]{1,7}$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex StanceRx = new(
         @"^You assume an? (?<s>.+?) stance\.",
@@ -1187,12 +1196,23 @@ public sealed class CombatParser
             if (++_grantCount >= 4) _swapSuspectAt = time;
             return;
         }
+        // A spell upgrade (merge to the next rank) or a fresh scribe rewrites
+        // the spellbook too — the refresh that follows is explained, no jury.
+        if ((body.StartsWith("You have successfully merged two items together", StringComparison.Ordinal) && SpellMergeRx.IsMatch(body))
+            || body.StartsWith("You have finished scribing ", StringComparison.Ordinal))
+        {
+            _spellChangeAt = time;
+            // A refresh may already be on trial from a merge a breath earlier.
+            if (_swapSuspectAt != DateTime.MinValue && (time - _swapSuspectAt).TotalSeconds <= SpellChangeAcquitSec) _swapSuspectAt = DateTime.MinValue;
+            return;
+        }
         // The spellbook refresh prints on swaps too — Johan's hypothesis:
         // even for pure-melee combos that grant no spell lines. Same jury:
-        // a level line within 5s acquits it, silence convicts.
+        // a level line within 5s acquits it, silence convicts — and a spell
+        // merge or scribe in the last 20 s explains it outright.
         if (body.StartsWith("Your spellbook has been updated!", StringComparison.Ordinal))
         {
-            _swapSuspectAt = time;
+            if ((time - _spellChangeAt).TotalSeconds > SpellChangeAcquitSec) _swapSuspectAt = time;
             return;
         }
         if (body.StartsWith("You have gained a level!", StringComparison.Ordinal))
