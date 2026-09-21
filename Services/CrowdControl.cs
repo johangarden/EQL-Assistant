@@ -611,10 +611,23 @@ public sealed class CrowdControl
         Changed?.Invoke();
     }
 
-    /// <summary>Demo state for the render targets and the selftest.</summary>
+    private bool _demo;
+
+    /// <summary>Ctrl+Alt+T's demo is over: drop it (a real charm or mez that
+    /// arrived meanwhile has already replaced the demo rows).</summary>
+    public void ClearDemo()
+    {
+        if (!_demo) return;
+        _demo = false;
+        Clear();
+    }
+
+    /// <summary>Demo state for the render targets, the selftest and Ctrl+Alt+T.
+    /// The demo charm is marked recorded so it never becomes a ledger episode.</summary>
     public void SeedDemo(DateTime now, bool broke)
     {
-        Charm = new CharmState { Pet = "a greater ice bones", Spell = "Beguile Undead", Since = now.AddSeconds(-41), Ceiling = 480, PetDamage = 1240, PetHits = 9, MaxHit = 212, PetKills = 2, LastPetHit = now.AddSeconds(-3) };
+        _demo = true;
+        Charm = new CharmState { Pet = "a greater ice bones", Spell = "Beguile Undead", Since = now.AddSeconds(-41), Ceiling = 480, PetDamage = 1240, PetHits = 9, MaxHit = 212, PetKills = 2, LastPetHit = now.AddSeconds(-3), Recorded = true };
         if (broke) { Charm.Since = now.AddSeconds(-10); Charm.BrokeAt = now.AddSeconds(-4); }
         _mez.Clear();
         _mez.Add(new MezRow { Mob = "a greater ice bones", Instance = 1, Spell = "Mesmerization", Since = now.AddSeconds(-20), Duration = 24 });

@@ -1400,6 +1400,24 @@ public partial class MainWindow : Window
                     _combat.AddDemoFight(); _combat.AddDemoEnemyDots(); _conditions.AddDemo();
                     if (_sessionWin is not null && !_session.HasData)
                     { _session.AddDemo(DateTime.Now); _sessionWin.Refresh(); }
+                    // The newer panels join the demo (owner, 21 Sep: "the last few
+                    // panels don't show on Ctrl+Alt+T"): a spell-heavy window on the
+                    // incoming panel (it empties by itself), a charm and a mezzed
+                    // room on the crowd-control panels (cleared after 15 s).
+                    {
+                        var dnow = DateTime.Now;
+                        double[] dm = { 80, 300, 500, 0, 0, 60, 0, 40, 180, 0, 0, 0, 0, 0, 100 };
+                        double[] dsp = { 100, 0, 0, 400, 0, 0, 420, 0, 0, 80, 0, 0, 550, 550, 0 };
+                        for (int i = 0; i < 15; i++)
+                        {
+                            if (dm[i] > 0) _incoming.Add(dnow.AddSeconds(-(14 - i)), dm[i], spell: false);
+                            if (dsp[i] > 0) _incoming.Add(dnow.AddSeconds(-(14 - i)), dsp[i], spell: true);
+                        }
+                        _cc.SeedDemo(dnow, broke: false);
+                        var ccDemo = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+                        ccDemo.Tick += (_, _) => { ccDemo.Stop(); _cc.ClearDemo(); };
+                        ccDemo.Start();
+                    }
                     UpdateMatrixVisibility();
                     OnFlashRequested("FLASH TEST — Get out of the fire!", "#FFCC33");
                     if (!_hidden && !_sctHidden)
