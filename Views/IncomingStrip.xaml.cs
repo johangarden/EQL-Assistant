@@ -91,8 +91,9 @@ public partial class IncomingStrip : UserControl
         HeaderRow.Margin = new Thickness(0, 0, 0, any || QuietText.Visibility == Visibility.Visible ? (_compact ? 5 : 6) : 0);
         if (!any) return;
 
-        MeleeText.Text = _compact ? $"−{s.Melee:N0}" : $"−{s.Melee:N0} melee {s.MeleeShare * 100:0}%";
-        SpellText.Text = _compact ? $"−{s.Spell:N0}" : $"{s.SpellShare * 100:0}% spells −{s.Spell:N0}";
+        // Compact drops the words, never the shares (owner, 22 Sep: "the % is gone?").
+        MeleeText.Text = _compact ? $"−{s.Melee:N0} · {s.MeleeShare * 100:0}%" : $"−{s.Melee:N0} melee {s.MeleeShare * 100:0}%";
+        SpellText.Text = _compact ? $"{s.SpellShare * 100:0}% · −{s.Spell:N0}" : $"{s.SpellShare * 100:0}% spells −{s.Spell:N0}";
         MeleeCol.Width = new GridLength(Math.Max(0.0001, s.Melee), GridUnitType.Star);
         SpellCol.Width = new GridLength(Math.Max(0.0001, s.Spell), GridUnitType.Star);
         MeleeBar.Visibility = s.Melee > 0 ? Visibility.Visible : Visibility.Collapsed;
