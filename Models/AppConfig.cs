@@ -183,6 +183,10 @@ public sealed class OverlayConfig
     /// only when a dropper is sighted or quests are tracked).</summary>
     public bool SkyHelperVisible { get; set; } = true;
 
+    /// <summary>The faction helper card (22 Sep): hits on the races you ★
+    /// track on the Character window's Races tab. Materialises on a hit.</summary>
+    public bool FactionHelperVisible { get; set; } = true;
+
     /// <summary>Tradeskill helper (21 Sep): the skill the card was last on
     /// ("" = never picked; the card then asks). Kept when the card is hidden.</summary>
     public string TradeskillOpen { get; set; } = "";

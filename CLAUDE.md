@@ -34,7 +34,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` / `quests:sky` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `levelup` the level-up card, `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` / `quests:sky` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `faction` / `faction:maxed` / `faction:bad` the faction helper card, `character:races` the Races tab on demo dumps, `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `levelup` the level-up card, `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous
@@ -115,6 +115,21 @@ the affected suites (with `-Wait`) before committing.
   (`live: false`); the session (combines, skill-ups, pace, spend) is live
   only. Fletching's arrows share one product name over several steps —
   recipes are keyed by step label, `StepFor` picks by skill range.
+- `RaceBook` + `FactionDumps` — race unlocks (22 Sep). `/outputfile
+  achievements` → `<char>_<server>-Achievements.txt` ("Untapped Potential:
+  Races": C/I + one tab = a race, two tabs = its conditions — three "Get
+  maximum faction with X." lines, or Kerran's task, Half Elf's "unlock
+  Human or Wood Elf", the "created as" line marks YOUR race) and
+  `/outputfile faction` → `<char>_<server>-<CLASS>-Factions.txt` (ID · Name ·
+  StandingValue · PointsToMax; max = value + toMax = 2,000). Found next to
+  the inventory dump, re-read when their clocks move. The log keeps them
+  live: "Your faction standing with X has been adjusted by N." moves a
+  standing (lines AFTER the dump only; deduped by line), "could not
+  possibly get any better" marks maxed, and "You have slain X!" within 3 s
+  before teaches mob → faction → hit (persisted in `races.json` with the
+  ★-tracked races). Character window "Races" tab (`RacesView`, badges like
+  the Sky classes: done first, DONE/YOU/AUTO/TASK) + the faction helper
+  card (`FactionHelperWindow`, tracked races only, 20 s linger).
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,

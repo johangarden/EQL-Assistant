@@ -1168,6 +1168,12 @@
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="By default a mob only lights up for quests you still NEED — completed quests stay quiet. Tick this to also see what a mob drops for quests you've already finished (farming for guildmates)."/>
                             <CheckBox x:Name="SkyHelperCompletedCheck" Content="Also show items from completed quests" Margin="0,8,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Faction helper" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Race unlocks (22 Sep): the Character window's Races tab reads your /outputfile achievements and /outputfile faction dumps — each race's three factions, how far each stands, and the mobs from your own log that moved them. ★ a race there and this card shows every faction hit that moves it: standing, points to max, the mob and how many more like it. Green for a plus, MAXED when the game caps a faction, red when a kill went the wrong way."/>
+                            <CheckBox x:Name="FactionHelperVisibleCheck" Content="Show the faction helper card" Margin="0,8,0,0"/>
                         </StackPanel>
                     </ScrollViewer>
 

@@ -400,6 +400,23 @@ public partial class App : Application
                 tb.Close();
             }
 
+            // The Races tab and the faction helper card (22 Sep).
+            {
+                var rb = RaceDemo(DateTime.Now.AddHours(-2));
+                var inv = new Views.InventoryWindow(Path.Combine(Path.GetTempPath(), "eql_selftest_inv"), "Testchar", "paineel", null, null, rb) { Left = -9000, Top = -9000 };
+                inv.Show();
+                inv.ShowTab("races");
+                if (inv.RaceRowsForTest != 6) throw new Exception("races tab: six badges expected, got " + inv.RaceRowsForTest);
+                if (inv.RacesTabForTest.BadgeOrderForTest[0] is not ("Barbarian" or "Half Elf" or "Ogre")) throw new Exception("races tab: done races lead");
+                inv.Close();
+                rb.SetTracked("Human (Qeynos)", true);
+                var fw = new Views.FactionHelperWindow(rb, new ConfigService(), 1.0) { Left = -9000, Top = -9000 };
+                fw.Show();
+                fw.ShowDemo("hit", "Human (Qeynos)", "Guards of Qeynos", 5, "a gnoll elite");
+                if (!fw.LineTexts.Contains("Guards of Qeynos") || !fw.LineTexts.Contains("+5")) throw new Exception("faction card: names the faction and the hit");
+                fw.Close();
+            }
+
             // The tradeskill helper card renders the step and the ladder (21 Sep).
             {
                 var tsd = new TradeskillData();
@@ -2530,6 +2547,7 @@ public partial class App : Application
                     && one.Title == "Replaying a.txt" && new ReparseProgress("a", 1, 1, 9, 4, 1).Fraction == 1);
                 CrowdControlChecks(Check);
                 TradeskillChecks(Check);
+                RaceChecks(Check);
                 Check("reparse: the catch-up card says so, and the toolbar fill is the track times the fraction",
                     new ReparseProgress("a.txt", 1, 1, 0, 0, 0, Verb: "Catching up").Title == "Catching up a.txt"
                     && Math.Abs(new ViewModels.OverlayViewModel(new TriggerEngine(new Models.AppConfig(), new AlertService()), new Models.AppConfig())
@@ -3327,6 +3345,79 @@ public partial class App : Application
         File.WriteAllText(Path.Combine(Path.GetTempPath(), "eql_selftest_engine.txt"), result);
         Environment.ExitCode = failures == 0 ? 0 : 1;
         Shutdown();
+    }
+
+    /// <summary>The owner's two dumps, trimmed (22 Sep): three races and the factions they name.</summary>
+    internal static RaceBook RaceDemo(DateTime dumpAt, string? path = null)
+    {
+        const string achievements = "Untapped Potential: Races\n"
+            + "C\tRace Unlock - Barbarian\nC\t\tGet maximum faction with Rogues of the White Rose.\nC\t\tGet maximum faction with Wolves of the North.\nC\t\tGet maximum faction with Merchants of Halas.\nI\t\tThis achievement will autocomplete if your character was created as a Barbarian.\nI\t\tThis achievement can be bypassed using a Race Unlock Token.\n"
+            + "I\tRace Unlock - High Elf\nC\t\tGet maximum faction with Clerics of Tunare.\nI\t\tGet maximum faction with Keepers of the Art.\nC\t\tGet maximum faction with Merchants of Felwithe.\nI\t\tThis achievement will autocomplete if your character was created as a High Elf.\n"
+            + "I\tRace Unlock - Human (Qeynos)\nI\t\tGet maximum faction with Corrupt Qeynos Guard.\nC\t\tGet maximum faction with Guards of Qeynos.\nC\t\tGet maximum faction with Merchants of Qeynos.\nI\t\tThis achievement will autocomplete if your character was created as a Human.\n"
+            + "C\tRace Unlock - Half Elf\nC\t\tThis achievement will autocomplete when you unlock Human or Wood Elf as a race.\nI\t\tThis achievement will autocomplete if your character was created as a Half Elf.\n"
+            + "C\tRace Unlock - Ogre\nC\t\tGet maximum faction with Clurg.\nC\t\tGet maximum faction with Oggok Guards.\nC\t\tGet maximum faction with Merchants of Oggok.\nC\t\tThis achievement will autocomplete if your character was created as a Ogre.\n"
+            + "I\tRace Unlock - Kerran\nI\t\tComplete the 'Aid the Kerrans of Kerra Isle' Task.\nI\t\tThis achievement will autocomplete if your character was created as a Kerran.\n"
+            + "Untapped Potential: Classes\nI\tClass Unlock - Bard\nI\t\tGet maximum faction with League of Antonican Bards.\n";
+        const string factions = "ID\tName\tStandingValue\tPointsToMax\n305\tRogues of the White Rose\t2000\t0\n320\tWolves of the North\t2000\t0\n328\tMerchants of Halas\t2000\t0\n"
+            + "226\tClerics of Tunare\t2000\t0\n275\tKeepers of the Art\t-380\t2380\n325\tMerchants of Felwithe\t2000\t0\n"
+            + "262\tGuards of Qeynos\t1994\t6\n291\tMerchants of Qeynos\t1970\t30\n228\tClurg\t2000\t0\n337\tOggok Guards\t2000\t0\n338\tMerchants of Oggok\t2000\t0\n";
+        var book = new RaceBook(null, path);
+        book.LoadDumpText(factions, achievements, dumpAt, dumpAt);
+        return book;
+    }
+
+    /// <summary>Race unlocks (22 Sep): the dump parsers, the live standing math, the
+    /// mob → faction learning, the tracked-race gate for the helper card.</summary>
+    private static void RaceChecks(Action<string, bool> Check)
+    {
+        var d0 = new DateTime(2026, 9, 22, 22, 14, 0);
+        string L(int sec, string body) => $"[{d0.AddSeconds(sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+        var book = RaceDemo(d0);
+        var races = book.Views();
+        Check("races: six races parse — done first, then progress; classes stay out",
+            races.Count == 6 && races.Take(3).All(r => r.Done) && races[3].Name == "Human (Qeynos)" && races[4].Name == "High Elf" && races[5].Name == "Kerran"
+            && !races.Any(r => r.Name == "Bard"));
+        var ogre = races.First(r => r.Name == "Ogre"); var half = races.First(r => r.Name == "Half Elf"); var kerran = races.First(r => r.Name == "Kerran");
+        Check("races: notes — YOU for the born race, AUTO for Half Elf, TASK for Kerran",
+            ogre.Note == "YOU" && ogre.CountText == "YOU" && half.Note == "AUTO" && half.DependsOn == "Human or Wood Elf" && kerran.Task == "Aid the Kerrans of Kerra Isle" && kerran.CountText == "TASK");
+        var qey = races.First(r => r.Name == "Human (Qeynos)");
+        Check("races: standings from the dump — 1,994/2,000 with 6 to go, done flags from the achievement, an unknown faction reads unknown",
+            qey.DoneCount == 2 && qey.Factions.First(f => f.Name == "Guards of Qeynos") is { Standing: 1994, Max: 2000, ToGo: 6, Done: true }
+            && qey.Factions.First(f => f.Name == "Corrupt Qeynos Guard") is { Known: false, Standing: 0, Max: 2000 });
+        var hie = races.First(r => r.Name == "High Elf");
+        Check("races: a negative standing — −380 with 2,380 to max, the bar reads negative",
+            hie.Factions.First(f => f.Name == "Keepers of the Art") is { Standing: -380, ToGo: 2380, Negative: true, Done: false } && Math.Abs(hie.Progress - 2.0 / 3) < 0.01);
+
+        // The log: a line BEFORE the dump is already inside it; lines after move the standing.
+        book.ProcessLine(L(-3600, "You have slain a gnoll!"), live: false);
+        book.ProcessLine(L(-3600, "Your faction standing with Guards of Qeynos has been adjusted by 5."), live: false);
+        Check("races: a faction line older than the dump moves nothing but teaches the mob",
+            book.Standing("Guards of Qeynos") == 1994 && book.SourcesOf("Guards of Qeynos") is [{ Mob: "a gnoll", Hit: 5, Count: 1 }]);
+        string hits = ""; book.FactionHit += (f, n, m) => hits += $"{f}:{n}:{m};";
+        string maxed = ""; book.FactionMaxed += f => maxed += f + ";";
+        book.SetTracked("Human (Qeynos)", true);
+        book.ProcessLine(L(60, "You have slain a gnoll elite!"));
+        book.ProcessLine(L(60, "Your faction standing with Guards of Qeynos has been adjusted by 5."));
+        book.ProcessLine(L(60, "Your faction standing with Sabertooths of Blackburrow has been adjusted by -5."));
+        Check("races: a live hit after the dump moves the standing, names the mob, and only the race's factions reach the tracked gate",
+            book.Standing("Guards of Qeynos") == 1999 && hits.StartsWith("Guards of Qeynos:5:a gnoll elite;") && book.TrackedRaceOf("Guards of Qeynos") == "Human (Qeynos)"
+            && book.TrackedRaceOf("Sabertooths of Blackburrow") is null && book.TrackedRaceOf("Keepers of the Art") is null
+            && book.EstimateKills("Guards of Qeynos") == 1);
+        book.ProcessLine(L(60, "Your faction standing with Guards of Qeynos has been adjusted by 5."));
+        Check("races: the same line replayed is deduped", book.Standing("Guards of Qeynos") == 1999);
+        book.ProcessLine(L(120, "You have slain a gnoll elite!"));
+        book.ProcessLine(L(120, "Your faction standing with Guards of Qeynos has been adjusted by 5."));
+        book.ProcessLine(L(180, "You have slain a gnoll elite!"));
+        book.ProcessLine(L(180, "Your faction standing with Guards of Qeynos could not possibly get any better."));
+        Check("races: the cap line marks MAXED once, and the standing never exceeds the max",
+            maxed == "Guards of Qeynos;" && book.IsMaxed("Guards of Qeynos") && book.ViewOf("Guards of Qeynos").Done && book.ViewOf("Guards of Qeynos").ToGo == 0);
+        book.ProcessLine(L(200, "Your faction standing with Guards of Qeynos could not possibly get any better."));
+        Check("races: …once", maxed == "Guards of Qeynos;");
+        book.SetTracked("Human (Qeynos)", false);
+        Check("races: untracking silences the gate", book.TrackedRaceOf("Guards of Qeynos") is null && book.RaceOf("Guards of Qeynos") == "Human (Qeynos)");
+        var parsed = FactionDumps.ParseClasses("Untapped Potential: Classes\nI\tClass Unlock - Bard\nI\t\tGet maximum faction with League of Antonican Bards.\n");
+        Check("races: the classes section parses with the same reader", parsed is [{ Name: "Bard", Factions: [{ Faction: "League of Antonican Bards" }] }]);
+        Check("races: config default — the helper card on", new Models.AppConfig().Overlay.FactionHelperVisible);
     }
 
     /// <summary>Tradeskill helper (21 Sep): the wiki data, the combine engine
@@ -4939,6 +5030,26 @@ public partial class App : Application
             win.Refresh();
             mgr = win;
         }
+        else if (page.Equals("faction", StringComparison.OrdinalIgnoreCase) || page.StartsWith("faction:", StringComparison.OrdinalIgnoreCase))
+        {
+            // The faction helper card: a hit (faction), the cap (faction:maxed), the wrong way (faction:bad).
+            var rb = RaceDemo(DateTime.Now.AddHours(-2));
+            rb.SetTracked("Human (Qeynos)", true); rb.SetTracked("High Elf", true);
+            var f0 = DateTime.Now.AddMinutes(-30);
+            string FL(int i, string body) => $"[{f0.AddSeconds(i).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+            rb.ProcessLine(FL(0, "You have slain a gnoll elite!"), live: false); rb.ProcessLine(FL(0, "Your faction standing with Guards of Qeynos has been adjusted by 5."), live: false);
+            var win = new Views.FactionHelperWindow(rb, new ConfigService(), 1.0)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            win.SetLocked(true);
+            win.Show();
+            if (page.EndsWith(":maxed", StringComparison.OrdinalIgnoreCase)) win.ShowDemo("maxed", "Human (Qeynos)", "Merchants of Qeynos", 0, null);
+            else if (page.EndsWith(":bad", StringComparison.OrdinalIgnoreCase)) win.ShowDemo("hit", "High Elf", "Keepers of the Art", -190, "an ogre guard");
+            else win.ShowDemo("hit", "Human (Qeynos)", "Guards of Qeynos", 5, "a gnoll elite");
+            mgr = win;
+        }
         else if (page.Equals("incoming", StringComparison.OrdinalIgnoreCase))
         {
             // A synthetic spell-heavy window in a defensive stance.
@@ -5032,7 +5143,17 @@ public partial class App : Application
                 demoBook.Add(new CharmBook.Episode("a greater ice bones", "Beguile Undead", "Permafrost Caverns", t.AddDays(-3), t.AddDays(-3).AddSeconds(6), "broke", 40, 1, 40, 1, 44, "Beguile Undead", 0, 47));
                 demoBook.AddAttempt(new CharmBook.Attempt("a greater ice bones", "Beguile Undead", "resisted", t.AddDays(-3).AddMinutes(-1), "Permafrost Caverns"));
             }
-            var inv = new Views.InventoryWindow(Path.Combine(Path.GetTempPath(), "eql_selftest_inv"), "Testchar", "paineel", null, demoBook)
+            RaceBook? demoRaces = page.Equals("character:races", StringComparison.OrdinalIgnoreCase) ? RaceDemo(DateTime.Now.AddHours(-2)) : null;
+            if (demoRaces is not null)
+            {
+                var r0 = DateTime.Now.AddMinutes(-30);
+                string RL(int i, string body) => $"[{r0.AddSeconds(i).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+                for (int i = 0; i < 4; i++) { demoRaces.ProcessLine(RL(i * 60, "You have slain a gnoll elite!"), live: false); demoRaces.ProcessLine(RL(i * 60, "Your faction standing with Guards of Qeynos has been adjusted by 5."), live: false); }
+                demoRaces.ProcessLine(RL(300, "You have slain an ogre guard!"), live: false);
+                demoRaces.ProcessLine(RL(300, "Your faction standing with Keepers of the Art has been adjusted by -190."), live: false);
+                demoRaces.SetTracked("High Elf", true);
+            }
+            var inv = new Views.InventoryWindow(Path.Combine(Path.GetTempPath(), "eql_selftest_inv"), "Testchar", "paineel", null, demoBook, demoRaces)
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
