@@ -23,7 +23,23 @@ public sealed class SpellDurations
     {
         public string Name { get; set; } = "";
         public List<Sample> Samples { get; set; } = new();
+        // The last time the ESTIMATE moved (22 Sep): when, from what, to what.
+        public DateTime? ChangeAt { get; set; }
+        public double? ChangeFrom { get; set; }
+        public double ChangeTo { get; set; }
+        // Not persisted: the next bar started on the new estimate wears LEARNED once.
+        [System.Text.Json.Serialization.JsonIgnore] public bool Fresh { get; set; }
     }
+
+    /// <summary>The estimate moved: when, from (null = first learned), to.</summary>
+    public sealed record Change(DateTime At, double? From, double To);
+
+    /// <summary>Raised when a sample MOVES the estimate by more than the game's
+    /// whole-second jitter (owner, 22 Sep: two casts reading 191 s and 192 s
+    /// must not announce anything): max(3 s, 2 % of the old estimate).</summary>
+    public event Action<string, double?, double, DateTime>? EstimateChanged;
+
+    public static double ChangeTolerance(double from) => Math.Max(3, from * 0.02);
 
     private const double PendingCastWindowSec = 15;   // begin-cast -> landing
     private const double MaxSaneSeconds = 4 * 3600;   // beyond this a "cycle" is a gap, not a buff
@@ -305,8 +321,16 @@ public sealed class SpellDurations
             _byKey[key] = rec = new SpellRec { Name = spell.Name };
         if (rec.Samples.Any(s => s.Ts == time)) return; // replayed line (full reparse)
         rec.Name = spell.Name; // latest rank's display name wins
+        double? before = LearnedMaxSeconds(spell.Name);
         rec.Samples.Add(new Sample(time, seconds));
         if (rec.Samples.Count > MaxSamplesStored) rec.Samples.RemoveAt(0);
+        double? after = LearnedMaxSeconds(spell.Name);
+        if (after is double a && (before is null || Math.Abs(a - before.Value) >= ChangeTolerance(before.Value)))
+        {
+            rec.ChangeAt = time; rec.ChangeFrom = before; rec.ChangeTo = a; rec.Fresh = true;
+            Log.Info($"Duration estimate moved: {spell.Name} {(before is double b ? DurationTextOf(b) : "—")} → {DurationTextOf(a)}");
+            EstimateChanged?.Invoke(spell.Name, before, a, time);
+        }
         Save();
         Log.Info($"Duration learned: {spell.Name} ran {seconds:0}s on {on} " +
                  $"(sample {rec.Samples.Count}, window max {rec.Samples.TakeLast(RecentWindow).Max(s => s.Seconds):0}s)");
@@ -333,6 +357,28 @@ public sealed class SpellDurations
         _otherRx[key] = rx;
         return rx;
     }
+
+    /// <summary>The last time this spell's estimate moved — null when it never has.</summary>
+    public Change? LastChange(string spellOrTriggerName) =>
+        _byKey.TryGetValue(BaseKey(spellOrTriggerName), out var rec) && rec.ChangeAt is { } at
+            ? new Change(at, rec.ChangeFrom, rec.ChangeTo) : null;
+
+    /// <summary>True ONCE after the estimate moved — the next bar started on
+    /// it wears the LEARNED tag; consumed here.</summary>
+    public bool ConsumeFresh(string spellOrTriggerName)
+    {
+        if (!_byKey.TryGetValue(BaseKey(spellOrTriggerName), out var rec) || !rec.Fresh) return false;
+        rec.Fresh = false;
+        return true;
+    }
+
+    /// <summary>The stored samples, oldest first (the Manager's strip).</summary>
+    public IReadOnlyList<(DateTime At, double Seconds)> SamplesFor(string spellOrTriggerName) =>
+        _byKey.TryGetValue(BaseKey(spellOrTriggerName), out var rec)
+            ? rec.Samples.Select(x => (x.Ts, x.Seconds)).ToList() : new List<(DateTime, double)>();
+
+    private static string DurationTextOf(double sec) =>
+        sec >= 3600 ? $"{(int)(sec / 3600)}h{(int)(sec % 3600 / 60):00}m" : sec >= 60 ? $"{(int)(sec / 60)}m{(int)(sec % 60):00}s" : $"{sec:0}s";
 
     /// <summary>Wipe all learned samples (Data page reset).</summary>
     public void ResetAll()

@@ -282,6 +282,10 @@
                                                 Click="DurationForget_Click"
                                                 ToolTip="Clears the learned samples for this spell — the duration returns to the value in the box until the log teaches it again"/>
                                     </StackPanel>
+                                    <!-- the stored samples, oldest left: the newest five decide, the
+                                         window max is framed gold, the sample that moved the estimate is green -->
+                                    <StackPanel x:Name="DurationSamplesStrip" Orientation="Horizontal" Height="26"
+                                                Margin="0,6,0,0" Visibility="Collapsed"/>
                                     <CheckBox x:Name="DurationAutoCheck" IsChecked="{Binding DurationAuto}"
                                               Checked="DurationAuto_Changed" Unchecked="DurationAuto_Changed"
                                               Content="Auto-learn the real duration from the log" Margin="0,8,0,0"/>

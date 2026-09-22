@@ -180,7 +180,11 @@ these, so merged cross-machine history survives a reset).
   an interrupted re-cast leaves it alone; the pet landing (castOnOther with
   the name free) opens its own cycle, closed by "Your pet's X spell has
   worn off." into the same pool. 20 samples stored per spell = storage,
-  the estimate is the MAX of the newest 5.
+  the estimate is the MAX of the newest 5. ESTIMATE CHANGES (22 Sep) are
+  announced (toast), remembered (`LastChange`: at/from/to on the editor's
+  Duration line + a sample strip) and worn ONCE by the next bar (LEARNED
+  tag, green clock via `ConsumeFresh`) — only when the move beats the
+  log's whole-second jitter: max(3 s, 2 % of the old estimate).
 - **Proc detection**: a spell damage/heal line of yours with no own begin-cast
   within 12s. Never DoT ticks, never thorns; a HEAL you've EVER cast this
   session is your spell (HoT ticks arrive outside any window). "You activate

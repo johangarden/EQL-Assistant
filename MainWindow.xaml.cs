@@ -256,6 +256,11 @@ public partial class MainWindow : Window
         _combat.FightArchived += OnFightArchived;
         _engine = new TriggerEngine(_config, _alerts);
         _engine.LearnedDuration = name => _durations.LearnedMaxSeconds(name);
+        _engine.LearnedFresh = name => _durations.ConsumeFresh(name);
+        _durations.EstimateChanged += (spell, from, to, when) => Dispatcher.BeginInvoke(() =>
+            _vm.Flash(from is double f
+                ? $"Learned: {spell} now runs {DurationText.Compact(to)} {(to > f ? "▲" : "▼")} (was {DurationText.Compact(f)}) · from your cast at {when:HH:mm}"
+                : $"Learned: {spell} runs {DurationText.Compact(to)} · first sample, from your cast at {when:HH:mm}"));
         _engine.IsPetName = name => _combat.IsPet(name);
         _engine.TimerRequested += OnTimerRequested;
         _engine.FlashRequested += OnFlashRequested;

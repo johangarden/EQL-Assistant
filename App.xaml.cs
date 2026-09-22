@@ -1760,6 +1760,33 @@ public partial class App : Application
             Check("durations: an interrupted re-cast leaves your cycle alone too",
                 dur.SampleCount("Spirit of the Puma") == 4);
 
+            // The estimate CHANGE (22 Sep): announced once, remembered, worn once
+            // by the next bar — and never for whole-second jitter.
+            var pumaChange = dur.LastChange("Spirit of the Puma");
+            Check("durations: the first Puma sample is remembered as a change from nothing",
+                pumaChange is { From: null, To: 210 } && dur.ConsumeFresh("Spirit of the Puma") && !dur.ConsumeFresh("Spirit of the Puma"));
+            int moves = 0;
+            dur.EstimateChanged += (_, _, _, _) => moves++;
+            dur.ProcessLine($"[{T(17000)}] You begin casting Spirit of the Puma X.");
+            dur.ProcessLine($"[{T(17002)}] You begin to snarl as your features become feline.");
+            dur.ProcessLine($"[{T(17213)}] The spirit of the puma departs.");   // 211 s
+            dur.ProcessLine($"[{T(18000)}] You begin casting Spirit of the Puma X.");
+            dur.ProcessLine($"[{T(18002)}] You begin to snarl as your features become feline.");
+            dur.ProcessLine($"[{T(18211)}] The spirit of the puma departs.");   // 209 s
+            Check("durations: ±1–2 s of log jitter moves nothing (tolerance max(3 s, 2 %))",
+                moves == 0 && dur.LastChange("Spirit of the Puma") is { To: 210 } && !dur.ConsumeFresh("Spirit of the Puma")
+                && Math.Abs(SpellDurations.ChangeTolerance(210) - 4.2) < 0.01 && SpellDurations.ChangeTolerance(60) == 3);
+            dur.ProcessLine($"[{T(19000)}] You begin casting Spirit of the Puma X.");
+            dur.ProcessLine($"[{T(19002)}] You begin to snarl as your features become feline.");
+            dur.ProcessLine($"[{T(19262)}] The spirit of the puma departs.");   // 260 s — the rank X duration
+            Check("durations: a real jump announces once, remembers from→to, and the next bar is fresh once",
+                moves == 1 && dur.LastChange("Spirit of the Puma") is { From: 211, To: 260 }
+                && dur.ConsumeFresh("Spirit of the Puma") && !dur.ConsumeFresh("Spirit of the Puma")
+                && dur.SamplesFor("Spirit of the Puma").Count == 7);
+            Check("durations: the bar carries the fresh flag",
+                ViewModels.TimerBarViewModel.CreateTimer("k", "n", "Buff", 10, DateTime.Now.AddSeconds(10), System.Windows.Media.Brushes.SteelBlue, 0, false, null, null, learnedFresh: true).IsFresh
+                && !ViewModels.TimerBarViewModel.CreateTimer("k", "n", "Buff", 10, DateTime.Now.AddSeconds(10), System.Windows.Media.Brushes.SteelBlue, 0, false, null, null).IsFresh);
+
             // The library floor (owner ruling, Chloroplast): the regen family
             // shares its landing/wear-off sentences, so cycles can close SHORT
             // — a learned figure below the library's stated duration is

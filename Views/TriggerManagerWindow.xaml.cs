@@ -1053,13 +1053,53 @@ public partial class TriggerManagerWindow : Window
         double? raw = _durations?.ObservedMaxSeconds(Selected.Name);
         int n = _durations?.SampleCount(Selected.Name) ?? 0;
         DurationForgetBtn.Visibility = raw is not null ? Visibility.Visible : Visibility.Collapsed;
+        string change = "";
+        if (eff is not null && _durations?.LastChange(Selected.Name) is { } ch)
+            change = ch.From is double f
+                ? $" {(ch.To > f ? "▲" : "▼")} from {DurationText.Compact(f)} on {ch.At:dd MMM HH:mm}"
+                : $" · first learned {ch.At:dd MMM HH:mm}";
         DurationEffectiveText.Text = eff is { } sec
-            ? $"learning → currently {DurationText.Compact(sec)} ({n} samples)"
+            ? $"learning → currently {DurationText.Compact(sec)}{change} ({n} samples)"
             : raw is { } r && _durations?.LibraryFloorSeconds(Selected.Name) is { } floor
                 // Shared landing/wear-off sentences read short (a lesser regen
                 // crossing a Chloroplast) — the evidence shows, but never rules.
                 ? $"observed {DurationText.Compact(r)} ignored — below the library's {DurationText.Compact(floor)} ({n} samples)"
                 : "learning → nothing observed yet, starts from this value";
+        BuildDurationStrip(Selected.Name);
+    }
+
+    private static readonly Brush StripBar = new SolidColorBrush(Color.FromRgb(0x3A, 0x45, 0x60));
+    private static readonly Brush StripNew = new SolidColorBrush(Color.FromRgb(0x81, 0xC7, 0x84));
+    private static readonly Brush StripMax = new SolidColorBrush(Color.FromRgb(0xE8, 0xC1, 0x5A));
+
+    /// <summary>The stored samples as a strip of bars (22 Sep): oldest left,
+    /// the newest five's max framed gold, the sample that moved the estimate
+    /// green. Hover a bar for its date and seconds.</summary>
+    private void BuildDurationStrip(string spell)
+    {
+        DurationSamplesStrip.Children.Clear();
+        var samples = _durations?.SamplesFor(spell) ?? new List<(DateTime, double)>();
+        DurationSamplesStrip.Visibility = samples.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (samples.Count == 0) return;
+        double max = Math.Max(1, samples.Max(x => x.Seconds));
+        var window = samples.Skip(Math.Max(0, samples.Count - 5)).ToList();
+        double windowMax = window.Max(x => x.Seconds);
+        int maxIdx = samples.Count - 1 - window.AsEnumerable().Reverse().ToList().FindIndex(x => x.Seconds == windowMax);
+        var change = _durations?.LastChange(spell);
+        for (int i = 0; i < samples.Count; i++)
+        {
+            var (at, sec) = samples[i];
+            bool isChange = change is not null && at == change.At;
+            var bar = new Border
+            {
+                Width = 9, Height = 4 + 20 * (sec / max), Margin = new Thickness(0, 0, 3, 0),
+                VerticalAlignment = VerticalAlignment.Bottom, CornerRadius = new CornerRadius(2, 2, 0, 0),
+                Background = isChange ? StripNew : StripBar,
+                BorderBrush = i == maxIdx ? StripMax : Brushes.Transparent, BorderThickness = new Thickness(1),
+                ToolTip = $"{at:dd MMM yyyy HH:mm} · {DurationText.Compact(sec)}" + (isChange ? " — moved the estimate" : i == maxIdx ? " — the current max" : ""),
+            };
+            DurationSamplesStrip.Children.Add(bar);
+        }
     }
 
     /// <summary>Owner ruling: a polluted learned number needs a way back —

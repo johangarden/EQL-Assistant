@@ -60,6 +60,9 @@ public sealed class TriggerEngine
     /// <summary>Optional observed-duration lookup (SpellDurations): returns the
     /// learned recent-window max for a trigger name, or null.</summary>
     public Func<string, double?>? LearnedDuration { get; set; }
+    /// <summary>True once after the learner moved a spell's estimate — the next
+    /// bar started on it wears LEARNED (22 Sep).</summary>
+    public Func<string, bool>? LearnedFresh { get; set; }
 
     private const double CastAnchorWindowSec = 15;   // begin-cast -> landing (same as SpellDurations)
     private const double QuickBuffWindowSec = 8;     // activation -> burst (observed: 3s)
@@ -470,7 +473,8 @@ public sealed class TriggerEngine
             al.FadedSpeak, al.FadedSound,
             waitsForFade: trigger.EndRegex is not null,
             learnsDuration: trigger.DurationAuto && !trigger.Permanent,
-            permanent: trigger.Permanent);
+            permanent: trigger.Permanent,
+            learnedFresh: trigger.DurationAuto && (LearnedFresh?.Invoke(trigger.Name) ?? false));
 
         _active[key] = vm;
         InsertSorted(vm);
