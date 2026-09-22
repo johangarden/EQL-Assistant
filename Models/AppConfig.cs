@@ -183,6 +183,28 @@ public sealed class OverlayConfig
     /// only when a dropper is sighted or quests are tracked).</summary>
     public bool SkyHelperVisible { get; set; } = true;
 
+    /// <summary>Tradeskill helper (21 Sep): the skill the card was last on
+    /// ("" = never picked; the card then asks). Kept when the card is hidden.</summary>
+    public string TradeskillOpen { get; set; } = "";
+    /// <summary>Whether the card is shown — the toolbar anvil / ☰ → Panels
+    /// toggles it, ✕ hides it; survives a restart so a brewing evening does.</summary>
+    public bool TradeskillVisible { get; set; } = false;
+    /// <summary>Card shows the whole ladder (true) or the step you are on.</summary>
+    public bool TradeskillLadder { get; set; } = false;
+    /// <summary>Ingredient chips carry the count from the last inventory dump.</summary>
+    public bool TradeskillBagCounts { get; set; } = true;
+    /// <summary>The anvil button on the toolbar (☰ → Tradeskill helper always works).</summary>
+    public bool TradeskillToolbarBtn { get; set; } = true;
+
+    /// <summary>Toolbar (21 Sep, card chrome): a five-letter label under every
+    /// key — taller 34×32 keys; off = the compact 22 px bar.</summary>
+    public bool ToolbarLabels { get; set; } = false;
+    /// <summary>Say so when the game prints that a recipe went trivial (once per recipe, helper open).</summary>
+    public bool TradeskillNoticeEnabled { get; set; } = true;
+    public string TradeskillNoticeMode { get; set; } = "speak";
+    public string TradeskillNoticeSpeak { get; set; } = "{item} is trivial";
+    public string TradeskillNoticeSound { get; set; } = @"C:\Windows\Media\Windows Exclamation.wav";
+
     /// <summary>The live mote-farming ticker (materializes only while a
     /// stint is running — a mote looted within the last 15 minutes).</summary>
     public bool MoteTickerVisible { get; set; } = true;

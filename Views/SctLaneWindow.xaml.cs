@@ -113,6 +113,7 @@ public partial class SctLaneWindow : Window
         Spawn("backstab", 312, false, CombatParser.SctFlavor.Melee, crit: true);
         Spawn("Frost Breath", 254, false, CombatParser.SctFlavor.Spell, crit: false);
         Spawn("thorns", 44, false, CombatParser.SctFlavor.Proc, crit: false);
+        Spawn("12 total", 12, false, CombatParser.SctFlavor.Melee, crit: true, overrideText: "AA point!");
         int i = 0;
         foreach (var child in Lane.Children.OfType<TextBlock>())
         {
@@ -161,7 +162,10 @@ public partial class SctLaneWindow : Window
     private void Spawn(string label, double amount, bool plus, CombatParser.SctFlavor flavor, bool crit,
         string? overrideText = null)
     {
+        // A text float (xp %, faction, "AA point!") flagged crit is BIG, never a
+        // shout — the AA line is not a critical hit (owner, 22 Sep: "CRIT! AA poin").
         bool big = crit || (overrideText is null && amount >= _bigThreshold);
+        crit = crit && overrideText is null;
         var fg = flavor switch
         {
             CombatParser.SctFlavor.Spell => _spellColor,

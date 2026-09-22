@@ -34,7 +34,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` the toolbar (eye struck; catch-up progress card), `quests:lines` the Notable quests pack, `recap` a synthetic death recap, `incoming` the incoming-damage panel, `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `levelup` the level-up card, `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` / `quests:sky` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `levelup` the level-up card, `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous
@@ -92,6 +92,29 @@ the affected suites (with `-Wait`) before committing.
   attempts per mob too) → Character window "Charmed pets" tab
   (`CharmsView`) + the card's "before:" line; the card counts DOWN a known
   ceiling and overruns grey past it.
+- `TradeskillWatch` + `TradeskillData` — the tradeskill helper (21 Sep), a
+  card you SHOW ON PURPOSE (toolbar anvil / ☰ → Panels toggle
+  `TradeskillVisible`; ✕ hides). The skill is picked on the card's own ▼
+  and remembered (`TradeskillOpen`); STEP | LADDER in the header switches
+  the step's details and the clean ladder (rows + verdict tags only).
+  Data: `data/tradeskills.json` — eqlwiki's leveling ladders for the nine
+  skills (hand-curated in the scratch `build-tradeskills.py`; the guides'
+  shapes differ too much to parse) + every ladder recipe from the item
+  pages' uniform template (ingredients, container, yield, trivial) + where
+  each ingredient comes from (vendor · drop with mob/zone · forage · made).
+  A step reads ALL BOUGHT only when the whole sub-combine chain is vendor;
+  FARM n / FORAGE / CHECK otherwise (`SourcingOf`). Engine lines: skill-up
+  `You have become better at <skill>! (N)` (the value; Jewelry Making =
+  Jewelcrafting), success `You have fashioned the items together to create
+  something new|an alternate product: <item>.`, fail `You lacked the skills
+  to fashion <item>.`, trivial `You can no longer advance your skill from
+  making this item.` (printed right BEFORE the success line — pairs within
+  3 s → amber MOVE ON + notice, once per recipe), `You purchased N <item>
+  from <npc> for  <coins>.` (spend + vendor memory with zone). Skill values
+  and vendors persist in `tradeskill-log.json` and are LEARNED on replays
+  (`live: false`); the session (combines, skill-ups, pace, spend) is live
+  only. Fletching's arrows share one product name over several steps —
+  recipes are keyed by step label, `StepFor` picks by skill range.
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
   death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,
@@ -152,6 +175,16 @@ these, so merged cross-machine history survives a reset).
   minting a wrong number; estimate = MAX over recent 5 samples (early breaks
   read short and must never drag the bar down). Ranks pool ("Quickness II"
   teaches "Quickness"); ranks run base→X, `[IVX]{1,7}` covers them.
+  PET CYCLES (22 Sep): a re-cast only discards your open cycle if it LANDS
+  ON YOU — the same buff cast on your pet right after yourself (Puma) or
+  an interrupted re-cast leaves it alone; the pet landing (castOnOther with
+  the name free) opens its own cycle, closed by "Your pet's X spell has
+  worn off." into the same pool. 20 samples stored per spell = storage,
+  the estimate is the MAX of the newest 5. ESTIMATE CHANGES (22 Sep) are
+  announced (toast), remembered (`LastChange`: at/from/to on the editor's
+  Duration line + a sample strip) and worn ONCE by the next bar (LEARNED
+  tag, green clock via `ConsumeFresh`) — only when the move beats the
+  log's whole-second jitter: max(3 s, 2 % of the old estimate).
 - **Proc detection**: a spell damage/heal line of yours with no own begin-cast
   within 12s. Never DoT ticks, never thorns; a HEAL you've EVER cast this
   session is your spell (HoT ticks arrive outside any window). "You activate
@@ -193,6 +226,15 @@ these, so merged cross-machine history survives a reset).
   `SpellLibrary.HealLibraryTriggers` repairs old/broken library triggers on
   every load (types + patterns; corrected spells graduate from begin-cast to
   landing timing); hand-edited values are never touched.
+- **Toolbar chrome** (21 Sep): one dark track, every button a KEY in its own
+  hairline frame; STATE lives in the frame colour — gold = a toggle is on
+  (locked, panels shown, tradeskill card open), red = something you will
+  regret forgetting (muted, panels hidden). Door colours are identities, not
+  states. A gold BADGE on a door = news (quests ready to hand in; drops /
+  raid kills since that window was last opened — live lines only). The LOG
+  DOT by the loadout name: green following, grey nothing read, gold during a
+  catch-up (`OverlayViewModel.LogDot`). `ToolbarLabels` (General page) grows
+  the keys to 34×32 with a word under each; state keys' words say the state.
 - **Panels**: every panel window with a `DispatcherTimer` MUST stop it on
   `Closed`; prefer in-place `ApplySettings` over rebuild for stateful panels
   (rebuilding the repop watch once caused ghost beeps). Manager saves must

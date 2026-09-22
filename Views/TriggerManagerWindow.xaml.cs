@@ -49,6 +49,11 @@ public partial class TriggerManagerWindow : Window
     public Func<IReadOnlyList<string>>? SkyDriftPreview { get; set; }
     public Func<string>? RealignSkyRequested { get; set; }
 
+    /// <summary>Tradeskills page: your learned skill values (null = never seen) and the manual set.</summary>
+    public Func<string, int?>? TradeskillValue { get; set; }
+    public Action<string, int>? TradeskillValueSet { get; set; }
+    private readonly Dictionary<string, TextBox> _tsBoxes = new(StringComparer.OrdinalIgnoreCase);
+
     private async void AuditSky_Click(object sender, RoutedEventArgs e)
     {
         if (AuditSkyRequested is null) { Status("The audit isn't available right now."); return; }
@@ -1048,13 +1053,53 @@ public partial class TriggerManagerWindow : Window
         double? raw = _durations?.ObservedMaxSeconds(Selected.Name);
         int n = _durations?.SampleCount(Selected.Name) ?? 0;
         DurationForgetBtn.Visibility = raw is not null ? Visibility.Visible : Visibility.Collapsed;
+        string change = "";
+        if (eff is not null && _durations?.LastChange(Selected.Name) is { } ch)
+            change = ch.From is double f
+                ? $" {(ch.To > f ? "▲" : "▼")} from {DurationText.Compact(f)} on {ch.At:dd MMM HH:mm}"
+                : $" · first learned {ch.At:dd MMM HH:mm}";
         DurationEffectiveText.Text = eff is { } sec
-            ? $"learning → currently {DurationText.Compact(sec)} ({n} samples)"
+            ? $"learning → currently {DurationText.Compact(sec)}{change} ({n} samples)"
             : raw is { } r && _durations?.LibraryFloorSeconds(Selected.Name) is { } floor
                 // Shared landing/wear-off sentences read short (a lesser regen
                 // crossing a Chloroplast) — the evidence shows, but never rules.
                 ? $"observed {DurationText.Compact(r)} ignored — below the library's {DurationText.Compact(floor)} ({n} samples)"
                 : "learning → nothing observed yet, starts from this value";
+        BuildDurationStrip(Selected.Name);
+    }
+
+    private static readonly Brush StripBar = new SolidColorBrush(Color.FromRgb(0x3A, 0x45, 0x60));
+    private static readonly Brush StripNew = new SolidColorBrush(Color.FromRgb(0x81, 0xC7, 0x84));
+    private static readonly Brush StripMax = new SolidColorBrush(Color.FromRgb(0xE8, 0xC1, 0x5A));
+
+    /// <summary>The stored samples as a strip of bars (22 Sep): oldest left,
+    /// the newest five's max framed gold, the sample that moved the estimate
+    /// green. Hover a bar for its date and seconds.</summary>
+    private void BuildDurationStrip(string spell)
+    {
+        DurationSamplesStrip.Children.Clear();
+        var samples = _durations?.SamplesFor(spell) ?? new List<(DateTime, double)>();
+        DurationSamplesStrip.Visibility = samples.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (samples.Count == 0) return;
+        double max = Math.Max(1, samples.Max(x => x.Seconds));
+        var window = samples.Skip(Math.Max(0, samples.Count - 5)).ToList();
+        double windowMax = window.Max(x => x.Seconds);
+        int maxIdx = samples.Count - 1 - window.AsEnumerable().Reverse().ToList().FindIndex(x => x.Seconds == windowMax);
+        var change = _durations?.LastChange(spell);
+        for (int i = 0; i < samples.Count; i++)
+        {
+            var (at, sec) = samples[i];
+            bool isChange = change is not null && at == change.At;
+            var bar = new Border
+            {
+                Width = 9, Height = 4 + 20 * (sec / max), Margin = new Thickness(0, 0, 3, 0),
+                VerticalAlignment = VerticalAlignment.Bottom, CornerRadius = new CornerRadius(2, 2, 0, 0),
+                Background = isChange ? StripNew : StripBar,
+                BorderBrush = i == maxIdx ? StripMax : Brushes.Transparent, BorderThickness = new Thickness(1),
+                ToolTip = $"{at:dd MMM yyyy HH:mm} · {DurationText.Compact(sec)}" + (isChange ? " — moved the estimate" : i == maxIdx ? " — the current max" : ""),
+            };
+            DurationSamplesStrip.Children.Add(bar);
+        }
     }
 
     /// <summary>Owner ruling: a polluted learned number needs a way back —
@@ -1264,6 +1309,7 @@ public partial class TriggerManagerWindow : Window
             ["Death recap"] = DeathPage,
             ["Condition badges"] = ConditionsPage,
             ["Crowd control"] = CrowdControlPage,
+            ["Tradeskills"] = TradeskillsPage,
             ["Incoming damage"] = IncomingPage,
             ["Quest droppers"] = SkyHelperPage,
             ["Cursor ring"] = CursorRingPage,
@@ -1419,6 +1465,7 @@ public partial class TriggerManagerWindow : Window
         MatrixColumnsBox.Text = _config.Overlay.MatrixColumns.ToString(CultureInfo.InvariantCulture);
         ShowHeadersCheck.IsChecked = _config.Overlay.ShowCategoryHeaders;
         StartLockedCheck.IsChecked = _config.Overlay.StartLocked;
+        ToolbarLabelsCheck.IsChecked = _config.Overlay.ToolbarLabels;
         HideWhenGameAwayCheck.IsChecked = _config.Overlay.HideWhenGameAway;
         ConCardCheck.IsChecked = _config.Overlay.ConCardVisible;
         LoadCursorRingCard();
@@ -1477,6 +1524,15 @@ public partial class TriggerManagerWindow : Window
         }
         else _incomingHomeSeg.Select(_incomingHome);
         IncomingFoldCheck.IsChecked = _config.Overlay.IncomingFoldQuiet;
+        // Tradeskills (21 Sep).
+        TsLadderCheck.IsChecked = _config.Overlay.TradeskillLadder;
+        TsBagCountsCheck.IsChecked = _config.Overlay.TradeskillBagCounts;
+        TsToolbarCheck.IsChecked = _config.Overlay.TradeskillToolbarBtn;
+        TsNoticeCheck.IsChecked = _config.Overlay.TradeskillNoticeEnabled;
+        TsModeBox.SelectedValue = _config.Overlay.TradeskillNoticeMode;
+        TsSpeakBox.Text = string.IsNullOrWhiteSpace(_config.Overlay.TradeskillNoticeSpeak) ? "{item} is trivial" : _config.Overlay.TradeskillNoticeSpeak;
+        SyncSoundCombo(TsSoundBox, _config.Overlay.TradeskillNoticeSound);
+        BuildTradeskillTable();
         // The wrong-stance notice (14 Sep).
         StanceOnCheck.IsChecked = _config.Overlay.StanceNoticeEnabled;
         StanceModeBox.SelectedValue = _config.Overlay.StanceNoticeMode;
@@ -1547,6 +1603,58 @@ public partial class TriggerManagerWindow : Window
         bool sSound = StanceModeBox.SelectedValue as string != "speak";
         StanceSoundBox.Visibility = sSound ? Visibility.Visible : Visibility.Collapsed;
         StanceSpeakBox.Visibility = sSound ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>The nine tradeskills with their learned values; a box per skill for the ones the log never saw.</summary>
+    private void BuildTradeskillTable()
+    {
+        TsSkillsHost.Children.Clear();
+        _tsBoxes.Clear();
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        int r = 0;
+        foreach (string name in TradeskillData.Names)
+        {
+            grid.RowDefinitions.Add(new RowDefinition());
+            int? v = TradeskillValue?.Invoke(name);
+            var label = new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 3, 0, 3) };
+            Grid.SetRow(label, r); Grid.SetColumn(label, 0); grid.Children.Add(label);
+            var box = new TextBox { Text = v?.ToString() ?? "", Width = 60, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 2, 0, 2), ToolTip = "Your skill value — blank = unknown" };
+            Grid.SetRow(box, r); Grid.SetColumn(box, 1); grid.Children.Add(box);
+            _tsBoxes[name] = box;
+            var hint = new TextBlock
+            {
+                Text = v is null ? "? — not seen in the log yet" : "learned from the log",
+                Style = (Style)FindResource("Hint"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0),
+            };
+            Grid.SetRow(hint, r); Grid.SetColumn(hint, 2); grid.Children.Add(hint);
+            r++;
+        }
+        TsSkillsHost.Children.Add(grid);
+    }
+
+    /// <summary>Save: hand-typed skill values go to the engine (only what changed).</summary>
+    private void PushTradeskillValues()
+    {
+        if (TradeskillValueSet is null) return;
+        foreach (var (name, box) in _tsBoxes)
+        {
+            string t = box.Text.Trim();
+            int? was = TradeskillValue?.Invoke(name);
+            if (t.Length == 0) { if (was is not null) TradeskillValueSet(name, 0); continue; }
+            if (int.TryParse(t, out int v) && v > 0 && v <= 400 && v != was) TradeskillValueSet(name, v);
+        }
+    }
+
+    private void TsTest_Click(object sender, RoutedEventArgs e)
+    {
+        if (_alerts.Muted) { Status("Unmute to preview."); return; }
+        if (TsModeBox.SelectedValue as string == "speak")
+            _alerts.Fire(MainWindow.TradeskillPhrase(TsSpeakBox.Text, "Metal Bits"), null);
+        else if (TsSoundBox.SelectedItem is SoundPreset p && p.Path.Length > 0)
+            _alerts.Fire(null, p.Path);
     }
 
     private void StanceTest_Click(object sender, RoutedEventArgs e)
@@ -1761,6 +1869,7 @@ public partial class TriggerManagerWindow : Window
     /// (shared by the save and the dirty-check fingerprint).</summary>
     private AppConfig BuildConfigFromUi()
     {
+        PushTradeskillValues();
         return new AppConfig
         {
             CharacterName = _config.CharacterName, // auto-detected; hand-editable in config.json only
@@ -1797,6 +1906,7 @@ public partial class TriggerManagerWindow : Window
                 VoiceRate = int.TryParse(VoiceRateBox.SelectedValue as string, out int vr) ? vr : 0,
                 DeathRecapAuto = DeathRecapCheck.IsChecked == true,
                 ToolbarVisible = _config.Overlay.ToolbarVisible, // tray-toggled — carried through
+                ToolbarLabels = ToolbarLabelsCheck.IsChecked == true,
                 BarsVisible = _config.Overlay.BarsVisible,       // tray-toggled — carried through
                 SelfMatrixVisible = _config.Overlay.SelfMatrixVisible,     // tray-toggled
                 TargetMatrixVisible = _config.Overlay.TargetMatrixVisible, // tray-toggled
@@ -1806,6 +1916,15 @@ public partial class TriggerManagerWindow : Window
                 IncomingWindowSec = _incomingWindowSec,
                 IncomingOnMeter = _incomingHome == "meter",
                 IncomingFoldQuiet = IncomingFoldCheck.IsChecked == true,
+                TradeskillOpen = _config.Overlay.TradeskillOpen, // picked on the card — carried through
+                TradeskillVisible = _config.Overlay.TradeskillVisible, // anvil-toggled — carried through
+                TradeskillLadder = TsLadderCheck.IsChecked == true,
+                TradeskillBagCounts = TsBagCountsCheck.IsChecked == true,
+                TradeskillToolbarBtn = TsToolbarCheck.IsChecked == true,
+                TradeskillNoticeEnabled = TsNoticeCheck.IsChecked == true,
+                TradeskillNoticeMode = TsModeBox.SelectedValue as string ?? "speak",
+                TradeskillNoticeSpeak = TsSpeakBox.Text.Trim(),
+                TradeskillNoticeSound = (TsSoundBox.SelectedItem as SoundPreset)?.Path ?? _config.Overlay.TradeskillNoticeSound,
                 StanceNoticeEnabled = StanceOnCheck.IsChecked == true,
                 StanceNoticeShare = _stanceShare,
                 StanceNoticeWindowSec = _stanceWindowSec,

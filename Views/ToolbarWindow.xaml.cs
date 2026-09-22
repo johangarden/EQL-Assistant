@@ -27,6 +27,8 @@ public partial class ToolbarWindow : Window
     public Action? QuestsRequested { get; set; }
     public Action? LootRequested { get; set; }
     public Action? SheetRequested { get; set; }
+    /// <summary>The anvil: show / hide the tradeskill helper card.</summary>
+    public Action<object>? TradeskillsRequested { get; set; }
 
     public ToolbarWindow(ConfigService config)
     {
@@ -57,4 +59,12 @@ public partial class ToolbarWindow : Window
     private void OnQuests(object sender, RoutedEventArgs e) => QuestsRequested?.Invoke();
     private void OnLoot(object sender, RoutedEventArgs e) => LootRequested?.Invoke();
     private void OnSheet(object sender, RoutedEventArgs e) => SheetRequested?.Invoke();
+    private void OnTradeskills(object sender, RoutedEventArgs e) => TradeskillsRequested?.Invoke(sender);
+
+    /// <summary>Manager → Tradeskills → "Anvil button on the toolbar".</summary>
+    public void SetTradeskillButton(bool on) => TradeskillBtn.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>Selftest hooks: a door key's laid-out height (22, or 32 with labels) and the quest badge.</summary>
+    internal double KeyHeightForTest => SheetBtn.Height; // the style value: 22, or 32 under the labels trigger
+    internal bool QuestBadgeShownForTest => QuestBadge.Visibility == Visibility.Visible;
 }

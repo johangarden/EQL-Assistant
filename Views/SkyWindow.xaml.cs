@@ -73,8 +73,13 @@ public partial class SkyWindow : Window
     /// <summary>One class badge: glyph (or ALL-text) ring + completion arc.</summary>
     public sealed record BadgeVm(string ClassName, string Abbr, string CountText, string Tip,
         Brush Ring, Brush Ink, Brush SelBg, Geometry? Arc, Visibility DoneVisibility,
-        Geometry? Glyph)
+        Geometry? Glyph,
+        Brush? FillBg = null, Brush? CountFg = null, Brush? LabelFg = null, bool CountBold = false,
+        Visibility MineVisibility = Visibility.Hidden, Visibility SepVisibility = Visibility.Collapsed,
+        string CapText = "")
     {
+        public Visibility CapVisibility => CapText.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public FontWeight CountWeight => CountBold ? FontWeights.Bold : FontWeights.Normal;
         public Visibility AbbrVisibility => Glyph is null ? Visibility.Visible : Visibility.Collapsed;
 
         /// <summary>Class abbreviation over the icon (these aren't the game's
@@ -253,11 +258,33 @@ public partial class SkyWindow : Window
         return g;
     }
 
+    private static readonly Brush BadgeLabelFg = Freeze(Color.FromRgb(0x7F, 0x93, 0xAD));
+    private static readonly Brush BadgeDoneFg = Freeze(Color.FromRgb(0x81, 0xC7, 0x84));
+    private static readonly Brush BadgeDoneInk = Freeze(Color.FromRgb(0x0B, 0x1A, 0x10));
+
+    /// <summary>Most complete first: share complete descending, then the fewest
+    /// quests left, then the game's class order. Finished classes lead.</summary>
+    public static List<T> RankClasses<T>(IEnumerable<T> items, Func<T, (int Done, int Total)> tally) =>
+        items.Select((x, i) => (x, i, t: tally(x)))
+            .OrderByDescending(e => e.t.Total == 0 ? -1.0 : (double)e.t.Done / e.t.Total)
+            .ThenBy(e => e.t.Total - e.t.Done)
+            .ThenBy(e => e.i)
+            .Select(e => e.x)
+            .ToList();
+
+    /// <summary>The rendered badge abbreviations in order — selftest.</summary>
+    internal IReadOnlyList<string> BadgeOrderForTest =>
+        (BadgesControl.ItemsSource as List<BadgeVm>)?.Select(b => b.Abbr).ToList() ?? new List<string>();
+    internal BadgeVm? BadgeForTest(string abbr) =>
+        (BadgesControl.ItemsSource as List<BadgeVm>)?.FirstOrDefault(b => b.Abbr == abbr);
+
     private void RefreshBadges()
     {
         var badges = new List<BadgeVm>();
+        var mine = MineFilter().Split('|', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (_selectedClass.Contains('|')) _selectedClass = ""; // the old MINE lens (removed 22 Sep)
 
-        void Add(string className, string abbr, Color tint, string? tipName = null)
+        BadgeVm Make(string className, string abbr, Color tint, bool sepBefore, string capAfter)
         {
             var quests = className.Length == 0
                 ? (IReadOnlyList<SkyQuests.SkyQuest>)_sky.Quests
@@ -265,23 +292,40 @@ public partial class SkyWindow : Window
             int done = quests.Count(_sky.IsCompleted);
             bool complete = quests.Count > 0 && done == quests.Count;
             bool selected = _selectedClass.Equals(className, StringComparison.OrdinalIgnoreCase);
-            badges.Add(new BadgeVm(className, abbr, $"{done}/{quests.Count}",
-                $"{tipName ?? (className.Length == 0 ? "All quests" : className)} — {done} of {quests.Count} complete",
-                complete ? Freeze(Color.FromRgb(0x81, 0xC7, 0x84)) : Freeze(tint),
-                selected ? Brushes.White : Freeze(Color.FromArgb(0xD8, tint.R, tint.G, tint.B)),
+            var tintB = Freeze(tint);
+            return new BadgeVm(className, abbr, complete ? "DONE" : $"{done}/{quests.Count}",
+                $"{(className.Length == 0 ? "All quests" : className)} — {done} of {quests.Count} complete",
+                tintB,
+                complete ? BadgeDoneInk : selected ? Brushes.White : Freeze(Color.FromArgb(0xD8, tint.R, tint.G, tint.B)),
                 selected ? Freeze(Color.FromArgb(0x50, tint.R, tint.G, tint.B)) : Brushes.Transparent,
                 BuildArc(done, quests.Count),
                 complete ? Visibility.Visible : Visibility.Collapsed,
-                className.Length == 0 ? null : ClassGlyphs.For(className)));
+                className.Length == 0 ? null : ClassGlyphs.For(className),
+                FillBg: complete ? tintB : Brushes.Transparent,
+                CountFg: complete ? BadgeDoneFg : BadgeLabelFg,
+                LabelFg: complete ? BadgeDoneFg : BadgeLabelFg,
+                CountBold: complete,
+                MineVisibility: mine.Contains(className) ? Visibility.Visible : Visibility.Hidden,
+                SepVisibility: sepBefore ? Visibility.Visible : Visibility.Collapsed,
+                CapText: capAfter);
         }
 
-        Add("", "ALL", Color.FromRgb(0xFF, 0xC1, 0x2E));
-        // MINE: the classes /who says you are — an opt-in lens, never a lock.
-        if (MineFilter() is { Length: > 0 } mine)
-            Add(mine, "MINE", Color.FromRgb(0x4F, 0xC3, 0xF7),
-                "Your classes (" + (_classesProvider?.Invoke() ?? "") + ")");
-        foreach (var (name, abbr, hex) in ClassBadges)
-            Add(name, abbr, (Color)ColorConverter.ConvertFromString(hex));
+        badges.Add(Make("", "ALL", Color.FromRgb(0xFF, 0xC1, 0x2E), false, ""));
+
+        (int Done, int Total) Tally((string Name, string Abbr, string Hex) b)
+        {
+            var qs = _sky.Quests.Where(q => SkyQuests.ClassMatches(q.Class, b.Name)).ToList();
+            return (qs.Count(_sky.IsCompleted), qs.Count);
+        }
+        var ranked = RankClasses(ClassBadges, Tally);
+        int doneClasses = ranked.Count(b => Tally(b) is { Total: > 0 } t && t.Done == t.Total);
+        for (int k = 0; k < ranked.Count; k++)
+        {
+            var (name, abbr, hex) = ranked[k];
+            bool sep = k == 0 || (doneClasses > 0 && k == doneClasses);
+            string cap = doneClasses > 0 && k == doneClasses - 1 ? $"{doneClasses} done" : "";
+            badges.Add(Make(name, abbr, (Color)ColorConverter.ConvertFromString(hex), sep, cap));
+        }
 
         BadgesControl.ItemsSource = badges;
     }

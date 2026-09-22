@@ -122,6 +122,7 @@
                     <ListBoxItem Content="Crowd control"/>
                     <ListBoxItem Content="Incoming damage"/>
                     <ListBoxItem Content="Quest droppers"/>
+                    <ListBoxItem Content="Tradeskills"/>
                     <ListBoxItem Content="APP SETTINGS" Style="{StaticResource NavHeader}"/>
                     <ListBoxItem Content="General"/>
                     <ListBoxItem Content="Log source"/>
@@ -281,6 +282,10 @@
                                                 Click="DurationForget_Click"
                                                 ToolTip="Clears the learned samples for this spell — the duration returns to the value in the box until the log teaches it again"/>
                                     </StackPanel>
+                                    <!-- the stored samples, oldest left: the newest five decide, the
+                                         window max is framed gold, the sample that moved the estimate is green -->
+                                    <StackPanel x:Name="DurationSamplesStrip" Orientation="Horizontal" Height="26"
+                                                Margin="0,6,0,0" Visibility="Collapsed"/>
                                     <CheckBox x:Name="DurationAutoCheck" IsChecked="{Binding DurationAuto}"
                                               Checked="DurationAuto_Changed" Unchecked="DurationAuto_Changed"
                                               Content="Auto-learn the real duration from the log" Margin="0,8,0,0"/>
@@ -499,6 +504,7 @@
 
                             <TextBlock Text="Opacity (0.1 – 1.0, lower = more see-through)" Style="{StaticResource FieldLabel}"/>
                             <TextBox x:Name="OpacityBox" Width="120" HorizontalAlignment="Left"/>
+                            <CheckBox x:Name="ToolbarLabelsCheck" Content="Toolbar: a label under every key (taller bar — the compact bar is the one to live with)" Margin="0,10,0,0"/>
                             <CheckBox x:Name="StartLockedCheck" Content="Start locked (game-ready: click-through, no toolbar)"
                                       Margin="0,10,0,0"/>
                             <CheckBox x:Name="HideWhenGameAwayCheck" Content="Hide the overlay while the game isn't in front (panels and pinned pages return when you click back into the game)"
@@ -1162,6 +1168,47 @@
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="By default a mob only lights up for quests you still NEED — completed quests stay quiet. Tick this to also see what a mob drops for quests you've already finished (farming for guildmates)."/>
                             <CheckBox x:Name="SkyHelperCompletedCheck" Content="Also show items from completed quests" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ========================= TRADESKILLS ========================= -->
+                    <ScrollViewer x:Name="TradeskillsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="14" MaxWidth="620" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Tradeskills" Style="{StaticResource PageTitle}"/>
+                                <Border Style="{StaticResource ScopeChip}"><TextBlock Style="{StaticResource ScopeChipText}" Text="GLOBAL"/></Border>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="A helper card for the skill you are working today. The toolbar anvil (or ☰ → Panels) shows and hides it; the skill is picked on the card itself and remembered. It reads eqlwiki's leveling ladder back as you combine: the step you are on and its trivial, each ingredient with where it comes from (bought, dropped, foraged, made in a sub-combine) and the count in your bags, the session's combines, skill-ups and coin, and what to move to when the game says a recipe went trivial. STEP | LADDER in its header switches between the step's details and the whole ladder with its shopping / farming verdicts."/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <CheckBox x:Name="TsLadderCheck" Content="Open on the whole ladder (off = the step you are on; the card's STEP | LADDER switch flips it too)" Margin="0,4,0,0"/>
+                            <CheckBox x:Name="TsBagCountsCheck" Content="Ingredient counts from the last inventory dump (/outputfile inventory)" Margin="0,8,0,0"/>
+                            <CheckBox x:Name="TsToolbarCheck" Content="Anvil button on the toolbar" Margin="0,8,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Your skills" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Learned from 'You have become better at …' lines, live and on reparse. A skill the log has never seen go up shows ? — type its value from the in-game skills window; the next skill-up line takes over."/>
+                            <StackPanel x:Name="TsSkillsHost" Margin="0,8,0,0"/>
+
+                            <Border Style="{StaticResource PageSep}"/>
+                            <TextBlock Text="Move-on notice" Style="{StaticResource SectionTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="The game prints 'You can no longer advance your skill from making this item.' on every trivial combine. Once per recipe, while the helper is open, say so — a phrase or a sound — and the card turns amber with the next step."/>
+                            <CheckBox x:Name="TsNoticeCheck" Content="Notify when a recipe goes trivial" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                            <StackPanel Orientation="Horizontal" Margin="24,6,0,0">
+                                <ComboBox x:Name="TsModeBox" Width="90" SelectedValuePath="Tag">
+                                    <ComboBoxItem Content="Sound" Tag="sound"/>
+                                    <ComboBoxItem Content="Phrase" Tag="speak"/>
+                                </ComboBox>
+                                <ComboBox x:Name="TsSoundBox" Width="200" MinHeight="30" Margin="8,0,0,0"/>
+                                <TextBox x:Name="TsSpeakBox" Width="200" Margin="8,0,0,0"
+                                         ToolTip="Spoken via text-to-speech — {item} becomes the recipe's name"/>
+                                <Button Content="Test" Width="50" Margin="8,0,0,0" Click="TsTest_Click"/>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,14,0,0"
+                                       Text="Ladders, recipes, vendors and drop tables come from eqlwiki.com's Skill pages and item pages. A step reads ALL BOUGHT only when every ingredient down the sub-combine chain is sold by a vendor; FARM names what drops and where; CHECK means the wiki does not place an ingredient."/>
                         </StackPanel>
                     </ScrollViewer>
 

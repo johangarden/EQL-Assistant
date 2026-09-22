@@ -59,16 +59,22 @@
                             <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.9" Color="Black"/>
                         </TextBlock.Effect>
                     </TextBlock>
-                    <TextBlock Text="{Binding RemainingText}"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Right"
-                               Foreground="White"
-                               FontSize="{Binding DataContext.FontSize, RelativeSource={RelativeSource AncestorType=Window}}"
-                               FontWeight="Bold">
-                        <TextBlock.Effect>
-                            <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.9" Color="Black"/>
-                        </TextBlock.Effect>
-                    </TextBlock>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <!-- LEARNED (22 Sep): the first run on a freshly learned estimate -->
+                        <Border x:Name="LearnedTag" Visibility="Collapsed" Background="#81C784" CornerRadius="3"
+                                Padding="5,0,5,1" Margin="0,0,8,0" VerticalAlignment="Center">
+                            <TextBlock Text="LEARNED" Foreground="#0B1A10" FontSize="9" FontWeight="ExtraBold"/>
+                        </Border>
+                        <TextBlock x:Name="TimeText" Text="{Binding RemainingText}"
+                                   VerticalAlignment="Center"
+                                   Foreground="White"
+                                   FontSize="{Binding DataContext.FontSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                   FontWeight="Bold">
+                            <TextBlock.Effect>
+                                <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.9" Color="Black"/>
+                            </TextBlock.Effect>
+                        </TextBlock>
+                    </StackPanel>
                 </Grid>
                 <!-- warning pulse overlay -->
                 <Border x:Name="WarnGlow" CornerRadius="4" Background="#00FF3B30" IsHitTestVisible="False"/>
@@ -79,6 +85,10 @@
                      out and count up ("still there, still learning"). -->
                 <DataTrigger Binding="{Binding IsOverrun}" Value="True">
                     <Setter Property="Opacity" Value="0.45"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsFresh}" Value="True">
+                    <Setter TargetName="LearnedTag" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="TimeText" Property="Foreground" Value="#81C784"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsWarning}" Value="True">
                     <DataTrigger.EnterActions>

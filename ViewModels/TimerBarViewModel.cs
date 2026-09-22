@@ -33,7 +33,8 @@ public sealed class TimerBarViewModel : ViewModelBase
         DateTime endTimeLocal, Brush fill,
         double alertAtSeconds, bool alertOnExpire, string? alertSpeak, string? alertSound,
         string? alertFadedSpeak = null, string? alertFadedSound = null,
-        bool waitsForFade = false, bool learnsDuration = false, bool permanent = false)
+        bool waitsForFade = false, bool learnsDuration = false, bool permanent = false,
+        bool learnedFresh = false)
     {
         var vm = new TimerBarViewModel(key, name, category, fill)
         {
@@ -48,6 +49,7 @@ public sealed class TimerBarViewModel : ViewModelBase
             WaitsForFade = waitsForFade,
             LearnsDuration = learnsDuration,
             IsPermanent = permanent,
+            IsFresh = learnedFresh,
         };
         vm.Refresh(DateTime.Now, double.MaxValue);
         return vm;
@@ -98,6 +100,11 @@ public sealed class TimerBarViewModel : ViewModelBase
     /// <summary>Auto-learn is on: an overrun means the estimate was short and
     /// the coming fade line will teach the real duration.</summary>
     public bool LearnsDuration { get; private init; }
+
+    /// <summary>This run is the FIRST on a freshly learned estimate (22 Sep):
+    /// the bar wears a LEARNED tag and a green clock so you can check it
+    /// against the buff window in game; the next run is plain.</summary>
+    public bool IsFresh { get; private init; }
 
     private bool _isOverrun;
     /// <summary>Expired without a witnessed fade: gray, counting up.</summary>

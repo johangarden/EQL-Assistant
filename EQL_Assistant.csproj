@@ -18,7 +18,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>assets\eqloverlay.ico</ApplicationIcon>
     <!-- Bump this for each standalone build; it stamps the exe and shows in the toolbar. -->
-    <Version>2.63.0</Version>
+    <Version>2.64.0</Version>
     <!-- WFO0003: WinForms wants DPI set via API, but this is a WPF app whose DPI is
          correctly declared in app.manifest (PerMonitorV2). Safe to ignore. -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
@@ -74,6 +74,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="data\armor-sets.json" />
+    <!-- Tradeskill leveling ladders + recipes + ingredient sources (eqlwiki Skill_* and item pages). -->
+    <None Update="data\tradeskills.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <EmbeddedResource Include="data\tradeskills.json" />
     <!-- The wiki's 40×40 item icons (eqlwiki/p99 art shipped by Companion),
          keyed item-<iconId>.png — WPF resources, looked up via pack URI. -->
     <Resource Include="data\item-icons\*.png" />
