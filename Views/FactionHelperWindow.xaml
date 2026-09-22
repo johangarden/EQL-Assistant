@@ -23,7 +23,7 @@
             </Border>
             <TextBlock x:Name="Placeholder" Foreground="#7F93AD" FontSize="11" Margin="2,2,2,4" Visibility="Collapsed"
                        MaxWidth="296" TextWrapping="Wrap"
-                       Text="★ a race on the Character window's Races tab. Each faction hit that moves it shows here — standing, points to max, the mob and how many more like it."/>
+                       Text="★ a race on the Character window's Races tab. Its open factions stay here with their standing; each hit that moves one shows the mob and how many more like it."/>
             <StackPanel x:Name="Body"/>
         </StackPanel>
     </Border>

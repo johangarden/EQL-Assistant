@@ -412,6 +412,8 @@ public partial class App : Application
                 rb.SetTracked("Human (Qeynos)", true);
                 var fw = new Views.FactionHelperWindow(rb, new ConfigService(), 1.0) { Left = -9000, Top = -9000 };
                 fw.Show();
+                fw.Refresh();
+                if (!fw.LineTexts.Contains("FACTION · HUMAN (QEYNOS)") || !fw.LineTexts.Contains("Corrupt Qeynos Guard")) throw new Exception("faction card: between hits it shows the tracked race's open factions");
                 fw.ShowDemo("hit", "Human (Qeynos)", "Guards of Qeynos", 5, "a gnoll elite");
                 if (!fw.LineTexts.Contains("Guards of Qeynos") || !fw.LineTexts.Contains("+5")) throw new Exception("faction card: names the faction and the hit");
                 fw.Close();
@@ -5045,7 +5047,8 @@ public partial class App : Application
             };
             win.SetLocked(true);
             win.Show();
-            if (page.EndsWith(":maxed", StringComparison.OrdinalIgnoreCase)) win.ShowDemo("maxed", "Human (Qeynos)", "Merchants of Qeynos", 0, null);
+            if (page.EndsWith(":standing", StringComparison.OrdinalIgnoreCase)) win.Refresh(); // no hit yet: the tracked races' open factions
+            else if (page.EndsWith(":maxed", StringComparison.OrdinalIgnoreCase)) win.ShowDemo("maxed", "Human (Qeynos)", "Merchants of Qeynos", 0, null);
             else if (page.EndsWith(":bad", StringComparison.OrdinalIgnoreCase)) win.ShowDemo("hit", "High Elf", "Keepers of the Art", -190, "an ogre guard");
             else win.ShowDemo("hit", "Human (Qeynos)", "Guards of Qeynos", 5, "a gnoll elite");
             mgr = win;

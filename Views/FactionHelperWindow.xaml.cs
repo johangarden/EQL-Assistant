@@ -40,6 +40,7 @@ public partial class FactionHelperWindow : Window
     private readonly DispatcherTimer _tick;
     private readonly Action<string, int, string?> _onHit;
     private readonly Action<string> _onMaxed;
+    private readonly Action _onChanged;
     private nint _hwnd;
     private bool _locked, _hidden, _closed;
     private readonly List<string> _texts = new();
@@ -75,14 +76,16 @@ public partial class FactionHelperWindow : Window
             _card = ("maxed", race, faction, 0, null, DateTime.Now);
             Refresh();
         });
+        _onChanged = () => Dispatcher.BeginInvoke(() => { if (!_closed) Refresh(); });
         _book.FactionHit += _onHit;
         _book.FactionMaxed += _onMaxed;
+        _book.Changed += _onChanged;
 
         _tick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
         _tick.Tick += (_, _) => Refresh();
         Loaded += (_, _) => { _placement.Attach(); ApplyLockVisual(); Refresh(); _tick.Start(); };
         SourceInitialized += (_, _) => { _hwnd = new WindowInteropHelper(this).Handle; ApplyClickThrough(); };
-        Closed += (_, _) => { _closed = true; _tick.Stop(); _book.FactionHit -= _onHit; _book.FactionMaxed -= _onMaxed; };
+        Closed += (_, _) => { _closed = true; _tick.Stop(); _book.FactionHit -= _onHit; _book.FactionMaxed -= _onMaxed; _book.Changed -= _onChanged; };
 
         var menu = new ContextMenu();
         var open = new MenuItem { Header = "Open Races…" };
@@ -114,12 +117,80 @@ public partial class FactionHelperWindow : Window
         if (_card is { } c0 && (DateTime.Now - c0.At).TotalSeconds > LingerSec) _card = null;
         _texts.Clear();
         Body.Children.Clear();
+        int standing = 0;
         if (_card is { } c) BuildCard(c);
+        else standing = BuildStanding(); // owner, 22 Sep: "keep open" — the tracked races' open factions between hits
 
-        Placeholder.Visibility = !_locked && _card is null ? Visibility.Visible : Visibility.Collapsed;
-        bool show = !_hidden && !_closed && (_card is not null || !_locked);
+        Placeholder.Visibility = !_locked && _card is null && standing == 0 ? Visibility.Visible : Visibility.Collapsed;
+        bool show = !_hidden && !_closed && (_card is not null || standing > 0 || !_locked);
         if (show && Visibility != Visibility.Visible) Show();
         else if (!show && Visibility == Visibility.Visible) Hide();
+    }
+
+    /// <summary>Between hits: every tracked race still open, its unfinished
+    /// factions as thin bars with the standing and points left, maxed ones
+    /// ticked. Returns how many races were painted.</summary>
+    private int BuildStanding()
+    {
+        int painted = 0;
+        foreach (var race in _book.Views().Where(r => r.Tracked && !r.Done))
+        {
+            var head = new DockPanel { Margin = new Thickness(0, painted == 0 ? 0 : 8, 0, 3) };
+            var count = Text($"{race.DoneCount} / {race.Factions.Count}", Hint, 10.5, FontWeights.SemiBold);
+            DockPanel.SetDock(count, Dock.Right);
+            head.Children.Add(count);
+            head.Children.Add(Text($"FACTION · {race.Name.ToUpperInvariant()}", Hint, 10.5, FontWeights.Bold));
+            Body.Children.Add(head);
+            if (race.Task is not null && race.Factions.Count == 0)
+            {
+                Body.Children.Add(Text(race.Task, Dim, 11.5));
+                painted++;
+                continue;
+            }
+            foreach (var f in race.Factions)
+            {
+                var row = new Grid { Margin = new Thickness(0, 2, 0, 0) };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(138) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                row.Children.Add(Text(f.Name, f.Done ? Faint : Dim, 11.5, f.Done ? FontWeights.Normal : FontWeights.SemiBold));
+                if (f.Done)
+                {
+                    var ok = Text("✓ maxed", Green, 10.5, FontWeights.Bold);
+                    Grid.SetColumn(ok, 2); row.Children.Add(ok);
+                }
+                else
+                {
+                    var bar = new Grid { Height = 6, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) };
+                    bar.Children.Add(new Border { Background = f.Negative ? Freeze("#2A1416") : Track, CornerRadius = new CornerRadius(3) });
+                    double frac = f.Negative ? Math.Clamp(-f.Standing / (double)Math.Max(1, f.Max), 0, 1) : f.Fraction;
+                    bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.0001, f.Negative ? 1 - frac : frac), GridUnitType.Star) });
+                    bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.0001, f.Negative ? frac : 1 - frac), GridUnitType.Star) });
+                    Grid.SetColumnSpan(bar.Children[0], 2);
+                    if (frac > 0.001)
+                    {
+                        var fill = new Border
+                        {
+                            CornerRadius = new CornerRadius(3),
+                            Background = f.Negative
+                                ? new LinearGradientBrush(((SolidColorBrush)RedDark).Color, ((SolidColorBrush)Red).Color, 0)
+                                : new LinearGradientBrush(((SolidColorBrush)GreenDark).Color, ((SolidColorBrush)Green).Color, 0),
+                        };
+                        Grid.SetColumn(fill, f.Negative ? 1 : 0);
+                        bar.Children.Add(fill);
+                    }
+                    Grid.SetColumn(bar, 1); row.Children.Add(bar);
+                    var v = new TextBlock { FontSize = 10.5, Foreground = Hint, VerticalAlignment = VerticalAlignment.Center };
+                    v.Inlines.Add(new Run(f.Known ? $"{f.Standing:N0}" : "?") { Foreground = f.Negative ? Red : Dim, FontWeight = FontWeights.SemiBold });
+                    v.Inlines.Add(new Run(f.Known ? $" · {f.ToGo:N0} left" : ""));
+                    _texts.Add($"{f.Standing} · {f.ToGo} left");
+                    Grid.SetColumn(v, 2); row.Children.Add(v);
+                }
+                Body.Children.Add(row);
+            }
+            painted++;
+        }
+        return painted;
     }
 
     private void BuildCard((string Kind, string Race, string Faction, int Delta, string? Mob, DateTime At) c)
