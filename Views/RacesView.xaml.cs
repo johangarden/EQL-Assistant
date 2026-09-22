@@ -115,8 +115,17 @@ public partial class RacesView : UserControl
         };
         root.MouseLeftButtonUp += (_, _) => { _selected = r.Name; Build(); };
         var sp = new StackPanel { Width = 58 };
-        string abbr = r.Name.ToUpperInvariant().Replace(" (", " · ").Replace(")", "");
-        var top = new TextBlock { Text = abbr + (r.Tracked ? " ★" : ""), Foreground = r.Done ? Green : r.Tracked ? Gold : Hint, FontSize = 8.5, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 2), TextTrimming = TextTrimming.CharacterEllipsis };
+        // "HUMAN (QEYNOS)" wraps to two lines — "HUMAN" over "QEYNOS" — instead of
+        // trimming to "HUMAN · QE…" (owner, 22 Sep). Single-word races keep a blank
+        // second line so every ring sits on the same baseline.
+        string abbr = r.Name.ToUpperInvariant().Replace(" (", "\n").Replace(")", "");
+        if (!abbr.Contains('\n')) abbr += "\n";
+        var top = new TextBlock
+        {
+            Text = abbr + (r.Tracked ? " ★" : ""), Foreground = r.Done ? Green : r.Tracked ? Gold : Hint, FontSize = 8.5,
+            HorizontalAlignment = HorizontalAlignment.Center, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 0, 0, 2),
+            LineHeight = 10, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, Height = 20,
+        };
         sp.Children.Add(top);
         var g = new Grid { Width = 38, Height = 38, HorizontalAlignment = HorizontalAlignment.Center };
         g.Children.Add(new Ellipse { Stroke = Ring, StrokeThickness = 3 });
