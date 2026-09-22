@@ -15,7 +15,10 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class RaidKillsWindow : Window
 {
-    public sealed record BadgeVm(string Text, Brush Bg, Brush Fg);
+    public sealed record BadgeVm(string Text, Brush Bg, Brush Fg, Brush? Line = null)
+    {
+        public Brush LineBrush => Line ?? Brushes.Transparent;
+    }
     public sealed record KillDetailVm(string Header, string ItemsText, Brush ItemsBrush,
         Visibility FightVisibility, DateTime FightEndedAt, string FightLabel);
     public sealed record KillRow(string Name, string Detail, Brush NameBrush, FontWeight Weight,
@@ -42,6 +45,7 @@ public partial class RaidKillsWindow : Window
     private static readonly Brush BadgeOnFg = Freeze(Color.FromRgb(0xC9, 0xF0, 0xD2));
     private static readonly Brush BadgeOffBg = Freeze(Color.FromRgb(0x20, 0x29, 0x3A));
     private static readonly Brush BadgeOffFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
+    private static readonly Brush BadgeTopLine = Freeze(Color.FromRgb(0xE8, 0xC1, 0x5A));
     private static readonly Brush ItemsFg = Freeze(Color.FromRgb(0x8F, 0xA6, 0xC4));
     private static readonly Brush NoItemsFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
     private static readonly Brush SegOnBg = Freeze(Color.FromRgb(0x16, 0x28, 0x3E));
@@ -117,10 +121,14 @@ public partial class RaidKillsWindow : Window
                         : "—",
                     killed ? KilledFg : UnkilledFg,
                     killed ? FontWeights.SemiBold : FontWeights.Normal,
+                    // Killed chips carry their count ("D2 ×3"); the single tier
+                    // with the most kills wears a gold frame (owner, 22 Sep).
                     killed
-                        ? Enumerable.Range(0, 5).Select(d => new BadgeVm($"D{d}",
+                        ? Enumerable.Range(0, 5).Select(d => new BadgeVm(
+                            x.Tiers.Contains(d) ? $"D{d} ×{x.CountOn(d)}" : $"D{d}",
                             x.Tiers.Contains(d) ? BadgeOnBg : BadgeOffBg,
-                            x.Tiers.Contains(d) ? BadgeOnFg : BadgeOffFg)).ToList()
+                            x.Tiers.Contains(d) ? BadgeOnFg : BadgeOffFg,
+                            x.TopTier == d ? BadgeTopLine : null)).ToList()
                         : new List<BadgeVm>(),
                     killed ? (expanded ? "▾" : "▸") : "",
                     expanded ? Visibility.Visible : Visibility.Collapsed,

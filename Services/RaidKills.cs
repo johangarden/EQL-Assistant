@@ -40,7 +40,24 @@ public sealed class RaidKills
         public string? FightLabel { get; set; }       // … (EndedAt + Label identify a record)
     }
 
-    public sealed record TargetView(string Name, int Count, DateTime? Last, IReadOnlySet<int> Tiers);
+    public sealed record TargetView(string Name, int Count, DateTime? Last, IReadOnlySet<int> Tiers,
+        IReadOnlyDictionary<int, int>? TierCounts = null)
+    {
+        /// <summary>Kills on one difficulty within the view's scope.</summary>
+        public int CountOn(int d) => TierCounts is not null && TierCounts.TryGetValue(d, out int n) ? n : 0;
+        /// <summary>The single tier with the most kills — null when tied or unkilled
+        /// (owner, 22 Sep: a gold frame on the tier you farm most).</summary>
+        public int? TopTier
+        {
+            get
+            {
+                if (TierCounts is null || TierCounts.Count == 0) return null;
+                int max = TierCounts.Values.Max();
+                var tops = TierCounts.Where(kv => kv.Value == max).Select(kv => kv.Key).ToList();
+                return tops.Count == 1 ? tops[0] : null;
+            }
+        }
+    }
     public sealed record TierView(string Name, List<TargetView> Targets)
     {
         public int Killed => Targets.Count(t => t.Count > 0);
@@ -162,7 +179,8 @@ public sealed class RaidKills
             var kills = since is DateTime s ? all?.Where(k => k.When >= s).ToList() : all;
             return new TargetView(name, kills?.Count ?? 0,
                 kills is { Count: > 0 } ? kills.Max(k => k.When) : null,
-                kills is { Count: > 0 } ? kills.Select(k => k.D).ToHashSet() : new HashSet<int>());
+                kills is { Count: > 0 } ? kills.Select(k => k.D).ToHashSet() : new HashSet<int>(),
+                kills is { Count: > 0 } ? kills.GroupBy(k => k.D).ToDictionary(g => g.Key, g => g.Count()) : null);
         }).ToList())).ToList();
 
     public int TotalTargets => _tiers.Sum(t => t.Targets.Count);

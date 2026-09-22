@@ -4003,6 +4003,17 @@ public partial class App : Application
                 && mob2 == "a Sage of Innoruuk");
             Check("raid kill: normal line no match",
                 !RaidKills.TryParseKill("You slash a rat for 5 points of damage.", out _));
+            // Per-tier counts on the row (22 Sep): "D2 ×7", and the single tier
+            // with the most kills wears gold — ties and week-scope ×1s wear none.
+            {
+                var tv = new RaidKills.TargetView("Maestro of Rancor", 14, DateTime.Now, new HashSet<int> { 0, 2, 3 },
+                    new Dictionary<int, int> { [0] = 4, [2] = 7, [3] = 3 });
+                var tie = new RaidKills.TargetView("Lord of Ire", 3, DateTime.Now, new HashSet<int> { 0, 2, 3 },
+                    new Dictionary<int, int> { [0] = 1, [2] = 1, [3] = 1 });
+                Check("raid tiers: per-tier counts and the top tier",
+                    tv.CountOn(2) == 7 && tv.CountOn(1) == 0 && tv.TopTier == 2 && tie.TopTier is null
+                    && new RaidKills.TargetView("x", 0, null, new HashSet<int>()).TopTier is null);
+            }
 
             // Target renames observed in real logs migrate old target files —
             // Innoruuk's actual death line names him in full.
