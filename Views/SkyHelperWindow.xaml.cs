@@ -37,6 +37,9 @@ public partial class SkyHelperWindow : Window
 
     private string? _cardMob;
     private DateTime _cardAt;
+    private bool _closed;
+    private Action<string> _onSighted = _ => { };
+    private Action _onCleared = () => { };
 
     /// <summary>"Open Sky quests…" from the context menu.</summary>
     public Action? OpenSkyRequested { get; set; }
@@ -65,13 +68,20 @@ public partial class SkyHelperWindow : Window
         Opacity = Math.Clamp(opacity <= 0 ? 1.0 : opacity, 0.1, 1.0);
         _placement = new PanelPlacement(this, configService, "skyhelper", Anchor.TopRight, 40, 320);
 
-        _helper.Sighted += mob => Dispatcher.BeginInvoke(() =>
+        // Named handlers so Closed can unhook them: the anonymous versions
+        // outlived the window, and every dropper sighting after a settings
+        // apply told the dead window to Show() (owner, 22 Sep — 8,260 faults
+        // in one Plane of Sky evening).
+        _onSighted = mob => Dispatcher.BeginInvoke(() =>
         {
+            if (_closed) return;
             _cardMob = mob;
             _cardAt = DateTime.Now;
             Refresh();
         });
-        _helper.Cleared += () => Dispatcher.BeginInvoke(() => { _cardMob = null; Refresh(); });
+        _onCleared = () => Dispatcher.BeginInvoke(() => { if (_closed) return; _cardMob = null; Refresh(); });
+        _helper.Sighted += _onSighted;
+        _helper.Cleared += _onCleared;
         _sky.Changed += OnSkyChanged;
 
         _tick = new DispatcherTimer(DispatcherPriority.Background)
@@ -86,13 +96,21 @@ public partial class SkyHelperWindow : Window
             _hwnd = new WindowInteropHelper(this).Handle;
             ApplyClickThrough();
         };
-        Closed += (_, _) => { _tick.Stop(); _sky.Changed -= OnSkyChanged; if (_lines is not null) _lines.Changed -= OnSkyChanged; };
+        Closed += (_, _) =>
+        {
+            _closed = true;
+            _tick.Stop();
+            _sky.Changed -= OnSkyChanged;
+            if (_lines is not null) _lines.Changed -= OnSkyChanged;
+            _helper.Sighted -= _onSighted;
+            _helper.Cleared -= _onCleared;
+        };
 
         BuildContextMenu();
         Refresh(); // Loaded re-runs it; this keeps a never-shown window honest (selftest too)
     }
 
-    private void OnSkyChanged() => Dispatcher.BeginInvoke(Refresh);
+    private void OnSkyChanged() => Dispatcher.BeginInvoke(() => { if (!_closed) Refresh(); });
 
     public void SetHidden(bool hidden)
     {
@@ -129,7 +147,7 @@ public partial class SkyHelperWindow : Window
         Placeholder.Visibility = !_locked && lines.Count == 0
             ? Visibility.Visible : Visibility.Collapsed;
 
-        bool show = !_hidden && (lines.Count > 0 || !_locked);
+        bool show = !_hidden && !_closed && (lines.Count > 0 || !_locked);
         if (show && Visibility != Visibility.Visible) Show();
         else if (!show && Visibility == Visibility.Visible) Hide();
     }
