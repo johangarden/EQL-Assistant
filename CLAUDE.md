@@ -175,6 +175,12 @@ these, so merged cross-machine history survives a reset).
   minting a wrong number; estimate = MAX over recent 5 samples (early breaks
   read short and must never drag the bar down). Ranks pool ("Quickness II"
   teaches "Quickness"); ranks run base→X, `[IVX]{1,7}` covers them.
+  PET CYCLES (22 Sep): a re-cast only discards your open cycle if it LANDS
+  ON YOU — the same buff cast on your pet right after yourself (Puma) or
+  an interrupted re-cast leaves it alone; the pet landing (castOnOther with
+  the name free) opens its own cycle, closed by "Your pet's X spell has
+  worn off." into the same pool. 20 samples stored per spell = storage,
+  the estimate is the MAX of the newest 5.
 - **Proc detection**: a spell damage/heal line of yours with no own begin-cast
   within 12s. Never DoT ticks, never thorns; a HEAL you've EVER cast this
   session is your spell (HoT ticks arrive outside any window). "You activate

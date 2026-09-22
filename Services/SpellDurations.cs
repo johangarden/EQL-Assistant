@@ -37,9 +37,18 @@ public sealed class SpellDurations
 
     private (SpellLibrary.Spell Spell, DateTime At)? _pending;             // begin-cast seen, landing awaited
     private readonly Dictionary<string, (SpellLibrary.Spell Spell, DateTime Start)> _open = new();
+    // Cycles on your pet (or another target) — closed by the pet's wear-off line.
+    private readonly Dictionary<string, (SpellLibrary.Spell Spell, DateTime Start)> _openOther = new(StringComparer.Ordinal);
 
     /// <summary>Raised when a new sample is recorded: (spell, observedSeconds, sampleCount).</summary>
     public event Action<string, double, int>? SampleLearned;
+
+    // "Your pet's Spirit of the Puma spell has worn off." — the pet's fade line
+    // (owner, 22 Sep: Puma goes on him AND the pet; the pet cast 6 s after his
+    // own used to read as a re-cast and discard his cycle).
+    private static readonly Regex PetWornOffRx = new(
+        @"^Your pet's (?<s>.+?) spell has worn off\.$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex BeginCastRx = new(
         @"^You begin (?:casting|singing) (?<s>.+?)\.",
@@ -191,6 +200,7 @@ public sealed class SpellDurations
             || body.StartsWith("You have entered ", StringComparison.Ordinal))
         {
             _open.Clear();
+            _openOther.Clear();
             _pending = null;
             return;
         }
@@ -204,13 +214,10 @@ public sealed class SpellDurations
             var spell = _library.Spells.FirstOrDefault(s =>
                     s.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
                 ?? _library.Spells.FirstOrDefault(s => BaseKey(s.Name) == BaseKey(name));
-            // A re-cast contaminates any open cycle of the same spell (a refresh
-            // would otherwise mint an inflated land-to-fade span).
-            if (spell is not null)
-            {
-                _open.Remove(BaseKey(spell.Name));
-                _pending = (spell, time);
-            }
+            // A re-cast is only a refresh if it LANDS ON YOU — the landing decides
+            // (below). Casting the same buff on your pet right after yourself
+            // (Puma, 22 Sep) or an interrupted re-cast leaves your cycle alone.
+            if (spell is not null) _pending = (spell, time);
             return;
         }
 
@@ -224,10 +231,27 @@ public sealed class SpellDurations
             }
             else if (body == p.Spell.CastOnYou)
             {
-                _open[BaseKey(p.Spell.Name)] = (p.Spell, time);
+                _open[BaseKey(p.Spell.Name)] = (p.Spell, time); // a refresh replaces the old cycle
                 _pending = null;
                 return;
             }
+            else if (OtherLandingRx(p.Spell) is { } orx && orx.IsMatch(body))
+            {
+                // Your cast landed on someone else — your pet, most often. Its
+                // own cycle: closed by "Your pet's X spell has worn off."; the
+                // same spell runs the same clock, so it feeds the same pool.
+                _openOther[BaseKey(p.Spell.Name)] = (p.Spell, time);
+                _pending = null;
+                return;
+            }
+        }
+
+        var petOff = PetWornOffRx.Match(body);
+        if (petOff.Success)
+        {
+            string key = BaseKey(petOff.Groups["s"].Value);
+            if (_openOther.Remove(key, out var cycle)) Mint(cycle.Spell, cycle.Start, time, "pet");
+            return;
         }
 
         // An UNANCHORED landing of a spell we're timing: an external caster
@@ -245,6 +269,16 @@ public sealed class SpellDurations
                 return;
             }
         }
+        if (_openOther.Count > 0)
+        {
+            var refreshed = _openOther.Where(kv => OtherLandingRx(kv.Value.Spell) is { } rx && rx.IsMatch(body))
+                .Select(kv => kv.Key).ToList();
+            if (refreshed.Count > 0)
+            {
+                foreach (var k in refreshed) _openOther.Remove(k); // someone else re-buffed the pet
+                return;
+            }
+        }
 
         // Wear-off: closes the matching open cycle and mints a sample.
         if (_byFadeMsg.TryGetValue(body, out var candidates))
@@ -253,23 +287,51 @@ public sealed class SpellDurations
             {
                 string key = BaseKey(spell.Name);
                 if (!_open.Remove(key, out var cycle)) continue;
-
-                double seconds = (time - cycle.Start).TotalSeconds;
-                if (seconds <= 1 || seconds > MaxSaneSeconds) return;
-
-                if (!_byKey.TryGetValue(key, out var rec))
-                    _byKey[key] = rec = new SpellRec { Name = spell.Name };
-                if (rec.Samples.Any(s => s.Ts == time)) return; // replayed line (full reparse)
-                rec.Name = spell.Name; // latest rank's display name wins
-                rec.Samples.Add(new Sample(time, seconds));
-                if (rec.Samples.Count > MaxSamplesStored) rec.Samples.RemoveAt(0);
-                Save();
-                Log.Info($"Duration learned: {spell.Name} ran {seconds:0}s " +
-                         $"(sample {rec.Samples.Count}, window max {rec.Samples.TakeLast(RecentWindow).Max(s => s.Seconds):0}s)");
-                SampleLearned?.Invoke(spell.Name, seconds, rec.Samples.Count);
+                Mint(spell, cycle.Start, time, "you");
                 return;
             }
         }
+    }
+
+    /// <summary>Close a cycle into a sample: landing → wear-off seconds, same
+    /// pool whether the buff sat on you or on your pet.</summary>
+    private void Mint(SpellLibrary.Spell spell, DateTime start, DateTime time, string on)
+    {
+        string key = BaseKey(spell.Name);
+        double seconds = (time - start).TotalSeconds;
+        if (seconds <= 1 || seconds > MaxSaneSeconds) return;
+
+        if (!_byKey.TryGetValue(key, out var rec))
+            _byKey[key] = rec = new SpellRec { Name = spell.Name };
+        if (rec.Samples.Any(s => s.Ts == time)) return; // replayed line (full reparse)
+        rec.Name = spell.Name; // latest rank's display name wins
+        rec.Samples.Add(new Sample(time, seconds));
+        if (rec.Samples.Count > MaxSamplesStored) rec.Samples.RemoveAt(0);
+        Save();
+        Log.Info($"Duration learned: {spell.Name} ran {seconds:0}s on {on} " +
+                 $"(sample {rec.Samples.Count}, window max {rec.Samples.TakeLast(RecentWindow).Max(s => s.Seconds):0}s)");
+        SampleLearned?.Invoke(spell.Name, seconds, rec.Samples.Count);
+    }
+
+    private readonly Dictionary<string, Regex?> _otherRx = new(StringComparer.Ordinal);
+
+    /// <summary>The spell's third-person landing with the name free:
+    /// "Target growls with the spirit of the puma." → ^(.+?) growls with the
+    /// spirit of the puma\.$ — null when the library has no such line.</summary>
+    private Regex? OtherLandingRx(SpellLibrary.Spell spell)
+    {
+        string key = spell.Name;
+        if (_otherRx.TryGetValue(key, out var cached)) return cached;
+        Regex? rx = null;
+        string other = spell.CastOnOther;
+        int at = other.IndexOf("Target", StringComparison.Ordinal);
+        if (other.Length > 8 && at >= 0)
+        {
+            string pattern = "^" + Regex.Escape(other[..at]) + @"(?<who>[^\s].*?)" + Regex.Escape(other[(at + 6)..]) + "$";
+            rx = new Regex(pattern, RegexOptions.Compiled | RegexOptions.CultureInvariant);
+        }
+        _otherRx[key] = rx;
+        return rx;
     }
 
     /// <summary>Wipe all learned samples (Data page reset).</summary>

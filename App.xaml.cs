@@ -1716,6 +1716,40 @@ public partial class App : Application
             dur.ProcessLine($"[{T(12403)}] The spirit of wolf leaves you.");
             Check("durations: an external re-land contaminates the cycle",
                 dur.SampleCount("Spirit of Wolf") == 2);
+            // Owner's Puma (22 Sep): Spirit of the Puma on himself, then on the
+            // pet 6 s later — the second cast of the same spell used to read as
+            // a re-cast and discard his own cycle, so Puma never learned.
+            dur.ProcessLine($"[{T(13000)}] You begin casting Spirit of the Puma X.");
+            dur.ProcessLine($"[{T(13002)}] You begin to snarl as your features become feline.");
+            dur.ProcessLine($"[{T(13006)}] You begin casting Spirit of the Puma X.");
+            dur.ProcessLine($"[{T(13008)}] Jobtik growls with the spirit of the puma.");
+            dur.ProcessLine($"[{T(13212)}] The spirit of the puma departs.");
+            Check("durations: the pet cast right after your own leaves your cycle alone (210 s learned)",
+                dur.LearnedMaxSeconds("Spirit of the Puma") is double pumaSec && Math.Abs(pumaSec - 210) < 0.01);
+            dur.ProcessLine($"[{T(13218)}] Your pet's Spirit of the Puma spell has worn off.");
+            Check("durations: the pet's own wear-off mints a sample into the same pool",
+                dur.SampleCount("Spirit of the Puma") == 2);
+            dur.ProcessLine($"[{T(14000)}] You begin casting Spirit of the Puma X.");
+            dur.ProcessLine($"[{T(14002)}] You begin to snarl as your features become feline.");
+            dur.ProcessLine($"[{T(14100)}] You begin casting Spirit of the Puma X.");
+            dur.ProcessLine($"[{T(14102)}] You begin to snarl as your features become feline.");
+            dur.ProcessLine($"[{T(14302)}] The spirit of the puma departs.");
+            Check("durations: a re-cast that LANDS on you still refreshes — one 200 s sample, never a 300 s one",
+                dur.SampleCount("Spirit of the Puma") == 3
+                && dur.ObservedMaxSeconds("Spirit of the Puma") is double pumaMax && Math.Abs(pumaMax - 210) < 0.01);
+            dur.ProcessLine($"[{T(15000)}] You begin casting Spirit of the Puma X.");
+            dur.ProcessLine($"[{T(15002)}] Jobtik growls with the spirit of the puma.");
+            dur.ProcessLine($"[{T(15100)}] Jobtik growls with the spirit of the puma."); // a groupmate re-buffed the pet
+            dur.ProcessLine($"[{T(15400)}] Your pet's Spirit of the Puma spell has worn off.");
+            Check("durations: another caster refreshing the pet contaminates the pet cycle",
+                dur.SampleCount("Spirit of the Puma") == 3);
+            dur.ProcessLine($"[{T(16000)}] You begin casting Spirit of the Puma X.");
+            dur.ProcessLine($"[{T(16002)}] You begin to snarl as your features become feline.");
+            dur.ProcessLine($"[{T(16010)}] You begin casting Spirit of the Puma X."); // interrupted — nothing lands
+            dur.ProcessLine($"[{T(16212)}] The spirit of the puma departs.");
+            Check("durations: an interrupted re-cast leaves your cycle alone too",
+                dur.SampleCount("Spirit of the Puma") == 4);
+
             // The library floor (owner ruling, Chloroplast): the regen family
             // shares its landing/wear-off sentences, so cycles can close SHORT
             // — a learned figure below the library's stated duration is
