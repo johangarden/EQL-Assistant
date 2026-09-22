@@ -42,32 +42,49 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border CornerRadius="8" Padding="5,4" Margin="0,0,3,3" Cursor="Hand"
-                                Background="{Binding SelBg}" Tag="{Binding}"
-                                MouseLeftButtonUp="Badge_Click" ToolTip="{Binding Tip}">
-                            <StackPanel Width="46">
-                                <TextBlock Text="{Binding TopLabel}" Foreground="#7F93AD" FontSize="9.5"
-                                           HorizontalAlignment="Center" Margin="0,0,0,2"/>
-                                <Grid Width="38" Height="38" HorizontalAlignment="Center">
-                                    <Ellipse Stroke="#2A3347" StrokeThickness="3"/>
-                                    <Path Data="{Binding Arc}" Stroke="{Binding Ring}"
-                                          StrokeThickness="3" StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round"/>
-                                    <Path Data="{Binding Glyph}" Fill="{Binding Ink}"
-                                          Width="20" Height="20" Stretch="Uniform"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Abbr}" Foreground="{Binding Ink}"
-                                               FontSize="10.5" FontWeight="Bold"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Visibility="{Binding AbbrVisibility}"/>
-                                    <TextBlock Text="✓" Foreground="#81C784" FontSize="11" FontWeight="Bold"
-                                               HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                               Margin="0,0,-2,-4" Visibility="{Binding DoneVisibility}"/>
-                                </Grid>
-                                <TextBlock Text="{Binding CountText}" Foreground="#7F93AD" FontSize="9.5"
-                                           HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                            </StackPanel>
-                        </Border>
+                        <!-- Owner, 22 Sep: ALL · divider · the FINISHED classes (solid
+                             ring, rim tick, DONE) · "n done" · divider · the rest, most
+                             complete first. The blue dot marks your own classes (/who). -->
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="1" Background="#3A4560" Margin="2,12,5,12" Visibility="{Binding SepVisibility}"/>
+                            <Border CornerRadius="8" Padding="5,4" Margin="0,0,3,3" Cursor="Hand"
+                                    Background="{Binding SelBg}" Tag="{Binding}"
+                                    MouseLeftButtonUp="Badge_Click" ToolTip="{Binding Tip}">
+                                <StackPanel Width="46">
+                                    <TextBlock Text="{Binding TopLabel}" Foreground="{Binding LabelFg}" FontSize="9.5"
+                                               HorizontalAlignment="Center" Margin="0,0,0,2"/>
+                                    <Grid Width="38" Height="38" HorizontalAlignment="Center">
+                                        <Ellipse Stroke="#2A3347" StrokeThickness="3"/>
+                                        <Ellipse Fill="{Binding FillBg}" Margin="1.5"/>
+                                        <Path Data="{Binding Arc}" Stroke="{Binding Ring}"
+                                              StrokeThickness="3" StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"/>
+                                        <Path Data="{Binding Glyph}" Fill="{Binding Ink}"
+                                              Width="20" Height="20" Stretch="Uniform"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Abbr}" Foreground="{Binding Ink}"
+                                                   FontSize="10.5" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Visibility="{Binding AbbrVisibility}"/>
+                                        <Border Width="15" Height="15" CornerRadius="7.5" Background="#81C784"
+                                                BorderBrush="#141A24" BorderThickness="2"
+                                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-4,0"
+                                                Visibility="{Binding DoneVisibility}">
+                                            <TextBlock Text="✓" Foreground="#0B1A10" FontSize="8" FontWeight="ExtraBold"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{Binding CountText}" Foreground="{Binding CountFg}" FontSize="9.5"
+                                               FontWeight="{Binding CountWeight}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <Ellipse Width="5" Height="5" Fill="#4FC3F7" Margin="0,2,0,0"
+                                             Visibility="{Binding MineVisibility}" ToolTip="One of your classes (from /who)"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="{Binding CapText}" Foreground="#81C784" FontSize="9" Opacity="0.85"
+                                       VerticalAlignment="Center" Margin="0,0,2,0" Visibility="{Binding CapVisibility}">
+                                <TextBlock.LayoutTransform><RotateTransform Angle="-90"/></TextBlock.LayoutTransform>
+                            </TextBlock>
+                        </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

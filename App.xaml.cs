@@ -223,6 +223,16 @@ public partial class App : Application
 
             // Sky window builds its class-badge strip (arcs included).
             var skyWin = new Views.SkyWindow(new SkyQuests(cs, new LootTracker(cs)));
+            // Class badges (22 Sep): no MINE, ALL first, then the classes most-complete first.
+            {
+                var order = skyWin.BadgeOrderForTest;
+                if (order.Count != 17 || order[0] != "ALL" || order.Contains("MINE"))
+                    throw new Exception("sky badges: ALL + 16 classes, no MINE — got " + string.Join(",", order));
+                var ranked = Views.SkyWindow.RankClasses(new[] { ("PAL", 2, 4), ("MNK", 6, 6), ("SHD", 5, 7), ("WAR", 5, 6), ("RNG", 3, 6), ("SHM", 6, 6) }, x => (x.Item2, x.Item3))
+                    .Select(x => x.Item1).ToList();
+                if (string.Join(",", ranked) != "MNK,SHM,WAR,SHD,PAL,RNG")
+                    throw new Exception("sky badges: rank by share, then fewest left, then class order — got " + string.Join(",", ranked));
+            }
             skyWin.Show();
             skyWin.Close();
 
@@ -4959,7 +4969,7 @@ public partial class App : Application
             win.Show(44, classes, lib.UnlocksAt(44, classes));
             mgr = win;
         }
-        else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase))
+        else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:sky", StringComparison.OrdinalIgnoreCase))
         {
             var csq = new ConfigService();
             var sw = new Views.SkyWindow(new SkyQuests(csq, new LootTracker(csq)), null, () => "SHD/SHM/NEC", new QuestLines(csq, new LootTracker(csq)))
@@ -4968,7 +4978,7 @@ public partial class App : Application
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
             };
             sw.Show();
-            sw.ShowPack("lines");
+            sw.ShowPack(page.EndsWith(":sky", StringComparison.OrdinalIgnoreCase) ? "sky" : "lines");
             mgr = sw;
         }
         else if (page.StartsWith("character:", StringComparison.OrdinalIgnoreCase))
