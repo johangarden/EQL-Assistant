@@ -68,11 +68,16 @@ public partial class InventoryPanel : UserControl
         ("sets", "Armor sets"),
         ("bis", "BiS Finder"),
         ("charms", "Charmed pets"),
+        ("races", "Races"),
     };
 
     /// <summary>The charm ledger behind the Charmed pets tab (Character window only).</summary>
     public CharmBook? Charms { get; set; }
     public int CharmRowsForTest => CharmsTab.RowCount;
+    /// <summary>The race unlocks behind the Races tab (22 Sep).</summary>
+    public RaceBook? Races { get; set; }
+    public int RaceRowsForTest => RacesTab.RowCount;
+    public RacesView RacesTabForTest => RacesTab;
 
     private static readonly Brush SegOnBg = Freeze("#16283E");
     private static readonly Brush SegOnFg = Freeze("#4FC3F7");
@@ -384,6 +389,7 @@ public partial class InventoryPanel : UserControl
             {
                 "sheet" or "bis" => label,
                 "charms" => Charms is { Episodes.Count: > 0 } ? $"{label}  {Charms.Episodes.Select(e => e.Mob).Distinct(StringComparer.OrdinalIgnoreCase).Count()}" : label,
+                "races" => Races is { HasDumps: true } rb ? $"{label}  {rb.Views().Count(r => r.Done)}/{rb.Views().Count}" : label,
                 "focus" => $"{label}  {scored.Count(a => a.Status == 2)}/{scored.Count}",
                 _ => $"{label}  {_rows.Count(r => InventoryStore.TabOf(r) == id)}",
             };
@@ -399,6 +405,7 @@ public partial class InventoryPanel : UserControl
         if (id != "sheet") SheetView.CloseDrawer(); // the extension is sheet-only
         if (id == "bis") BisView.ResetCombo(KnownClasses()); // start from who you are
         if (id == "charms") CharmsTab.Init(Charms);
+        if (id == "races") RacesTab.Init(Races);
         _tab = id;
         BuildTabs();
         _lane = null; // a lane picked on one tab means nothing on another
@@ -427,7 +434,7 @@ public partial class InventoryPanel : UserControl
     {
         // The audit boards are not row-backed (and the sheet is not
         // list-backed); place is spelled per family / per slot instead.
-        if (_tab is "focus" or "sheet" or "sets" or "bis" or "charms")
+        if (_tab is "focus" or "sheet" or "sets" or "bis" or "charms" or "races")
         {
             LanePanel.Children.Clear();
             LanePanel.Visibility = Visibility.Collapsed;
@@ -583,10 +590,11 @@ public partial class InventoryPanel : UserControl
         // no search, no lanes.
         bool sheet = _tab == "sheet" && _dump is not null;
         bool bis = _tab == "bis" && _dump is not null;
-        bool charms = _tab == "charms"; // the ledger needs no dump
+        bool charms = _tab == "charms" || _tab == "races"; // the ledgers need no inventory dump
         SheetView.Visibility = sheet ? Visibility.Visible : Visibility.Collapsed;
         BisView.Visibility = bis ? Visibility.Visible : Visibility.Collapsed;
-        CharmsTab.Visibility = charms ? Visibility.Visible : Visibility.Collapsed;
+        CharmsTab.Visibility = _tab == "charms" ? Visibility.Visible : Visibility.Collapsed;
+        RacesTab.Visibility = _tab == "races" ? Visibility.Visible : Visibility.Collapsed;
         SearchRow.Visibility = sheet || bis || charms ? Visibility.Collapsed : Visibility.Visible;
         if (sheet || bis || charms)
         {

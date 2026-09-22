@@ -39,6 +39,9 @@ public partial class MainWindow : Window
     private readonly TradeskillData _tsData = new();
     private TradeskillWatch _tradeskills = null!;
     private TradeskillWindow? _tsWin;
+    // Race unlocks (22 Sep): the dumps + the log's faction lines; the Races tab and the faction helper card.
+    private RaceBook _races = null!;
+    private FactionHelperWindow? _factionWin;
     private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _tsDumpCache;
     // Toolbar news badges (21 Sep): live drops / raid kills since their window was last opened.
     private int _lootNew, _raidNew;
@@ -181,6 +184,8 @@ public partial class MainWindow : Window
         _combat.DamageDealt += (att, tgt, amount, time, dot) => { if (!_suppressSct) _cc.NoteDamage(att, tgt, amount, time, dot); };
         _charms = new CharmBook(_configService); // the charm ledger (21 Sep)
         _tradeskills = new TradeskillWatch(_tsData, _configService);
+        _races = new RaceBook(_configService);
+        _races.UseFinder(RaceDumpFiles);
         _tradeskills.WentTrivial += p => Dispatcher.BeginInvoke(() => OnTradeskillTrivial(p));
         _cc.CharmEnded += ep => { if (!_suppressSct) _charms.Add(ep); };
         _cc.CharmAttemptFailed += a => { if (!_suppressSct) _charms.AddAttempt(a); };
@@ -492,6 +497,7 @@ public partial class MainWindow : Window
                 _durations.ProcessLine(line);
                 _session.ProcessLine(line);
                 _tradeskills.ProcessLine(line, live: false);
+                _races.ProcessLine(line, live: false);
                 NoteLineSeen(t);
                 lines++;
             }
@@ -576,6 +582,7 @@ public partial class MainWindow : Window
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _tradeskills.ProcessLine(line, live: false); // skill values + vendors from history
+                _races.ProcessLine(line, live: false);       // mob → faction hits from history
                 // Pet names ride the reparse: every "… Master." speech in the
                 // whole history teaches the known-pets ledger, so last month's
                 // pet never reads as an ally or a group member again.
@@ -1021,6 +1028,7 @@ public partial class MainWindow : Window
         RebuildMoteTickerWindow();
         RebuildConditionsWindow();
         RebuildSkyHelperWindow();
+        RebuildFactionHelperWindow();
         RebuildSessionStatsWindow();
         RebuildRemindersWindow();
         ApplyCursorRing();
@@ -1212,6 +1220,40 @@ public partial class MainWindow : Window
     public static string TradeskillPhrase(string template, string item) =>
         (string.IsNullOrWhiteSpace(template) ? "{item} is trivial" : template).Replace("{item}", item, StringComparison.OrdinalIgnoreCase);
 
+    // ---- race unlocks (22 Sep) ----------------------------------------------------
+
+    /// <summary>Where the two dumps live: next to the followed log's game folder.</summary>
+    private (string? Factions, string? Achievements) RaceDumpFiles()
+    {
+        string logPath = _watcher?.CurrentPath ?? "";
+        if (logPath.Length == 0) return (null, null);
+        var (name, server) = InventoryStore.ParseLogName(logPath);
+        string root = InventoryStore.EqRootOf(logPath);
+        return (FactionDumps.FindFactionsFile(root, name, server), FactionDumps.FindAchievementsFile(root, name, server));
+    }
+
+    private void RebuildFactionHelperWindow()
+    {
+        if (_factionWin is not null) { try { _factionWin.Close(); } catch { /* ignore */ } _factionWin = null; }
+        if (!_config.Overlay.FactionHelperVisible) return;
+        _races.RefreshDumps(force: true);
+        _factionWin = new FactionHelperWindow(_races, _configService, _config.Overlay.Opacity)
+        {
+            OpenRacesRequested = () => { OpenCharacterSheet(); _inventoryWindow?.ShowTab("races"); },
+        };
+        _factionWin.Show();
+        _factionWin.SetLocked(_vm.Locked);
+        _factionWin.SetHidden(_hidden);
+    }
+
+    private void ToggleFactionHelper()
+    {
+        _config.Overlay.FactionHelperVisible = !_config.Overlay.FactionHelperVisible;
+        _configService.SaveSettings(_config);
+        RebuildFactionHelperWindow();
+        _vm.Flash(_config.Overlay.FactionHelperVisible ? "Faction helper shown." : "Faction helper hidden.");
+    }
+
     private void RebuildCharmWindow()
     {
         if (_charmWin is not null) { try { _charmWin.Close(); } catch { /* ignore */ } _charmWin = null; }
@@ -1319,6 +1361,7 @@ public partial class MainWindow : Window
         _config.Overlay.SkyHelperVisible = !_config.Overlay.SkyHelperVisible;
         _configService.SaveSettings(_config);
         RebuildSkyHelperWindow();
+        RebuildFactionHelperWindow();
         _vm.Flash(_config.Overlay.SkyHelperVisible ? "Quest droppers on." : "Quest droppers off.");
     }
 
@@ -1442,6 +1485,7 @@ public partial class MainWindow : Window
         _skyHelper.ProcessLine(line);      // ibid. — quest-dropper sightings
         _cc.ProcessLine(line);             // ibid. — charm and mez you hold
         _tradeskills.ProcessLine(line);    // combines, skill-ups, purchases — the tradeskill helper
+        _races.ProcessLine(line);          // faction hits → race unlocks + the faction helper
         _session.ProcessLine(line);    // leveling pace (rebuilt by catch-up)
         if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
         _logBus.Publish(line);
@@ -1457,6 +1501,7 @@ public partial class MainWindow : Window
     {
         _reparsing = false;
         _tradeskills.SaveLearned();
+        _races.SaveLearned();
         if (_deferredLive.Count == 0) return;
         var queued = _deferredLive.ToArray();
         _deferredLive.Clear();
@@ -1589,6 +1634,7 @@ public partial class MainWindow : Window
         _moteTickerWin?.SetLocked(_vm.Locked);
         _conditionsWin?.SetLocked(_vm.Locked);
         _skyHelperWin?.SetLocked(_vm.Locked);
+        _factionWin?.SetLocked(_vm.Locked);
         _sessionWin?.SetLocked(_vm.Locked);
         _remindersWin?.SetLocked(_vm.Locked);
         _flash?.SetLocked(_vm.Locked);
@@ -1670,6 +1716,7 @@ public partial class MainWindow : Window
         _moteTickerWin?.SetHidden(_hidden);
         _conditionsWin?.SetHidden(_hidden);
         _skyHelperWin?.SetHidden(_hidden);
+        _factionWin?.SetHidden(_hidden);
         _sessionWin?.SetHidden(_hidden);
         _remindersWin?.SetHidden(_hidden);
         UpdateBarsVisibility();
@@ -1712,6 +1759,7 @@ public partial class MainWindow : Window
             _moteTickerWin?.SetLocked(false);
             _conditionsWin?.SetLocked(false);
             _skyHelperWin?.SetLocked(false);
+            _factionWin?.SetLocked(false);
             _sessionWin?.SetLocked(false);
             _remindersWin?.SetLocked(false);
             _flash?.SetLocked(false);
@@ -1730,6 +1778,7 @@ public partial class MainWindow : Window
         _moteTickerWin?.ResetPosition();
         _conditionsWin?.ResetPosition();
         _skyHelperWin?.ResetPosition();
+        _factionWin?.ResetPosition();
         _sessionWin?.ResetPosition();
         _remindersWin?.ResetPosition();
         _timer?.ResetPosition();
@@ -1972,6 +2021,7 @@ public partial class MainWindow : Window
         RebuildSctLanes();
         RebuildConditionsWindow(); // its page owns visibility now
         RebuildSkyHelperWindow();  // ditto — the Sky helper page arrived
+        RebuildFactionHelperWindow();
         ApplyCursorRing();
         ApplyGameFocusWatch();
         if (_toolbarWin is not null)
@@ -2119,6 +2169,7 @@ public partial class MainWindow : Window
         // "Sky droppers", NOT "Sky quest helper": the Quests WINDOW (toolbar !)
         // is a different thing, and the old name kept getting mistaken for it.
         panels.Items.Add(BurgerPanelRow("Quest droppers", ToggleSkyHelper, "Quest droppers", () => _config.Overlay.SkyHelperVisible));
+        panels.Items.Add(BurgerPanelRow("Faction helper (race unlocks)", ToggleFactionHelper, "Quest droppers", () => _config.Overlay.FactionHelperVisible));
         panels.Items.Add(BurgerPanelRow("Session stats (XP/AA/motes)", ToggleSessionStats, null, () => _config.Overlay.SessionStatsVisible));
         panels.Items.Add(BurgerPanelRow("Spawn timer", ToggleTimer, "Spawn timer", () => !_timerHidden));
         panels.Items.Add(BurgerPanelRow("Tradeskill helper", ToggleTradeskill, "Tradeskills", () => _config.Overlay.TradeskillVisible));
@@ -2411,7 +2462,7 @@ public partial class MainWindow : Window
             string logPath = _watcher?.CurrentPath ?? "";
             var (name, server) = InventoryStore.ParseLogName(logPath);
             _inventoryWindow = new Views.InventoryWindow(
-                InventoryStore.EqRootOf(logPath), name, server, _session, _charms);
+                InventoryStore.EqRootOf(logPath), name, server, _session, _charms, _races);
             _inventoryWindow.Closed += (_, _) => _inventoryWindow = null;
             _inventoryWindow.Show();
         }
@@ -2728,6 +2779,7 @@ public partial class MainWindow : Window
         try { _moteTickerWin?.Close(); } catch { /* ignore */ }
         try { _conditionsWin?.Close(); } catch { /* ignore */ }
         try { _skyHelperWin?.Close(); } catch { /* ignore */ }
+        try { _factionWin?.Close(); } catch { /* ignore */ }
         try { _sessionWin?.Close(); } catch { /* ignore */ }
         try { _remindersWin?.Close(); } catch { /* ignore */ }
         try { _timer?.Close(); } catch { /* ignore */ }

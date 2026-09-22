@@ -1405,6 +1405,7 @@ public partial class TriggerManagerWindow : Window
         }
         SkyHelperVisibleCheck.IsChecked = _config.Overlay.SkyHelperVisible;
         SkyHelperCompletedCheck.IsChecked = _config.Overlay.SkyHelperShowCompleted;
+        FactionHelperVisibleCheck.IsChecked = _config.Overlay.FactionHelperVisible;
         _soundUxLoading = true;
         InterruptOnCheck.IsChecked = _config.Overlay.InterruptNoticeEnabled;
         InterruptModeBox.SelectedValue = _config.Overlay.InterruptNoticeMode;
@@ -1938,6 +1939,7 @@ public partial class TriggerManagerWindow : Window
                 CcSpeak = CcSpeakCheck.IsChecked == true,
                 SkyHelperVisible = SkyHelperVisibleCheck.IsChecked == true,
                 SkyHelperShowCompleted = SkyHelperCompletedCheck.IsChecked == true,
+                FactionHelperVisible = FactionHelperVisibleCheck.IsChecked == true,
                 InterruptNoticeEnabled = InterruptOnCheck.IsChecked == true,
                 InterruptNoticeMode = InterruptModeBox.SelectedValue as string ?? "sound",
                 InterruptNoticeSpeak = InterruptSpeakBox.Text.Trim(),
