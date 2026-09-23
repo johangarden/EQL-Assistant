@@ -3743,6 +3743,43 @@ public partial class App : Application
         Check("cc: the broken one dying clears the loose name and leaves the held twins",
             tw.MezRows.Count(r => r.BrokeAt is null) == 2 && tw.LooseNames.Count == 0);
 
+        // One break, three lines (rig log, 21 Sep 22:36:04): the wear-off, then
+        // "Bazzzazzt has been awakened by Thorrak.", then the reave — the app
+        // spent the wear-off on one twin and the hit on another (owner, 23 Sep:
+        // "same name mobs breaking at the same time").
+        var bk = new CrowdControl(lib, null) { IsSelf = n => n == "Thorrak" };
+        bk.ProcessLine(L(500, "You begin casting Mesmerization VIII."));
+        bk.ProcessLine(L(502, "Bazzzazzt has been mesmerized."));
+        bk.ProcessLine(L(502, "Bazzzazzt has been mesmerized."));
+        bk.ProcessLine(L(502, "Bazzzazzt has been mesmerized."));
+        string bkLabel = ""; int bkBreaks = 0;
+        bk.MezBroke += (l, _) => { bkLabel = l; bkBreaks++; };
+        bk.ProcessLine(L(510, "Your Mesmerization VIII spell has worn off of Bazzzazzt."));
+        bk.ProcessLine(L(510, "Bazzzazzt has been awakened by Thorrak."));
+        bk.NoteDamage("Thorrak", "Bazzzazzt", 51, c0.AddSeconds(510));
+        var bks = bk.Take(c0.AddSeconds(511));
+        Check("cc: wear-off → awakened-by → the hit is ONE break: one red row naming the hitter, two twins still held",
+            bkBreaks == 1 && bks.Held == 2 && bks.Broken == 1 && bkLabel == "Bazzzazzt 01"
+            && bks.Mez[0] is { Broke: true, BrokeBy: "Thorrak", BrokeAmount: 51 } && bks.Loose.SequenceEqual(new[] { "Bazzzazzt" }));
+        // The other order: the hit first, the wear-off a second later.
+        var bk2 = new CrowdControl(lib, null) { IsSelf = n => n == "Thorrak" };
+        bk2.ProcessLine(L(600, "You begin casting Mesmerization VIII."));
+        bk2.ProcessLine(L(602, "Bzzazzt has been mesmerized."));
+        bk2.ProcessLine(L(602, "Bzzazzt has been mesmerized."));
+        bk2.ProcessLine(L(602, "Bzzazzt has been mesmerized."));
+        int bk2Breaks = 0; bk2.MezBroke += (_, _) => bk2Breaks++;
+        bk2.NoteDamage("Jobtik", "Bzzazzt", 58, c0.AddSeconds(606));
+        bk2.ProcessLine(L(607, "Your Mesmerization VIII spell has worn off of Bzzazzt."));
+        bk2.ProcessLine(L(607, "Bzzazzt has been awakened by Jobtik."));
+        var bk2s = bk2.Take(c0.AddSeconds(608));
+        Check("cc: the hit first, then the wear-off and awakened-by — still one break, two held",
+            bk2Breaks == 1 && bk2s.Held == 2 && bk2s.Broken == 1);
+        // A wear-off with no hit after it is an expiry: one row leaves quietly.
+        bk2.ProcessLine(L(640, "Your Mesmerization VIII spell has worn off of Bzzazzt."));
+        var bk2e = bk2.Take(c0.AddSeconds(645));
+        Check("cc: a wear-off nobody hits after is an expiry — one row leaves, no break, the broken one long culled",
+            bk2Breaks == 1 && bk2e.Held == 1 && bk2e.Broken == 0 && bk2.MezRows.Count == 1);
+
         // The learned clock persists with the landings.
         string ccPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_durations.json");
         try { File.Delete(ccPath); } catch { /* fresh */ }

@@ -1,4 +1,4 @@
-# CLAUDE.md — project guide for AI-assisted development
+﻿# CLAUDE.md — project guide for AI-assisted development
 
 EQL Assistant is a Windows 11 WPF overlay suite for the MMO *EQ Legends*. It
 works **exclusively by parsing the game's `eqlog_*.txt` log file** — no
@@ -82,7 +82,12 @@ the affected suites (with `-Wait`) before committing.
   clock OVERRUNS grey until the wear-off (hygiene max(90 s, 3×)). LOOSE
   adds: a mezzed mob never acts, so a held name hitting/casting (not DoT
   ticks) flags a loose add — damage on the name is the add's (no false
-  break), its death spares the rows, the next landing appends. Unknown
+  break), its death spares the rows, the next landing appends. ONE BREAK,
+  ONE ROW (23 Sep, rig log): a break prints up to three lines — "Your X
+  spell has worn off of <mob>.", "<mob> has been awakened by <who>." and
+  the hit — in any order within 3 s (`BreakPairSec`); the first takes a
+  row (a wear-off's row waits in `_recentWorn`), the others fill it in.
+  A wear-off nobody hits after is an expiry of the OLDEST held row. Unknown
   landings (necro undead charms) open ASSUMED and are LEARNED from the
   emote after the cast once a wear-off names the mob. Both learned sets
   persist in `cc-landings.json`. Live-only. Charm break = badge + phrase.
