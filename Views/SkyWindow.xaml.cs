@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using EQLOverlay.Interop;
@@ -56,18 +56,31 @@ public partial class SkyWindow : Window
     private void Chip_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not ChipVm { Url.Length: > 0 } vm) return;
+        OpenUrl(vm.Url);
+        e.Handled = true;
+    }
+
+    /// <summary>The reward line opens the item's eqlwiki page (owner, 23 Sep).</summary>
+    private void Reward_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not QuestVm { Reward.Length: > 0 } vm) return;
+        OpenUrl(WikiUrl(vm.Reward));
+        e.Handled = true;
+    }
+
+    internal static void OpenUrl(string url)
+    {
         try
         {
             System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo(vm.Url) { UseShellExecute = true });
+                new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
         }
         catch { /* no browser is not our problem to solve */ }
-        e.Handled = true;
     }
 
     /// <summary>The eqlwiki page for a name — pages live at the site ROOT,
     /// spaces spelled as underscores.</summary>
-    private static string WikiUrl(string name) =>
+    internal static string WikiUrl(string name) =>
         "https://eqlwiki.com/" + Uri.EscapeDataString(name.Trim().Replace(' ', '_'));
 
     /// <summary>One class badge: glyph (or ALL-text) ring + completion arc.</summary>
@@ -183,6 +196,14 @@ public partial class SkyWindow : Window
 
     /// <summary>Switch the window between its packs: the Sky pieces or the
     /// Notable quests view — one shows, the other collapses.</summary>
+    /// <summary>Renders: pick a status filter ("all" shows every card on an empty ledger).</summary>
+    internal void ShowStatusForTest(string tag)
+    {
+        foreach (var item in StatusBox.Items)
+            if (item is ComboBoxItem { Tag: string t } cbi && t == tag) { StatusBox.SelectedItem = cbi; break; }
+        Refresh();
+    }
+
     public void ShowPack(string pack)
     {
         if (pack == "lines" && _lines is null) return;

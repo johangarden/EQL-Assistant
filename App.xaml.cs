@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -5121,7 +5121,8 @@ public partial class App : Application
             win.Show(44, classes, lib.UnlocksAt(44, classes));
             mgr = win;
         }
-        else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:sky", StringComparison.OrdinalIgnoreCase))
+        else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:sky", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("quests:sky:all", StringComparison.OrdinalIgnoreCase))
         {
             var csq = new ConfigService();
             var sw = new Views.SkyWindow(new SkyQuests(csq, new LootTracker(csq)), null, () => "SHD/SHM/NEC", new QuestLines(csq, new LootTracker(csq)))
@@ -5130,7 +5131,8 @@ public partial class App : Application
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
             };
             sw.Show();
-            sw.ShowPack(page.EndsWith(":sky", StringComparison.OrdinalIgnoreCase) ? "sky" : "lines");
+            sw.ShowPack(page.Contains(":sky", StringComparison.OrdinalIgnoreCase) ? "sky" : "lines");
+            if (page.EndsWith(":all", StringComparison.OrdinalIgnoreCase)) sw.ShowStatusForTest("all"); // every card, reward links visible
             mgr = sw;
         }
         else if (page.StartsWith("character:", StringComparison.OrdinalIgnoreCase))

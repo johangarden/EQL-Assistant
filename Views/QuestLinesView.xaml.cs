@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -173,7 +173,7 @@ public partial class QuestLinesView : UserControl
             grid.Children.Add(name);
 
             var meta = new TextBlock { Foreground = Hint, FontSize = 11, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap };
-            meta.Inlines.Add(new System.Windows.Documents.Run(q.Reward) { Foreground = Dim, FontWeight = FontWeights.SemiBold });
+            meta.Inlines.Add(RewardLink(q.Reward));
             meta.Inlines.Add(new System.Windows.Documents.Run(" · " + RewardShort(q)));
             if (q.MinLevel > 1) meta.Inlines.Add(new System.Windows.Documents.Run($" · lvl {q.MinLevel}"));
             Grid.SetRow(meta, 1);
@@ -227,6 +227,20 @@ public partial class QuestLinesView : UserControl
                 : $"{_lines!.Quests.Count} quest line{(_lines.Quests.Count == 1 ? "" : "s")} from eqlwiki so far. More join as they're written up.",
             Foreground = Faint, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 2, 0, 0),
         });
+    }
+
+    /// <summary>The reward's name as a link to its eqlwiki page (owner, 23 Sep).</summary>
+    private static System.Windows.Documents.Run RewardLink(string reward)
+    {
+        var run = new System.Windows.Documents.Run(reward)
+        {
+            Foreground = Dim, FontWeight = FontWeights.SemiBold,
+            TextDecorations = TextDecorations.Underline, Cursor = Cursors.Hand,
+            ToolTip = "Open on eqlwiki",
+        };
+        string url = SkyWindow.WikiUrl(reward);
+        run.MouseLeftButtonDown += (_, e) => { SkyWindow.OpenUrl(url); e.Handled = true; };
+        return run;
     }
 
     private static string RewardShort(QuestLines.Quest q)
@@ -307,7 +321,7 @@ public partial class QuestLinesView : UserControl
         head.Children.Add(prog);
 
         var stats = new TextBlock { Foreground = Hint, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
-        stats.Inlines.Add(new System.Windows.Documents.Run(q.Reward) { Foreground = Dim, FontWeight = FontWeights.SemiBold });
+        stats.Inlines.Add(RewardLink(q.Reward));
         stats.Inlines.Add(new System.Windows.Documents.Run(" · " + StatsLine(q.RewardStats)));
         Grid.SetRow(stats, 1);
         head.Children.Add(stats);
