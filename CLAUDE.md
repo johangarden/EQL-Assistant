@@ -247,7 +247,8 @@ these, so merged cross-machine history survives a reset).
   hairline frame; STATE lives in the frame colour — gold = a toggle is on
   (locked, panels shown, tradeskill card open), red = something you will
   regret forgetting (muted, panels hidden). Door colours are identities, not
-  states. A gold BADGE on a door = news (quests ready to hand in; drops /
+  states. A gold BADGE on a door = news (quests ready to hand in — counted with the
+  Quests window's inventory-dump cap, `ApplySkySnapshot`; drops /
   raid kills since that window was last opened — live lines only). The LOG
   DOT by the loadout name: green following, grey nothing read, gold during a
   catch-up (`OverlayViewModel.LogDot`). `ToolbarLabels` (General page) grows
