@@ -477,6 +477,9 @@ public partial class App : Application
                 card.Show(46, new[] { "SHD", "SHM", "NEC" }, libC.UnlocksAt(46, new[] { "SHD", "SHM", "NEC" }));
                 card.UpdateLayout();
                 if (card.RowCount != 5) throw new Exception($"level-up card: expected 5 rows, got {card.RowCount}");
+                card.Show(15, new[] { "DRU", "BRD", "WIZ" }, libC.UnlocksAt(15, new[] { "DRU", "BRD", "WIZ" }));
+                if (!card.KindTexts.Contains("DIRECT DAMAGE") || !card.KindTexts.Contains("MEZ") || card.KindTexts.Contains("DEBUFF"))
+                    throw new Exception("level-up card: level 15 DRU/BRD/WIZ must read DIRECT DAMAGE / MEZ, not DEBUFF: " + string.Join(",", card.KindTexts));
                 card.Show(46, Array.Empty<string>(), Array.Empty<(SpellLibrary.Spell, string)>());
                 if (card.RowCount != 0) throw new Exception("level-up card: the empty state must render zero rows");
                 card.Close();
@@ -2730,6 +2733,22 @@ public partial class App : Application
                     combo46.Count == 5 && combo46.Any(u => u.Spell.Name == "Paralyzing Earth" && u.Cls == "NEC")
                     && combo46.Any(u => u.Spell.Name == "Strength" && u.Cls == "SHM"));
                 Check("levelup: no combo = every class, never nothing", all46.Count > combo46.Count);
+                // Effects (owner, 25 Sep): the card said DEBUFF for a nuke and BUFF for a heal.
+                SpellLibrary.Spell? Sp(string n) => libL.Spells.FirstOrDefault(x => x.Name == n);
+                Check("levelup: effects from eqlwiki — nuke, AE nuke, DoT, mez, heal, lifetap, calm, snare",
+                    Sp("Flame Shock")?.Effect == "Direct damage" && Sp("Pillar of Fire")?.Effect == "AE damage"
+                    && Sp("Stinging Swarm")?.Effect == "Damage over time" && Sp("Kelin's Lucid Lullaby")?.Effect == "Mez"
+                    && Sp("Minor Healing")?.Effect == "Heal" && Sp("Drain Spirit")?.Effect == "Lifetap"
+                    && Sp("Calm Animal")?.Effect == "Calm" && Sp("Ensnare")?.Effect == "Snare");
+                Check("levelup: HP buffs stay buffs, per-tick heals are HoT / regen by length",
+                    Sp("Courage")?.Effect == "Buff" && Sp("Aegolism")?.Effect == "Buff"
+                    && Sp("Celestial Healing")?.Effect == "Heal over time" && Sp("Chloroplast")?.Effect == "Regen"
+                    && Sp("Stoicism")?.Effect == "Heal over time");
+                Check("levelup: effect colours follow the trigger types",
+                    SpellLibrary.EffectColor("Damage over time") == TriggerColors.Dot && SpellLibrary.EffectColor("Heal") == TriggerColors.Heal
+                    && SpellLibrary.EffectColor("Mez") == TriggerColors.Debuff && SpellLibrary.EffectColor("Haste") == TriggerColors.Buff);
+                int withEffect = libL.Spells.Count(x => x.Effect.Length > 0);
+                Check($"levelup: nearly every library spell carries an effect ({withEffect})", withEffect > 1380);
                 var lp = new CombatParser();
                 int dinged = 0;
                 lp.LeveledUp += l => dinged = l;
@@ -5145,17 +5164,19 @@ public partial class App : Application
             lane.FreezeForRender();
             mgr = lane;
         }
-        else if (page.Equals("levelup", StringComparison.OrdinalIgnoreCase))
+        else if (page.Equals("levelup", StringComparison.OrdinalIgnoreCase) || page.Equals("levelup:15", StringComparison.OrdinalIgnoreCase))
         {
-            // The level-up card for a three-class combo at 44 (dividers between classes).
+            // The level-up card for a three-class combo at 44 (dividers between
+            // classes); "levelup:15" is the owner's DRU/BRD/WIZ ding (effects).
             var lib = new SpellLibrary(new ConfigService());
-            var classes = new[] { "SHD", "SHM", "ENC" };
+            bool at15 = page.EndsWith(":15", StringComparison.Ordinal);
+            var classes = at15 ? new[] { "DRU", "BRD", "WIZ" } : new[] { "SHD", "SHM", "ENC" };
             var win = new Views.LevelUpWindow
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
             };
-            win.Show(44, classes, lib.UnlocksAt(44, classes));
+            win.Show(at15 ? 15 : 44, classes, lib.UnlocksAt(at15 ? 15 : 44, classes));
             mgr = win;
         }
         else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:sky", StringComparison.OrdinalIgnoreCase)

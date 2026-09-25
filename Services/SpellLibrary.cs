@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using EQLOverlay.Models;
@@ -26,7 +26,32 @@ public sealed class SpellLibrary
         public string WearsOff { get; set; } = "";
         public double DurationSec { get; set; }
         public bool Illusion { get; set; }
+        /// <summary>What the spell DOES, from its eqlwiki page's effect slots,
+        /// target type and duration (owner, 25 Sep: "direct damage and damage
+        /// over time are tagged as Debuff, healing as Buff"): "Direct damage",
+        /// "AE damage", "Damage over time", "Lifetap", "Heal", "Heal over time",
+        /// "Regen", "Mez", "Stun", "Root", "Snare", "Slow", "Charm", "Fear",
+        /// "Calm", "Debuff", "Haste", "Damage shield", "Rune", "Proc buff",
+        /// "Buff", "Travel", "Summon", "Pet", "Utility"… Empty when the wiki
+        /// has no page — fall back to <see cref="Bucket"/>.</summary>
+        public string Effect { get; set; } = "";
+        /// <summary>The effect's label, or the bucket when the wiki is silent.</summary>
+        public string EffectLabel => Effect.Length > 0 ? Effect : Bucket;
     }
+
+    /// <summary>The trigger-type colour an effect belongs to: damage red,
+    /// heals green, control and debuffs yellow, buffs blue, pets orange,
+    /// travel / summons / utility slate.</summary>
+    public static string EffectColor(string effect) => effect switch
+    {
+        "Direct damage" or "AE damage" or "Damage over time" or "Lifetap" => TriggerColors.Dot,
+        "Heal" or "Heal over time" or "Regen" or "Resurrect" => TriggerColors.Heal,
+        "Mez" or "Stun" or "Root" or "Snare" or "Slow" or "Charm" or "Fear" or "Calm" or "Debuff"
+            or "Dispel" or "Mana drain" or "Jolt" or "Hate" => TriggerColors.Debuff,
+        "Pet" => TriggerColors.Pet,
+        "Travel" or "Summon" or "Invisibility" or "Illusion" or "Utility" or "Cure" => TriggerColors.Other,
+        _ => TriggerColors.Buff,
+    };
 
     private sealed class LibraryFile
     {
