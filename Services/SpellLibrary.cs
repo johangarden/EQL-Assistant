@@ -37,6 +37,23 @@ public sealed class SpellLibrary
         public string Effect { get; set; } = "";
         /// <summary>The effect's label, or the bucket when the wiki is silent.</summary>
         public string EffectLabel => Effect.Length > 0 ? Effect : Bucket;
+
+        // Efficiency numbers (owner, 25 Sep) — damage / heal spells that cost
+        // mana, from their eqlwiki page at rank 0; see SpellEfficiency.
+        public int Mana { get; set; }
+        public double CastSec { get; set; }
+        /// <summary>The instant amount (a nuke's damage, a heal's HP).</summary>
+        public int Hit { get; set; }
+        /// <summary>Per tick of a DoT / HoT, and how many ticks the full run holds.</summary>
+        public int Tick { get; set; }
+        public int Ticks { get; set; }
+        /// <summary>"single" · "ae" · "group".</summary>
+        public string Targets { get; set; } = "";
+        /// <summary>Magic · Fire · Cold · Poison · Disease · Chromatic · Unresistable, and the modifier (−100 lands easier).</summary>
+        public string Resist { get; set; } = "";
+        public int ResistMod { get; set; }
+        public double RecastSec { get; set; }
+        public double DurSec { get; set; }
     }
 
     /// <summary>The trigger-type colour an effect belongs to: damage red,

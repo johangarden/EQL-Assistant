@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -52,6 +52,10 @@ public partial class TriggerManagerWindow : Window
     /// <summary>Tradeskills page: your learned skill values (null = never seen) and the manual set.</summary>
     public Func<string, int?>? TradeskillValue { get; set; }
     public Action<string, int>? TradeskillValueSet { get; set; }
+    /// <summary>The spell library's Efficiency tab: your real per-cast numbers, your classes, your level.</summary>
+    public SpellYield? SpellYield { get; set; }
+    public Func<string>? ClassesText { get; set; }
+    public Func<int>? CurrentLevel { get; set; }
     private readonly Dictionary<string, TextBox> _tsBoxes = new(StringComparer.OrdinalIgnoreCase);
 
     private async void AuditSky_Click(object sender, RoutedEventArgs e)
@@ -577,7 +581,8 @@ public partial class TriggerManagerWindow : Window
     {
         if (_libraryWindow is null)
         {
-            _libraryWindow = new SpellLibraryWindow(_spellLibrary, AddFromLibrary, _durations) { Owner = this };
+            _libraryWindow = new SpellLibraryWindow(_spellLibrary, AddFromLibrary, _durations, SpellYield, ClassesText, CurrentLevel,
+                System.IO.Path.Combine(_configService.ConfigDirectory, "library-view.json")) { Owner = this };
             _libraryWindow.Closed += (_, _) => _libraryWindow = null;
             _libraryWindow.Show();
         }

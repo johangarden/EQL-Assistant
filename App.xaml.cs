@@ -2567,6 +2567,7 @@ public partial class App : Application
                 CrowdControlChecks(Check);
                 TradeskillChecks(Check);
                 RaceChecks(Check);
+                EfficiencyChecks(Check);
                 Check("reparse: the catch-up card says so, and the toolbar fill is the track times the fraction",
                     new ReparseProgress("a.txt", 1, 1, 0, 0, 0, Verb: "Catching up").Title == "Catching up a.txt"
                     && Math.Abs(new ViewModels.OverlayViewModel(new TriggerEngine(new Models.AppConfig(), new AlertService()), new Models.AppConfig())
@@ -3421,6 +3422,121 @@ public partial class App : Application
         var book = new RaceBook(null, path);
         book.LoadDumpText(factions, achievements, dumpAt, dumpAt);
         return book;
+    }
+
+    /// <summary>A demo yield for the Efficiency tab's render and tests: real-log shapes.</summary>
+    internal static SpellYield EfficiencyDemo()
+    {
+        var y = new SpellYield(null, null) { SelfName = "Thorrak" };
+        var t0 = new DateTime(2026, 9, 24, 20, 0, 0);
+        int sec = 0;
+        string L(string body) => $"[{t0.AddSeconds(sec++).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+        for (int i = 0; i < 12; i++)
+        {
+            y.ProcessLine(L("You begin casting Boil Blood VI."));
+            for (int k = 0; k < 4; k++) y.ProcessLine(L("A windrider drake has taken 81 damage from your Boil Blood."));
+            y.ProcessLine(L("You begin casting Spear of Disease IX."));
+            y.ProcessLine(L("You hit a windrider drake for 396 points of disease damage by Spear of Disease IX." + (i % 5 == 0 ? " (Critical)" : "")));
+            y.ProcessLine(L("You begin casting Envenomed Bolt X."));
+            for (int k = 0; k < 5; k++) y.ProcessLine(L("A windrider drake has taken 470 damage from your Envenomed Bolt."));
+            y.ProcessLine(L("You begin casting Superior Healing IV."));
+            y.ProcessLine(L("You healed Thorrak for 640 (702) hit points by Superior Healing IV."));
+        }
+        return y;
+    }
+
+    /// <summary>Spell efficiency (25 Sep): the rank rules, the chained cycle, the
+    /// log learner's dedupe, the rows the tab ranks.</summary>
+    private static void EfficiencyChecks(Action<string, bool> Check)
+    {
+        var lib = new SpellLibrary(new ConfigService());
+        SpellLibrary.Spell S(string n) => lib.Spells.First(x => x.Name == n);
+        var flame = S("Flame Shock"); var boil = S("Boil Blood"); var spear = S("Spear of Pain"); var light = S("Light Healing");
+        Check("eff: the wiki numbers ride the library — Flame Shock 175 fire for 65 mana, 2.5 s; Boil Blood 67 × 7 ticks, fire −100",
+            flame is { Mana: 65, Hit: 175, Resist: "Fire", CastSec: 2.5 } && boil is { Tick: 67, Ticks: 7, Resist: "Fire", ResistMod: -100 }
+            && lib.Spells.Count(SpellEfficiency.Rankable) > 300);
+        var fx = SpellEfficiency.AtRank(flame, 10);
+        var bx = SpellEfficiency.AtRank(boil, 10);
+        Check("eff: rank X — a nuke +60 % damage for −20 % mana (2× per mana); a DoT +30 % a tick over +50 % ticks (≈2.4×)",
+            Math.Abs(fx.Total - 280) < 0.01 && Math.Abs(fx.Mana - 52) < 0.01 && Math.Abs(fx.Cast - 2.0) < 0.01
+            && Math.Abs(bx.Total - 67 * 1.3 * 7 * 1.5) < 0.01 && Math.Abs(bx.Total / bx.Mana / (469.0 / 136) - 2.4375) < 0.01
+            && Math.Abs(SpellEfficiency.AtRank(light, 5).Total - 65 * 1.15) < 0.01 && SpellEfficiency.AtRank(flame, 0).Total == 175);
+        Check("eff: chained, a 45 s reuse sinks Spear of Pain to ~7 a second; a DoT is never re-cast inside its own run",
+            Math.Abs(SpellEfficiency.CycleSec(spear) - 45.5) < 0.01 && SpellEfficiency.CycleSec(boil) >= 42);
+
+        var y = EfficiencyDemo();
+        Check("eff: the learner — casts and their rank, DoT ticks, a nuke's crit, the heal as landed (640 of 702)",
+            y.Of("Boil Blood") is { Casts: 12, Damage: 12 * 4 * 81, Rank: 6 } && y.Of("Spear of Disease IX") is { Casts: 12, Crits: 3, Rank: 9 }
+            && y.Of("Superior Healing") is { Healing: 12 * 640, Rank: 4 } && SpellYield.RankOf("Envenomed Bolt X") == 10 && SpellYield.RankOf("Harm Touch VIII") == 8);
+        y.ProcessLine("[Thu Sep 24 20:00:05 2026] You begin casting Boil Blood VI.");
+        y.ProcessLine("[Thu Sep 24 19:00:00 2026] You hit a gnoll for 999 points of fire damage by Boil Blood VI.");
+        Check("eff: a replayed or older line counts nothing", y.Of("Boil Blood") is { Casts: 12, Damage: 12 * 4 * 81 });
+        y.ProcessLine("[Thu Sep 24 21:00:00 2026] You begin casting Boil Blood VI.");
+        y.ProcessLine("[Thu Sep 24 21:00:01 2026] Your Boil Blood spell is interrupted.");
+        Check("eff: an interrupted cast is taken back", y.Of("Boil Blood")!.Casts == 12);
+
+        var dmg = SpellEfficiency.Rows(lib, y, new[] { "NEC", "SHM" }, 21, 30, healing: false, targets: 1);
+        var bb = dmg.First(r => r.Spell.Name == "Boil Blood");
+        var at6 = SpellEfficiency.AtRank(boil, 6);
+        Check("eff: a row carries the wiki, your rank and yours — Boil Blood VI: 324 a cast of its 666 at VI",
+            bb.Rank == 6 && Math.Abs(bb.RankTotal!.Value - at6.Total) < 0.01 && Math.Abs(bb.Observed!.Value - 324) < 0.01
+            && Math.Abs(bb.ObservedPct!.Value - 324 / at6.Total) < 0.001 && Math.Abs(bb.ObservedPerMana!.Value - 324 / at6.Mana) < 0.001
+            && !dmg.Any(r => r.Spell.Name == "Flame Shock") && dmg.All(r => r.Level is >= 21 and <= 30) && bb.Level == 28);
+        var cap = SpellEfficiency.Rows(lib, y, new[] { "SHD", "SHM", "NEC" }, 1, 60, healing: false, targets: 1);
+        Check("eff: nothing above the level cap (50) — Asystole reads NEC 40, never SHD 60; Torpor (SHM 60) is gone",
+            cap.All(r => r.Level <= SpellEfficiency.LevelCap) && cap.First(r => r.Spell.Name == "Asystole") is { Level: 40, ClassText: "NEC 40" }
+            && !SpellEfficiency.Rows(lib, y, new[] { "SHM" }, 1, 60, healing: true, targets: 1).Any(r => r.Spell.Name == "Torpor")
+            && SpellEfficiency.BandFor(50) == 4 && SpellEfficiency.BandFor(28) == 2 && SpellEfficiency.BandFor(0) == 0);
+        var fire = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1, resist: "Fire");
+        var aoe3 = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 3).First(r => r.Spell.Name == "Pillar of Fire");
+        Check("eff: the resist filter keeps one school; 3 targets triple an AE, never a single-target nuke",
+            fire.Any(r => r.Spell.Name == "Flame Shock") && fire.All(r => r.Spell.Resist == "Fire") && !fire.Any(r => r.Spell.Name == "Envenomed Bolt")
+            && Math.Abs(aoe3.Total - SpellEfficiency.BaseTotal(S("Pillar of Fire")) * 3) < 0.01
+            && SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 3).First(r => r.Spell.Name == "Flame Shock").Total == 175);
+        var heals = SpellEfficiency.Rows(lib, y, new[] { "SHM" }, 1, 50, healing: true, targets: 1);
+        Check("eff: the healing list holds heals and HoTs only, Superior Healing with yours",
+            heals.Count > 5 && heals.All(r => SpellEfficiency.IsHealing(r.Spell.Effect)) && heals.First(r => r.Spell.Name == "Superior Healing").Observed == 640);
+
+        // Sub-filters (owner, 25 Sep): DD / DoT / AE; Direct / HoT / Group.
+        var all50 = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1);
+        var dd = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1, sub: "dd");
+        var dot = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1, sub: "dot");
+        var ae = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1, sub: "ae");
+        Check("eff: DD / DoT / AE split the damage list — Flame Shock a DD, Boil Blood a DoT, Pillar of Fire an AE, a ticking drain a DoT",
+            dd.Any(r => r.Spell.Name == "Flame Shock") && !dd.Any(r => r.Spell.Name == "Boil Blood") && dot.Any(r => r.Spell.Name == "Boil Blood")
+            && ae.Any(r => r.Spell.Name == "Pillar of Fire") && !dd.Any(r => r.Spell.Name == "Pillar of Fire")
+            && dot.Any(r => r.Spell.Name == "Auspice") && dd.Count + dot.Count + ae.Count == all50.Count);
+        Check("eff: Direct / HoT / Group split the heals", SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, true, 1, sub: "hot").All(r => r.Spell.Effect == "Heal over time")
+            && SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, true, 1, sub: "direct").Any(r => r.Spell.Name == "Light Healing"));
+        Check("eff: the loadout name reads as your classes until a /who does",
+            SpellEfficiency.ClassesFromName("Enc-Shm-SK") == "ENC/SHM/SHD" && SpellEfficiency.ClassesFromName("Default") == ""
+            && SpellEfficiency.ClassesFromName("wiz mage cleric") == "WIZ/MAG/CLR");
+
+        string viewPath = Path.Combine(Path.GetTempPath(), "eql_selftest_library_view.json");
+        try { File.Delete(viewPath); } catch { /* fresh */ }
+        var wv = new Views.SpellLibraryWindow(lib, _ => { }, null, y, () => "", () => 0, viewPath) { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
+        wv.Show();
+        wv.ShowTab("efficiency");
+        Check("eff: no /who and no level opens on the top band (41–50), never the heavy All",
+            wv.EffRowsForTest.Count > 0 && wv.EffRowsForTest.All(r => r.Level is >= 41 and <= 50));
+        wv.EffSetForTest(healing: true);
+        wv.Close();
+        var wv2 = new Views.SpellLibraryWindow(lib, _ => { }, null, y, () => "", () => 0, viewPath) { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
+        wv2.Show();
+        Check("eff: the tab remembers itself — reopens on Efficiency, Healing",
+            wv2.EffRowsForTest.Count > 0 && wv2.EffRowsForTest.All(r => SpellEfficiency.IsHealing(r.Spell.Effect)));
+        wv2.Close();
+        try { File.Delete(viewPath); } catch { /* temp */ }
+
+        var w = new Views.SpellLibraryWindow(lib, _ => { }, null, y, () => "SHD/SHM/ENC", () => 50) { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
+        w.Show();
+        w.ShowTab("efficiency");
+        var painted = w.EffRowsForTest;
+        Check("eff: the tab paints your combo in your level's band (41–50 at level 50), best per mana first",
+            painted.Count > 5 && painted.All(r => r.Level is >= 41 and <= 50)
+            && painted.Zip(painted.Skip(1)).All(p => p.First.BestPerMana >= p.Second.BestPerMana)
+            && painted.Any(r => r.Spell.Name == "Envenomed Bolt" && r.Observed is not null));
+        w.Close();
     }
 
     /// <summary>Race unlocks (22 Sep): the dump parsers, the live standing math, the
@@ -5253,6 +5369,21 @@ public partial class App : Application
             sw.Show();
             sw.ShowHousekeepingForTest(openAll: true);
             mgr = sw;
+        }
+        else if (page.Equals("library:eff", StringComparison.OrdinalIgnoreCase) || page.Equals("library:eff:heal", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("library:eff:fire", StringComparison.OrdinalIgnoreCase))
+        {
+            // The Efficiency tab on the demo yield — SHD/SHM/ENC at level 50.
+            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { }, null, EfficiencyDemo(), () => "SHD/SHM/ENC", () => 50)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            lw.Show();
+            lw.ShowTab("efficiency");
+            if (page.EndsWith(":heal", StringComparison.OrdinalIgnoreCase)) lw.EffSetForTest(healing: true);
+            if (page.EndsWith(":fire", StringComparison.OrdinalIgnoreCase)) lw.EffSetForTest(resist: "Fire", classes: "WIZ");
+            mgr = lw;
         }
         else if (page.StartsWith("library:", StringComparison.OrdinalIgnoreCase))
         {

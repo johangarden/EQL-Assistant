@@ -41,6 +41,8 @@ public partial class MainWindow : Window
     private TradeskillWindow? _tsWin;
     // Race unlocks (22 Sep): the dumps + the log's faction lines; the Races tab and the faction helper card.
     private RaceBook _races = null!;
+    private SpellYield _yield = null!;
+    private bool _yieldBusy;
     private FactionHelperWindow? _factionWin;
     private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _dumpCache;
     // Toolbar news badges (21 Sep): live drops / raid kills since their window was last opened.
@@ -171,6 +173,7 @@ public partial class MainWindow : Window
         int retyped = _spellLib.HealLibraryTriggers(_config.Triggers); // pre-2.9 lib types heal
         if (retyped > 0) Log.Info($"Retyped {retyped} library trigger(s) (HoTs/DoTs split).");
         _durations = new SpellDurations(_configService, _spellLib);
+        _yield = new SpellYield(_configService); // what your spells really do per cast — the Efficiency tab
         _conditions = new ConditionWatcher(_spellLib);
         _conditions.Moment += (kind, _) => OnConditionMoment(kind);
         // Crowd control on mobs (14 Sep): charm card + mez panel. Live-only —
@@ -498,6 +501,7 @@ public partial class MainWindow : Window
                 _session.ProcessLine(line);
                 _tradeskills.ProcessLine(line, live: false);
                 _races.ProcessLine(line, live: false);
+                _yield.ProcessLine(line); // today's lines the live feed missed; older ones skip themselves
                 NoteLineSeen(t);
                 lines++;
             }
@@ -628,7 +632,35 @@ public partial class MainWindow : Window
             return Task.FromResult("Couldn't copy the file into the config folder — nothing was merged.");
         }
         Log.Info($"Merged log stored as {Path.GetFileName(copy)}."); // shows under Additional log files
-        return ReparseFileAsync(copy, progress);
+        var run = ReparseFileAsync(copy, progress);
+        run.ContinueWith(_ => Dispatcher.BeginInvoke(() => _ = RefreshYieldAsync(rebuild: true))); // older history joins in time order
+        return run;
+    }
+
+    /// <summary>The spell yield's own pass over the log, on a background thread:
+    /// at startup it continues where it stopped (the app may have been closed
+    /// for days; catch-up only replays today), a rebuild (Reset &amp; rebuild,
+    /// a merge) starts empty over the merged copies + the followed log, oldest
+    /// first — the learner dedupes by the log's own clock.</summary>
+    private async Task RefreshYieldAsync(bool rebuild, string? followed = null)
+    {
+        string? path = followed ?? _watcher?.CurrentPath;
+        if (_yieldBusy || path is null || !File.Exists(path)) return;
+        _yieldBusy = true;
+        try
+        {
+            var files = new List<string>();
+            if (rebuild) files.AddRange(_configService.ListMergedLogs());
+            files.Add(path);
+            var seed = rebuild ? new SpellYield(null, null) : _yield.Clone();
+            seed.SelfName = _combat.SelfName;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var done = await SpellYield.FeedAsync(seed, files);
+            _yield.AdoptFrom(done);
+            Log.Info($"spell yield: {(rebuild ? "rebuilt" : "caught up")} from {files.Count} file(s) in {sw.Elapsed.TotalSeconds:0.0} s — {done.Spells.Count} spell(s)");
+        }
+        catch (Exception ex) { Log.Warn("spell yield: " + ex.Message); }
+        finally { _yieldBusy = false; }
     }
 
     /// <summary>Data page's "Reset & rebuild": wipe every log-DERIVED data file
@@ -706,6 +738,7 @@ public partial class MainWindow : Window
         foreach (var f in merged) await ReparseFileAsync(f, progress, index++, count); // each logs its own summary
         if (merged.Count > 0)
             result += $" Also replayed {merged.Count} stored merged log file(s).";
+        await RefreshYieldAsync(rebuild: true); // the Efficiency tab's own numbers, every file oldest first
         return result;
     }
 
@@ -1485,6 +1518,7 @@ public partial class MainWindow : Window
             {
                 _detectedName = ExtractCharacterName(path);
                 ApplySelfName();
+                _ = RefreshYieldAsync(rebuild: false, followed: path);
             }));
         _watcher.Start();
     }
@@ -1507,6 +1541,9 @@ public partial class MainWindow : Window
         _cc.ProcessLine(line);             // ibid. — charm and mez you hold
         _tradeskills.ProcessLine(line);    // combines, skill-ups, purchases — the tradeskill helper
         _races.ProcessLine(line);          // faction hits → race unlocks + the faction helper
+        _yield.SelfName = _combat.SelfName;
+        _yield.ProcessLine(line);          // own casts / damage / heals per spell (monotonic dedupe)
+        _yield.SaveIfDirty();
         _session.ProcessLine(line);    // leveling pace (rebuilt by catch-up)
         if (TryParseLineTime(line, out var lineTime)) NoteLineSeen(lineTime);
         _logBus.Publish(line);
@@ -1523,6 +1560,7 @@ public partial class MainWindow : Window
         _reparsing = false;
         _tradeskills.SaveLearned();
         _races.SaveLearned();
+        _yield.SaveIfDirty(force: true);
         if (_deferredLive.Count == 0) return;
         var queued = _deferredLive.ToArray();
         _deferredLive.Clear();
@@ -1837,6 +1875,10 @@ public partial class MainWindow : Window
                 RealignSkyRequested = RealignSkyLedger,
                 TradeskillValue = sk => _tradeskills.ValueOf(sk),
                 TradeskillValueSet = (sk, v) => _tradeskills.SetValue(sk, v),
+                SpellYield = _yield,
+                // /who first; the loadout name ("Enc-Shm-SK") until a /who names the combo.
+                ClassesText = () => KnownClassesText() is { Length: > 0 } k ? k : SpellEfficiency.ClassesFromName(_config.ActiveLoadout),
+                CurrentLevel = () => _combat.CurrentLevel,
             };
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
@@ -2789,6 +2831,7 @@ public partial class MainWindow : Window
 
         Log.Info("Shutting down");
         _spellLib?.SaveSeenIfDirty(); // null if the window closes before OnLoaded ran
+        _yield?.SaveIfDirty(force: true);
         UnregisterHotKeys();
         _watcher?.Dispose();
         try { _selfMatrix?.Close(); } catch { /* ignore */ }

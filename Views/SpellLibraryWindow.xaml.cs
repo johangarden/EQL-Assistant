@@ -23,13 +23,20 @@ public partial class SpellLibraryWindow : Window
     private readonly SpellDurations? _durations;
 
     public SpellLibraryWindow(SpellLibrary library, Action<TriggerDefinition> onAdd,
-        SpellDurations? durations = null)
+        SpellDurations? durations = null, SpellYield? yield = null,
+        Func<string>? classesProvider = null, Func<int>? levelProvider = null, string? viewStatePath = null)
     {
         InitializeComponent();
         WindowTheme.ApplyDark(this);
         _library = library;
         _onAdd = onAdd;
         _durations = durations;
+        _yield = yield;
+        _classesProvider = classesProvider;
+        _levelProvider = levelProvider;
+        _viewPath = viewStatePath;
+        LoadViewState();
+        RenderTabs();
 
         ClassBox.ItemsSource = new[]
         {
@@ -38,7 +45,7 @@ public partial class SpellLibraryWindow : Window
         };
         ClassBox.SelectedIndex = 0;
 
-        Refresh();
+        if (_tab == "efficiency") ShowTab("efficiency"); else Refresh();
     }
 
     private void Filters_Changed(object sender, RoutedEventArgs e) => Refresh();
@@ -61,7 +68,8 @@ public partial class SpellLibraryWindow : Window
 
     private void Refresh()
     {
-        if (DurTableHost is null) return; // during InitializeComponent
+        if (DurTableHost is null || EffTableHost is null) return; // during InitializeComponent
+        if (_tab == "efficiency") { RefreshEfficiency(); return; }
 
         DurTableHost.Children.Clear();
         EffectTexts.Clear();

@@ -26,7 +26,9 @@
                            VerticalAlignment="Center" Margin="10,0,0,0"/>
                 <TextBlock Text="Spell library" FontSize="16" FontWeight="Bold" Foreground="White"/>
             </DockPanel>
-            <TextBlock Foreground="#7F93AD" FontSize="11" Margin="0,2,0,8" TextWrapping="Wrap"
+            <!-- DURATIONS | EFFICIENCY (owner, 25 Sep: damage / heal per mana, at your rank, yours) -->
+            <StackPanel x:Name="TabRow" Orientation="Horizontal" Margin="0,6,0,6"/>
+            <TextBlock x:Name="DurHint" Foreground="#7F93AD" FontSize="11" Margin="0,2,0,8" TextWrapping="Wrap"
                        Text="Every spell the duration learner has measured — the estimate the bars use (log = learned from your own cast→fade cycles, db = the library's figure), sample count and spread. Search reaches the WHOLE ~1400-spell library; ＋ Me adds a ready-made countdown bar trigger (type, color, duration and fade voice prefilled) to the current loadout, ＋ Pet tracks the buff on your pet instead."/>
 
             <DockPanel Margin="0,0,0,8">
@@ -36,10 +38,17 @@
                          AutomationProperties.AutomationId="LibrarySearchBox"
                          ToolTip="Search the whole spell library by name, landing line or effect (dd, dot, hot, mez, slow, ds…) — matches without samples show with the library's duration"/>
             </DockPanel>
+            <WrapPanel x:Name="EffBar" Visibility="Collapsed" Margin="0,0,0,8"/>
+            <UniformGrid x:Name="EffVerdicts" Visibility="Collapsed" Rows="1" Margin="0,0,0,8"/>
         </StackPanel>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <Grid x:Name="DurTableHost" VerticalAlignment="Top"/>
+        <TextBlock x:Name="EffFoot" DockPanel.Dock="Bottom" Visibility="Collapsed" Foreground="#5C6B82" FontSize="10.5"
+                   TextWrapping="Wrap" Margin="0,8,0,0"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <Grid>
+                <Grid x:Name="DurTableHost" VerticalAlignment="Top"/>
+                <Grid x:Name="EffTableHost" VerticalAlignment="Top" Visibility="Collapsed"/>
+            </Grid>
         </ScrollViewer>
     </DockPanel>
 </Window>
