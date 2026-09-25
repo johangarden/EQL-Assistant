@@ -42,11 +42,11 @@
                     <ColumnDefinition x:Name="MeleeCol" Width="1*"/>
                     <ColumnDefinition x:Name="SpellCol" Width="1*"/>
                 </Grid.ColumnDefinitions>
-                <Border x:Name="MeleeBar" Grid.Column="0" Background="#E57373" CornerRadius="3,0,0,3" Margin="0,0,1,0"/>
-                <Border x:Name="SpellBar" Grid.Column="1" Background="#9575CD" CornerRadius="0,3,3,0"/>
+                <Border x:Name="MeleeBar" Grid.Column="0" Background="#F28C38" CornerRadius="3,0,0,3" Margin="0,0,1,0"/>
+                <Border x:Name="SpellBar" Grid.Column="1" Background="#4A9EF0" CornerRadius="0,3,3,0"/>
             </Grid>
             <TextBlock x:Name="SplitText" Foreground="{StaticResource Brush.TextDim}" FontSize="12" TextWrapping="Wrap"/>
-            <Border x:Name="StanceBorder" BorderThickness="3,0,0,0" BorderBrush="#9575CD"
+            <Border x:Name="StanceBorder" BorderThickness="3,0,0,0" BorderBrush="#4A9EF0"
                     Padding="10,2,0,2" Margin="0,6,0,0">
                 <TextBlock x:Name="StanceText" Foreground="{StaticResource Brush.TextDim}"
                            FontSize="12" TextWrapping="Wrap"/>
@@ -63,10 +63,10 @@
             </Grid>
             <UniformGrid x:Name="AxisGrid" Rows="1" Margin="0,2,0,0"/>
             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                <Border Width="8" Height="8" CornerRadius="2" Background="#E57373" VerticalAlignment="Center"/>
+                <Border Width="8" Height="8" CornerRadius="2" Background="#F28C38" VerticalAlignment="Center"/>
                 <TextBlock Text="melee / s" Foreground="{StaticResource Brush.TextFaint}"
                            FontSize="10" Margin="4,0,14,0" VerticalAlignment="Center"/>
-                <Border Width="8" Height="8" CornerRadius="2" Background="#9575CD" VerticalAlignment="Center"/>
+                <Border Width="8" Height="8" CornerRadius="2" Background="#4A9EF0" VerticalAlignment="Center"/>
                 <TextBlock Text="spells / s" Foreground="{StaticResource Brush.TextFaint}"
                            FontSize="10" Margin="4,0,14,0" VerticalAlignment="Center"/>
                 <Border Width="8" Height="8" CornerRadius="2" Background="#81C784" VerticalAlignment="Center"/>

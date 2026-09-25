@@ -30,7 +30,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="MeleeText" Grid.Column="0" FontSize="12" FontWeight="Bold" Foreground="#E57373"
+                <TextBlock x:Name="MeleeText" Grid.Column="0" FontSize="12" FontWeight="Bold" Foreground="#F28C38"
                            VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <Grid Grid.Column="1" Height="10" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
@@ -38,10 +38,10 @@
                         <ColumnDefinition x:Name="SpellCol" Width="1*"/>
                     </Grid.ColumnDefinitions>
                     <Border Grid.ColumnSpan="2" Background="#0F141E" CornerRadius="4"/>
-                    <Border x:Name="MeleeBar" Grid.Column="0" Background="#E57373" CornerRadius="4,0,0,4"/>
-                    <Border x:Name="SpellBar" Grid.Column="1" Background="#9575CD" CornerRadius="0,4,4,0"/>
+                    <Border x:Name="MeleeBar" Grid.Column="0" Background="#F28C38" CornerRadius="4,0,0,4"/>
+                    <Border x:Name="SpellBar" Grid.Column="1" Background="#4A9EF0" CornerRadius="0,4,4,0"/>
                 </Grid>
-                <TextBlock x:Name="SpellText" Grid.Column="2" FontSize="12" FontWeight="Bold" Foreground="#B39DDB"
+                <TextBlock x:Name="SpellText" Grid.Column="2" FontSize="12" FontWeight="Bold" Foreground="#7DBBFF"
                            VerticalAlignment="Center" Margin="8,0,0,0"/>
             </Grid>
 
