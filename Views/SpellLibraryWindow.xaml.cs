@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using EQLOverlay.Interop;
 using EQLOverlay.Models;
@@ -43,11 +43,28 @@ public partial class SpellLibraryWindow : Window
 
     private void Filters_Changed(object sender, RoutedEventArgs e) => Refresh();
 
+    /// <summary>Selftest / render: search as if typed.</summary>
+    internal void SearchForTest(string text) { SearchBox.Text = text; Refresh(); }
+
+    /// <summary>Selftest: the EFFECT column in row order ("" = the wiki is silent).</summary>
+    internal List<string> EffectTexts { get; } = new();
+
+    private static readonly Dictionary<string, System.Windows.Media.Brush> _effectBrushes = new();
+    private static System.Windows.Media.Brush EffectBrush(string effect)
+    {
+        if (_effectBrushes.TryGetValue(effect, out var b)) return b;
+        var c = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(SpellLibrary.EffectColor(effect));
+        var nb = new System.Windows.Media.SolidColorBrush(c) { Opacity = 0.9 };
+        nb.Freeze();
+        return _effectBrushes[effect] = nb;
+    }
+
     private void Refresh()
     {
         if (DurTableHost is null) return; // during InitializeComponent
 
         DurTableHost.Children.Clear();
+        EffectTexts.Clear();
         DurTableHost.RowDefinitions.Clear();
         DurTableHost.ColumnDefinitions.Clear();
 
@@ -106,7 +123,7 @@ public partial class SpellLibraryWindow : Window
             return;
         }
 
-        string[] heads = { "SPELL", "ESTIMATE", "", "N", "MEDIAN", "IQR (P25–P75)", "MIN–MAX", "" };
+        string[] heads = { "SPELL", "EFFECT", "ESTIMATE", "", "N", "MEDIAN", "IQR (P25–P75)", "MIN–MAX", "" };
         for (int i = 0; i < heads.Length; i++)
             DurTableHost.ColumnDefinitions.Add(new ColumnDefinition
             { Width = i == 0 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
@@ -114,7 +131,7 @@ public partial class SpellLibraryWindow : Window
         int row = 0;
         DurTableHost.RowDefinitions.Add(new RowDefinition());
         for (int i = 0; i < heads.Length; i++)
-            DurCell(heads[i], row, i, DurHeadFg, right: i > 0, size: 9.5, bold: true);
+            DurCell(heads[i], row, i, DurHeadFg, right: i > 1, size: 9.5, bold: true);
         row++;
 
         string lastCat = "";
@@ -141,18 +158,24 @@ public partial class SpellLibraryWindow : Window
             bool sampled = r.N > 0;
             DurTableHost.RowDefinitions.Add(new RowDefinition());
             DurCell(r.Spell, row, 0, DurNameFg, right: false, bold: true);
+            // What it does (eqlwiki effect slots), tinted like the trigger types.
+            var libSpell = _library.FindByBaseName(SpellDurations.BaseName(r.Spell));
+            string effect = libSpell?.Effect ?? "";
+            DurCell(effect.Length > 0 ? effect.ToUpperInvariant() : "—", row, 1,
+                effect.Length > 0 ? EffectBrush(effect) : DurDimFg, right: false, size: 9.5, bold: true);
+            EffectTexts.Add(effect);
             DurCell(r.Estimate is { } est ? DurationText.Compact(est) : "—",
-                row, 1, DurValFg, right: true);
-            DurBadge(r.Estimate is null ? "" : r.FromLog ? "log" : "db", row, 2, r.FromLog);
-            DurCell(sampled ? r.N.ToString() : "—", row, 3, sampled ? DurValFg : DurDimFg, right: true);
+                row, 2, DurValFg, right: true);
+            DurBadge(r.Estimate is null ? "" : r.FromLog ? "log" : "db", row, 3, r.FromLog);
+            DurCell(sampled ? r.N.ToString() : "—", row, 4, sampled ? DurValFg : DurDimFg, right: true);
             DurCell(sampled ? DurationText.Compact(Math.Round(r.Median)) : "—",
-                row, 4, sampled ? DurValFg : DurDimFg, right: true);
+                row, 5, sampled ? DurValFg : DurDimFg, right: true);
             DurCell(sampled
                     ? $"{DurationText.Compact(Math.Round(r.P25))} – {DurationText.Compact(Math.Round(r.P75))}"
-                    : "—", row, 5, DurDimFg, right: true);
+                    : "—", row, 6, DurDimFg, right: true);
             DurCell(sampled
                     ? $"{DurationText.Compact(Math.Round(r.Min))} – {DurationText.Compact(Math.Round(r.Max))}"
-                    : "—", row, 6, DurDimFg, right: true);
+                    : "—", row, 7, DurDimFg, right: true);
             AddButton(r.Spell, row, heads.Length - 1);
             row++;
         }

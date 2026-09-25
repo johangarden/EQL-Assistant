@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -42,7 +42,7 @@ public partial class MainWindow : Window
     // Race unlocks (22 Sep): the dumps + the log's faction lines; the Races tab and the faction helper card.
     private RaceBook _races = null!;
     private FactionHelperWindow? _factionWin;
-    private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _tsDumpCache;
+    private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _dumpCache;
     // Toolbar news badges (21 Sep): live drops / raid kills since their window was last opened.
     private int _lootNew, _raidNew;
     private bool _badgeHooks;
@@ -1186,23 +1186,44 @@ public partial class MainWindow : Window
         _vm.Flash(_config.Overlay.TradeskillVisible ? $"Tradeskill helper shown{skill}." : "Tradeskill helper hidden.");
     }
 
-    /// <summary>Copies of an ingredient in the last /outputfile inventory dump
-    /// (the file the Character and Sky windows read); −1 = no dump.</summary>
-    private int TradeskillBagCount(string item)
+    /// <summary>Rows of the last /outputfile inventory dump (the file the
+    /// Character and Sky windows read), re-parsed when its clock moves; null
+    /// when there is no dump.</summary>
+    private List<InventoryStore.CarryRow>? DumpRows(out DateTime stamp)
     {
+        stamp = default;
         try
         {
             string logPath = _watcher?.CurrentPath ?? "";
-            if (logPath.Length == 0) return -1;
+            if (logPath.Length == 0) return null;
             var (name, server) = InventoryStore.ParseLogName(logPath);
             string? path = InventoryStore.FindDumpFile(InventoryStore.EqRootOf(logPath), name, server);
-            if (path is null || !File.Exists(path)) return -1;
-            var stamp = File.GetLastWriteTime(path);
-            if (_tsDumpCache is not { } c || c.Path != path || c.Stamp != stamp)
-                _tsDumpCache = (path, stamp, InventoryStore.CarryAll(InventoryStore.Parse(File.ReadAllText(path))).Rows);
-            return SkyWindow.CountInDump(_tsDumpCache.Value.Rows, item);
+            if (path is null || !File.Exists(path)) return null;
+            stamp = File.GetLastWriteTime(path);
+            if (_dumpCache is not { } c || c.Path != path || c.Stamp != stamp)
+                _dumpCache = (path, stamp, InventoryStore.CarryAll(InventoryStore.Parse(File.ReadAllText(path))).Rows);
+            return _dumpCache.Value.Rows;
         }
-        catch { return -1; }
+        catch { return null; }
+    }
+
+    /// <summary>Copies of an ingredient in the last inventory dump; −1 = no dump.</summary>
+    private int TradeskillBagCount(string item)
+    {
+        var rows = DumpRows(out _);
+        return rows is null ? -1 : SkyWindow.CountInDump(rows, item);
+    }
+
+    /// <summary>Hand the Sky tracker the same inventory cap the Quests window
+    /// applies (the bags win over the ledger for physical items). The window
+    /// used to be the only one setting it, so at startup the toolbar's Quest
+    /// badge counted a quest READY on ledger alone — an item long gone from
+    /// the bags — while the window, capped, listed nothing (owner, 23 Sep).</summary>
+    private void ApplySkySnapshot()
+    {
+        var rows = DumpRows(out var stamp);
+        _skyQuests.SnapshotCopies = rows is null ? null : item => SkyWindow.CountInDump(rows, item);
+        _skyQuests.SnapshotAt = rows is null ? null : stamp;
     }
 
     /// <summary>The game said a recipe is trivial now — while the helper is
@@ -2401,6 +2422,7 @@ public partial class MainWindow : Window
     {
         try
         {
+            ApplySkySnapshot();
             return _skyQuests.Quests.Count(q => !_skyQuests.IsCompleted(q)
                 && _skyQuests.Progress(q) is { Need: > 0 } pr && pr.Have >= pr.Need);
         }

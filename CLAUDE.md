@@ -1,4 +1,4 @@
-# CLAUDE.md — project guide for AI-assisted development
+﻿# CLAUDE.md — project guide for AI-assisted development
 
 EQL Assistant is a Windows 11 WPF overlay suite for the MMO *EQ Legends*. It
 works **exclusively by parsing the game's `eqlog_*.txt` log file** — no
@@ -34,7 +34,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` / `quests:sky` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `faction` / `faction:maxed` / `faction:bad` / `faction:standing` the faction helper card (a hit · the cap · the wrong way · between hits), `character:races` the Races tab on demo dumps, `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `levelup` the level-up card, `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` / `quests:sky` / `quests:sky:all` / `quests:house` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges) / the same with every card shown (reward links) / quest item housekeeping unfolded (item icons), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `faction` / `faction:maxed` / `faction:bad` / `faction:standing` the faction helper card (a hit · the cap · the wrong way · between hits), `character:races` the Races tab on demo dumps, `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `library:<search>` the spell library window searched as typed (EFFECT column), `levelup` / `levelup:15` the level-up card (SHD/SHM/ENC at 44 / DRU/BRD/WIZ at 15), `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous
@@ -82,7 +82,12 @@ the affected suites (with `-Wait`) before committing.
   clock OVERRUNS grey until the wear-off (hygiene max(90 s, 3×)). LOOSE
   adds: a mezzed mob never acts, so a held name hitting/casting (not DoT
   ticks) flags a loose add — damage on the name is the add's (no false
-  break), its death spares the rows, the next landing appends. Unknown
+  break), its death spares the rows, the next landing appends. ONE BREAK,
+  ONE ROW (23 Sep, rig log): a break prints up to three lines — "Your X
+  spell has worn off of <mob>.", "<mob> has been awakened by <who>." and
+  the hit — in any order within 3 s (`BreakPairSec`); the first takes a
+  row (a wear-off's row waits in `_recentWorn`), the others fill it in.
+  A wear-off nobody hits after is an expiry of the OLDEST held row. Unknown
   landings (necro undead charms) open ASSUMED and are LEARNED from the
   emote after the cast once a wear-off names the mob. Both learned sets
   persist in `cc-landings.json`. Live-only. Charm break = badge + phrase.
@@ -125,8 +130,11 @@ the affected suites (with `-Wait`) before committing.
   the inventory dump, re-read when their clocks move. The log keeps them
   live: "Your faction standing with X has been adjusted by N." moves a
   standing (lines AFTER the dump only; deduped by line), "could not
-  possibly get any better" marks maxed, and "You have slain X!" within 3 s
-  before teaches mob → faction → hit (persisted in `races.json` with the
+  possibly get any better" marks maxed AND records that standing as YOUR
+  cap (`CapOf`, persisted — an Ogre caps Dark Bargainers at −220, far under
+  the dump's 2,000; MAXED bars draw full, "your cap −220"), and "You have
+  slain X!" / "X has been slain by <pet/group>!" within 3 s before teaches
+  mob → faction → hit (persisted in `races.json` with the
   ★-tracked races). Character window "Races" tab (`RacesView`, badges like
   the Sky classes: done first, DONE/YOU/AUTO/TASK) + the faction helper
   card (`FactionHelperWindow`, tracked races only: between hits it stays
@@ -143,7 +151,14 @@ the affected suites (with `-Wait`) before committing.
   marked only once the line is started (their evidence waits); coins-only
   trades likewise. Old chains implied by a kill are withdrawn on load),
   `SpellLibrary` (embedded `data/spell-library.json`, 1438
-  spells), `SpellDurations` (observed-duration learner), `TriggerColors`
+  spells; each carries an `effect` — Direct damage / Damage over time /
+  Heal / Mez / Snare / Haste… — derived from its eqlwiki page's effect
+  slots + target type + duration by the scratch `classify-spells.py`,
+  25 Sep; the level-up card and the spell library's EFFECT column show it,
+  tinted by `EffectColor`; `TriggerCategory` types by it FIRST — DoTs,
+  HoTs, control → Debuffs — and heals/travel/summons fall back to the
+  landing rules; library search takes effects + aliases like dd/dot/hot),
+  `SpellDurations` (observed-duration learner), `TriggerColors`
   (type→color), `ConfigService` (all persistence), `AlertService` (TTS/wav),
   `UpdateService` (GitHub-releases self-update).
 
@@ -247,7 +262,8 @@ these, so merged cross-machine history survives a reset).
   hairline frame; STATE lives in the frame colour — gold = a toggle is on
   (locked, panels shown, tradeskill card open), red = something you will
   regret forgetting (muted, panels hidden). Door colours are identities, not
-  states. A gold BADGE on a door = news (quests ready to hand in; drops /
+  states. A gold BADGE on a door = news (quests ready to hand in — counted with the
+  Quests window's inventory-dump cap, `ApplySkySnapshot`; drops /
   raid kills since that window was last opened — live lines only). The LOG
   DOT by the loadout name: green following, grey nothing read, gold during a
   catch-up (`OverlayViewModel.LogDot`). `ToolbarLabels` (General page) grows

@@ -25,9 +25,9 @@ public partial class DeathRecapWindow : Window
     private static readonly Brush RowEven = Freeze(Color.FromRgb(0x1B, 0x21, 0x30));
     private static readonly Brush RowBig = Freeze(Color.FromRgb(0x3A, 0x1F, 0x24)); // killing-blow tint
     private static readonly Brush RowOdd = Brushes.Transparent;
-    private static readonly Brush BarDmg = Freeze(Color.FromRgb(0xE5, 0x73, 0x73));
+    private static readonly Brush BarDmg = Freeze(Color.FromRgb(0xF2, 0x8C, 0x38));
     private static readonly Brush BarHeal = Freeze(Color.FromRgb(0x81, 0xC7, 0x84));
-    private static readonly Brush BarKill = Freeze(Color.FromRgb(0xFF, 0x5A, 0x50));
+    private static readonly Brush BarKill = Freeze(Color.FromRgb(0xFF, 0xB8, 0x70));
     private static readonly Brush AxisFg = Freeze(Color.FromRgb(0x5C, 0x6B, 0x82));
 
     public sealed record RowVm(string T, string Text, string AmountText,
@@ -38,10 +38,10 @@ public partial class DeathRecapWindow : Window
         int Count, double Total, DateTime First, bool HasBiggestHit,
         CombatParser.SctFlavor Flavor = CombatParser.SctFlavor.Melee);
 
-    private static readonly Brush BarSpell = Freeze(Color.FromRgb(0x95, 0x75, 0xCD));
-    private static readonly Brush BarSpellKill = Freeze(Color.FromRgb(0xB3, 0x9D, 0xDB));
-    private static readonly Brush MeleeTag = Freeze(Color.FromRgb(0xC9, 0x6B, 0x6B));
-    private static readonly Brush SpellTag = Freeze(Color.FromRgb(0x95, 0x75, 0xCD));
+    private static readonly Brush BarSpell = Freeze(Color.FromRgb(0x4A, 0x9E, 0xF0));
+    private static readonly Brush BarSpellKill = Freeze(Color.FromRgb(0x8C, 0xC8, 0xFF));
+    private static readonly Brush MeleeTag = Freeze(Color.FromRgb(0xD9, 0x80, 0x3A));
+    private static readonly Brush SpellTag = Freeze(Color.FromRgb(0x4A, 0x9E, 0xF0));
     private static readonly Brush HealTag = Freeze(Color.FromRgb(0x5E, 0x8F, 0x62));
 
     public DeathRecapWindow(CombatParser.DeathEvent death)

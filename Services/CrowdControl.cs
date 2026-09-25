@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -122,6 +122,7 @@ public sealed class CrowdControl
     public const double MinSampleSec = 3;
     public const double BrokeLingerSec = 60;    // the red charm card
     public const double MezBrokeLingerSec = 8;  // the red mez row
+    public const double BreakPairSec = 3;       // one break's wear-off, "awakened by" and hit print within this
     public const double AttemptLingerSec = 30;
     public const double UnknownCullSec = 120;   // hygiene for count-up rows
 
@@ -141,6 +142,12 @@ public sealed class CrowdControl
     /// 24 s, VIII 31 s in the owner's log) — the log teaches it.</summary>
     private readonly Dictionary<string, List<double>> _samples = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<MezRow> _mez = new();
+    /// <summary>Rows a wear-off just closed: a hit or "awakened by" on the name
+    /// within <see cref="BreakPairSec"/> names that row the break instead of a
+    /// second one (rig log, 21 Sep 22:36:04: "worn off of Bazzzazzt" →
+    /// "Bazzzazzt has been awakened by Thorrak." → "You reave Bazzzazzt" —
+    /// three lines, ONE break; the app was spending two rows on it).</summary>
+    private readonly List<(MezRow Row, DateTime At)> _recentWorn = new();
     /// <summary>Names with a known LOOSE add — a mezzed mob never acts, so a
     /// same-name mob attacking or casting while every row of that name is
     /// held proves an unmezzed one (owner, 15 Sep: adds forcing a recast).
@@ -174,6 +181,7 @@ public sealed class CrowdControl
 
     private static readonly Regex BeginCastRx = new(@"^You begin (?:casting|singing) (?<s>.+?)\.", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex WornOffOfRx = new(@"^Your (?<s>.+?) spell has worn off of (?<m>.+?)\.$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex AwakenedRx = new(@"^(?<m>.+?) has been awakened by (?<w>.+?)\.$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex InterruptRx = new(@"^Your (?<s>.+?) spell is interrupted\.", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex ResistRx = new(@"^(?:(?<m>.+?) resisted your (?<s>.+?)!|Your target resisted the (?<s2>.+?) spell\.)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex SlainByRx = new(@"^(?<v>.+?) has been slain by (?<k>.+?)!", RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -236,7 +244,7 @@ public sealed class CrowdControl
             EndCharm(body.StartsWith("You have entered ", StringComparison.Ordinal) ? "zoned" : "you died", time);
             if (body.StartsWith("You have entered ", StringComparison.Ordinal) && body.EndsWith('.'))
                 _zone = body["You have entered ".Length..^1];
-            Charm = null; LastAttempt = null; _mez.Clear(); _pending = null; _loose.Clear();
+            Charm = null; LastAttempt = null; _mez.Clear(); _recentWorn.Clear(); _pending = null; _loose.Clear();
             if (had) Changed?.Invoke();
             return;
         }
@@ -275,6 +283,16 @@ public sealed class CrowdControl
         // when the wear-off later names the mob.
         if (_pending is { } pt && _tails.TryGetValue(pt.Def.Spell, out var tail) && tail.Count < 80)
             tail.Add(body);
+
+        // "<mob> has been awakened by <who>." — the game's own break notice
+        // (rig log, 21 Sep). One line of the same break as the wear-off and
+        // the hit; NoteBreak pairs the three onto one row.
+        if ((_mez.Count > 0 || _recentWorn.Count > 0) && body.Contains(" has been awakened by ", StringComparison.Ordinal)
+            && AwakenedRx.Match(body) is { Success: true } aw)
+        {
+            NoteBreak(aw.Groups["w"].Value.Trim(), aw.Groups["m"].Value.Trim(), 0, time);
+            return;
+        }
 
         if (body.StartsWith("Your ", StringComparison.Ordinal))
         {
@@ -351,22 +369,44 @@ public sealed class CrowdControl
         // A DoT keeps ticking on a mezzed mob's behalf — not an act. A melee hit
         // or a nuke from a held name is.
         if (!dot && _mez.Count > 0) NoteActing(attacker, time);
-        // Damage on a name with a loose add is the add being fought, not a break.
-        if (_loose.Contains(target.Trim())) return;
-        var row = _mez.Where(r => r.BrokeAt is null && Same(r.Mob, target)).OrderBy(r => r.Since).FirstOrDefault();
-        if (row is not null)
+        if (_mez.Count > 0 || _recentWorn.Count > 0) NoteBreak(attacker, target, amount, time);
+    }
+
+    /// <summary>A hit or an "awakened by" on a held name: ONE break, whatever
+    /// the game prints for it. The wear-off, the awakened line and the hit of
+    /// the same break arrive in any order within a breath — the first of them
+    /// takes a row, the others fill it in (owner, 21 and 23 Sep: "when one
+    /// breaks, all same-name mobs break").</summary>
+    private void NoteBreak(string who, string target, double amount, DateTime time)
+    {
+        _recentWorn.RemoveAll(w => (time - w.At).TotalSeconds > BreakPairSec);
+        string name = target.Trim();
+        if (_loose.Contains(name))
         {
-            row.BrokeAt = time;
-            row.BrokeBy = attacker;
-            row.BrokeAmount = amount;
-            // The broken one is now a LOOSE mob of that name: the group keeps
-            // hitting it, and every hit must land on it — not break the next
-            // held twin (owner, 21 Sep: "when one breaks, all same-name mobs
-            // break"). It stays loose until it dies or your next landing.
-            _loose.Add(row.Mob);
-            MezBroke?.Invoke(row.Label, attacker);
-            Changed?.Invoke();
+            // Damage on a name with a loose add is the add being fought, not a
+            // break — unless it is THIS break's own hit, arriving after the
+            // wear-off / awakened line took the row: name the hitter on it.
+            var b = _mez.FirstOrDefault(r => r.BrokeAt is { } ba && Same(r.Mob, name) && (time - ba).TotalSeconds <= BreakPairSec
+                                             && r.BrokeAmount == 0 && (r.BrokeBy.Length == 0 || Same(r.BrokeBy, who)));
+            if (b is not null && amount > 0) { b.BrokeAmount = amount; b.BrokeBy = who; Changed?.Invoke(); }
+            return;
         }
+        // The wear-off printed first: the row it closed IS this break — take
+        // it back as the red row instead of breaking a second twin.
+        MezRow? row = null;
+        int wi = _recentWorn.FindIndex(w => Same(w.Row.Mob, name));
+        if (wi >= 0) { row = _recentWorn[wi].Row; _recentWorn.RemoveAt(wi); _mez.Add(row); }
+        row ??= _mez.Where(r => r.BrokeAt is null && Same(r.Mob, name)).OrderBy(r => r.Since).FirstOrDefault();
+        if (row is null) return;
+        row.BrokeAt = time;
+        row.BrokeBy = who;
+        row.BrokeAmount = amount;
+        // The broken one is now a LOOSE mob of that name: the group keeps
+        // hitting it, and every hit must land on it — not break the next
+        // held twin. It stays loose until it dies or your next landing.
+        _loose.Add(row.Mob);
+        MezBroke?.Invoke(row.Label, who);
+        Changed?.Invoke();
     }
 
     // ---- state changes -----------------------------------------------------------
@@ -470,10 +510,23 @@ public sealed class CrowdControl
         }
         else
         {
+            // The hit came first and broke a row of this name a breath ago:
+            // this wear-off is that break's tail, not a second mob leaving.
+            if (_mez.Any(r => r.BrokeAt is { } b && Same(r.Mob, mob) && (time - b).TotalSeconds <= BreakPairSec))
+            {
+                Learn(def, mob);
+                return;
+            }
+            // Else the OLDEST held row of the name leaves — the one whose clock
+            // ran longest is the best guess for an expiry; with twins the game
+            // never says which. Kept a breath in _recentWorn: a hit or "awakened
+            // by" on the name within it makes this row the break instead.
             var row = _mez.Where(r => r.BrokeAt is null && (Same(r.Mob, mob) || r.Assumed)).OrderBy(r => r.Since).FirstOrDefault();
             if (row is null) return;
             if (!row.Refreshed && !row.Assumed) LearnDuration(def, (time - row.Since).TotalSeconds);
             _mez.Remove(row);
+            _recentWorn.RemoveAll(w => (time - w.At).TotalSeconds > BreakPairSec);
+            _recentWorn.Add((row, time));
         }
         Learn(def, mob);
         Changed?.Invoke();
@@ -612,7 +665,7 @@ public sealed class CrowdControl
 
     public void Clear()
     {
-        Charm = null; LastAttempt = null; _mez.Clear(); _pending = null; _loose.Clear();
+        Charm = null; LastAttempt = null; _mez.Clear(); _recentWorn.Clear(); _pending = null; _loose.Clear();
         Changed?.Invoke();
     }
 

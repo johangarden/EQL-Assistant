@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using EQLOverlay.Models;
@@ -26,7 +26,32 @@ public sealed class SpellLibrary
         public string WearsOff { get; set; } = "";
         public double DurationSec { get; set; }
         public bool Illusion { get; set; }
+        /// <summary>What the spell DOES, from its eqlwiki page's effect slots,
+        /// target type and duration (owner, 25 Sep: "direct damage and damage
+        /// over time are tagged as Debuff, healing as Buff"): "Direct damage",
+        /// "AE damage", "Damage over time", "Lifetap", "Heal", "Heal over time",
+        /// "Regen", "Mez", "Stun", "Root", "Snare", "Slow", "Charm", "Fear",
+        /// "Calm", "Debuff", "Haste", "Damage shield", "Rune", "Proc buff",
+        /// "Buff", "Travel", "Summon", "Pet", "Utility"… Empty when the wiki
+        /// has no page — fall back to <see cref="Bucket"/>.</summary>
+        public string Effect { get; set; } = "";
+        /// <summary>The effect's label, or the bucket when the wiki is silent.</summary>
+        public string EffectLabel => Effect.Length > 0 ? Effect : Bucket;
     }
+
+    /// <summary>The trigger-type colour an effect belongs to: damage red,
+    /// heals green, control and debuffs yellow, buffs blue, pets orange,
+    /// travel / summons / utility slate.</summary>
+    public static string EffectColor(string effect) => effect switch
+    {
+        "Direct damage" or "AE damage" or "Damage over time" or "Lifetap" => TriggerColors.Dot,
+        "Heal" or "Heal over time" or "Regen" or "Resurrect" => TriggerColors.Heal,
+        "Mez" or "Stun" or "Root" or "Snare" or "Slow" or "Charm" or "Fear" or "Calm" or "Debuff"
+            or "Dispel" or "Mana drain" or "Jolt" or "Hate" => TriggerColors.Debuff,
+        "Pet" => TriggerColors.Pet,
+        "Travel" or "Summon" or "Invisibility" or "Illusion" or "Utility" or "Cure" => TriggerColors.Other,
+        _ => TriggerColors.Buff,
+    };
 
     private sealed class LibraryFile
     {
@@ -241,10 +266,32 @@ public sealed class SpellLibrary
                 s.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
                 || s.CastOnYou.Contains(query, StringComparison.OrdinalIgnoreCase)
                 || s.WearsOff.Contains(query, StringComparison.OrdinalIgnoreCase)
-                || s.Type.Contains(query, StringComparison.OrdinalIgnoreCase));
+                || s.Type.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || s.Effect.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || EffectAlias(query) is { } al && s.Effect.Equals(al, StringComparison.OrdinalIgnoreCase));
 
         return src.OrderByDescending(IsSeen).ThenBy(s => s.Name).ToList();
     }
+
+    /// <summary>The words players type for an effect: "dd"/"nuke" → Direct
+    /// damage, "dot" → Damage over time, "hot" → Heal over time, "ds" → Damage shield.</summary>
+    public static string? EffectAlias(string query) => query.Trim().ToLowerInvariant() switch
+    {
+        "dd" or "nuke" or "nukes" => "Direct damage",
+        "ae" or "aoe" or "pbae" => "AE damage",
+        "dot" or "dots" => "Damage over time",
+        "hot" or "hots" => "Heal over time",
+        "ds" => "Damage shield",
+        "tap" or "lifetaps" => "Lifetap",
+        "mezz" or "mesmerize" => "Mez",
+        "heals" or "healing" => "Heal",
+        "slows" => "Slow",
+        "snares" => "Snare",
+        "roots" => "Root",
+        "stuns" => "Stun",
+        "port" or "ports" or "teleport" or "gate" => "Travel",
+        _ => null,
+    };
 
     // ---- trigger typing -------------------------------------------------------
 
@@ -261,6 +308,12 @@ public sealed class SpellLibrary
 
     public static string TriggerCategory(Spell s)
     {
+        // What the spell DOES (eqlwiki effect slots, 25 Sep) decides first:
+        // 130 DoTs were filed as Debuffs and 28 heal-over-time spells as Buffs
+        // by the landing-word guesses below (owner: "use it for the spell
+        // library and triggers too"). Heals, travel, summons and pets keep
+        // the old rules — their bars were never about the effect.
+        if (CategoryOfEffect(s) is { } byEffect) return byEffect;
         string t = s.Type;
         bool longRunning = s.DurationSec > HotMaxDurationSec;
         if (t.Contains("Heal Over Time", StringComparison.OrdinalIgnoreCase)
@@ -286,6 +339,19 @@ public sealed class SpellLibrary
 
         return debuff ? "Debuffs" : "Buffs";
     }
+
+    private static string? CategoryOfEffect(Spell s) => s.Effect switch
+    {
+        "Damage over time" => "DoTs",
+        "Lifetap" => s.DurationSec > 0 ? "DoTs" : "Debuffs", // Auspice drains per tick
+        "Heal over time" => s.DurationSec > HotMaxDurationSec ? "Buffs" : "HoTs",
+        "Regen" => "Buffs",
+        "Direct damage" or "AE damage" or "Mez" or "Stun" or "Root" or "Snare" or "Slow" or "Charm" or "Fear"
+            or "Calm" or "Debuff" or "Dispel" or "Mana drain" or "Jolt" or "Hate" => "Debuffs",
+        "Buff" or "Haste" or "Damage shield" or "Rune" or "Proc buff" or "Mana regen" or "Mana" or "Movement"
+            or "Invisibility" or "Illusion" or "Utility" => "Buffs",
+        _ => null, // Heal · Resurrect · Cure · Travel · Summon · Pet · none: the landing rules below
+    };
 
     /// <summary>Case-insensitive spell lookup by exact name.</summary>
     public Spell? FindByName(string name) =>

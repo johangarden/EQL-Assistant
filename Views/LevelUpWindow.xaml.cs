@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -30,6 +30,8 @@ public partial class LevelUpWindow : Window
     private bool _pinned;
 
     public int RowCount { get; private set; }
+    /// <summary>Selftest: the kind labels in row order.</summary>
+    public List<string> KindTexts { get; } = new();
 
     public LevelUpWindow()
     {
@@ -66,6 +68,7 @@ public partial class LevelUpWindow : Window
 
         Rows.Children.Clear();
         RowCount = 0;
+        KindTexts.Clear();
         string lastCls = "";
         foreach (var (spell, cls) in unlocks.OrderBy(u => u.Cls).ThenBy(u => u.Spell.Name, StringComparer.OrdinalIgnoreCase))
         {
@@ -82,12 +85,18 @@ public partial class LevelUpWindow : Window
             };
             DockPanel.SetDock(chip, Dock.Left);
             row.Children.Add(chip);
+            // What the spell does (eqlwiki effect slots), tinted by the trigger
+            // type it would be: damage red, heals green, control yellow, buffs blue.
+            string label = spell.EffectLabel;
             var kind = new TextBlock
             {
-                Text = spell.Bucket.Length > 0 ? spell.Bucket.ToUpperInvariant() : "",
-                FontSize = 9.5, FontWeight = FontWeights.Bold, Foreground = Faint,
+                Text = label.ToUpperInvariant(),
+                FontSize = 9.5, FontWeight = FontWeights.Bold,
+                Foreground = spell.Effect.Length > 0 ? Freeze(SpellLibrary.EffectColor(spell.Effect)) : Faint,
+                Opacity = 0.85,
                 VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0),
             };
+            KindTexts.Add(kind.Text);
             DockPanel.SetDock(kind, Dock.Right);
             row.Children.Add(kind);
             row.Children.Add(new TextBlock { Text = spell.Name, FontSize = 12.5, Foreground = Text, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });

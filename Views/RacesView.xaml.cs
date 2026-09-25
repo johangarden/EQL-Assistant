@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -56,6 +56,16 @@ public partial class RacesView : UserControl
     }
 
     private void OnChanged() => Dispatcher.BeginInvoke(Build);
+
+    /// <summary>Selftest: the value texts of the selected race's factions.</summary>
+    internal List<string> ValueTextsForTest()
+    {
+        var list = new List<string>();
+        foreach (var row in DetailHost.Children.OfType<Grid>())
+            foreach (var tb in row.Children.OfType<TextBlock>().Where(t => Grid.GetColumn(t) == 2))
+                list.Add(new System.Windows.Documents.TextRange(tb.ContentStart, tb.ContentEnd).Text);
+        return list;
+    }
 
     /// <summary>Selftest hooks.</summary>
     public int RowCount { get; private set; }
@@ -190,8 +200,14 @@ public partial class RacesView : UserControl
             row.Children.Add(name);
 
             var bar = new Grid { Height = 9, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 12, 0) };
-            bar.Children.Add(new Border { Background = f.Negative ? Freeze("#2A1416") : Track, CornerRadius = new CornerRadius(4) });
-            if (f.Negative)
+            bar.Children.Add(new Border { Background = f.Negative && !f.Done ? Freeze("#2A1416") : Track, CornerRadius = new CornerRadius(4) });
+            if (f.Done)
+            {
+                // MAXED is MAXED — a full bar, even when your ceiling sits under
+                // the dump's 2,000 (owner, 25 Sep: "says MAXED but bars are not").
+                bar.Children.Add(new Border { Background = new LinearGradientBrush(((SolidColorBrush)GreenDark).Color, ((SolidColorBrush)Green).Color, 0), CornerRadius = new CornerRadius(4) });
+            }
+            else if (f.Negative)
             {
                 double frac = Math.Clamp(-f.Standing / (double)Math.Max(1, f.Max), 0, 1);
                 bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.0001, 1 - frac), GridUnitType.Star) });
@@ -213,7 +229,8 @@ public partial class RacesView : UserControl
             row.Children.Add(bar);
 
             var val = new TextBlock { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Foreground = Hint };
-            if (f.Done) { val.Inlines.Add(new System.Windows.Documents.Run("MAXED ") { Foreground = Green, FontWeight = FontWeights.Bold }); val.Inlines.Add(new System.Windows.Documents.Run($"{Math.Min(f.Standing, f.Max):N0} / {f.Max:N0}")); }
+            if (f.Done && f.CappedBelowMax) { val.Inlines.Add(new System.Windows.Documents.Run("MAXED ") { Foreground = Green, FontWeight = FontWeights.Bold }); val.Inlines.Add(new System.Windows.Documents.Run($"· your cap {f.Standing:N0}")); val.ToolTip = $"The game says this can't get any better for you — race, class and deity modifiers put your ceiling at {f.Standing:N0}, under the dump's {f.Max:N0}."; }
+            else if (f.Done) { val.Inlines.Add(new System.Windows.Documents.Run("MAXED ") { Foreground = Green, FontWeight = FontWeights.Bold }); val.Inlines.Add(new System.Windows.Documents.Run($"{Math.Min(f.Standing, f.Max):N0} / {f.Max:N0}")); }
             else if (!f.Known) val.Inlines.Add(new System.Windows.Documents.Run("not in the faction dump") { Foreground = Faint });
             else if (f.Negative) { val.Inlines.Add(new System.Windows.Documents.Run($"{f.Standing:N0}") { Foreground = Red, FontWeight = FontWeights.SemiBold }); val.Inlines.Add(new System.Windows.Documents.Run($" · {f.ToGo:N0} to max")); }
             else { val.Inlines.Add(new System.Windows.Documents.Run($"{f.Standing:N0}") { Foreground = Dim, FontWeight = FontWeights.SemiBold }); val.Inlines.Add(new System.Windows.Documents.Run($" / {f.Max:N0} · {f.ToGo:N0} to max")); }

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -21,12 +21,21 @@ public sealed class RaceBook
     private static readonly Regex AdjustRx = new(@"^Your faction standing with (?<f>.+?) has been adjusted by (?<n>-?\d+)\.$", RegexOptions.Compiled);
     private static readonly Regex CapRx = new(@"^Your faction standing with (?<f>.+?) could not possibly get any (?<dir>better|worse)\.$", RegexOptions.Compiled);
     private static readonly Regex KillRx = new(@"^You have slain (?<m>.+?)!$", RegexOptions.Compiled);
+    // A pet's or a groupmate's kill moves your faction too (owner, 25 Sep:
+    // Dreadguard Outer read "no hits in your log yet" after a night of kills).
+    private static readonly Regex SlainByRx = new(@"^(?<m>.+?) has been slain by (?<k>.+?)!$", RegexOptions.Compiled);
     private const double KillPairSec = 3; // faction lines follow the kill line within the same second or the next
 
     public sealed record HitSource(string Mob, int Hit, int Count, DateTime Last);
 
-    public sealed record FactionView(string Name, int Standing, int Max, bool Done, IReadOnlyList<HitSource> Sources, int? EstimateKills, bool Known)
+    /// <param name="Cap">YOUR ceiling, learned from the game's "could not possibly
+    /// get any better": race / class / deity modifiers put it far under the
+    /// dump's 2,000 (an Ogre maxes Dark Bargainers at −220 — owner, 25 Sep:
+    /// "2 factions says MAXED but bars are not"). Null until the game says so.</param>
+    public sealed record FactionView(string Name, int Standing, int Max, bool Done, IReadOnlyList<HitSource> Sources, int? EstimateKills, bool Known, int? Cap = null)
     {
+        /// <summary>MAXED below the dump's max — the character's own ceiling.</summary>
+        public bool CappedBelowMax => Done && Standing < Max;
         public int ToGo => Math.Max(0, Max - Standing);
         public double Fraction => Max <= 0 ? 0 : Math.Clamp((double)Math.Max(0, Standing) / Max, 0, 1);
         public bool Negative => Standing < 0;
@@ -45,6 +54,7 @@ public sealed class RaceBook
     {
         public List<string> Tracked { get; set; } = new();
         public Dictionary<string, Dictionary<string, HitRec>> Hits { get; set; } = new();
+        public Dictionary<string, int> Caps { get; set; } = new();
     }
 
     private readonly string? _path;
@@ -58,6 +68,8 @@ public sealed class RaceBook
     private readonly HashSet<string> _maxedSaid = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Dictionary<string, HitRec>> _hits = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _tracked = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _caps = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _loggedHit = new(StringComparer.OrdinalIgnoreCase);
     private (string Mob, DateTime At)? _lastKill;
     private bool _dirty;
 
@@ -141,6 +153,7 @@ public sealed class RaceBook
             _races = FactionDumps.ParseRaces(achievementsText);
             AchievementsAt = achievementsAt;
         }
+        Log.Info($"race dumps: {_standings.Count} factions (written {DumpAt:dd MMM HH:mm}), {_races.Count} races (written {AchievementsAt:dd MMM HH:mm}), {_tracked.Count} tracked, {_caps.Count} learned caps");
         Changed?.Invoke();
     }
 
@@ -156,6 +169,15 @@ public sealed class RaceBook
 
         var k = KillRx.Match(body);
         if (k.Success) { _lastKill = (k.Groups["m"].Value, time); return; }
+        if (body.Contains(" has been slain by ", StringComparison.Ordinal) && SlainByRx.Match(body) is { Success: true } sb)
+        {
+            // "a Dreadguard has been slain by Jobtik!" — your pet / group got the kill.
+            string victim = sb.Groups["m"].Value;
+            if (victim.StartsWith("A ", StringComparison.Ordinal) || victim.StartsWith("An ", StringComparison.Ordinal))
+                victim = char.ToLowerInvariant(victim[0]) + victim[1..]; // the sentence-initial capital
+            _lastKill = (victim, time);
+            return;
+        }
         if (!body.StartsWith("Your faction standing with ", StringComparison.Ordinal)) return;
 
         var a = AdjustRx.Match(body);
@@ -184,6 +206,8 @@ public sealed class RaceBook
             if (live)
             {
                 if (_dirty) Save();
+                if (_loggedHit.Add(faction))
+                    Log.Info($"faction: {faction} {n:+0;-0} → {Standing(faction)}{(TrackedRaceOf(faction) is { } tr ? $" (tracked: {tr})" : RaceOf(faction) is { } rr ? $" ({rr}, not tracked)" : "")}{(DumpAt is null ? " — no factions dump yet" : "")}");
                 FactionHit?.Invoke(faction, n, mob);
                 Changed?.Invoke();
             }
@@ -194,7 +218,18 @@ public sealed class RaceBook
         if (c.Success && c.Groups["dir"].Value == "better")
         {
             string faction = c.Groups["f"].Value;
-            if (DumpAt is null || time > DumpAt.Value) _maxed.Add(faction);
+            if (DumpAt is null || time > DumpAt.Value)
+            {
+                _maxed.Add(faction);
+                // The standing right now IS your ceiling — remembered, so the
+                // next dump (which clears the session's MAXED marks) keeps it.
+                if (Known(faction) && _caps.GetValueOrDefault(faction, int.MinValue) != Standing(faction))
+                {
+                    _caps[faction] = Standing(faction);
+                    Log.Info($"faction: {faction} capped at {Standing(faction)} for you");
+                    Save();
+                }
+            }
             if (live && _maxedSaid.Add(faction) && RaceOf(faction) is not null)
             {
                 FactionMaxed?.Invoke(faction);
@@ -213,7 +248,11 @@ public sealed class RaceBook
 
     public int MaxOf(string faction) => _standings.TryGetValue(faction, out var s) && s.Max > 0 ? s.Max : 2000;
     public bool Known(string faction) => _standings.ContainsKey(faction);
-    public bool IsMaxed(string faction) => _maxed.Contains(faction) || (Known(faction) && Standing(faction) >= MaxOf(faction));
+    public bool IsMaxed(string faction) => _maxed.Contains(faction)
+        || (Known(faction) && (Standing(faction) >= MaxOf(faction) || _caps.TryGetValue(faction, out int cap) && Standing(faction) >= cap));
+
+    /// <summary>Your learned ceiling for a faction (null until the game said "could not possibly get any better").</summary>
+    public int? CapOf(string faction) => _caps.TryGetValue(faction, out int c) ? c : null;
 
     public IReadOnlyList<HitSource> SourcesOf(string faction) =>
         _hits.TryGetValue(faction, out var byMob)
@@ -231,7 +270,7 @@ public sealed class RaceBook
     }
 
     public FactionView ViewOf(string faction, bool doneInDump = false) =>
-        new(faction, Standing(faction), MaxOf(faction), doneInDump || IsMaxed(faction), SourcesOf(faction), EstimateKills(faction), Known(faction));
+        new(faction, Standing(faction), MaxOf(faction), doneInDump || IsMaxed(faction), SourcesOf(faction), EstimateKills(faction), Known(faction), CapOf(faction));
 
     /// <summary>Every race, done first, then by progress.</summary>
     public IReadOnlyList<RaceView> Views()
@@ -302,6 +341,7 @@ public sealed class RaceBook
             foreach (var t in doc.Tracked) _tracked.Add(t);
             foreach (var (f, byMob) in doc.Hits)
                 _hits[f] = new Dictionary<string, HitRec>(byMob, StringComparer.OrdinalIgnoreCase);
+            foreach (var (f, c) in doc.Caps) _caps[f] = c;
         }
         catch (Exception ex) { Log.Warn("races.json unreadable: " + ex.Message); }
     }
@@ -316,6 +356,7 @@ public sealed class RaceBook
             {
                 Tracked = _tracked.OrderBy(x => x).ToList(),
                 Hits = _hits.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
+                Caps = new Dictionary<string, int>(_caps, StringComparer.OrdinalIgnoreCase),
             }, JsonOpts));
         }
         catch (Exception ex) { Log.Warn("races.json not saved: " + ex.Message); }

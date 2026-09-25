@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -477,6 +477,9 @@ public partial class App : Application
                 card.Show(46, new[] { "SHD", "SHM", "NEC" }, libC.UnlocksAt(46, new[] { "SHD", "SHM", "NEC" }));
                 card.UpdateLayout();
                 if (card.RowCount != 5) throw new Exception($"level-up card: expected 5 rows, got {card.RowCount}");
+                card.Show(15, new[] { "DRU", "BRD", "WIZ" }, libC.UnlocksAt(15, new[] { "DRU", "BRD", "WIZ" }));
+                if (!card.KindTexts.Contains("DIRECT DAMAGE") || !card.KindTexts.Contains("MEZ") || card.KindTexts.Contains("DEBUFF"))
+                    throw new Exception("level-up card: level 15 DRU/BRD/WIZ must read DIRECT DAMAGE / MEZ, not DEBUFF: " + string.Join(",", card.KindTexts));
                 card.Show(46, Array.Empty<string>(), Array.Empty<(SpellLibrary.Spell, string)>());
                 if (card.RowCount != 0) throw new Exception("level-up card: the empty state must render zero rows");
                 card.Close();
@@ -1541,6 +1544,20 @@ public partial class App : Application
             Check("typing: a long 'Regen'-typed spell is a buff too",
                 CatOf("Spiritual Light") == "Buffs");
             Check("typing: Quickness stays a buff", CatOf("Quickness") == "Buffs");
+            // Effect-first (25 Sep): the wiki's effect slots over landing-word guesses.
+            Check("typing: effects decide — Vampiric Curse and Stinging Swarm are DoTs, Celestial Healing a HoT",
+                CatOf("Vampiric Curse") == "DoTs" && CatOf("Stinging Swarm") == "DoTs" && CatOf("Celestial Healing") == "HoTs");
+            Check("typing: effects decide — Calm is a debuff, Voice of Shadows your own buff, Tashani a debuff, Auspice a DoT",
+                CatOf("Calm") == "Debuffs" && CatOf("Voice of Shadows") == "Buffs" && CatOf("Tashani") == "Debuffs" && CatOf("Auspice") == "DoTs");
+            Check("typing: heals / travel keep the old rules (Minor Healing HoT, a detrimental port a debuff)",
+                CatOf("Minor Healing") == "HoTs" && CatOf("Trakanon's Touch") == "Debuffs");
+            var vc = new[] { new Models.TriggerDefinition { Id = "lib-vampiric-curse", Name = "Vampiric Curse", Category = "Debuffs" } };
+            lib2.HealLibraryTriggers(vc);
+            Check("typing: an old library trigger heals to its effect's type on load (Vampiric Curse Debuffs → DoTs)",
+                vc[0].Category == "DoTs");
+            Check("typing: the library search reaches effects and the words players type",
+                lib2.Search("dot").Any(x => x.Name == "Vampiric Curse") && lib2.Search("mez").Any(x => x.Name == "Kelin's Lucid Lullaby")
+                && lib2.Search("nuke").Any(x => x.Name == "Flame Shock") && !lib2.Search("nuke").Any(x => x.Name == "Vampiric Curse"));
             var retype = new[]
             {
                 new Models.TriggerDefinition { Id = "lib-envenomed-bolt", Name = "Envenomed Bolt", Category = "Debuffs" },
@@ -2730,6 +2747,22 @@ public partial class App : Application
                     combo46.Count == 5 && combo46.Any(u => u.Spell.Name == "Paralyzing Earth" && u.Cls == "NEC")
                     && combo46.Any(u => u.Spell.Name == "Strength" && u.Cls == "SHM"));
                 Check("levelup: no combo = every class, never nothing", all46.Count > combo46.Count);
+                // Effects (owner, 25 Sep): the card said DEBUFF for a nuke and BUFF for a heal.
+                SpellLibrary.Spell? Sp(string n) => libL.Spells.FirstOrDefault(x => x.Name == n);
+                Check("levelup: effects from eqlwiki — nuke, AE nuke, DoT, mez, heal, lifetap, calm, snare",
+                    Sp("Flame Shock")?.Effect == "Direct damage" && Sp("Pillar of Fire")?.Effect == "AE damage"
+                    && Sp("Stinging Swarm")?.Effect == "Damage over time" && Sp("Kelin's Lucid Lullaby")?.Effect == "Mez"
+                    && Sp("Minor Healing")?.Effect == "Heal" && Sp("Drain Spirit")?.Effect == "Lifetap"
+                    && Sp("Calm Animal")?.Effect == "Calm" && Sp("Ensnare")?.Effect == "Snare");
+                Check("levelup: HP buffs stay buffs, per-tick heals are HoT / regen by length",
+                    Sp("Courage")?.Effect == "Buff" && Sp("Aegolism")?.Effect == "Buff"
+                    && Sp("Celestial Healing")?.Effect == "Heal over time" && Sp("Chloroplast")?.Effect == "Regen"
+                    && Sp("Stoicism")?.Effect == "Heal over time");
+                Check("levelup: effect colours follow the trigger types",
+                    SpellLibrary.EffectColor("Damage over time") == TriggerColors.Dot && SpellLibrary.EffectColor("Heal") == TriggerColors.Heal
+                    && SpellLibrary.EffectColor("Mez") == TriggerColors.Debuff && SpellLibrary.EffectColor("Haste") == TriggerColors.Buff);
+                int withEffect = libL.Spells.Count(x => x.Effect.Length > 0);
+                Check($"levelup: nearly every library spell carries an effect ({withEffect})", withEffect > 1380);
                 var lp = new CombatParser();
                 int dinged = 0;
                 lp.LeveledUp += l => dinged = l;
@@ -2949,6 +2982,28 @@ public partial class App : Application
                     int dumpFewer = dsAll.Surplus(name => name == "Golden Coffer" ? 2 : -1).First(s => s.Item == "Golden Coffer").Surplus;
                     Check("sky: the snapshot caps the spare count when it holds fewer than the ledger, never raises it",
                         ledgerSpare == 1 && dumpNone == 1 && dumpMore == 1 && dumpFewer == 2);
+                    // A destroy AFTER the dump comes off the dump's count too (owner,
+                    // 25 Sep: PoS clean-out, the panel stuck on a stale "×1 spare").
+                    // Ledger 7 (1 + 6 looted), bags 2 at 22:30 → held 2; destroying
+                    // one at 22:31 must read 1, not stay pinned at the dump's 2.
+                    dsAll.SnapshotCopies = name => name == "Golden Coffer" ? 2 : -1;
+                    dsAll.SnapshotAt = new DateTime(2026, 9, 10, 22, 30, 0);
+                    int cappedHeld = dsAll.HeldCount(coffer);
+                    dsAll.ProcessLine("[Thu Sep 10 22:31:00 2026] You successfully destroyed 1 Golden Coffer.");
+                    int afterDestroy = dsAll.HeldCount(coffer);
+                    var dsReload = new SkyQuests(new ConfigService(), dl, dPath)
+                    { SnapshotCopies = name => name == "Golden Coffer" ? 2 : -1, SnapshotAt = new DateTime(2026, 9, 10, 22, 30, 0) };
+                    Check("sky: a destroy after the dump lowers the capped count, and still does after a restart",
+                        cappedHeld == 2 && afterDestroy == 1 && dsReload.HeldCount(coffer) == 1);
+                    dsAll.SnapshotAt = new DateTime(2026, 9, 10, 22, 32, 0); // a fresh dump already lists the loss
+                    Check("sky: a dump written after the destroy is not docked twice", dsAll.HeldCount(coffer) == 2);
+                    // Housekeeping icons (25 Sep): the turn-in items carry their own icon.
+                    var skyItems = dsAll.Quests.SelectMany(q => q.Items.Select(i => i.Name)).Where(n => !n.StartsWith("Wind Rune", StringComparison.OrdinalIgnoreCase))
+                        .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    int withIcon = skyItems.Count(n => Views.SkyWindow.IconFor(n) is not null);
+                    Check($"sky: housekeeping rows find an icon for nearly every turn-in item ({withIcon}/{skyItems.Count})",
+                        skyItems.Count > 0 && withIcon >= skyItems.Count * 0.9 && Views.SkyWindow.IconFor("Silken Strands") is not null && Views.SkyWindow.IconFor("Woven Skull Cap") is not null);
+                    dsAll.SnapshotCopies = null; dsAll.SnapshotAt = null;
                     try { File.Delete(dPath); File.Delete(dLoot); } catch { /* temp */ }
                 }
 
@@ -3420,6 +3475,37 @@ public partial class App : Application
         var parsed = FactionDumps.ParseClasses("Untapped Potential: Classes\nI\tClass Unlock - Bard\nI\t\tGet maximum faction with League of Antonican Bards.\n");
         Check("races: the classes section parses with the same reader", parsed is [{ Name: "Bard", Factions: [{ Faction: "League of Antonican Bards" }] }]);
         Check("races: config default — the helper card on", new Models.AppConfig().Overlay.FactionHelperVisible);
+
+        // Owner, 25 Sep (Dark Elf on an Ogre): the game caps Dark Bargainers at
+        // −220, far under the dump's 2,000 — MAXED is YOUR ceiling, remembered.
+        string capPath = Path.Combine(Path.GetTempPath(), "eql_selftest_races_caps.json");
+        try { File.Delete(capPath); } catch { /* fresh */ }
+        const string delAch = "Untapped Potential: Races\nI\tRace Unlock - Dark Elf\nI\t\tGet maximum faction with Dark Bargainers.\nI\t\tGet maximum faction with Dreadguard Outer.\nI\t\tGet maximum faction with Dreadguard Inner.\n";
+        const string delFac = "ID\tName\tStandingValue\tPointsToMax\n236\tDark Bargainers\t-240\t2240\n334\tDreadguard Outer\t-1590\t3590\n370\tDreadguard Inner\t-400\t2400\n";
+        var del = new RaceBook(null, capPath);
+        del.LoadDumpText(delFac, delAch, d0, d0);
+        del.SetTracked("Dark Elf", true);
+        string delHits = ""; del.FactionHit += (f, n, m) => delHits += $"{f}:{n}:{m};";
+        for (int i = 0; i < 4; i++)
+        {
+            del.ProcessLine(L(100 + i * 30, "A Dreadguard has been slain by Jobtik!"));
+            del.ProcessLine(L(100 + i * 30, "Your faction standing with Dark Bargainers has been adjusted by 5."));
+            del.ProcessLine(L(100 + i * 30, "Your faction standing with Dreadguard Outer has been adjusted by 5."));
+        }
+        del.ProcessLine(L(300, "a Dreadguard has been slain by Jobtik!"));
+        del.ProcessLine(L(300, "Your faction standing with Dark Bargainers could not possibly get any better."));
+        del.ProcessLine(L(300, "Your faction standing with Dreadguard Outer has been adjusted by 5."));
+        var db = del.ViewOf("Dark Bargainers");
+        Check("races: a pet's kill teaches the mob, the live hits move the standing and reach the card's gate",
+            del.Standing("Dreadguard Outer") == -1565 && del.SourcesOf("Dreadguard Outer") is [{ Mob: "a Dreadguard", Hit: 5, Count: 5 }]
+            && delHits.Contains("Dreadguard Outer:5:a Dreadguard;") && del.TrackedRaceOf("Dreadguard Outer") == "Dark Elf");
+        Check("races: the cap line makes −220 YOUR ceiling — MAXED, capped under the dump's max",
+            db is { Done: true, Standing: -220, Max: 2000, CappedBelowMax: true, Cap: -220 } && !del.ViewOf("Dreadguard Outer").Done);
+        var del2 = new RaceBook(null, capPath);
+        del2.LoadDumpText(delFac.Replace("-240\t2240", "-220\t2220"), delAch, d0.AddHours(1), d0.AddHours(1));
+        Check("races: the learned cap survives a restart and a fresh dump — still MAXED",
+            del2.ViewOf("Dark Bargainers") is { Done: true, CappedBelowMax: true } && del2.CapOf("Dark Bargainers") == -220);
+        try { File.Delete(capPath); } catch { /* temp */ }
     }
 
     /// <summary>Tradeskill helper (21 Sep): the wiki data, the combine engine
@@ -3742,6 +3828,43 @@ public partial class App : Application
         tw.ProcessLine(L(425, "An ice bones has been slain by Garn!"));
         Check("cc: the broken one dying clears the loose name and leaves the held twins",
             tw.MezRows.Count(r => r.BrokeAt is null) == 2 && tw.LooseNames.Count == 0);
+
+        // One break, three lines (rig log, 21 Sep 22:36:04): the wear-off, then
+        // "Bazzzazzt has been awakened by Thorrak.", then the reave — the app
+        // spent the wear-off on one twin and the hit on another (owner, 23 Sep:
+        // "same name mobs breaking at the same time").
+        var bk = new CrowdControl(lib, null) { IsSelf = n => n == "Thorrak" };
+        bk.ProcessLine(L(500, "You begin casting Mesmerization VIII."));
+        bk.ProcessLine(L(502, "Bazzzazzt has been mesmerized."));
+        bk.ProcessLine(L(502, "Bazzzazzt has been mesmerized."));
+        bk.ProcessLine(L(502, "Bazzzazzt has been mesmerized."));
+        string bkLabel = ""; int bkBreaks = 0;
+        bk.MezBroke += (l, _) => { bkLabel = l; bkBreaks++; };
+        bk.ProcessLine(L(510, "Your Mesmerization VIII spell has worn off of Bazzzazzt."));
+        bk.ProcessLine(L(510, "Bazzzazzt has been awakened by Thorrak."));
+        bk.NoteDamage("Thorrak", "Bazzzazzt", 51, c0.AddSeconds(510));
+        var bks = bk.Take(c0.AddSeconds(511));
+        Check("cc: wear-off → awakened-by → the hit is ONE break: one red row naming the hitter, two twins still held",
+            bkBreaks == 1 && bks.Held == 2 && bks.Broken == 1 && bkLabel == "Bazzzazzt 01"
+            && bks.Mez[0] is { Broke: true, BrokeBy: "Thorrak", BrokeAmount: 51 } && bks.Loose.SequenceEqual(new[] { "Bazzzazzt" }));
+        // The other order: the hit first, the wear-off a second later.
+        var bk2 = new CrowdControl(lib, null) { IsSelf = n => n == "Thorrak" };
+        bk2.ProcessLine(L(600, "You begin casting Mesmerization VIII."));
+        bk2.ProcessLine(L(602, "Bzzazzt has been mesmerized."));
+        bk2.ProcessLine(L(602, "Bzzazzt has been mesmerized."));
+        bk2.ProcessLine(L(602, "Bzzazzt has been mesmerized."));
+        int bk2Breaks = 0; bk2.MezBroke += (_, _) => bk2Breaks++;
+        bk2.NoteDamage("Jobtik", "Bzzazzt", 58, c0.AddSeconds(606));
+        bk2.ProcessLine(L(607, "Your Mesmerization VIII spell has worn off of Bzzazzt."));
+        bk2.ProcessLine(L(607, "Bzzazzt has been awakened by Jobtik."));
+        var bk2s = bk2.Take(c0.AddSeconds(608));
+        Check("cc: the hit first, then the wear-off and awakened-by — still one break, two held",
+            bk2Breaks == 1 && bk2s.Held == 2 && bk2s.Broken == 1);
+        // A wear-off with no hit after it is an expiry: one row leaves quietly.
+        bk2.ProcessLine(L(640, "Your Mesmerization VIII spell has worn off of Bzzazzt."));
+        var bk2e = bk2.Take(c0.AddSeconds(645));
+        Check("cc: a wear-off nobody hits after is an expiry — one row leaves, no break, the broken one long culled",
+            bk2Breaks == 1 && bk2e.Held == 1 && bk2e.Broken == 0 && bk2.MezRows.Count == 1);
 
         // The learned clock persists with the landings.
         string ccPath = Path.Combine(Path.GetTempPath(), "eql_selftest_cc_durations.json");
@@ -5108,20 +5231,58 @@ public partial class App : Application
             lane.FreezeForRender();
             mgr = lane;
         }
-        else if (page.Equals("levelup", StringComparison.OrdinalIgnoreCase))
+        else if (page.Equals("quests:house", StringComparison.OrdinalIgnoreCase))
         {
-            // The level-up card for a three-class combo at 44 (dividers between classes).
+            // Quest item housekeeping on a scratch ledger: a few looted turn-in
+            // items, every quest done so all of them read spare, the rows unfolded.
+            string hp = Path.Combine(Path.GetTempPath(), "eql_render_house");
+            Directory.CreateDirectory(hp);
+            foreach (var f in Directory.GetFiles(hp)) try { File.Delete(f); } catch { /* scratch */ }
+            var cs = new ConfigService();
+            var loot = new LootTracker(cs, Path.Combine(hp, "loot.json"));
+            var sky = new SkyQuests(cs, loot, Path.Combine(hp, "sky.json"));
+            int sec = 0;
+            foreach (var item in new[] { "Silken Strands", "Silvery Ring", "Silvery Ring", "Small Shield", "Sphinxian Ring", "Woven Skull Cap", "Woven Skull Cap" })
+                loot.ProcessLine($"[Thu Sep 10 22:{sec / 60:00}:{sec++ % 60:00} 2026] --You have looted a {item} from a sphinx's corpse.--");
+            foreach (var q in sky.Quests) sky.SetCompleted(q, true);
+            var sw = new Views.SkyWindow(sky, null, () => "SHD/SHM/NEC")
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            sw.Show();
+            sw.ShowHousekeepingForTest(openAll: true);
+            mgr = sw;
+        }
+        else if (page.StartsWith("library:", StringComparison.OrdinalIgnoreCase))
+        {
+            // The spell library window searched as typed ("library:dot") — the EFFECT column.
+            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { })
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            lw.Show();
+            lw.SearchForTest(page["library:".Length..]);
+            mgr = lw;
+        }
+        else if (page.Equals("levelup", StringComparison.OrdinalIgnoreCase) || page.Equals("levelup:15", StringComparison.OrdinalIgnoreCase))
+        {
+            // The level-up card for a three-class combo at 44 (dividers between
+            // classes); "levelup:15" is the owner's DRU/BRD/WIZ ding (effects).
             var lib = new SpellLibrary(new ConfigService());
-            var classes = new[] { "SHD", "SHM", "ENC" };
+            bool at15 = page.EndsWith(":15", StringComparison.Ordinal);
+            var classes = at15 ? new[] { "DRU", "BRD", "WIZ" } : new[] { "SHD", "SHM", "ENC" };
             var win = new Views.LevelUpWindow
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
             };
-            win.Show(44, classes, lib.UnlocksAt(44, classes));
+            win.Show(at15 ? 15 : 44, classes, lib.UnlocksAt(at15 ? 15 : 44, classes));
             mgr = win;
         }
-        else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:sky", StringComparison.OrdinalIgnoreCase))
+        else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:sky", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("quests:sky:all", StringComparison.OrdinalIgnoreCase))
         {
             var csq = new ConfigService();
             var sw = new Views.SkyWindow(new SkyQuests(csq, new LootTracker(csq)), null, () => "SHD/SHM/NEC", new QuestLines(csq, new LootTracker(csq)))
@@ -5130,7 +5291,8 @@ public partial class App : Application
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
             };
             sw.Show();
-            sw.ShowPack(page.EndsWith(":sky", StringComparison.OrdinalIgnoreCase) ? "sky" : "lines");
+            sw.ShowPack(page.Contains(":sky", StringComparison.OrdinalIgnoreCase) ? "sky" : "lines");
+            if (page.EndsWith(":all", StringComparison.OrdinalIgnoreCase)) sw.ShowStatusForTest("all"); // every card, reward links visible
             mgr = sw;
         }
         else if (page.StartsWith("character:", StringComparison.OrdinalIgnoreCase))

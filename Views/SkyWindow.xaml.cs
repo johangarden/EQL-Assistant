@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using EQLOverlay.Interop;
@@ -56,18 +56,31 @@ public partial class SkyWindow : Window
     private void Chip_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not ChipVm { Url.Length: > 0 } vm) return;
+        OpenUrl(vm.Url);
+        e.Handled = true;
+    }
+
+    /// <summary>The reward line opens the item's eqlwiki page (owner, 23 Sep).</summary>
+    private void Reward_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not QuestVm { Reward.Length: > 0 } vm) return;
+        OpenUrl(WikiUrl(vm.Reward));
+        e.Handled = true;
+    }
+
+    internal static void OpenUrl(string url)
+    {
         try
         {
             System.Diagnostics.Process.Start(
-                new System.Diagnostics.ProcessStartInfo(vm.Url) { UseShellExecute = true });
+                new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
         }
         catch { /* no browser is not our problem to solve */ }
-        e.Handled = true;
     }
 
     /// <summary>The eqlwiki page for a name — pages live at the site ROOT,
     /// spaces spelled as underscores.</summary>
-    private static string WikiUrl(string name) =>
+    internal static string WikiUrl(string name) =>
         "https://eqlwiki.com/" + Uri.EscapeDataString(name.Trim().Replace(' ', '_'));
 
     /// <summary>One class badge: glyph (or ALL-text) ring + completion arc.</summary>
@@ -183,6 +196,22 @@ public partial class SkyWindow : Window
 
     /// <summary>Switch the window between its packs: the Sky pieces or the
     /// Notable quests view — one shows, the other collapses.</summary>
+    /// <summary>Renders: pick a status filter ("all" shows every card on an empty ledger).</summary>
+    internal void ShowHousekeepingForTest(bool openAll)
+    {
+        _view = "house";
+        _houseOpenAllForTest = openAll;
+        Refresh();
+    }
+    private bool _houseOpenAllForTest;
+
+    internal void ShowStatusForTest(string tag)
+    {
+        foreach (var item in StatusBox.Items)
+            if (item is ComboBoxItem { Tag: string t } cbi && t == tag) { StatusBox.SelectedItem = cbi; break; }
+        Refresh();
+    }
+
     public void ShowPack(string pack)
     {
         if (pack == "lines" && _lines is null) return;
@@ -348,11 +377,17 @@ public partial class SkyWindow : Window
         public Visibility RowsVisibility => Open ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    public sealed record HouseVm(string Key, string Main, string Count, bool Open, List<string> Locations)
+    /// <param name="Icon">The item's own icon (owner, 25 Sep: "sometimes it's hard
+    /// to find them based on slot id") — small on the row, large in the fold-out.</param>
+    public sealed record HouseVm(string Key, string Main, string Count, bool Open, List<string> Locations, ImageSource? Icon = null)
     {
         public string Arrow => Open ? "▾" : "▸";
         public Visibility RowsVisibility => Open ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility IconVis => Icon is null ? Visibility.Collapsed : Visibility.Visible;
     }
+
+    /// <summary>An item's icon from the embedded item data (null when it has none).</summary>
+    internal static ImageSource? IconFor(string item) => ItemIcons.Get(SharedItemStats.Value.Lookup(item)?.Icon);
 
     public sealed record IsleVm(string Isle, string NeedText, bool Open, List<LineVm> Rows)
     {
@@ -666,7 +701,7 @@ public partial class SkyWindow : Window
         HouseVm Item(SkyQuests.SurplusItem s, string sectionKey, int here, IEnumerable<string> slotLines)
         {
             string key = s.Item + "|" + sectionKey;
-            bool open = _houseOpen.Contains(key);
+            bool open = _houseOpen.Contains(key) || _houseOpenAllForTest;
             var lines = new List<string>();
             if (open)
             {
@@ -676,7 +711,7 @@ public partial class SkyWindow : Window
             }
             // Just the copies in THIS lane (owner, 17 Sep: "remove the '2 in all'");
             // the fold-out's ledger line still carries the whole count.
-            return new HouseVm(key, s.Item, $"×{here} spare", open, lines);
+            return new HouseVm(key, s.Item, $"×{here} spare", open, lines, IconFor(s.Item));
         }
 
         foreach (var lane in HouseLaneOrder.Concat(byLane.Keys.Except(HouseLaneOrder, StringComparer.Ordinal).OrderBy(k => k)))
@@ -689,7 +724,7 @@ public partial class SkyWindow : Window
                 .ToList();
             sections.Add(new HouseSectionVm(lane, title,
                 $"{items.Count} item(s) · {list.Sum(x => x.Here)} spare",
-                _houseSectionOpen.Contains(lane), items));
+                (_houseSectionOpen.Contains(lane) || _houseOpenAllForTest), items));
         }
         if (notInDump.Count > 0)
         {
@@ -702,7 +737,7 @@ public partial class SkyWindow : Window
             })).ToList();
             sections.Add(new HouseSectionVm("none", title,
                 $"{items.Count} item(s) · {notInDump.Sum(s => s.Surplus)} spare",
-                _houseSectionOpen.Contains("none"), items));
+                (_houseSectionOpen.Contains("none") || _houseOpenAllForTest), items));
         }
 
         HouseControl.ItemsSource = sections;

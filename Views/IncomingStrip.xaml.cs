@@ -16,8 +16,8 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class IncomingStrip : UserControl
 {
-    private static readonly Brush MeleeFill = Freeze("#E57373");
-    private static readonly Brush SpellFill = Freeze("#9575CD");
+    private static readonly Brush MeleeFill = Freeze("#F28C38");
+    private static readonly Brush SpellFill = Freeze("#4A9EF0");
     private static readonly Brush ChipDim = Freeze("#C9D4E3");
     private static readonly Brush ChipDimBg = Freeze("#232B3D");
     private static readonly Brush ChipDimBorder = Freeze("#3A4560");
