@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -185,6 +185,36 @@ public sealed class SkyQuests
     public DateTime? SnapshotAt { get; set; }
 
     private readonly Dictionary<string, DateTime> _lastLootAt = new(StringComparer.OrdinalIgnoreCase);
+
+    // Exits WITH a log line (destroys, sealed turn-ins) keyed by when they
+    // happened. One printed after the dump took a copy the dump still lists:
+    // the cap is the dump's count MINUS those (owner, 25 Sep: clearing PoS
+    // items, "sometimes the panel would update on delete but most of the time
+    // i had to … do an inventory dump" — whenever the ledger already read
+    // higher than the bags, the cap pinned the count at the dump's number and
+    // a destroy only lowered the ledger above it). Rebuilt from the seen-line
+    // sets, so it survives restarts with them.
+    private readonly Dictionary<string, List<(DateTime At, int N)>> _exits = new(StringComparer.OrdinalIgnoreCase);
+
+    private void NoteExit(string key, DateTime at, int n)
+    {
+        if (!_exits.TryGetValue(key, out var list)) _exits[key] = list = new();
+        list.Add((at, n));
+    }
+
+    private int ExitsAfter(string key, DateTime at) =>
+        _exits.TryGetValue(key, out var list) ? list.Where(e => e.At > at).Sum(e => e.N) : 0;
+
+    private void RebuildExits()
+    {
+        _exits.Clear();
+        foreach (var raw in _destroySeen)
+            if (DestroyRx.Match(TimestampPrefix.Replace(raw, "", 1)) is { Success: true } dm)
+                NoteExit(LootTracker.ItemKey(dm.Groups["item"].Value), LineTime(raw), Math.Max(1, int.Parse(dm.Groups["n"].Value)));
+        foreach (var raw in _offerSeen)
+            if (OfferRx.Match(TimestampPrefix.Replace(raw, "", 1)) is { Success: true } om)
+                NoteExit(LootTracker.ItemKey(om.Groups["item"].Value), LineTime(raw), Math.Max(1, int.Parse(om.Groups["n"].Value)));
+    }
     private void NoteLootTime(string key, DateTime when)
     {
         if (when > _lastLootAt.GetValueOrDefault(key, DateTime.MinValue)) _lastLootAt[key] = when;
@@ -238,6 +268,7 @@ public sealed class SkyQuests
         _completed.Clear(); _completed.UnionWith(fromLog._completed);
         _currencyKeys.UnionWith(fromLog._currencyKeys);
         _lastLootAt.Clear(); foreach (var (k, v) in fromLog._lastLootAt) _lastLootAt[k] = v;
+        RebuildExits();
         _tracked.RemoveWhere(_completed.Contains);
         SaveProgress();
         Changed?.Invoke();
@@ -284,7 +315,9 @@ public sealed class SkyQuests
         {
             string key = LootTracker.ItemKey(dm.Groups["item"].Value);
             if (!_questItemKeys.Contains(key) || !_destroySeen.Add(rawLine)) return;
-            _destroyed[key] = _destroyed.GetValueOrDefault(key) + Math.Max(1, int.Parse(dm.Groups["n"].Value));
+            int dn = Math.Max(1, int.Parse(dm.Groups["n"].Value));
+            _destroyed[key] = _destroyed.GetValueOrDefault(key) + dn;
+            NoteExit(key, LineTime(rawLine), dn);
             SaveProgress();
             Changed?.Invoke();
             return;
@@ -351,6 +384,7 @@ public sealed class SkyQuests
             if (!_offerSeen.Add(p.RawLine)) continue;                  // replay dedupe
             any = true;
             _offered[p.ItemKey] = _offered.GetValueOrDefault(p.ItemKey) + p.N;
+            NoteExit(p.ItemKey, p.At, p.N);
 
             foreach (var q in _quests)
             {
@@ -397,6 +431,7 @@ public sealed class SkyQuests
         _offerSeen.Clear();
         _destroyed.Clear();
         _destroySeen.Clear();
+        _exits.Clear();
         SaveProgress();
         Changed?.Invoke();
     }
@@ -458,7 +493,11 @@ public sealed class SkyQuests
             && at > _lastLootAt.GetValueOrDefault(key, DateTime.MinValue))
         {
             int inDump = SnapshotCopies(_keyToName.GetValueOrDefault(key, key));
-            if (inDump >= 0 && inDump < held) held = inDump; // the bags win
+            if (inDump >= 0)
+            {
+                int live = Math.Max(0, inDump - ExitsAfter(key, at)); // destroyed / handed in since the dump
+                if (live < held) held = live; // the bags win
+            }
         }
         return held;
     }
@@ -658,6 +697,7 @@ public sealed class SkyQuests
             foreach (var s in doc.OfferSeen) _offerSeen.Add(s);
             foreach (var (k, v) in doc.Destroyed) _destroyed[k] = v;
             foreach (var s in doc.DestroySeen) _destroySeen.Add(s);
+            RebuildExits();
         }
         catch { /* corrupt -> start empty */ }
     }

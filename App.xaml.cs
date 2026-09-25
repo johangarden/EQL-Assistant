@@ -2982,6 +2982,22 @@ public partial class App : Application
                     int dumpFewer = dsAll.Surplus(name => name == "Golden Coffer" ? 2 : -1).First(s => s.Item == "Golden Coffer").Surplus;
                     Check("sky: the snapshot caps the spare count when it holds fewer than the ledger, never raises it",
                         ledgerSpare == 1 && dumpNone == 1 && dumpMore == 1 && dumpFewer == 2);
+                    // A destroy AFTER the dump comes off the dump's count too (owner,
+                    // 25 Sep: PoS clean-out, the panel stuck on a stale "×1 spare").
+                    // Ledger 7 (1 + 6 looted), bags 2 at 22:30 → held 2; destroying
+                    // one at 22:31 must read 1, not stay pinned at the dump's 2.
+                    dsAll.SnapshotCopies = name => name == "Golden Coffer" ? 2 : -1;
+                    dsAll.SnapshotAt = new DateTime(2026, 9, 10, 22, 30, 0);
+                    int cappedHeld = dsAll.HeldCount(coffer);
+                    dsAll.ProcessLine("[Thu Sep 10 22:31:00 2026] You successfully destroyed 1 Golden Coffer.");
+                    int afterDestroy = dsAll.HeldCount(coffer);
+                    var dsReload = new SkyQuests(new ConfigService(), dl, dPath)
+                    { SnapshotCopies = name => name == "Golden Coffer" ? 2 : -1, SnapshotAt = new DateTime(2026, 9, 10, 22, 30, 0) };
+                    Check("sky: a destroy after the dump lowers the capped count, and still does after a restart",
+                        cappedHeld == 2 && afterDestroy == 1 && dsReload.HeldCount(coffer) == 1);
+                    dsAll.SnapshotAt = new DateTime(2026, 9, 10, 22, 32, 0); // a fresh dump already lists the loss
+                    Check("sky: a dump written after the destroy is not docked twice", dsAll.HeldCount(coffer) == 2);
+                    dsAll.SnapshotCopies = null; dsAll.SnapshotAt = null;
                     try { File.Delete(dPath); File.Delete(dLoot); } catch { /* temp */ }
                 }
 
