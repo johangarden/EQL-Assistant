@@ -130,8 +130,11 @@ the affected suites (with `-Wait`) before committing.
   the inventory dump, re-read when their clocks move. The log keeps them
   live: "Your faction standing with X has been adjusted by N." moves a
   standing (lines AFTER the dump only; deduped by line), "could not
-  possibly get any better" marks maxed, and "You have slain X!" within 3 s
-  before teaches mob → faction → hit (persisted in `races.json` with the
+  possibly get any better" marks maxed AND records that standing as YOUR
+  cap (`CapOf`, persisted — an Ogre caps Dark Bargainers at −220, far under
+  the dump's 2,000; MAXED bars draw full, "your cap −220"), and "You have
+  slain X!" / "X has been slain by <pet/group>!" within 3 s before teaches
+  mob → faction → hit (persisted in `races.json` with the
   ★-tracked races). Character window "Races" tab (`RacesView`, badges like
   the Sky classes: done first, DONE/YOU/AUTO/TASK) + the faction helper
   card (`FactionHelperWindow`, tracked races only: between hits it stays

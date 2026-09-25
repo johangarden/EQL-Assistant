@@ -3469,6 +3469,37 @@ public partial class App : Application
         var parsed = FactionDumps.ParseClasses("Untapped Potential: Classes\nI\tClass Unlock - Bard\nI\t\tGet maximum faction with League of Antonican Bards.\n");
         Check("races: the classes section parses with the same reader", parsed is [{ Name: "Bard", Factions: [{ Faction: "League of Antonican Bards" }] }]);
         Check("races: config default — the helper card on", new Models.AppConfig().Overlay.FactionHelperVisible);
+
+        // Owner, 25 Sep (Dark Elf on an Ogre): the game caps Dark Bargainers at
+        // −220, far under the dump's 2,000 — MAXED is YOUR ceiling, remembered.
+        string capPath = Path.Combine(Path.GetTempPath(), "eql_selftest_races_caps.json");
+        try { File.Delete(capPath); } catch { /* fresh */ }
+        const string delAch = "Untapped Potential: Races\nI\tRace Unlock - Dark Elf\nI\t\tGet maximum faction with Dark Bargainers.\nI\t\tGet maximum faction with Dreadguard Outer.\nI\t\tGet maximum faction with Dreadguard Inner.\n";
+        const string delFac = "ID\tName\tStandingValue\tPointsToMax\n236\tDark Bargainers\t-240\t2240\n334\tDreadguard Outer\t-1590\t3590\n370\tDreadguard Inner\t-400\t2400\n";
+        var del = new RaceBook(null, capPath);
+        del.LoadDumpText(delFac, delAch, d0, d0);
+        del.SetTracked("Dark Elf", true);
+        string delHits = ""; del.FactionHit += (f, n, m) => delHits += $"{f}:{n}:{m};";
+        for (int i = 0; i < 4; i++)
+        {
+            del.ProcessLine(L(100 + i * 30, "A Dreadguard has been slain by Jobtik!"));
+            del.ProcessLine(L(100 + i * 30, "Your faction standing with Dark Bargainers has been adjusted by 5."));
+            del.ProcessLine(L(100 + i * 30, "Your faction standing with Dreadguard Outer has been adjusted by 5."));
+        }
+        del.ProcessLine(L(300, "a Dreadguard has been slain by Jobtik!"));
+        del.ProcessLine(L(300, "Your faction standing with Dark Bargainers could not possibly get any better."));
+        del.ProcessLine(L(300, "Your faction standing with Dreadguard Outer has been adjusted by 5."));
+        var db = del.ViewOf("Dark Bargainers");
+        Check("races: a pet's kill teaches the mob, the live hits move the standing and reach the card's gate",
+            del.Standing("Dreadguard Outer") == -1565 && del.SourcesOf("Dreadguard Outer") is [{ Mob: "a Dreadguard", Hit: 5, Count: 5 }]
+            && delHits.Contains("Dreadguard Outer:5:a Dreadguard;") && del.TrackedRaceOf("Dreadguard Outer") == "Dark Elf");
+        Check("races: the cap line makes −220 YOUR ceiling — MAXED, capped under the dump's max",
+            db is { Done: true, Standing: -220, Max: 2000, CappedBelowMax: true, Cap: -220 } && !del.ViewOf("Dreadguard Outer").Done);
+        var del2 = new RaceBook(null, capPath);
+        del2.LoadDumpText(delFac.Replace("-240\t2240", "-220\t2220"), delAch, d0.AddHours(1), d0.AddHours(1));
+        Check("races: the learned cap survives a restart and a fresh dump — still MAXED",
+            del2.ViewOf("Dark Bargainers") is { Done: true, CappedBelowMax: true } && del2.CapOf("Dark Bargainers") == -220);
+        try { File.Delete(capPath); } catch { /* temp */ }
     }
 
     /// <summary>Tradeskill helper (21 Sep): the wiki data, the combine engine

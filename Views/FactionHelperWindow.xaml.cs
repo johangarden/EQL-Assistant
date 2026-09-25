@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -44,6 +44,7 @@ public partial class FactionHelperWindow : Window
     private nint _hwnd;
     private bool _locked, _hidden, _closed;
     private readonly List<string> _texts = new();
+    private string _lastWhy = "";
 
     // The card: the last hit (kind: "hit" / "maxed"), when it landed.
     private (string Kind, string Race, string Faction, int Delta, string? Mob, DateTime At)? _card;
@@ -82,7 +83,10 @@ public partial class FactionHelperWindow : Window
         _book.Changed += _onChanged;
 
         _tick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
-        _tick.Tick += (_, _) => Refresh();
+        // The card finds the dumps itself (5 s throttle inside) — it used to
+        // wait for the Races tab to be opened when the app started before the
+        // log was followed.
+        _tick.Tick += (_, _) => { _book.RefreshDumps(); Refresh(); };
         Loaded += (_, _) => { _placement.Attach(); ApplyLockVisual(); Refresh(); _tick.Start(); };
         SourceInitialized += (_, _) => { _hwnd = new WindowInteropHelper(this).Handle; ApplyClickThrough(); };
         Closed += (_, _) => { _closed = true; _tick.Stop(); _book.FactionHit -= _onHit; _book.FactionMaxed -= _onMaxed; _book.Changed -= _onChanged; };
@@ -123,6 +127,9 @@ public partial class FactionHelperWindow : Window
 
         Placeholder.Visibility = !_locked && _card is null && standing == 0 ? Visibility.Visible : Visibility.Collapsed;
         bool show = !_hidden && !_closed && (_card is not null || standing > 0 || !_locked);
+        string why = _hidden ? "panels hidden" : _card is not null ? "a hit" : standing > 0 ? $"{standing} tracked race(s) open" : !_locked ? "unlocked placeholder"
+            : _book.Tracked.Count == 0 ? "no race tracked" : _book.DumpAt is null ? "no factions dump found yet" : "every tracked race done";
+        if (why != _lastWhy) { Log.Info($"faction helper: {(show ? "shown" : "hidden")} — {why}"); _lastWhy = why; }
         if (show && Visibility != Visibility.Visible) Show();
         else if (!show && Visibility == Visibility.Visible) Hide();
     }
@@ -156,7 +163,7 @@ public partial class FactionHelperWindow : Window
                 row.Children.Add(Text(f.Name, f.Done ? Faint : Dim, 11.5, f.Done ? FontWeights.Normal : FontWeights.SemiBold));
                 if (f.Done)
                 {
-                    var ok = Text("✓ maxed", Green, 10.5, FontWeights.Bold);
+                    var ok = Text(f.CappedBelowMax ? $"✓ maxed · cap {f.Standing:N0}" : "✓ maxed", Green, 10.5, FontWeights.Bold);
                     Grid.SetColumn(ok, 2); row.Children.Add(ok);
                 }
                 else
@@ -219,7 +226,9 @@ public partial class FactionHelperWindow : Window
 
         var line = new DockPanel();
         var standing = new TextBlock { FontSize = 14, FontWeight = FontWeights.ExtraBold, Foreground = view.Negative ? Red : Green, VerticalAlignment = VerticalAlignment.Center };
-        standing.Text = view.Done ? $"{Math.Min(view.Standing, view.Max):N0} / {view.Max:N0}" : view.Negative ? $"{view.Standing:N0}" : $"{view.Standing:N0} / {view.Max:N0}";
+        standing.Text = view.CappedBelowMax ? $"your cap {view.Standing:N0}"
+            : view.Done ? $"{Math.Min(view.Standing, view.Max):N0} / {view.Max:N0}" : view.Negative ? $"{view.Standing:N0}" : $"{view.Standing:N0} / {view.Max:N0}";
+        if (view.Done) standing.Foreground = Green;
         _texts.Add(standing.Text);
         DockPanel.SetDock(standing, Dock.Right);
         line.Children.Add(standing);
