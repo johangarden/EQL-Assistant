@@ -3475,20 +3475,25 @@ public partial class App : Application
         y.ProcessLine("[Thu Sep 24 21:00:01 2026] Your Boil Blood spell is interrupted.");
         Check("eff: an interrupted cast is taken back", y.Of("Boil Blood")!.Casts == 12);
 
-        var dmg = SpellEfficiency.Rows(lib, y, new[] { "SHD", "SHM" }, 40, healing: false, targets: 1);
+        var dmg = SpellEfficiency.Rows(lib, y, new[] { "NEC", "SHM" }, 21, 30, healing: false, targets: 1);
         var bb = dmg.First(r => r.Spell.Name == "Boil Blood");
         var at6 = SpellEfficiency.AtRank(boil, 6);
         Check("eff: a row carries the wiki, your rank and yours — Boil Blood VI: 324 a cast of its 666 at VI",
             bb.Rank == 6 && Math.Abs(bb.RankTotal!.Value - at6.Total) < 0.01 && Math.Abs(bb.Observed!.Value - 324) < 0.01
             && Math.Abs(bb.ObservedPct!.Value - 324 / at6.Total) < 0.001 && Math.Abs(bb.ObservedPerMana!.Value - 324 / at6.Mana) < 0.001
-            && !dmg.Any(r => r.Spell.Name == "Flame Shock") && dmg.All(r => r.Level >= 40));
-        var fire = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, false, 1, resist: "Fire");
-        var aoe3 = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, false, 3).First(r => r.Spell.Name == "Pillar of Fire");
+            && !dmg.Any(r => r.Spell.Name == "Flame Shock") && dmg.All(r => r.Level is >= 21 and <= 30) && bb.Level == 28);
+        var cap = SpellEfficiency.Rows(lib, y, new[] { "SHD", "SHM", "NEC" }, 1, 60, healing: false, targets: 1);
+        Check("eff: nothing above the level cap (50) — Asystole reads NEC 40, never SHD 60; Torpor (SHM 60) is gone",
+            cap.All(r => r.Level <= SpellEfficiency.LevelCap) && cap.First(r => r.Spell.Name == "Asystole") is { Level: 40, ClassText: "NEC 40" }
+            && !SpellEfficiency.Rows(lib, y, new[] { "SHM" }, 1, 60, healing: true, targets: 1).Any(r => r.Spell.Name == "Torpor")
+            && SpellEfficiency.BandFor(50) == 4 && SpellEfficiency.BandFor(28) == 2 && SpellEfficiency.BandFor(0) == 0);
+        var fire = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1, resist: "Fire");
+        var aoe3 = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 3).First(r => r.Spell.Name == "Pillar of Fire");
         Check("eff: the resist filter keeps one school; 3 targets triple an AE, never a single-target nuke",
             fire.Any(r => r.Spell.Name == "Flame Shock") && fire.All(r => r.Spell.Resist == "Fire") && !fire.Any(r => r.Spell.Name == "Envenomed Bolt")
             && Math.Abs(aoe3.Total - SpellEfficiency.BaseTotal(S("Pillar of Fire")) * 3) < 0.01
-            && SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, false, 3).First(r => r.Spell.Name == "Flame Shock").Total == 175);
-        var heals = SpellEfficiency.Rows(lib, y, new[] { "SHM" }, 1, healing: true, targets: 1);
+            && SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 3).First(r => r.Spell.Name == "Flame Shock").Total == 175);
+        var heals = SpellEfficiency.Rows(lib, y, new[] { "SHM" }, 1, 50, healing: true, targets: 1);
         Check("eff: the healing list holds heals and HoTs only, Superior Healing with yours",
             heals.Count > 5 && heals.All(r => SpellEfficiency.IsHealing(r.Spell.Effect)) && heals.First(r => r.Spell.Name == "Superior Healing").Observed == 640);
 
@@ -3496,10 +3501,10 @@ public partial class App : Application
         w.Show();
         w.ShowTab("efficiency");
         var painted = w.EffRowsForTest;
-        Check("eff: the tab paints your combo at 40+ (level 50), best per mana first",
-            painted.Count > 10 && painted.All(r => r.Level >= 40)
+        Check("eff: the tab paints your combo in your level's band (41–50 at level 50), best per mana first",
+            painted.Count > 5 && painted.All(r => r.Level is >= 41 and <= 50)
             && painted.Zip(painted.Skip(1)).All(p => p.First.BestPerMana >= p.Second.BestPerMana)
-            && painted.Any(r => r.Spell.Name == "Boil Blood" && r.Observed is not null));
+            && painted.Any(r => r.Spell.Name == "Envenomed Bolt" && r.Observed is not null));
         w.Close();
     }
 

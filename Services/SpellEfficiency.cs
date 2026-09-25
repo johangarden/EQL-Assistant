@@ -16,6 +16,25 @@ public static class SpellEfficiency
 {
     public const int MinObservedCasts = 5;
 
+    /// <summary>EQ Legends' level cap: Classic ends at 50 (Kunark is announced at
+    /// 55 — raise this then). The library carries old EverQuest's levels up to
+    /// 60; a class level above the cap is a spell you can't have yet and stays
+    /// out (owner, 25 Sep — Torpor at SHM 60 topped the heal list).</summary>
+    public const int LevelCap = 50;
+
+    /// <summary>The level filter's bands (owner, 25 Sep): All · 1–20 · 21–30 · 31–40 · 41–50.</summary>
+    public static readonly (int Lo, int Hi, string Label)[] Bands =
+        { (1, LevelCap, "All"), (1, 20, "1–20"), (21, 30, "21–30"), (31, 40, "31–40"), (41, LevelCap, $"41–{LevelCap}") };
+
+    /// <summary>The band your level sits in (0 = All when the level is unknown).</summary>
+    public static int BandFor(int level)
+    {
+        if (level <= 0) return 0;
+        for (int i = 1; i < Bands.Length; i++)
+            if (level >= Bands[i].Lo && level <= Bands[i].Hi) return i;
+        return Bands.Length - 1;
+    }
+
     public static bool IsDamage(string effect) => effect is "Direct damage" or "AE damage" or "Damage over time" or "Lifetap";
     public static bool IsHealing(string effect) => effect is "Heal" or "Heal over time";
 
@@ -73,11 +92,12 @@ public static class SpellEfficiency
     private static readonly Regex ClassLevelRx = new(@"(?<cls>[A-Z]{2,3}) (?<lvl>\d+)", RegexOptions.Compiled);
 
     /// <summary>Every rankable spell for <paramref name="classes"/> (empty = every
-    /// class) at or above <paramref name="minLevel"/>, damage or healing;
+    /// class) whose level sits in <paramref name="minLevel"/>..<paramref name="maxLevel"/>
+    /// (never above <see cref="LevelCap"/>), damage or healing;
     /// AE / group spells multiplied by <paramref name="targets"/> (the observed
     /// figure never — it already hit whatever it hit).</summary>
     public static List<Row> Rows(SpellLibrary library, SpellYield? yield, IReadOnlyCollection<string> classes,
-        int minLevel, bool healing, int targets, string search = "", string resist = "")
+        int minLevel, int maxLevel, bool healing, int targets, string search = "", string resist = "")
     {
         var want = new HashSet<string>(classes, StringComparer.OrdinalIgnoreCase);
         var rows = new List<Row>();
@@ -96,10 +116,11 @@ public static class SpellEfficiency
                 string cls = m.Groups["cls"].Value;
                 if (want.Count > 0 && !want.Contains(cls)) continue;
                 int lv = int.Parse(m.Groups["lvl"].Value);
+                if (lv > LevelCap) continue; // not in the game yet
                 level = Math.Min(level, lv);
                 parts.Add($"{cls} {lv}");
             }
-            if (level == int.MaxValue || level < minLevel) continue;
+            if (level == int.MaxValue || level < minLevel || level > maxLevel) continue;
 
             bool multi = s.Targets is "ae" or "group";
             int n = multi ? Math.Max(1, targets) : 1;

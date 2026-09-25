@@ -25,7 +25,7 @@ public partial class SpellLibraryWindow
 
     private bool _effHealing;
     private readonly HashSet<string> _effClasses = new(StringComparer.OrdinalIgnoreCase);
-    private int _effLevel = -1;   // -1 = not chosen yet (defaults from your level)
+    private int _effBand = -1;    // index into SpellEfficiency.Bands; -1 = not chosen yet (your level's band)
     private int _effTargets = 1;
     private string _effResist = "";
     private string _effSort = "rank";
@@ -36,7 +36,7 @@ public partial class SpellLibraryWindow
     {
         if (healing is { } h) _effHealing = h;
         if (resist is not null) _effResist = resist;
-        if (classes is not null) { _classesProvider = () => classes; _effClasses.Clear(); _effLevel = 1; }
+        if (classes is not null) { _classesProvider = () => classes; _effClasses.Clear(); _effBand = 0; }
         Refresh();
     }
 
@@ -88,11 +88,7 @@ public partial class SpellLibraryWindow
             _effClasses.Clear();
             foreach (var c in _combo) _effClasses.Add(c);
         }
-        if (_effLevel < 0)
-        {
-            int lv = _levelProvider?.Invoke() ?? 0;
-            _effLevel = lv >= 60 ? 50 : lv >= 50 ? 40 : lv >= 40 ? 30 : 1;
-        }
+        if (_effBand < 0) _effBand = SpellEfficiency.BandFor(_levelProvider?.Invoke() ?? 0);
 
         EffBar.Children.Add(Seg(new[] { ("dmg", "Damage"), ("heal", "Healing") }, _effHealing ? "heal" : "dmg",
             v => { _effHealing = v == "heal"; if (_effHealing) _effResist = ""; }, big: true));
@@ -110,7 +106,8 @@ public partial class SpellLibraryWindow
             EffBar.Children.Add(chips);
         }
         var lvl = Group("LEVEL");
-        lvl.Children.Add(Seg(new[] { ("1", "All"), ("30", "30+"), ("40", "40+"), ("50", "50+") }, _effLevel.ToString(), v => _effLevel = int.Parse(v)));
+        lvl.Children.Add(Seg(SpellEfficiency.Bands.Select((b, i) => (i.ToString(), b.Label)), _effBand.ToString(), v => _effBand = int.Parse(v),
+            tip: $"The level you get a spell at — EQ Legends caps at {SpellEfficiency.LevelCap}, so spells above it stay out"));
         EffBar.Children.Add(lvl);
         var tg = Group("TARGETS");
         tg.Children.Add(Seg(new[] { ("1", "1"), ("3", "3"), ("5", "5") }, _effTargets.ToString(), v => _effTargets = int.Parse(v),
@@ -138,15 +135,20 @@ public partial class SpellLibraryWindow
         var row = new StackPanel { Orientation = Orientation.Horizontal };
         var host = new Border
         {
-            BorderBrush = EffEdge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), ClipToBounds = true,
+            BorderBrush = EffEdge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(12), Background = EffSurface,
             Child = row, VerticalAlignment = VerticalAlignment.Center, ToolTip = tip, Margin = big ? new Thickness(0, 0, 16, 6) : new Thickness(0),
         };
-        bool first = true;
-        foreach (var (value, label) in options)
+        var list = options.ToList();
+        for (int i = 0; i < list.Count; i++)
         {
+            var (value, label) = list[i];
+            bool first = i == 0, last = i == list.Count - 1;
             bool on = value == current;
             var b = new Border
             {
+                // The ends carry the pill's own rounding (inner radius = outer 12 − the 1 px edge)
+                // so a lit end never pokes a square corner out past the outline.
+                CornerRadius = new CornerRadius(first ? 11 : 0, last ? 11 : 0, last ? 11 : 0, first ? 11 : 0),
                 Background = on ? EffGoldBg : EffSurface, Cursor = Cursors.Hand,
                 BorderBrush = EffEdge, BorderThickness = new Thickness(first ? 0 : 1, 0, 0, 0),
                 Padding = big ? new Thickness(15, 3, 15, 4) : new Thickness(10, 2, 10, 3),
@@ -155,7 +157,6 @@ public partial class SpellLibraryWindow
             string v = value;
             b.MouseLeftButtonDown += (_, e) => { pick(v); e.Handled = true; Refresh(); };
             row.Children.Add(b);
-            first = false;
         }
         return host;
     }
@@ -198,7 +199,8 @@ public partial class SpellLibraryWindow
         string search = SearchBox?.Text.Trim() ?? "";
         var classes = _effClasses.Count > 0 ? _effClasses.ToList()
             : ClassBox?.SelectedIndex > 0 ? new List<string> { (string)ClassBox.SelectedItem } : new List<string>();
-        var rows = SpellEfficiency.Rows(_library, _yield, classes, _effLevel < 0 ? 1 : _effLevel, _effHealing, _effTargets,
+        var lvBand = SpellEfficiency.Bands[Math.Clamp(_effBand, 0, SpellEfficiency.Bands.Length - 1)];
+        var rows = SpellEfficiency.Rows(_library, _yield, classes, lvBand.Lo, lvBand.Hi, _effHealing, _effTargets,
             SpellLibrary.EffectAlias(search) ?? search, _effResist);
         rows = _effSort switch
         {

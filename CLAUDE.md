@@ -165,7 +165,10 @@ the affected suites (with `-Wait`) before committing.
   damage/heal from the log, pooled by base name, deduped by the log's own
   clock, fed live + by its own background pass at startup / after a
   rebuild; mana always from the wiki. SUSTAINED = total ÷ (cast + reuse),
-  never under a DoT's own run; resist school filter; library fields
+  never under a DoT's own run; resist school filter; level bands All ·
+  1–20 · 21–30 · 31–40 · 41–50 under `SpellEfficiency.LevelCap` = 50 (EQL
+  Classic; Kunark announced at 55 — raise it then; the library's old-EQ
+  levels above the cap stay out); library fields
   mana/castSec/hit/tick/ticks/targets/resist/resistMod/recastSec/durSec
   from the scratch `efficiency-fields.py`),
   `SpellDurations` (observed-duration learner), `TriggerColors`
