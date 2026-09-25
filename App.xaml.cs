@@ -2997,6 +2997,12 @@ public partial class App : Application
                         cappedHeld == 2 && afterDestroy == 1 && dsReload.HeldCount(coffer) == 1);
                     dsAll.SnapshotAt = new DateTime(2026, 9, 10, 22, 32, 0); // a fresh dump already lists the loss
                     Check("sky: a dump written after the destroy is not docked twice", dsAll.HeldCount(coffer) == 2);
+                    // Housekeeping icons (25 Sep): the turn-in items carry their own icon.
+                    var skyItems = dsAll.Quests.SelectMany(q => q.Items.Select(i => i.Name)).Where(n => !n.StartsWith("Wind Rune", StringComparison.OrdinalIgnoreCase))
+                        .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    int withIcon = skyItems.Count(n => Views.SkyWindow.IconFor(n) is not null);
+                    Check($"sky: housekeeping rows find an icon for nearly every turn-in item ({withIcon}/{skyItems.Count})",
+                        skyItems.Count > 0 && withIcon >= skyItems.Count * 0.9 && Views.SkyWindow.IconFor("Silken Strands") is not null && Views.SkyWindow.IconFor("Woven Skull Cap") is not null);
                     dsAll.SnapshotCopies = null; dsAll.SnapshotAt = null;
                     try { File.Delete(dPath); File.Delete(dLoot); } catch { /* temp */ }
                 }
@@ -5224,6 +5230,29 @@ public partial class App : Application
             lane.SetLocked(false);
             lane.FreezeForRender();
             mgr = lane;
+        }
+        else if (page.Equals("quests:house", StringComparison.OrdinalIgnoreCase))
+        {
+            // Quest item housekeeping on a scratch ledger: a few looted turn-in
+            // items, every quest done so all of them read spare, the rows unfolded.
+            string hp = Path.Combine(Path.GetTempPath(), "eql_render_house");
+            Directory.CreateDirectory(hp);
+            foreach (var f in Directory.GetFiles(hp)) try { File.Delete(f); } catch { /* scratch */ }
+            var cs = new ConfigService();
+            var loot = new LootTracker(cs, Path.Combine(hp, "loot.json"));
+            var sky = new SkyQuests(cs, loot, Path.Combine(hp, "sky.json"));
+            int sec = 0;
+            foreach (var item in new[] { "Silken Strands", "Silvery Ring", "Silvery Ring", "Small Shield", "Sphinxian Ring", "Woven Skull Cap", "Woven Skull Cap" })
+                loot.ProcessLine($"[Thu Sep 10 22:{sec / 60:00}:{sec++ % 60:00} 2026] --You have looted a {item} from a sphinx's corpse.--");
+            foreach (var q in sky.Quests) sky.SetCompleted(q, true);
+            var sw = new Views.SkyWindow(sky, null, () => "SHD/SHM/NEC")
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            sw.Show();
+            sw.ShowHousekeepingForTest(openAll: true);
+            mgr = sw;
         }
         else if (page.StartsWith("library:", StringComparison.OrdinalIgnoreCase))
         {

@@ -294,22 +294,33 @@
                                                 MouseLeftButtonDown="House_Toggle" Tag="{Binding Key}">
                                         <TextBlock Text="{Binding Arrow}" Foreground="{StaticResource Brush.Gold}"
                                                    FontSize="11" Margin="0,1,6,0"/>
+                                        <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,6,0"
+                                               VerticalAlignment="Center" Visibility="{Binding IconVis}"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
                                         <TextBlock Text="{Binding Main}" Foreground="{StaticResource Brush.TextDim}"
-                                                   FontWeight="SemiBold" FontSize="12"/>
+                                                   FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding Count}" Foreground="#81C784"
                                                    FontWeight="Bold" FontSize="12" Margin="8,0,0,0"/>
                                     </StackPanel>
-                                    <ItemsControl ItemsSource="{Binding Locations}"
-                                                  Visibility="{Binding RowsVisibility}"
-                                                  Margin="17,4,0,1">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding}"
-                                                           Foreground="{StaticResource Brush.TextHint}"
-                                                           FontSize="11" TextWrapping="Wrap" Margin="0,1,0,0"/>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    <!-- Unfolded: the icon large, the way the bag slot shows it,
+                                         beside where the copies sit (owner, 25 Sep). -->
+                                    <DockPanel Visibility="{Binding RowsVisibility}" Margin="17,6,0,1">
+                                        <Border DockPanel.Dock="Left" Width="44" Height="44" Margin="0,0,10,0"
+                                                CornerRadius="4" Background="#0F141E" BorderBrush="#3A4560" BorderThickness="1"
+                                                VerticalAlignment="Top" Visibility="{Binding IconVis}">
+                                            <Image Source="{Binding Icon}" Width="40" Height="40"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        </Border>
+                                        <ItemsControl ItemsSource="{Binding Locations}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}"
+                                                               Foreground="{StaticResource Brush.TextHint}"
+                                                               FontSize="11" TextWrapping="Wrap" Margin="0,1,0,0"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </DockPanel>
                                 </StackPanel>
                             </Border>
                                         </DataTemplate>
