@@ -1876,7 +1876,8 @@ public partial class MainWindow : Window
                 TradeskillValue = sk => _tradeskills.ValueOf(sk),
                 TradeskillValueSet = (sk, v) => _tradeskills.SetValue(sk, v),
                 SpellYield = _yield,
-                ClassesText = KnownClassesText,
+                // /who first; the loadout name ("Enc-Shm-SK") until a /who names the combo.
+                ClassesText = () => KnownClassesText() is { Length: > 0 } k ? k : SpellEfficiency.ClassesFromName(_config.ActiveLoadout),
                 CurrentLevel = () => _combat.CurrentLevel,
             };
             _manager.Closed += (_, _) => _manager = null;

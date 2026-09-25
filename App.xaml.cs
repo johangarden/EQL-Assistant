@@ -3497,6 +3497,37 @@ public partial class App : Application
         Check("eff: the healing list holds heals and HoTs only, Superior Healing with yours",
             heals.Count > 5 && heals.All(r => SpellEfficiency.IsHealing(r.Spell.Effect)) && heals.First(r => r.Spell.Name == "Superior Healing").Observed == 640);
 
+        // Sub-filters (owner, 25 Sep): DD / DoT / AE; Direct / HoT / Group.
+        var all50 = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1);
+        var dd = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1, sub: "dd");
+        var dot = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1, sub: "dot");
+        var ae = SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, false, 1, sub: "ae");
+        Check("eff: DD / DoT / AE split the damage list — Flame Shock a DD, Boil Blood a DoT, Pillar of Fire an AE, a ticking drain a DoT",
+            dd.Any(r => r.Spell.Name == "Flame Shock") && !dd.Any(r => r.Spell.Name == "Boil Blood") && dot.Any(r => r.Spell.Name == "Boil Blood")
+            && ae.Any(r => r.Spell.Name == "Pillar of Fire") && !dd.Any(r => r.Spell.Name == "Pillar of Fire")
+            && dot.Any(r => r.Spell.Name == "Auspice") && dd.Count + dot.Count + ae.Count == all50.Count);
+        Check("eff: Direct / HoT / Group split the heals", SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, true, 1, sub: "hot").All(r => r.Spell.Effect == "Heal over time")
+            && SpellEfficiency.Rows(lib, y, Array.Empty<string>(), 1, 50, true, 1, sub: "direct").Any(r => r.Spell.Name == "Light Healing"));
+        Check("eff: the loadout name reads as your classes until a /who does",
+            SpellEfficiency.ClassesFromName("Enc-Shm-SK") == "ENC/SHM/SHD" && SpellEfficiency.ClassesFromName("Default") == ""
+            && SpellEfficiency.ClassesFromName("wiz mage cleric") == "WIZ/MAG/CLR");
+
+        string viewPath = Path.Combine(Path.GetTempPath(), "eql_selftest_library_view.json");
+        try { File.Delete(viewPath); } catch { /* fresh */ }
+        var wv = new Views.SpellLibraryWindow(lib, _ => { }, null, y, () => "", () => 0, viewPath) { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
+        wv.Show();
+        wv.ShowTab("efficiency");
+        Check("eff: no /who and no level opens on the top band (41–50), never the heavy All",
+            wv.EffRowsForTest.Count > 0 && wv.EffRowsForTest.All(r => r.Level is >= 41 and <= 50));
+        wv.EffSetForTest(healing: true);
+        wv.Close();
+        var wv2 = new Views.SpellLibraryWindow(lib, _ => { }, null, y, () => "", () => 0, viewPath) { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
+        wv2.Show();
+        Check("eff: the tab remembers itself — reopens on Efficiency, Healing",
+            wv2.EffRowsForTest.Count > 0 && wv2.EffRowsForTest.All(r => SpellEfficiency.IsHealing(r.Spell.Effect)));
+        wv2.Close();
+        try { File.Delete(viewPath); } catch { /* temp */ }
+
         var w = new Views.SpellLibraryWindow(lib, _ => { }, null, y, () => "SHD/SHM/ENC", () => 50) { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
         w.Show();
         w.ShowTab("efficiency");

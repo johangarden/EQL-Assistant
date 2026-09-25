@@ -24,7 +24,7 @@ public partial class SpellLibraryWindow : Window
 
     public SpellLibraryWindow(SpellLibrary library, Action<TriggerDefinition> onAdd,
         SpellDurations? durations = null, SpellYield? yield = null,
-        Func<string>? classesProvider = null, Func<int>? levelProvider = null)
+        Func<string>? classesProvider = null, Func<int>? levelProvider = null, string? viewStatePath = null)
     {
         InitializeComponent();
         WindowTheme.ApplyDark(this);
@@ -34,6 +34,8 @@ public partial class SpellLibraryWindow : Window
         _yield = yield;
         _classesProvider = classesProvider;
         _levelProvider = levelProvider;
+        _viewPath = viewStatePath;
+        LoadViewState();
         RenderTabs();
 
         ClassBox.ItemsSource = new[]
@@ -43,7 +45,7 @@ public partial class SpellLibraryWindow : Window
         };
         ClassBox.SelectedIndex = 0;
 
-        Refresh();
+        if (_tab == "efficiency") ShowTab("efficiency"); else Refresh();
     }
 
     private void Filters_Changed(object sender, RoutedEventArgs e) => Refresh();

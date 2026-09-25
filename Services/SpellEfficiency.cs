@@ -97,7 +97,7 @@ public static class SpellEfficiency
     /// AE / group spells multiplied by <paramref name="targets"/> (the observed
     /// figure never — it already hit whatever it hit).</summary>
     public static List<Row> Rows(SpellLibrary library, SpellYield? yield, IReadOnlyCollection<string> classes,
-        int minLevel, int maxLevel, bool healing, int targets, string search = "", string resist = "")
+        int minLevel, int maxLevel, bool healing, int targets, string search = "", string resist = "", string sub = "")
     {
         var want = new HashSet<string>(classes, StringComparer.OrdinalIgnoreCase);
         var rows = new List<Row>();
@@ -108,6 +108,7 @@ public static class SpellEfficiency
             if (search.Length > 0 && !s.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
                 && !s.Effect.Contains(search, StringComparison.OrdinalIgnoreCase)) continue;
             if (resist.Length > 0 && !s.Resist.Equals(resist, StringComparison.OrdinalIgnoreCase)) continue;
+            if (sub.Length > 0 && !InSub(s, sub)) continue;
             if (!seen.Add(s.Name)) continue; // the library lists a few spells twice
             int level = int.MaxValue;
             var parts = new List<string>();
@@ -159,6 +160,44 @@ public static class SpellEfficiency
                 rank, rTotal, rMana, rPer, rSus, obs, casts, obsPer, obsPct, obsTargets));
         }
         return rows;
+    }
+
+    /// <summary>The sub-filter (owner, 25 Sep): damage "dd" · "dot" · "ae", healing
+    /// "direct" · "hot" · "group". A lifetap sorts by its shape — a drain that
+    /// ticks is a DoT, the instant tap a DD; an AE is anything that hits several.</summary>
+    public static bool InSub(SpellLibrary.Spell s, string sub) => sub switch
+    {
+        "dd" => s.Targets != "ae" && (s.Effect == "Direct damage" || s.Effect == "Lifetap" && !OverTime(s)),
+        "dot" => s.Targets != "ae" && (s.Effect == "Damage over time" || s.Effect == "Lifetap" && OverTime(s)),
+        "ae" => s.Targets == "ae" || s.Effect == "AE damage",
+        "direct" => s.Effect == "Heal" && s.Targets != "group",
+        "hot" => s.Effect == "Heal over time" && s.Targets != "group",
+        "group" => s.Targets == "group",
+        _ => true,
+    };
+
+    /// <summary>Every class, in the game's own order — the tab's chips.</summary>
+    public static readonly string[] AllClasses =
+        { "WAR", "CLR", "PAL", "RNG", "SHD", "DRU", "MNK", "BRD", "ROG", "SHM", "NEC", "WIZ", "MAG", "ENC", "BST", "BER" };
+
+    private static readonly Dictionary<string, string> ClassAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["war"] = "WAR", ["warrior"] = "WAR", ["clr"] = "CLR", ["cleric"] = "CLR", ["pal"] = "PAL", ["paladin"] = "PAL",
+        ["rng"] = "RNG", ["ranger"] = "RNG", ["shd"] = "SHD", ["sk"] = "SHD", ["shadowknight"] = "SHD", ["dru"] = "DRU", ["druid"] = "DRU",
+        ["mnk"] = "MNK", ["monk"] = "MNK", ["brd"] = "BRD", ["bard"] = "BRD", ["rog"] = "ROG", ["rogue"] = "ROG",
+        ["shm"] = "SHM", ["sham"] = "SHM", ["shaman"] = "SHM", ["nec"] = "NEC", ["necro"] = "NEC", ["necromancer"] = "NEC",
+        ["wiz"] = "WIZ", ["wizard"] = "WIZ", ["mag"] = "MAG", ["mage"] = "MAG", ["magician"] = "MAG", ["enc"] = "ENC", ["ench"] = "ENC",
+        ["enchanter"] = "ENC", ["bst"] = "BST", ["bl"] = "BST", ["beastlord"] = "BST", ["ber"] = "BER", ["zerk"] = "BER", ["berserker"] = "BER",
+    };
+
+    /// <summary>A class combo read off a loadout name ("Enc-Shm-SK" → ENC/SHM/SHD),
+    /// the fallback when no /who has named it yet. "" when no token is a class.</summary>
+    public static string ClassesFromName(string name)
+    {
+        var found = new List<string>();
+        foreach (var tok in System.Text.RegularExpressions.Regex.Split(name ?? "", @"[^A-Za-z]+"))
+            if (tok.Length > 0 && ClassAliases.TryGetValue(tok, out var c) && !found.Contains(c)) found.Add(c);
+        return string.Join("/", found);
     }
 
     /// <summary>"X" for 10, "VIII" for 8, "—" for rank 0 (the base spell).</summary>

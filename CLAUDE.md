@@ -168,7 +168,11 @@ the affected suites (with `-Wait`) before committing.
   never under a DoT's own run; resist school filter; level bands All ·
   1–20 · 21–30 · 31–40 · 41–50 under `SpellEfficiency.LevelCap` = 50 (EQL
   Classic; Kunark announced at 55 — raise it then; the library's old-EQ
-  levels above the cap stay out); library fields
+  levels above the cap stay out); DD / DoT / AE (heals Direct / HoT /
+  Group) sub-filter; chips for all 16 classes, yours lit on open (/who,
+  else the loadout name — `ClassesFromName`, "Enc-Shm-SK"), your level's
+  band (else the top band, never All); the tab remembers itself in
+  `library-view.json`); library fields
   mana/castSec/hit/tick/ticks/targets/resist/resistMod/recastSec/durSec
   from the scratch `efficiency-fields.py`),
   `SpellDurations` (observed-duration learner), `TriggerColors`

@@ -29,14 +29,79 @@ public partial class SpellLibraryWindow
     private int _effTargets = 1;
     private string _effResist = "";
     private string _effSort = "rank";
+    private string _effSub = "";
     private List<string> _combo = new();
+    private bool _effInit;
+
+    // The tab remembers itself (owner, 25 Sep: "it feels heavy when I open it —
+    // All levels and all classes"): library-view.json next to the config.
+    private string? _viewPath;
+    private sealed class ViewState
+    {
+        public string Tab { get; set; } = "durations";
+        public bool Healing { get; set; }
+        public string Sub { get; set; } = "";
+        public int Band { get; set; } = -1;
+        public int Targets { get; set; } = 1;
+        public string Resist { get; set; } = "";
+        public string Sort { get; set; } = "rank";
+        public List<string> Classes { get; set; } = new();
+    }
+
+    private void LoadViewState()
+    {
+        if (_viewPath is null || !System.IO.File.Exists(_viewPath)) return;
+        try
+        {
+            var v = System.Text.Json.JsonSerializer.Deserialize<ViewState>(System.IO.File.ReadAllText(_viewPath));
+            if (v is null) return;
+            _tab = v.Tab == "efficiency" ? "efficiency" : "durations";
+            _effHealing = v.Healing; _effSub = v.Sub; _effBand = v.Band; _effTargets = Math.Clamp(v.Targets, 1, 5);
+            _effResist = v.Resist; _effSort = v.Sort; _savedClasses = v.Classes;
+        }
+        catch { /* a stale file just means defaults */ }
+    }
+    private List<string> _savedClasses = new();
+
+    private void SaveViewState()
+    {
+        if (_viewPath is null) return;
+        try
+        {
+            System.IO.File.WriteAllText(_viewPath, System.Text.Json.JsonSerializer.Serialize(new ViewState
+            {
+                Tab = _tab, Healing = _effHealing, Sub = _effSub, Band = _effBand, Targets = _effTargets,
+                Resist = _effResist, Sort = _effSort, Classes = _effClasses.ToList(),
+            }));
+        }
+        catch { /* best effort */ }
+    }
+
+    /// <summary>First paint of the tab: your classes lit (the /who combo, else the
+    /// loadout name, else what you picked last time), your level's band (else
+    /// the top band — never the heavy All).</summary>
+    private void InitEff()
+    {
+        if (_effInit) return;
+        _effInit = true;
+        string classes = _classesProvider?.Invoke() ?? "";
+        _combo = classes.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(c => SpellEfficiency.AllClasses.Contains(c, StringComparer.OrdinalIgnoreCase)).Select(c => c.ToUpperInvariant()).ToList();
+        _effClasses.Clear();
+        foreach (var c in _combo.Count > 0 ? _combo : _savedClasses) _effClasses.Add(c);
+        if (_effBand < 0)
+        {
+            int lv = _levelProvider?.Invoke() ?? 0;
+            _effBand = lv > 0 ? SpellEfficiency.BandFor(lv) : SpellEfficiency.Bands.Length - 1;
+        }
+    }
 
     /// <summary>Render: flip the tab's filters as if clicked.</summary>
     internal void EffSetForTest(bool? healing = null, string? resist = null, string? classes = null)
     {
         if (healing is { } h) _effHealing = h;
         if (resist is not null) _effResist = resist;
-        if (classes is not null) { _classesProvider = () => classes; _effClasses.Clear(); _effBand = 0; }
+        if (classes is not null) { _classesProvider = () => classes; _effInit = false; _effBand = 0; }
         Refresh();
     }
 
@@ -69,6 +134,8 @@ public partial class SpellLibraryWindow
         _tab = tab == "efficiency" ? "efficiency" : "durations";
         bool eff = _tab == "efficiency";
         RenderTabs();
+        ClassBox.Visibility = eff ? Visibility.Collapsed : Visibility.Visible; // the tab has its own class chips
+        SaveViewState();
         DurHint.Visibility = eff ? Visibility.Collapsed : Visibility.Visible;
         EffBar.Visibility = EffVerdicts.Visibility = EffFoot.Visibility = EffTableHost.Visibility = eff ? Visibility.Visible : Visibility.Collapsed;
         DurTableHost.Visibility = eff ? Visibility.Collapsed : Visibility.Visible;
@@ -80,31 +147,19 @@ public partial class SpellLibraryWindow
 
     private void BuildEffBar()
     {
+        InitEff();
         EffBar.Children.Clear();
-        string classes = _classesProvider?.Invoke() ?? "";
-        _combo = classes.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-        if (_effClasses.Count == 0 || !_effClasses.All(c => _combo.Contains(c, StringComparer.OrdinalIgnoreCase)))
-        {
-            _effClasses.Clear();
-            foreach (var c in _combo) _effClasses.Add(c);
-        }
-        if (_effBand < 0) _effBand = SpellEfficiency.BandFor(_levelProvider?.Invoke() ?? 0);
 
         EffBar.Children.Add(Seg(new[] { ("dmg", "Damage"), ("heal", "Healing") }, _effHealing ? "heal" : "dmg",
-            v => { _effHealing = v == "heal"; if (_effHealing) _effResist = ""; }, big: true));
-        if (_combo.Count > 0)
-        {
-            var chips = Group("CLASSES");
-            foreach (var c in _combo)
-            {
-                string cls = c;
-                chips.Children.Add(Chip(cls, _effClasses.Contains(cls), () =>
-                {
-                    if (_effClasses.Contains(cls) && _effClasses.Count > 1) _effClasses.Remove(cls); else _effClasses.Add(cls);
-                }));
-            }
-            EffBar.Children.Add(chips);
-        }
+            v => { bool h = v == "heal"; if (h != _effHealing) { _effHealing = h; _effSub = ""; if (h) _effResist = ""; } }, big: true));
+        var sub = Group("");
+        sub.Children.Add(_effHealing
+            ? Seg(new[] { ("", "All"), ("direct", "Direct"), ("hot", "HoT"), ("group", "Group") }, _effSub, v => _effSub = v,
+                tip: "Direct heals, heals over time, or the ones that land on the whole group")
+            : Seg(new[] { ("", "All"), ("dd", "DD"), ("dot", "DoT"), ("ae", "AE") }, _effSub, v => _effSub = v,
+                tip: "Direct damage (nukes and instant taps), damage over time (ticking drains too), or area spells"));
+        EffBar.Children.Add(sub);
+
         var lvl = Group("LEVEL");
         lvl.Children.Add(Seg(SpellEfficiency.Bands.Select((b, i) => (i.ToString(), b.Label)), _effBand.ToString(), v => _effBand = int.Parse(v),
             tip: $"The level you get a spell at — EQ Legends caps at {SpellEfficiency.LevelCap}, so spells above it stay out"));
@@ -120,12 +175,36 @@ public partial class SpellLibraryWindow
                 _effResist, v => _effResist = v, tip: "Only the nukes of one school — a mob that resists fire eats cold"));
             EffBar.Children.Add(rs);
         }
+
+        // Every class as a chip — a multiclass view across any mix (owner, 25 Sep);
+        // yours are lit on open, none lit = every class.
+        var chips = new WrapPanel { Margin = new Thickness(0, 0, 0, 2) };
+        chips.Children.Add(new TextBlock { Text = "CLASSES", Foreground = EffFaint, FontSize = 10, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 7, 0) });
+        foreach (var c in SpellEfficiency.AllClasses)
+        {
+            string cls = c;
+            var chip = Chip(cls, _effClasses.Contains(cls), () => { if (!_effClasses.Remove(cls)) _effClasses.Add(cls); });
+            if (_combo.Contains(cls, StringComparer.OrdinalIgnoreCase)) chip.ToolTip = "One of your classes";
+            chip.Margin = new Thickness(0, 0, 4, 4);
+            chips.Children.Add(chip);
+        }
+        if (_effClasses.Count == 0)
+            chips.Children.Add(new TextBlock { Text = "none picked — every class", Foreground = EffFaint, FontSize = 10.5, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 4) });
+        else if (_combo.Count > 0 && !_effClasses.SetEquals(_combo))
+        {
+            var mine = Chip("↺ mine", false, () => { _effClasses.Clear(); foreach (var c in _combo) _effClasses.Add(c); });
+            mine.ToolTip = "Back to your own classes: " + string.Join("/", _combo);
+            mine.Margin = new Thickness(6, 0, 4, 4);
+            chips.Children.Add(mine);
+        }
+        EffBar.Children.Add(chips);
     }
 
     private static StackPanel Group(string label)
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 16, 6), VerticalAlignment = VerticalAlignment.Center };
-        sp.Children.Add(new TextBlock { Text = label, Foreground = EffFaint, FontSize = 10, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 7, 0) });
+        if (label.Length > 0)
+            sp.Children.Add(new TextBlock { Text = label, Foreground = EffFaint, FontSize = 10, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 7, 0) });
         return sp;
     }
 
@@ -197,11 +276,11 @@ public partial class SpellLibraryWindow
         EffRowsForTest.Clear();
 
         string search = SearchBox?.Text.Trim() ?? "";
-        var classes = _effClasses.Count > 0 ? _effClasses.ToList()
-            : ClassBox?.SelectedIndex > 0 ? new List<string> { (string)ClassBox.SelectedItem } : new List<string>();
+        var classes = _effClasses.ToList(); // none = every class
         var lvBand = SpellEfficiency.Bands[Math.Clamp(_effBand, 0, SpellEfficiency.Bands.Length - 1)];
         var rows = SpellEfficiency.Rows(_library, _yield, classes, lvBand.Lo, lvBand.Hi, _effHealing, _effTargets,
-            SpellLibrary.EffectAlias(search) ?? search, _effResist);
+            SpellLibrary.EffectAlias(search) ?? search, _effResist, _effSub);
+        SaveViewState();
         rows = _effSort switch
         {
             "name" => rows.OrderBy(r => r.Spell.Name, StringComparer.OrdinalIgnoreCase).ToList(),
@@ -228,9 +307,7 @@ public partial class SpellLibraryWindow
         {
             EffTableHost.Children.Add(new TextBlock
             {
-                Text = _combo.Count == 0 && classes.Count == 0
-                    ? "Type /who in game so the app knows your classes — or pick a class above."
-                    : $"No {unit} spell for these filters.",
+                Text = $"No {unit} spell for these filters.",
                 Foreground = DurDimFg, FontSize = 12, Margin = new Thickness(2, 6, 0, 0),
             });
             return;

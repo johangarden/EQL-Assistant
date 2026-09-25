@@ -581,7 +581,8 @@ public partial class TriggerManagerWindow : Window
     {
         if (_libraryWindow is null)
         {
-            _libraryWindow = new SpellLibraryWindow(_spellLibrary, AddFromLibrary, _durations, SpellYield, ClassesText, CurrentLevel) { Owner = this };
+            _libraryWindow = new SpellLibraryWindow(_spellLibrary, AddFromLibrary, _durations, SpellYield, ClassesText, CurrentLevel,
+                System.IO.Path.Combine(_configService.ConfigDirectory, "library-view.json")) { Owner = this };
             _libraryWindow.Closed += (_, _) => _libraryWindow = null;
             _libraryWindow.Show();
         }
