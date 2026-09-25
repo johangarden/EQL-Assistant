@@ -1544,6 +1544,20 @@ public partial class App : Application
             Check("typing: a long 'Regen'-typed spell is a buff too",
                 CatOf("Spiritual Light") == "Buffs");
             Check("typing: Quickness stays a buff", CatOf("Quickness") == "Buffs");
+            // Effect-first (25 Sep): the wiki's effect slots over landing-word guesses.
+            Check("typing: effects decide — Vampiric Curse and Stinging Swarm are DoTs, Celestial Healing a HoT",
+                CatOf("Vampiric Curse") == "DoTs" && CatOf("Stinging Swarm") == "DoTs" && CatOf("Celestial Healing") == "HoTs");
+            Check("typing: effects decide — Calm is a debuff, Voice of Shadows your own buff, Tashani a debuff, Auspice a DoT",
+                CatOf("Calm") == "Debuffs" && CatOf("Voice of Shadows") == "Buffs" && CatOf("Tashani") == "Debuffs" && CatOf("Auspice") == "DoTs");
+            Check("typing: heals / travel keep the old rules (Minor Healing HoT, a detrimental port a debuff)",
+                CatOf("Minor Healing") == "HoTs" && CatOf("Trakanon's Touch") == "Debuffs");
+            var vc = new[] { new Models.TriggerDefinition { Id = "lib-vampiric-curse", Name = "Vampiric Curse", Category = "Debuffs" } };
+            lib2.HealLibraryTriggers(vc);
+            Check("typing: an old library trigger heals to its effect's type on load (Vampiric Curse Debuffs → DoTs)",
+                vc[0].Category == "DoTs");
+            Check("typing: the library search reaches effects and the words players type",
+                lib2.Search("dot").Any(x => x.Name == "Vampiric Curse") && lib2.Search("mez").Any(x => x.Name == "Kelin's Lucid Lullaby")
+                && lib2.Search("nuke").Any(x => x.Name == "Flame Shock") && !lib2.Search("nuke").Any(x => x.Name == "Vampiric Curse"));
             var retype = new[]
             {
                 new Models.TriggerDefinition { Id = "lib-envenomed-bolt", Name = "Envenomed Bolt", Category = "Debuffs" },
@@ -5163,6 +5177,18 @@ public partial class App : Application
             lane.SetLocked(false);
             lane.FreezeForRender();
             mgr = lane;
+        }
+        else if (page.StartsWith("library:", StringComparison.OrdinalIgnoreCase))
+        {
+            // The spell library window searched as typed ("library:dot") — the EFFECT column.
+            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { })
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            lw.Show();
+            lw.SearchForTest(page["library:".Length..]);
+            mgr = lw;
         }
         else if (page.Equals("levelup", StringComparison.OrdinalIgnoreCase) || page.Equals("levelup:15", StringComparison.OrdinalIgnoreCase))
         {

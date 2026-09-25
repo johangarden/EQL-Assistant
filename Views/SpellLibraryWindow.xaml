@@ -1,4 +1,4 @@
-<Window x:Class="EQLOverlay.Views.SpellLibraryWindow"
+﻿<Window x:Class="EQLOverlay.Views.SpellLibraryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="EQL Assistant — Spell Library"
@@ -34,7 +34,7 @@
                           MinHeight="30" SelectionChanged="Filters_Changed"/>
                 <TextBox x:Name="SearchBox" TextChanged="Filters_Changed"
                          AutomationProperties.AutomationId="LibrarySearchBox"
-                         ToolTip="Search the whole spell library — matches without samples show with the library's duration"/>
+                         ToolTip="Search the whole spell library by name, landing line or effect (dd, dot, hot, mez, slow, ds…) — matches without samples show with the library's duration"/>
             </DockPanel>
         </StackPanel>
 
