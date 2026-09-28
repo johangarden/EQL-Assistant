@@ -3536,6 +3536,9 @@ public partial class App : Application
             painted.Count > 5 && painted.All(r => r.Level is >= 41 and <= 50)
             && painted.Zip(painted.Skip(1)).All(p => p.First.BestPerMana >= p.Second.BestPerMana)
             && painted.Any(r => r.Spell.Name == "Envenomed Bolt" && r.Observed is not null));
+        Check("eff: the verdict cards name who gets the spell and when",
+            w.VerdictTexts.Count == 3 && w.VerdictTexts[0].StartsWith("MOST PER MANA  ·  " + painted.OrderByDescending(r => r.BestPerMana).First().ClassText, StringComparison.Ordinal)
+            && w.VerdictTexts.Take(2).All(t => System.Text.RegularExpressions.Regex.IsMatch(t, @"·\s+[A-Z]{3} \d+")));
         w.Close();
     }
 

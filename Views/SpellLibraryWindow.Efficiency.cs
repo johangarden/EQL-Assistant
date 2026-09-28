@@ -409,17 +409,27 @@ public partial class SpellLibraryWindow
         var mp = rows.OrderByDescending(r => r.BestPerMana).First();
         var su = rows.OrderByDescending(r => r.BestSustained).First();
         var yo = rows.Where(r => r.ObservedPerMana is not null).OrderByDescending(r => r.ObservedPerMana).FirstOrDefault();
-        EffVerdicts.Children.Add(Verdict("MOST PER MANA", mp.Spell.Name, $"{Fmt(mp.BestPerMana)} {unit} a mana{(mp.Rank is { } r1 ? $" at {SpellEfficiency.Roman(r1)}" : "")}"));
-        EffVerdicts.Children.Add(Verdict("BEST SUSTAINED", su.Spell.Name, $"{su.BestSustained:N0} a second, chained"));
+        // Each card names who gets the spell and when (owner, 28 Sep: "highlighted
+        // spells need class and level on the card") — "WIZ 16 · DRU 34".
+        EffVerdicts.Children.Add(Verdict("MOST PER MANA", mp.Spell.Name, $"{Fmt(mp.BestPerMana)} {unit} a mana{(mp.Rank is { } r1 ? $" at {SpellEfficiency.Roman(r1)}" : "")}", mp.ClassText));
+        EffVerdicts.Children.Add(Verdict("BEST SUSTAINED", su.Spell.Name, $"{su.BestSustained:N0} a second, chained", su.ClassText));
         EffVerdicts.Children.Add(yo is null
             ? Verdict("BEST IN YOUR LOG", "—", $"cast a spell {SpellEfficiency.MinObservedCasts}+ times")
-            : Verdict("BEST IN YOUR LOG", yo.Spell.Name, $"{Fmt(yo.ObservedPerMana!.Value)} a mana, real"));
+            : Verdict("BEST IN YOUR LOG", yo.Spell.Name, $"{Fmt(yo.ObservedPerMana!.Value)} a mana, real", yo.ClassText));
+        VerdictTexts = EffVerdicts.Children.OfType<Border>().Select(b => string.Join(" | ", ((StackPanel)b.Child).Children.OfType<TextBlock>()
+            .Select(t => new TextRange(t.ContentStart, t.ContentEnd).Text))).ToList();
     }
 
-    private static Border Verdict(string label, string name, string text)
+    /// <summary>Selftest: each verdict card's lines joined by " | ".</summary>
+    internal List<string> VerdictTexts { get; private set; } = new();
+
+    private static Border Verdict(string label, string name, string text, string classText = "")
     {
         var sp = new StackPanel();
-        sp.Children.Add(new TextBlock { Text = label, Foreground = EffFaint, FontSize = 9.5, FontWeight = FontWeights.Bold });
+        var head = new TextBlock { FontSize = 9.5, FontWeight = FontWeights.Bold, Foreground = EffFaint, TextTrimming = TextTrimming.CharacterEllipsis };
+        head.Inlines.Add(new Run(label));
+        if (classText.Length > 0) head.Inlines.Add(new Run("  ·  " + classText) { Foreground = EffGold });
+        sp.Children.Add(head);
         var line = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis };
         line.Inlines.Add(new Run(name) { Foreground = EffText, FontWeight = FontWeights.SemiBold, FontSize = 12.5 });
         line.Inlines.Add(new Run("  " + text) { Foreground = DurDimFg, FontSize = 11 });
