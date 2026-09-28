@@ -411,7 +411,7 @@ public partial class SpellLibraryWindow
         var yo = rows.Where(r => r.ObservedPerMana is not null).OrderByDescending(r => r.ObservedPerMana).FirstOrDefault();
         // Each card names who gets the spell and when (owner, 28 Sep: "highlighted
         // spells need class and level on the card") — "WIZ 16 · DRU 34".
-        EffVerdicts.Children.Add(Verdict("MOST PER MANA", mp.Spell.Name, $"{Fmt(mp.BestPerMana)} {unit} a mana{(mp.Rank is { } r1 ? $" at {SpellEfficiency.Roman(r1)}" : "")}", mp.ClassText));
+        EffVerdicts.Children.Add(Verdict("MOST PER MANA", mp.Spell.Name, $"{Fmt(mp.BestPerMana)} {unit} a mana{(mp.Rank is > 0 and var r1 ? $" at {SpellEfficiency.Roman(r1)}" : "")}", mp.ClassText));
         EffVerdicts.Children.Add(Verdict("BEST SUSTAINED", su.Spell.Name, $"{su.BestSustained:N0} a second, chained", su.ClassText));
         EffVerdicts.Children.Add(yo is null
             ? Verdict("BEST IN YOUR LOG", "—", $"cast a spell {SpellEfficiency.MinObservedCasts}+ times")

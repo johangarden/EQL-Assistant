@@ -3539,6 +3539,8 @@ public partial class App : Application
         Check("eff: the verdict cards name who gets the spell and when",
             w.VerdictTexts.Count == 3 && w.VerdictTexts[0].StartsWith("MOST PER MANA  ·  " + painted.OrderByDescending(r => r.BestPerMana).First().ClassText, StringComparison.Ordinal)
             && w.VerdictTexts.Take(2).All(t => System.Text.RegularExpressions.Regex.IsMatch(t, @"·\s+[A-Z]{3} \d+")));
+        Check("eff: rank 0 reads as the base spell, never a bare 0 (owner, 28 Sep)",
+            SpellEfficiency.Roman(0) == "base" && SpellEfficiency.Roman(10) == "X" && !w.VerdictTexts.Any(t => t.Contains(" at 0", StringComparison.Ordinal)));
         w.Close();
     }
 

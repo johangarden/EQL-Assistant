@@ -200,9 +200,10 @@ public static class SpellEfficiency
         return string.Join("/", found);
     }
 
-    /// <summary>"X" for 10, "VIII" for 8, "—" for rank 0 (the base spell).</summary>
+    /// <summary>"X" for 10, "VIII" for 8, "base" for rank 0 — the un-upgraded
+    /// spell (owner, 28 Sep: "at 0?").</summary>
     public static string Roman(int rank) => rank switch
     {
-        <= 0 => "0", 1 => "I", 2 => "II", 3 => "III", 4 => "IV", 5 => "V", 6 => "VI", 7 => "VII", 8 => "VIII", 9 => "IX", _ => "X",
+        <= 0 => "base", 1 => "I", 2 => "II", 3 => "III", 4 => "IV", 5 => "V", 6 => "VI", 7 => "VII", 8 => "VIII", 9 => "IX", _ => "X",
     };
 }
