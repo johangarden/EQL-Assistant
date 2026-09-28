@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -23,6 +23,12 @@ public partial class BisFinderView : UserControl
     private bool _building;
 
     private readonly List<string> _combo = new(); // insertion order: the 4th pick evicts the 1st
+
+    /// <summary>Your level (the character window's /who or ding) — pool points scale with it.</summary>
+    public Func<int>? LevelProvider { get; set; }
+
+    /// <summary>Selftest: the pool rates the board was scored with last.</summary>
+    internal BisFinder.PoolRates? RatesForTest { get; private set; }
     // Armor and weapons score on different questions — each view keeps its
     // own priorities; _prio points at whichever is active.
     private string[] _prioArmor = { "AC", "STA", "INT" };
@@ -328,7 +334,14 @@ public partial class BisFinderView : UserControl
               + (_dumpStamp.Length > 0 ? $"  Snapshot {_dumpStamp}." : "");
 
         StyleViewPills();
-        var all = BisFinder.Build(_rows, _stats, _combo, _prio, tailWeight: _weapons ? 0 : _tail);
+        // Pools as stat points at your combo and level (owner, 28 Sep: HP counted 1:1 with STA).
+        var rates = BisFinder.RatesFor(_combo, LevelProvider?.Invoke() ?? 0);
+        RatesForTest = rates;
+        ScoreNote.Text = "Score = 3·p1 + 2·p2 + 1·p3 on tier-scaled values. HP and mana count as the stat points they equal: "
+            + $"1 STA ≈ {rates.HpPerSta:0.#} HP{(rates.HpClass.Length > 0 ? $" ({rates.HpClass})" : "")}"
+            + (rates.ManaStats.Length > 0 ? $" · 1 {rates.ManaStats} ≈ {rates.ManaPerPoint:0.#} mana" : " · mana counts nothing — no mana class")
+            + $" at level {rates.Level}{(LevelProvider?.Invoke() is > 0 ? "" : " (assumed — type /who)")}. Rates from eqlwiki's Game Mechanics and Statistics pages.";
+        var all = BisFinder.Build(_rows, _stats, _combo, _prio, tailWeight: _weapons ? 0 : _tail, rates: rates);
         var result = _weapons ? BisFinder.WeaponView(all, _style, _range, _backstab) : BisFinder.ArmorView(all);
         BuildVerdicts(result);
         BuildBoard(result);

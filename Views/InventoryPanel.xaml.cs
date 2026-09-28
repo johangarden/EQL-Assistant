@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -169,6 +169,7 @@ public partial class InventoryPanel : UserControl
         _showTabRow = showTabRow;
         HeaderRow.Visibility = showHeader ? Visibility.Visible : Visibility.Collapsed;
         BisView.Init(_itemStats, SharedConfig.Value, CharKey);
+        BisView.LevelProvider = () => _session?.LevelStatement is { Level: > 0 } st ? st.Level : SharedConfig.Value.LoadLastClasses(_charName).Level;
         RefreshCharHeader();
         _attached = true;
         if (IsLoaded && !_started) Start();
