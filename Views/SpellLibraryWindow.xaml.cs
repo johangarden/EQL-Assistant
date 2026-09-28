@@ -24,7 +24,8 @@ public partial class SpellLibraryWindow : Window
 
     public SpellLibraryWindow(SpellLibrary library, Action<TriggerDefinition> onAdd,
         SpellDurations? durations = null, SpellYield? yield = null,
-        Func<string>? classesProvider = null, Func<int>? levelProvider = null, string? viewStatePath = null)
+        Func<string>? classesProvider = null, Func<int>? levelProvider = null, string? viewStatePath = null,
+        Func<string>? snapshotText = null)
     {
         InitializeComponent();
         WindowTheme.ApplyDark(this);
@@ -35,6 +36,7 @@ public partial class SpellLibraryWindow : Window
         _classesProvider = classesProvider;
         _levelProvider = levelProvider;
         _viewPath = viewStatePath;
+        _snapshotText = snapshotText;
         LoadViewState();
         RenderTabs();
 

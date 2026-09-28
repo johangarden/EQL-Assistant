@@ -38,6 +38,7 @@
                          AutomationProperties.AutomationId="LibrarySearchBox"
                          ToolTip="Search the whole spell library by name, landing line or effect (dd, dot, hot, mez, slow, ds…) — matches without samples show with the library's duration"/>
             </DockPanel>
+            <TextBlock x:Name="EffWho" Visibility="Collapsed" FontSize="11" Margin="0,0,0,8" TextWrapping="Wrap"/>
             <WrapPanel x:Name="EffBar" Visibility="Collapsed" Margin="0,0,0,8"/>
             <UniformGrid x:Name="EffVerdicts" Visibility="Collapsed" Rows="1" Margin="0,0,0,8"/>
         </StackPanel>

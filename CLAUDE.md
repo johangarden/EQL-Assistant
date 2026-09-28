@@ -171,8 +171,11 @@ the affected suites (with `-Wait`) before committing.
   levels above the cap stay out); DD / DoT / AE (heals Direct / HoT /
   Group) sub-filter; chips for all 16 classes, yours lit on open (/who,
   else the loadout name — `ClassesFromName`, "Enc-Shm-SK"), your level's
-  band (else the top band, never All); the tab remembers itself in
-  `library-view.json`); library fields
+  band (else the top band, never All); a NEW level or combo moves the
+  band / relights the chips even over a remembered pick (owner, 28 Sep),
+  a USING line names the snapshot ("Level 21 DRU/BRD/WIZ · stated by /who
+  at 14:37"), a 3 s poll picks up a /who while it shows; the tab
+  remembers itself in `library-view.json`); library fields
   mana/castSec/hit/tick/ticks/targets/resist/resistMod/recastSec/durSec
   from the scratch `efficiency-fields.py`),
   `SpellDurations` (observed-duration learner), `TriggerColors`
