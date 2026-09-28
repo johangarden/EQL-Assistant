@@ -2568,6 +2568,7 @@ public partial class App : Application
                 TradeskillChecks(Check);
                 RaceChecks(Check);
                 EfficiencyChecks(Check);
+                BisPoolChecks(Check);
                 Check("reparse: the catch-up card says so, and the toolbar fill is the track times the fraction",
                     new ReparseProgress("a.txt", 1, 1, 0, 0, 0, Verb: "Catching up").Title == "Catching up a.txt"
                     && Math.Abs(new ViewModels.OverlayViewModel(new TriggerEngine(new Models.AppConfig(), new AlertService()), new Models.AppConfig())
@@ -3443,6 +3444,27 @@ public partial class App : Application
             y.ProcessLine(L("You healed Thorrak for 640 (702) hit points by Superior Healing IV."));
         }
         return y;
+    }
+
+    /// <summary>BiS finder pools (28 Sep): HP and mana scored as the stat points they equal.</summary>
+    private static void BisPoolChecks(Action<string, bool> Check)
+    {
+        var sk = BisFinder.RatesFor(new[] { "SHD", "SHM", "ENC" }, 50);
+        var war60 = BisFinder.RatesFor(new[] { "WAR" }, 60);
+        var wiz25 = BisFinder.RatesFor(new[] { "WIZ" }, 25);
+        var war = BisFinder.RatesFor(new[] { "WAR" }, 50);
+        Check("bis: pool rates from eqlwiki — SHD/SHM/ENC at 50: 1 STA = 3.8 HP (SHD), 1 INT/WIS ≈ 9.4 mana; WAR at 60 = 6 HP; a level-25 WIZ = 1 HP",
+            sk is { HpPerSta: 3.8, HpClass: "SHD", ManaStats: "INT/WIS" } && Math.Abs(sk.ManaPerPoint - 9.42) < 0.01
+            && war60.HpPerSta == 6.0 && wiz25.HpPerSta == 1.0 && Math.Abs(BisFinder.RatesFor(new[] { "SHD" }, 55).HpPerSta - 4.5) < 0.01);
+        Check("bis: a warrior has no mana class — mana scores nothing", war is { ManaStats: "", ManaPerPoint: 0 } && war.Points("MP", 100) == 0);
+        var hpItem = new Dictionary<string, int> { ["HP"] = 50 };
+        var staItem = new Dictionary<string, int> { ["STA"] = 10 };
+        var prio = new[] { "HP", "STA", "INT" };
+        double hp = BisFinder.Score(hpItem, prio, 0, sk), sta = BisFinder.Score(staItem, prio, 0, sk);
+        Check("bis: +50 HP is ~13 STA points for a SHD at 50, not 50 — it no longer buries +10 STA five to one",
+            Math.Abs(hp - 3 * 50 / 3.8) < 0.01 && sta == 20 && BisFinder.Score(hpItem, prio) == 150);
+        Check("bis: the other-stats tail uses the same rates",
+            Math.Abs(BisFinder.Score(new Dictionary<string, int> { ["MP"] = 94 }, new[] { "AC", "", "" }, 1, sk) - 94 / 9.42) < 0.01);
     }
 
     /// <summary>Spell efficiency (25 Sep): the rank rules, the chained cycle, the

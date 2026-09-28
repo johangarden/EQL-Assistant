@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 namespace EQLOverlay.Services;
 
@@ -107,17 +107,71 @@ public static class BisFinder
         return d;
     }
 
+    /// <summary>What a pool point is worth in stat points (owner, 28 Sep: "HP /
+    /// mana / end counting as 1 point equal to main stats makes it uneven").
+    /// HP per STA from eqlwiki's Game Mechanics tables (level 50 and 60, per
+    /// class; a multiclass takes its best HP class), mana per INT/WIS from the
+    /// Statistics page (~11.3 at level 60 under 200). Both scale with level:
+    /// linear to 50, then 50 → 60 between the two tables. Endurance has no
+    /// published rate — it keeps the old guess, a fifth of a point.</summary>
+    public sealed record PoolRates(double HpPerSta, double ManaPerPoint, string ManaStats, int Level, string HpClass)
+    {
+        /// <summary>A pool stat as stat points; other stats unchanged.</summary>
+        public double Points(string key, int v) => key switch
+        {
+            "HP" => HpPerSta > 0 ? v / HpPerSta : v * 0.2,
+            "MP" => ManaPerPoint > 0 ? v / ManaPerPoint : 0, // no mana class: mana buys nothing
+            "END" => v * 0.2,
+            _ => v,
+        };
+    }
+
+    // (level 50, level 60) HP per STA — eqlwiki Game Mechanics#Hitpoint Calculation.
+    // BST rides with RNG and BER with WAR: the tables don't list them (assumed).
+    private static readonly Dictionary<string, (double L50, double L60)> HpPerSta = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["WAR"] = (4.5, 6.0), ["BER"] = (4.5, 6.0),
+        ["SHD"] = (3.8, 5.2), ["PAL"] = (3.8, 5.2),
+        ["RNG"] = (3.3, 4.2), ["BST"] = (3.3, 4.2),
+        ["BRD"] = (3.0, 4.0), ["MNK"] = (3.0, 4.0), ["ROG"] = (3.0, 4.0),
+        ["CLR"] = (2.5, 3.0), ["DRU"] = (2.5, 3.0), ["SHM"] = (2.5, 3.0),
+        ["ENC"] = (2.0, 2.4), ["MAG"] = (2.0, 2.4), ["NEC"] = (2.0, 2.4), ["WIZ"] = (2.0, 2.4),
+    };
+    private static readonly HashSet<string> IntCasters = new(StringComparer.OrdinalIgnoreCase) { "NEC", "MAG", "ENC", "WIZ", "SHD", "BRD" };
+    private static readonly HashSet<string> WisCasters = new(StringComparer.OrdinalIgnoreCase) { "CLR", "PAL", "DRU", "SHM", "RNG", "BST" };
+    private const double ManaPerPointAt60 = 11.3;
+
+    private static double AtLevel((double L50, double L60) r, int level) =>
+        level <= 50 ? r.L50 * level / 50.0 : r.L50 + (r.L60 - r.L50) * Math.Min(10, level - 50) / 10.0;
+
+    /// <summary>The rates for a combo at a level (0 = unknown → level 50; no combo → a middle class).</summary>
+    public static PoolRates RatesFor(IReadOnlyCollection<string> combo, int level)
+    {
+        int lv = level > 0 ? Math.Min(level, 60) : 50;
+        string hpClass = "";
+        double hp = 0;
+        foreach (var c in combo)
+            if (HpPerSta.TryGetValue(c, out var r) && AtLevel(r, lv) > hp) { hp = AtLevel(r, lv); hpClass = c.ToUpperInvariant(); }
+        if (hp <= 0) { hp = AtLevel((3.0, 4.0), lv); hpClass = ""; }
+        bool intc = combo.Count == 0 || combo.Any(IntCasters.Contains), wisc = combo.Count == 0 || combo.Any(WisCasters.Contains);
+        string manaStats = intc && wisc ? "INT/WIS" : intc ? "INT" : wisc ? "WIS" : "";
+        double mana = manaStats.Length > 0 ? ManaPerPointAt60 * lv / 60.0 : 0;
+        return new PoolRates(Math.Round(hp, 2), Math.Round(mana, 2), manaStats, lv, hpClass);
+    }
+
     /// <summary>3·p1 + 2·p2 + 1·p3, plus (owner request, 4 Sep) a TAIL: every
     /// other integer stat at tailWeight (0 = off), so a well-rounded "+7 of
     /// everything" piece isn't scored as nothing. Pools (HP/Mana/End) count
     /// at a fifth — 5 HP ≈ 1 stat point; weapon numbers and the Resists sum
     /// never ride the tail (they'd double-count).</summary>
+    /// <param name="rates">Pools as stat points (28 Sep); null = the old raw scoring.</param>
     public static double Score(IReadOnlyDictionary<string, int> stats, IReadOnlyList<string> prio,
-        double tailWeight = 0)
+        double tailWeight = 0, PoolRates? rates = null)
     {
         double s = 0;
         for (int i = 0; i < prio.Count && i < Weights.Length; i++)
-            if (prio[i].Length > 0) s += Weights[i] * stats.GetValueOrDefault(prio[i]);
+            if (prio[i].Length > 0)
+                s += Weights[i] * (rates is null ? stats.GetValueOrDefault(prio[i]) : rates.Points(prio[i], stats.GetValueOrDefault(prio[i])));
         if (tailWeight <= 0) return s;
         bool resistsPicked = prio.Contains("RESISTS");
         foreach (var (key, v) in stats)
@@ -125,8 +179,7 @@ public static class BisFinder
             if (v == 0 || prio.Contains(key)) continue;
             if (key is "DMG" or "DELAY" or "DMG_DLY" or "BACKSTAB" or "RESISTS") continue;
             if (resistsPicked && key.StartsWith("SV_", StringComparison.Ordinal)) continue;
-            double scale = key is "HP" or "MP" or "END" ? 0.2 : 1;
-            s += tailWeight * v * scale;
+            s += tailWeight * (rates is null ? v * (key is "HP" or "MP" or "END" ? 0.2 : 1) : rates.Points(key, v));
         }
         return s;
     }
@@ -246,7 +299,7 @@ public static class BisFinder
     /// <summary>The board for one combo + priority set over the dump's rows.</summary>
     public static Result Build(IEnumerable<InventoryStore.CarryRow> rows, ItemStats stats,
         IReadOnlyCollection<string> combo, IReadOnlyList<string> prio,
-        IReadOnlyCollection<string>? lanes = null, double tailWeight = 0)
+        IReadOnlyCollection<string>? lanes = null, double tailWeight = 0, PoolRates? rates = null)
     {
         var laneSet = new HashSet<string>(lanes ?? SearchLanes, StringComparer.Ordinal);
         var unknown = new List<string>();
@@ -277,7 +330,7 @@ public static class BisFinder
             bool worn = r.Lane == "worn";
             string wornKey = worn ? WornSlotKey(r.Location) : "";
             bool twoHanded = rec.Skill.StartsWith("2H", StringComparison.OrdinalIgnoreCase);
-            double score = Score(scaled, prio, tailWeight);
+            double score = Score(scaled, prio, tailWeight, rates);
 
             foreach (var key in slotKeys)
             {
