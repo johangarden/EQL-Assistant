@@ -3512,6 +3512,28 @@ public partial class App : Application
             SpellEfficiency.ClassesFromName("Enc-Shm-SK") == "ENC/SHM/SHD" && SpellEfficiency.ClassesFromName("Default") == ""
             && SpellEfficiency.ClassesFromName("wiz mage cleric") == "WIZ/MAG/CLR");
 
+        // A fresh /who beats a remembered band (owner, 28 Sep: level 21 and still 1–20).
+        string whoPath = Path.Combine(Path.GetTempPath(), "eql_selftest_library_who.json");
+        try { File.Delete(whoPath); } catch { /* fresh */ }
+        int lvNow = 16; string combo = "DRU/BRD/WIZ";
+        var ww = new Views.SpellLibraryWindow(lib, _ => { }, null, y, () => combo, () => lvNow, whoPath, () => $"Level {lvNow} {combo} · stated by /who at 14:37")
+        { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
+        ww.Show();
+        ww.ShowTab("efficiency");
+        int bandAt16 = ww.BandForTest;
+        ww.Close();
+        lvNow = 21;
+        var ww2 = new Views.SpellLibraryWindow(lib, _ => { }, null, y, () => combo, () => lvNow, whoPath, () => $"Level {lvNow} {combo} · stated by /who at 14:37")
+        { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
+        ww2.Show();
+        Check("eff: a new level moves the remembered band (16 → 1–20, 21 → 21–30) and the USING line names the /who",
+            bandAt16 == 1 && ww2.BandForTest == 2 && ww2.WhoLine.Contains("Level 21 DRU/BRD/WIZ · stated by /who at 14:37", StringComparison.Ordinal));
+        combo = "SHD/SHM/ENC";
+        ww2.ShowTab("efficiency");
+        Check("eff: a new combo relights the class chips", ww2.EffRowsForTest.All(r => r.ClassText.Split(" · ").All(p => p.StartsWith("SHD") || p.StartsWith("SHM") || p.StartsWith("ENC"))));
+        ww2.Close();
+        try { File.Delete(whoPath); } catch { /* temp */ }
+
         string viewPath = Path.Combine(Path.GetTempPath(), "eql_selftest_library_view.json");
         try { File.Delete(viewPath); } catch { /* fresh */ }
         var wv = new Views.SpellLibraryWindow(lib, _ => { }, null, y, () => "", () => 0, viewPath) { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
@@ -5379,7 +5401,8 @@ public partial class App : Application
                  || page.Equals("library:eff:fire", StringComparison.OrdinalIgnoreCase))
         {
             // The Efficiency tab on the demo yield — SHD/SHM/ENC at level 50.
-            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { }, null, EfficiencyDemo(), () => "SHD/SHM/ENC", () => 50)
+            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { }, null, EfficiencyDemo(), () => "SHD/SHM/ENC", () => 50,
+                null, () => "Level 50 SHD/SHM/ENC · stated by /who at 14:37")
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,

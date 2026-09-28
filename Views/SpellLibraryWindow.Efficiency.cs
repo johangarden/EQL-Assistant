@@ -46,6 +46,8 @@ public partial class SpellLibraryWindow
         public string Resist { get; set; } = "";
         public string Sort { get; set; } = "rank";
         public List<string> Classes { get; set; } = new();
+        public int BandLevel { get; set; }
+        public string Combo { get; set; } = "";
     }
 
     private void LoadViewState()
@@ -57,11 +59,19 @@ public partial class SpellLibraryWindow
             if (v is null) return;
             _tab = v.Tab == "efficiency" ? "efficiency" : "durations";
             _effHealing = v.Healing; _effSub = v.Sub; _effBand = v.Band; _effTargets = Math.Clamp(v.Targets, 1, 5);
-            _effResist = v.Resist; _effSort = v.Sort; _savedClasses = v.Classes;
+            _effResist = v.Resist; _effSort = v.Sort; _savedClasses = v.Classes; _bandLevel = v.BandLevel; _comboSeen = v.Combo;
         }
         catch { /* a stale file just means defaults */ }
     }
     private List<string> _savedClasses = new();
+    private int _bandLevel;        // the level the band was set for — a new level moves it again
+    private string _comboSeen = "";  // the combo the chips were lit for — a new /who relights them
+    private System.Windows.Threading.DispatcherTimer? _whoTimer;
+
+    /// <summary>Where the tab's classes and level come from, for its header line
+    /// (owner, 28 Sep: "the level range didn't change even though I did a /who —
+    /// write the /who snapshot it is using, like the character sheet").</summary>
+    private Func<string>? _snapshotText;
 
     private void SaveViewState()
     {
@@ -71,29 +81,56 @@ public partial class SpellLibraryWindow
             System.IO.File.WriteAllText(_viewPath, System.Text.Json.JsonSerializer.Serialize(new ViewState
             {
                 Tab = _tab, Healing = _effHealing, Sub = _effSub, Band = _effBand, Targets = _effTargets,
-                Resist = _effResist, Sort = _effSort, Classes = _effClasses.ToList(),
+                Resist = _effResist, Sort = _effSort, Classes = _effClasses.ToList(), BandLevel = _bandLevel, Combo = _comboSeen,
             }));
         }
         catch { /* best effort */ }
     }
 
-    /// <summary>First paint of the tab: your classes lit (the /who combo, else the
-    /// loadout name, else what you picked last time), your level's band (else
-    /// the top band — never the heavy All).</summary>
+    /// <summary>Your classes and level, re-read on every paint: a NEW combo
+    /// (a /who, a loadout swap) relights the chips; a NEW level moves the band
+    /// to the one it sits in. A band or chip you pick yourself holds until
+    /// the next change — remembering a pick must never outvote a fresh /who.
+    /// No level at all: the top band, never the heavy All.</summary>
     private void InitEff()
     {
-        if (_effInit) return;
-        _effInit = true;
         string classes = _classesProvider?.Invoke() ?? "";
         _combo = classes.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(c => SpellEfficiency.AllClasses.Contains(c, StringComparer.OrdinalIgnoreCase)).Select(c => c.ToUpperInvariant()).ToList();
-        _effClasses.Clear();
-        foreach (var c in _combo.Count > 0 ? _combo : _savedClasses) _effClasses.Add(c);
-        if (_effBand < 0)
+        string combo = string.Join("/", _combo);
+        if (!_effInit)
         {
-            int lv = _levelProvider?.Invoke() ?? 0;
-            _effBand = lv > 0 ? SpellEfficiency.BandFor(lv) : SpellEfficiency.Bands.Length - 1;
+            _effInit = true;
+            _effClasses.Clear();
+            foreach (var c in _combo.Count > 0 ? _combo : _savedClasses) _effClasses.Add(c);
+            _comboSeen = combo;
         }
+        else if (combo.Length > 0 && combo != _comboSeen)
+        {
+            _effClasses.Clear();
+            foreach (var c in _combo) _effClasses.Add(c);
+            _comboSeen = combo;
+        }
+        int lv = _levelProvider?.Invoke() ?? 0;
+        if (lv > 0 && (lv != _bandLevel || _effBand < 0)) { _effBand = SpellEfficiency.BandFor(lv); _bandLevel = lv; }
+        else if (_effBand < 0) _effBand = SpellEfficiency.Bands.Length - 1;
+    }
+
+    /// <summary>While the tab shows, a /who in game reaches it within seconds.</summary>
+    private void WatchWho()
+    {
+        if (_whoTimer is not null) return;
+        string last = "";
+        _whoTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _whoTimer.Tick += (_, _) =>
+        {
+            if (_tab != "efficiency" || !IsVisible) return;
+            string now = $"{_classesProvider?.Invoke()}|{_levelProvider?.Invoke()}|{_snapshotText?.Invoke()}";
+            if (last.Length > 0 && now != last) Refresh();
+            last = now;
+        };
+        _whoTimer.Start();
+        Closed += (_, _) => _whoTimer?.Stop(); // panel law: timers die with the window
     }
 
     /// <summary>Render: flip the tab's filters as if clicked.</summary>
@@ -104,6 +141,12 @@ public partial class SpellLibraryWindow
         if (classes is not null) { _classesProvider = () => classes; _effInit = false; _effBand = 0; }
         Refresh();
     }
+
+    /// <summary>Selftest: the USING line painted last.</summary>
+    internal string WhoLine { get; private set; } = "";
+
+    /// <summary>Selftest: the band index painted last (0 = All, 4 = 41–50).</summary>
+    internal int BandForTest => _effBand;
 
     /// <summary>Selftest / render: the rows painted last, in order.</summary>
     internal List<SpellEfficiency.Row> EffRowsForTest { get; } = new();
@@ -134,6 +177,8 @@ public partial class SpellLibraryWindow
         _tab = tab == "efficiency" ? "efficiency" : "durations";
         bool eff = _tab == "efficiency";
         RenderTabs();
+        if (eff) WatchWho();
+        EffWho.Visibility = eff ? Visibility.Visible : Visibility.Collapsed;
         ClassBox.Visibility = eff ? Visibility.Collapsed : Visibility.Visible; // the tab has its own class chips
         SaveViewState();
         DurHint.Visibility = eff ? Visibility.Collapsed : Visibility.Visible;
@@ -150,6 +195,13 @@ public partial class SpellLibraryWindow
         InitEff();
         EffBar.Children.Clear();
 
+        // The snapshot the tab is using — "Level 21 DRU/BRD/WIZ · stated by /who at 14:37".
+        string snap = _snapshotText?.Invoke() ?? "";
+        EffWho.Inlines.Clear();
+        EffWho.Inlines.Add(new Run("USING  ") { Foreground = EffFaint, FontWeight = FontWeights.Bold, FontSize = 10 });
+        EffWho.Inlines.Add(new Run(snap.Length > 0 ? snap : "no /who yet — type /who in game for your classes and level") { Foreground = snap.Length > 0 ? EffText : EffLow });
+        WhoLine = new TextRange(EffWho.ContentStart, EffWho.ContentEnd).Text;
+
         EffBar.Children.Add(Seg(new[] { ("dmg", "Damage"), ("heal", "Healing") }, _effHealing ? "heal" : "dmg",
             v => { bool h = v == "heal"; if (h != _effHealing) { _effHealing = h; _effSub = ""; if (h) _effResist = ""; } }, big: true));
         var sub = Group("");
@@ -161,7 +213,8 @@ public partial class SpellLibraryWindow
         EffBar.Children.Add(sub);
 
         var lvl = Group("LEVEL");
-        lvl.Children.Add(Seg(SpellEfficiency.Bands.Select((b, i) => (i.ToString(), b.Label)), _effBand.ToString(), v => _effBand = int.Parse(v),
+        lvl.Children.Add(Seg(SpellEfficiency.Bands.Select((b, i) => (i.ToString(), b.Label)), _effBand.ToString(),
+            v => { _effBand = int.Parse(v); _bandLevel = _levelProvider?.Invoke() ?? 0; },
             tip: $"The level you get a spell at — EQ Legends caps at {SpellEfficiency.LevelCap}, so spells above it stay out"));
         EffBar.Children.Add(lvl);
         var tg = Group("TARGETS");

@@ -1878,7 +1878,8 @@ public partial class MainWindow : Window
                 SpellYield = _yield,
                 // /who first; the loadout name ("Enc-Shm-SK") until a /who names the combo.
                 ClassesText = () => KnownClassesText() is { Length: > 0 } k ? k : SpellEfficiency.ClassesFromName(_config.ActiveLoadout),
-                CurrentLevel = () => _combat.CurrentLevel,
+                CurrentLevel = EffLevel,
+                WhoSnapshot = EffSnapshotText,
             };
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
@@ -2575,6 +2576,28 @@ public partial class MainWindow : Window
 
     /// <summary>Your class combo as /who prints it ("SHD/SHM/NEC"): this
     /// session's /who first, else the combo the parser saved last time.</summary>
+    /// <summary>Your level for the Efficiency tab: the session's latest statement
+    /// (/who or a ding — whichever is newer), else the parser's saved one.</summary>
+    private int EffLevel() => _session?.LevelStatement is { Level: > 0 } st ? st.Level : _combat.CurrentLevel;
+
+    /// <summary>The spell library's USING line — which snapshot the Efficiency
+    /// tab is ranking for, and where it came from.</summary>
+    private string EffSnapshotText()
+    {
+        string classes = KnownClassesText();
+        int level = EffLevel();
+        string src;
+        if (_session?.LevelStatement is { } st && st.Level > 0)
+            src = (st.FromWho ? "stated by /who" : "from your last ding") + $" at {st.Ts:HH:mm}" + (st.Ts.Date != DateTime.Today ? $" on {st.Ts:d MMM}" : "");
+        else if (classes.Length > 0 || level > 0) src = "saved from your last /who";
+        else
+        {
+            classes = SpellEfficiency.ClassesFromName(_config.ActiveLoadout);
+            return classes.Length > 0 ? $"{classes} · read off the loadout name \"{_config.ActiveLoadout}\" — type /who for your level" : "";
+        }
+        return $"{(level > 0 ? $"Level {level} " : "")}{(classes.Length > 0 ? classes : "classes unknown")} · {src}";
+    }
+
     private string KnownClassesText()
     {
         string live = _session?.WhoClasses ?? "";
