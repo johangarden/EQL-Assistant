@@ -26,9 +26,13 @@ public partial class SpellLibraryWindow
     private string _invStretchKey = "";
     private bool _invReading;
     private TextBox? _regenBox, _poolBox;
+    private StackPanel _invBody = new();
 
     /// <summary>Selftest / render: the replay painted last.</summary>
     internal InvocationPlanner.Result? InvResultForTest { get; private set; }
+
+    /// <summary>Selftest: type into the regen box as the owner would.</summary>
+    internal TextBox? InvRegenBoxForTest => _regenBox;
 
     /// <summary>Selftest / render: use these lines instead of the followed log, "now" = <paramref name="now"/>.</summary>
     internal void InvUseLinesForTest(List<string> lines, DateTime now, int regen, int pool)
@@ -56,8 +60,6 @@ public partial class SpellLibraryWindow
     private void RefreshInvocations()
     {
         InvHost.Children.Clear();
-        var combo = (_classesProvider?.Invoke() ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(c => SpellEfficiency.AllClasses.Contains(c, StringComparer.OrdinalIgnoreCase)).Select(c => c.ToUpperInvariant()).ToList();
         string snap = _snapshotText?.Invoke() ?? "";
         var who = new TextBlock { FontSize = 11, Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
         who.Inlines.Add(new Run("USING  ") { Foreground = EffFaint, FontWeight = FontWeights.Bold, FontSize = 10 });
@@ -66,10 +68,23 @@ public partial class SpellLibraryWindow
         InvHost.Children.Add(who);
         InvHost.Children.Add(InvControls());
         CountText.Text = "";
+        _invBody = new StackPanel();
+        InvHost.Children.Add(_invBody);
+        RefreshInvBody();
+    }
 
-        if (combo.Count == 0) { InvHost.Children.Add(Hint("Type /who in game — the invocations and their depths depend on your classes.")); return; }
+    /// <summary>The results under the controls — redrawn alone when a number is
+    /// typed, so the text box keeps its focus (owner, 29 Sep: "does the UI
+    /// auto update if I change the input fields?").</summary>
+    private void RefreshInvBody()
+    {
+        _invBody.Children.Clear();
+        CountText.Text = "";
+        var combo = (_classesProvider?.Invoke() ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(c => SpellEfficiency.AllClasses.Contains(c, StringComparer.OrdinalIgnoreCase)).Select(c => c.ToUpperInvariant()).ToList();
+        if (combo.Count == 0) { _invBody.Children.Add(Hint("Type /who in game — the invocations and their depths depend on your classes.")); return; }
         var avail = InvocationPlanner.Available(combo);
-        if (avail.Count == 0) { InvHost.Children.Add(Hint($"{string.Join("/", combo)} recites none of the mana invocations — nothing to weigh.")); return; }
+        if (avail.Count == 0) { _invBody.Children.Add(Hint($"{string.Join("/", combo)} recites none of the mana invocations — nothing to weigh.")); return; }
 
         // The stretch: read once per span, replayed on every input change.
         var (from, to) = InvSpan();
@@ -78,7 +93,7 @@ public partial class SpellLibraryWindow
         {
             string? path = _testLines is null ? _logPath?.Invoke() : null;
             if (_testLines is null && (path is null || !System.IO.File.Exists(path)))
-            { InvHost.Children.Add(Hint("No log file is being followed yet.")); return; }
+            { _invBody.Children.Add(Hint("No log file is being followed yet.")); return; }
             _invReading = true;
             var lib = _library;
             var lines = _testLines;
@@ -89,14 +104,14 @@ public partial class SpellLibraryWindow
             }
             else
             {
-                InvHost.Children.Add(Hint(_invWindow == 0 ? "Reading the recorded fights from your log…" : $"Reading the last {_invWindow} minutes of your log…"));
+                _invBody.Children.Add(Hint(_invWindow == 0 ? "Reading the recorded fights from your log…" : $"Reading the last {_invWindow} minutes of your log…"));
                 System.Threading.Tasks.Task.Run(() => InvocationPlanner.Parse(InvocationPlanner.ReadSince(path!, from), from, to, lib))
                     .ContinueWith(t => Dispatcher.BeginInvoke(() =>
                     {
                         _invReading = false;
                         if (t.Status == System.Threading.Tasks.TaskStatus.RanToCompletion) { _invStretch = t.Result; _invStretchKey = key; }
                         else Log.Warn("invocation stretch: " + t.Exception?.GetBaseException().Message);
-                        if (_tab == "invocations") Refresh();
+                        if (_tab == "invocations") RefreshInvBody();
                     }));
                 return;
             }
@@ -104,10 +119,10 @@ public partial class SpellLibraryWindow
         if (_invStretch is null) return;
         var st = _invStretch;
         if (st.Fights.Count == 0 || st.Casts.Count == 0)
-        { InvHost.Children.Add(Hint($"No fights with your own casts between {Hm(from)} and {Hm(to)} — play a while, or pick a longer stretch.")); return; }
+        { _invBody.Children.Add(Hint($"No fights with your own casts between {Hm(from)} and {Hm(to)} — play a while, or pick a longer stretch.")); return; }
 
         int pool = _invPool > 0 ? _invPool : 0;
-        if (pool <= 0) { InvHost.Children.Add(Hint("Type your max mana from the character sheet — each fight's pick is what a full pool could pay for.")); return; }
+        if (pool <= 0) { _invBody.Children.Add(Hint("Type your max mana from the character sheet — each fight's pick is what a full pool could pay for.")); return; }
         var r = InvocationPlanner.Replay(st, _library, combo, _invRegen, pool);
         InvResultForTest = r;
         CountText.Text = $"{r.Fights.Count} fights · {r.Casts:N0} casts priced";
@@ -122,18 +137,18 @@ public partial class SpellLibraryWindow
         }
         else proof.Inlines.Add(new Run($"Your {_invRegen} a tick covers every fight of this stretch the log saw you finish without running dry."));
         if (st.OutOfMana.Count > 0) proof.Inlines.Add(new Run($"  You ran dry {st.OutOfMana.Count} time(s) here.") { Foreground = EffLow });
-        InvHost.Children.Add(proof);
+        _invBody.Children.Add(proof);
 
-        InvHost.Children.Add(InvVerdict(r));
-        InvHost.Children.Add(InvTimeline(st, r, from, to));
+        _invBody.Children.Add(InvVerdict(r));
+        _invBody.Children.Add(InvTimeline(st, r, from, to));
         var two = new Grid { Margin = new Thickness(0, 0, 0, 8) };
         two.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.15, GridUnitType.Star) });
         two.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
         two.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         var led = InvLedger(r); Grid.SetColumn(led, 0); two.Children.Add(led);
         var fights = InvFights(r); Grid.SetColumn(fights, 2); two.Children.Add(fights);
-        InvHost.Children.Add(two);
-        InvHost.Children.Add(new TextBlock
+        _invBody.Children.Add(two);
+        _invBody.Children.Add(new TextBlock
         {
             Foreground = EffFaint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0),
             Text = "How it reads the stretch: every cast that landed, at the rank its cast line shows, priced by the wiki and re-priced by each invocation's rules for your combo; "
@@ -197,12 +212,21 @@ public partial class SpellLibraryWindow
     {
         var tb = new TextBox { Text = value > 0 ? value.ToString() : "", Width = 64, MinHeight = 26, ToolTip = tip, VerticalContentAlignment = VerticalAlignment.Center, HorizontalContentAlignment = HorizontalAlignment.Right };
         if (need) tb.BorderBrush = EffGoldEdge;
-        tb.LostFocus += (_, _) => Apply();
-        tb.KeyDown += (_, e) => { if (e.Key == Key.Enter) Apply(); };
+        // Live: the results redraw a moment after the last keystroke; Enter or
+        // leaving the box applies at once. Only the results redraw — the box keeps focus.
+        int last = value;
+        var pause = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+        pause.Tick += (_, _) => { pause.Stop(); Apply(); };
+        Closed += (_, _) => pause.Stop(); // panel law: timers die with the window
+        tb.TextChanged += (_, _) => { pause.Stop(); pause.Start(); };
+        tb.LostFocus += (_, _) => { pause.Stop(); Apply(); };
+        tb.KeyDown += (_, e) => { if (e.Key == Key.Enter) { pause.Stop(); Apply(); } };
         void Apply()
         {
             int v = int.TryParse(tb.Text.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int n) ? Math.Max(0, n) : 0;
-            set(v); SaveViewState(); Refresh();
+            if (v == last) return;
+            last = v;
+            set(v); SaveViewState(); RefreshInvBody();
         }
         return tb;
     }

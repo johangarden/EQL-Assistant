@@ -3535,6 +3535,11 @@ public partial class App : Application
         wv.InvUseLinesForTest(lines, t0.AddMinutes(20), 0, 2600);
         Check("inv: the tab paints the replay — three fights, a pick each, the ledger for all five",
             wv.InvResultForTest is { Fights.Count: 3, Ledgers.Count: 5 } r && r.Fights.All(f => f.Pick.Length > 0));
+        var box = wv.InvRegenBoxForTest!;
+        box.Text = "900";
+        box.RaiseEvent(new RoutedEventArgs(UIElement.LostFocusEvent));
+        Check("inv: a typed regen redraws the results at once and the box stays the same box (keeps focus)",
+            wv.InvResultForTest is { RegenUsed: 900 } && ReferenceEquals(box, wv.InvRegenBoxForTest));
         wv.Close();
     }
 
