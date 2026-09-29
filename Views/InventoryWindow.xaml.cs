@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using EQLOverlay.Services;
 
 namespace EQLOverlay.Views;
@@ -10,7 +10,8 @@ namespace EQLOverlay.Views;
 /// </summary>
 public partial class InventoryWindow : Window
 {
-    public static readonly string[] HostedTabs = { "sheet", "focus", "bis", "charms", "races" };
+    // BiS finder and Races moved to the Tools window (29 Sep).
+    public static readonly string[] HostedTabs = { "sheet", "focus", "charms" };
 
     public InventoryWindow(string eqRoot, string charName, string server,
         SessionStats? session = null, CharmBook? charms = null, RaceBook? races = null)

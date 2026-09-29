@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private SpellYield _yield = null!;
     private bool _yieldBusy;
     private FactionHelperWindow? _factionWin;
+    private ToolsWindow? _toolsWin;
     private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _dumpCache;
     // Toolbar news badges (21 Sep): live drops / raid kills since their window was last opened.
     private int _lootNew, _raidNew;
@@ -1195,6 +1196,55 @@ public partial class MainWindow : Window
     }
 
     /// <summary>The card's own ▼: work another skill (a fresh session).</summary>
+    /// <summary>The Tools window (29 Sep): every tool you open on purpose, one place.</summary>
+    private void OpenTools(string page = "home")
+    {
+        if (_toolsWin is null)
+        {
+            _toolsWin = new ToolsWindow(new ToolsWindow.Context
+            {
+                Library = _spellLib,
+                Yield = _yield,
+                Classes = () => KnownClassesText() is { Length: > 0 } k ? k : SpellEfficiency.ClassesFromName(_config.ActiveLoadout),
+                Level = EffLevel,
+                Snapshot = EffSnapshotText,
+                LogPath = () => _watcher?.CurrentPath,
+                ViewStatePath = Path.Combine(_configService.ConfigDirectory, "tools-view.json"),
+                Races = _races,
+                Resists = _resists,
+                Zone = () => _combat.CurrentZone,
+                TsData = _tsData,
+                Ts = _tradeskills,
+                TsVisible = () => _config.Overlay.TradeskillVisible,
+                TsSkill = () => _config.Overlay.TradeskillOpen,
+                ToggleTs = ToggleTradeskill,
+                PickTs = PickTradeskill,
+                Dump = () => { var rows = DumpRows(out var st); return (rows, st); },
+                Config = _configService,
+                CharKey = () =>
+                {
+                    var (n, sv) = InventoryStore.ParseLogName(_watcher?.CurrentPath ?? "");
+                    return $"{n}_{sv}".ToLowerInvariant();
+                },
+            });
+            _toolsWin.Closed += (_, _) => _toolsWin = null;
+            _toolsWin.Show();
+        }
+        _toolsWin.ShowPage(page);
+        BringToFront(_toolsWin);
+    }
+
+    /// <summary>Tools → the skill picker: the card follows that skill (shown or not).</summary>
+    private void PickTradeskill(string skill)
+    {
+        if (_tsData.Find(skill) is not { } sk) return;
+        _config.Overlay.TradeskillOpen = sk.Name;
+        _configService.SaveSettings(_config);
+        _tradeskills.StartSession(sk.Name);
+        _tsWin?.Refresh();
+        if (_tsWin is null && _config.Overlay.TradeskillVisible) RebuildTradeskillWindow();
+    }
+
     private void OpenTradeskill(string skill)
     {
         if (_tsData.Find(skill) is not { } sk) return;
@@ -1208,13 +1258,14 @@ public partial class MainWindow : Window
         Log.Info($"Tradeskill helper on {sk.Name} (skill {_tradeskills.ValueOf(sk.Name)?.ToString() ?? "?"})");
     }
 
-    /// <summary>Toolbar anvil / ☰ → Panels / the card's ✕: show or hide, the skill stays.</summary>
+    /// <summary>Tools → the switch / ☰ → Panels / the card's ✕: show or hide, the skill stays.</summary>
     private void ToggleTradeskill()
     {
         _config.Overlay.TradeskillVisible = !_config.Overlay.TradeskillVisible;
         _configService.SaveSettings(_config);
         if (_hidden && _config.Overlay.TradeskillVisible) UnhideAll();
         RebuildTradeskillWindow();
+        _toolsWin?.TradeskillChanged();
         string skill = _config.Overlay.TradeskillOpen.Length > 0 ? $" ({_config.Overlay.TradeskillOpen})" : "";
         _vm.Flash(_config.Overlay.TradeskillVisible ? $"Tradeskill helper shown{skill}." : "Tradeskill helper hidden.");
     }
@@ -1293,7 +1344,7 @@ public partial class MainWindow : Window
         _races.RefreshDumps(force: true);
         _factionWin = new FactionHelperWindow(_races, _configService, _config.Overlay.Opacity)
         {
-            OpenRacesRequested = () => { OpenCharacterSheet(); _inventoryWindow?.ShowTab("races"); },
+            OpenRacesRequested = () => OpenTools("races"),
         };
         _factionWin.Show();
         _factionWin.SetLocked(_vm.Locked);
@@ -2148,7 +2199,7 @@ public partial class MainWindow : Window
             QuestsRequested = OpenSkyQuests,
             LootRequested = OpenLootHistory,
             SheetRequested = OpenCharacterSheet,
-            TradeskillsRequested = _ => ToggleTradeskill(),
+            ToolsRequested = _ => OpenTools(),
         };
         _toolbarWin.SetTradeskillButton(_config.Overlay.TradeskillToolbarBtn);
         _toolbarWin.Show();
@@ -2217,6 +2268,9 @@ public partial class MainWindow : Window
         var settings = new MenuItem { Header = "Settings…" };
         settings.Click += (_, _) => OpenManager();
         menu.Items.Add(settings);
+        var tools = new MenuItem { Header = "Tools…" };
+        tools.Click += (_, _) => OpenTools();
+        menu.Items.Add(tools);
         menu.Items.Add(new Separator());
 
         var panels = new MenuItem { Header = "Panels" };

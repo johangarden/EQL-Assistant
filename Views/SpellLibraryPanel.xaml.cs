@@ -14,21 +14,29 @@ namespace EQLOverlay.Views;
 /// library: matches without samples join the table with the library's
 /// duration and honest dashes, so any spell is one search from a trigger.
 /// </summary>
-public partial class SpellLibraryWindow : Window
+public partial class SpellLibraryPanel : UserControl
 {
+    /// <summary>The tabs this host shows (the trigger editor's Library: Durations;
+    /// the Tools window: Efficiency and Invocations, picked from its rail). One
+    /// tab = no tab row.</summary>
+    public IReadOnlyList<string> Tabs { get; }
+
+    /// <summary>A ＋ Me / ＋ Pet landed a trigger — the Library window closes on it.</summary>
+    public event Action? TriggerAdded;
+
     private const int MaxSearchRows = 120;
 
     private readonly SpellLibrary _library;
     private readonly Action<TriggerDefinition> _onAdd;
     private readonly SpellDurations? _durations;
 
-    public SpellLibraryWindow(SpellLibrary library, Action<TriggerDefinition> onAdd,
+    public SpellLibraryPanel(SpellLibrary library, Action<TriggerDefinition> onAdd,
         SpellDurations? durations = null, SpellYield? yield = null,
         Func<string>? classesProvider = null, Func<int>? levelProvider = null, string? viewStatePath = null,
-        Func<string>? snapshotText = null, Func<string?>? logPath = null)
+        Func<string>? snapshotText = null, Func<string?>? logPath = null, IReadOnlyList<string>? tabs = null)
     {
         InitializeComponent();
-        WindowTheme.ApplyDark(this);
+        Tabs = tabs is { Count: > 0 } ? tabs : new[] { "durations", "efficiency", "invocations" };
         _library = library;
         _onAdd = onAdd;
         _durations = durations;
@@ -39,6 +47,7 @@ public partial class SpellLibraryWindow : Window
         _snapshotText = snapshotText;
         _logPath = logPath;
         LoadViewState();
+        if (!Tabs.Contains(_tab)) _tab = Tabs[0];
         RenderTabs();
 
         ClassBox.ItemsSource = new[]
@@ -251,7 +260,7 @@ public partial class SpellLibraryWindow : Window
         {
             if (make() is not { } def) return;
             _onAdd(def);
-            Close(); // it lands in the trigger list this window covers
+            TriggerAdded?.Invoke(); // it lands in the trigger list the Library window covers
         };
         return btn;
     }

@@ -16,7 +16,7 @@ namespace EQLOverlay.Views;
 /// proves. Two numbers come from the in-game character sheet: base mana
 /// regen a tick and max mana.
 /// </summary>
-public partial class SpellLibraryWindow
+public partial class SpellLibraryPanel
 {
     private Func<string?>? _logPath;
     private int _invWindow = 60;           // minutes; 0 = the recorded stretch
@@ -30,6 +30,11 @@ public partial class SpellLibraryWindow
 
     /// <summary>Selftest / render: the replay painted last.</summary>
     internal InvocationPlanner.Result? InvResultForTest { get; private set; }
+
+    /// <summary>The Tools home's line for Invocations: what the last replay said ("" before one ran).</summary>
+    public string InvocationSummary => InvResultForTest is { Best: { } b } r
+        ? $"{(_invWindow == 0 ? "Recorded fights" : $"Last {_invWindow} min")}: {string.Join(" · ", r.Ledgers.Where(l => l.Won > 0).Select(l => $"{l.Name} {l.Won}"))} of {r.Fights.Count} fights"
+        : "";
 
     /// <summary>Selftest: type into the regen box as the owner would.</summary>
     internal TextBox? InvRegenBoxForTest => _regenBox;
@@ -217,7 +222,7 @@ public partial class SpellLibraryWindow
         int last = value;
         var pause = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
         pause.Tick += (_, _) => { pause.Stop(); Apply(); };
-        Closed += (_, _) => pause.Stop(); // panel law: timers die with the window
+        Unloaded += (_, _) => pause.Stop(); // panel law: timers die with the panel
         tb.TextChanged += (_, _) => { pause.Stop(); pause.Start(); };
         tb.LostFocus += (_, _) => { pause.Stop(); Apply(); };
         tb.KeyDown += (_, e) => { if (e.Key == Key.Enter) { pause.Stop(); Apply(); } };
