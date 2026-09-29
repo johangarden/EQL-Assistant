@@ -47,6 +47,11 @@ public partial class SpellLibraryWindow
         public string Sort { get; set; } = "rank";
         public List<string> Classes { get; set; } = new();
         public int BandLevel { get; set; }
+        public int InvWindow { get; set; } = 60;
+        public int InvRegen { get; set; }
+        public int InvPool { get; set; }
+        public DateTime? RecFrom { get; set; }
+        public DateTime? RecTo { get; set; }
         public string Combo { get; set; } = "";
     }
 
@@ -57,7 +62,8 @@ public partial class SpellLibraryWindow
         {
             var v = System.Text.Json.JsonSerializer.Deserialize<ViewState>(System.IO.File.ReadAllText(_viewPath));
             if (v is null) return;
-            _tab = v.Tab == "efficiency" ? "efficiency" : "durations";
+            _tab = v.Tab is "efficiency" or "invocations" ? v.Tab : "durations";
+            _invWindow = v.InvWindow; _invRegen = v.InvRegen; _invPool = v.InvPool; _recFrom = v.RecFrom; _recTo = v.RecTo;
             _effHealing = v.Healing; _effSub = v.Sub; _effBand = v.Band; _effTargets = Math.Clamp(v.Targets, 1, 5);
             _effResist = v.Resist; _effSort = v.Sort; _savedClasses = v.Classes; _bandLevel = v.BandLevel; _comboSeen = v.Combo;
         }
@@ -82,6 +88,7 @@ public partial class SpellLibraryWindow
             {
                 Tab = _tab, Healing = _effHealing, Sub = _effSub, Band = _effBand, Targets = _effTargets,
                 Resist = _effResist, Sort = _effSort, Classes = _effClasses.ToList(), BandLevel = _bandLevel, Combo = _comboSeen,
+                InvWindow = _invWindow, InvRegen = _invRegen, InvPool = _invPool, RecFrom = _recFrom, RecTo = _recTo,
             }));
         }
         catch { /* best effort */ }
@@ -124,7 +131,7 @@ public partial class SpellLibraryWindow
         _whoTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _whoTimer.Tick += (_, _) =>
         {
-            if (_tab != "efficiency" || !IsVisible) return;
+            if (_tab is not ("efficiency" or "invocations") || !IsVisible) return;
             string now = $"{_classesProvider?.Invoke()}|{_levelProvider?.Invoke()}|{_snapshotText?.Invoke()}";
             if (last.Length > 0 && now != last) Refresh();
             last = now;
@@ -168,23 +175,29 @@ public partial class SpellLibraryWindow
         {
             new MenuTabs.Item("durations", "Durations", Tip: "Learned buff durations per spell, and ＋ to add a bar trigger"),
             new MenuTabs.Item("efficiency", "Efficiency", Tip: "Damage and healing per mana — the wiki's figure, at your rank, and what your log says you got"),
+            new MenuTabs.Item("invocations", "Invocations", Tip: "A real stretch of your log replayed under each invocation your classes recite — which one each fight wanted"),
         }, _tab, ShowTab);
     }
 
     /// <summary>Switch tabs ("durations" · "efficiency").</summary>
     public void ShowTab(string tab)
     {
-        _tab = tab == "efficiency" ? "efficiency" : "durations";
-        bool eff = _tab == "efficiency";
+        _tab = tab is "efficiency" or "invocations" ? tab : "durations";
+        bool eff = _tab == "efficiency", inv = _tab == "invocations", dur = _tab == "durations";
         RenderTabs();
-        if (eff) WatchWho();
+        if (eff || inv) WatchWho();
         EffWho.Visibility = eff ? Visibility.Visible : Visibility.Collapsed;
-        ClassBox.Visibility = eff ? Visibility.Collapsed : Visibility.Visible; // the tab has its own class chips
+        ClassBox.Visibility = dur ? Visibility.Visible : Visibility.Collapsed; // the Efficiency tab has its own class chips
+        SearchRow.Visibility = inv ? Visibility.Collapsed : Visibility.Visible;  // a stretch of your log has nothing to search
         SaveViewState();
-        DurHint.Visibility = eff ? Visibility.Collapsed : Visibility.Visible;
+        DurHint.Visibility = dur ? Visibility.Visible : Visibility.Collapsed;
         EffBar.Visibility = EffVerdicts.Visibility = EffFoot.Visibility = EffTableHost.Visibility = eff ? Visibility.Visible : Visibility.Collapsed;
-        DurTableHost.Visibility = eff ? Visibility.Collapsed : Visibility.Visible;
-        if (eff && Width < 1080) Width = Math.Min(1080, SystemParameters.WorkArea.Width - 40);
+        DurTableHost.Visibility = dur ? Visibility.Visible : Visibility.Collapsed;
+        InvHost.Visibility = inv ? Visibility.Visible : Visibility.Collapsed;
+        // The Invocations tab lays out to the window's width (wrapping bars, a
+        // stretched timeline) — a horizontal scroller would hand it infinite width.
+        MainScroll.HorizontalScrollBarVisibility = inv ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+        if ((eff || inv) && Width < 1080) Width = Math.Min(1080, SystemParameters.WorkArea.Width - 40);
         Refresh();
     }
 
