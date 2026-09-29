@@ -352,6 +352,7 @@ public sealed class ToolsWindow : Window
             new[] { "efficiency", "invocations" }) { TabRowShown = false };
         _library.Heading = tab == "efficiency" ? "Spell efficiency" : "Invocations";
         _library.ShowTab(tab);
+        if (!ReferenceEquals(_host.Content, _library)) Detach(_library);
         return _library;
     }
 
@@ -412,12 +413,24 @@ public sealed class ToolsWindow : Window
 
     private static UIElement Framed(string title, string sub, UIElement body)
     {
+        Detach(body); // the page's control is cached — last visit's frame still holds it (owner, 29 Sep: "already the logical child")
         var dp = new DockPanel();
         var t = PageTitle(title, sub);
         DockPanel.SetDock(t, Dock.Top);
         dp.Children.Add(t);
         dp.Children.Add(body);
         return dp;
+    }
+
+    /// <summary>Unhook a cached page control from whatever held it last.</summary>
+    private static void Detach(UIElement el)
+    {
+        switch (el is FrameworkElement fe ? fe.Parent : null)
+        {
+            case Panel p: p.Children.Remove(el); break;
+            case ContentControl cc: cc.Content = null; break;
+            case Decorator d: d.Child = null; break;
+        }
     }
 
     private static Border Pill(string text) => new()

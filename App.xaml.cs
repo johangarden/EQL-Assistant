@@ -3612,6 +3612,12 @@ public partial class App : Application
         tw.ShowPage("res");
         tw.ShowPage("bis");
         Check("tools: Resists and BiS pages build; no dump means no BiS board, said plainly", tw.BisForTest is null && tw.PageShown == "bis" && shown[0] == before);
+        // Every page twice, in and out of order (owner, 29 Sep: the second Resists visit threw
+        // "Specified element is already the logical child of another element").
+        bool twice = true;
+        try { foreach (var pg in new[] { "res", "races", "res", "eff", "races", "inv", "eff", "home", "res", "ts", "races" }) tw.ShowPage(pg); }
+        catch (Exception ex) { twice = false; Log.Warn("tools revisit: " + ex.Message); }
+        Check("tools: every page opens again after another — the cached tools move between frames", twice && tw.RacesForTest is { RowCount: 6 });
         tw.Close();
     }
 
