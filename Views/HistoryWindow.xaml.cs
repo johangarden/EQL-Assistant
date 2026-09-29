@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
@@ -40,8 +40,7 @@ public partial class HistoryWindow : Window
 
 
     private readonly ResistBook? _resists;
-    private bool _resistThisZone;
-    private Segmented? _resistZoneSeg;
+
 
     public HistoryWindow(CombatParser parser, ConfigService config, LootTracker loot,
         Func<bool>? soloMode = null, ResistBook? resists = null)
@@ -433,10 +432,7 @@ public partial class HistoryWindow : Window
     }
 
 
-    private void ResistSearch_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_view == "resists") BuildResists();
-    }
+
 
     private void StylePills()
     {
@@ -486,85 +482,13 @@ public partial class HistoryWindow : Window
 
     // ---- the Resists view ------------------------------------------------------
 
-    private static readonly Brush ResistImmune = Freeze(Color.FromRgb(0xFF, 0x5C, 0x5C));
-    private static readonly Brush ResistAmber = Freeze(Color.FromRgb(0xFF, 0xB7, 0x4D));
-    private static readonly Brush SchoolFg = Freeze(Color.FromRgb(0xB3, 0x9D, 0xDB));
-
+    /// <summary>The resist table lives in <see cref="ResistsView"/> (29 Sep — the Tools window shows it too).</summary>
     private void BuildResists()
     {
-        if (_resists is null) return;
-        ResistsHost.Children.Clear();
-        if (_resistZoneSeg is null)
-        {
-            _resistZoneSeg = new Segmented(new[]
-            {
-                new Segmented.Option("zone", "This zone"),
-                new Segmented.Option("all", "All zones"),
-            }, _resistThisZone ? "zone" : "all", "#E8C15A");
-            _resistZoneSeg.Margin = new Thickness(0);
-            _resistZoneSeg.Changed += id => { _resistThisZone = id == "zone"; BuildResists(); };
-            ResistZoneHost.Children.Add(_resistZoneSeg);
-        }
-        string zone = _resistThisZone ? _parser.CurrentZone : "";
-        var groups = _resists.ByMob(zone, ResistSearch.Text.Trim());
-        if (groups.Count == 0)
-        {
-            ResistsHost.Children.Add(new System.Windows.Controls.TextBlock
-            {
-                Text = _resistThisZone && _parser.CurrentZone.Length == 0
-                    ? "No zone known yet — zone once, or pick All zones."
-                    : ResistSearch.Text.Trim().Length > 0 ? "Nothing matches the filter."
-                    : "No casts recorded yet — Data → Reparse fills this from your whole log.",
-                Foreground = ParseDimFg, FontSize = 12, Margin = new Thickness(2, 6, 0, 0),
-            });
-            return;
-        }
-
-        foreach (var (mob, level, mobZone, cells) in groups)
-        {
-            var head = new System.Windows.Controls.TextBlock
-            {
-                FontSize = 10.5, FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(2, 12, 0, 3), TextWrapping = TextWrapping.Wrap,
-            };
-            head.Inlines.Add(new System.Windows.Documents.Run(mob.ToUpperInvariant()) { Foreground = ParseGroupFg });
-            head.Inlines.Add(new System.Windows.Documents.Run(
-                (level > 0 ? $"   Lvl {level}" : "") + (mobZone.Length > 0 ? $"   {mobZone}" : "") + $"   {cells.Sum(c => c.N)} casts")
-            { Foreground = ParseHeadFg, FontWeight = FontWeights.Normal });
-            foreach (var v in _resists.Notable(mob))
-                head.Inlines.Add(new System.Windows.Documents.Run(
-                    $"   {(v.Severity == "immune" ? "shrugs off" : "resists")} {v.Spell}{(v.School.Length > 0 ? $" ({v.School})" : "")} {v.Rate * 100:0}% · n {v.N}")
-                { Foreground = v.Severity == "immune" ? ResistImmune : ResistAmber, FontWeight = FontWeights.Normal });
-            ResistsHost.Children.Add(head);
-
-            var grid = new System.Windows.Controls.Grid();
-            double[] widths = { 0, 80, 72, 78, 84, 110 };
-            foreach (double w in widths)
-                grid.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition
-                { Width = w > 0 ? new GridLength(w) : new GridLength(1, GridUnitType.Star) });
-            string[] heads = { "SPELL", "SCHOOL", "LANDED", "RESISTED", "RESIST %", "LAST" };
-            grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-            for (int c = 0; c < heads.Length; c++)
-                PCell(grid, heads[c], 0, c, ParseHeadFg, size: 9.5, bold: true, right: c is 2 or 3 or 4);
-
-            int row = 1;
-            foreach (var cell in cells)
-            {
-                grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
-                string sev = ResistBook.Severity(cell.Rate, cell.N);
-                Brush rateFg = sev == "immune" ? ResistImmune : sev == "resistant" ? ResistAmber : sev == "fine" ? ParseBest : ParseDimFg;
-                PCell(grid, cell.Spell, row, 0, ParseValFg);
-                PCell(grid, cell.School.Length > 0 ? cell.School : "—", row, 1, cell.School.Length > 0 ? SchoolFg : ParseDimFg);
-                PCell(grid, cell.Landed.ToString(), row, 2, ParseValFg, right: true);
-                PCell(grid, cell.Resisted.ToString(), row, 3, cell.Resisted > 0 ? ParseValFg : ParseDimFg, right: true);
-                PCell(grid, cell.N < ResistBook.SampleFloor ? $"{cell.Rate * 100:0}% · n {cell.N}" : $"{cell.Rate * 100:0}%",
-                    row, 4, rateFg, right: true, bold: sev is "immune" or "resistant");
-                PCell(grid, cell.Last == default ? "" : cell.Last.ToString("dd MMM HH:mm"), row, 5, ParseDimFg);
-                row++;
-            }
-            ResistsHost.Children.Add(grid);
-        }
+        if (!_resistsInit) { ResistsView.Init(_resists, () => _parser.CurrentZone); _resistsInit = true; }
+        else ResistsView.Build();
     }
+    private bool _resistsInit;
 
     private void BuildParses()
     {

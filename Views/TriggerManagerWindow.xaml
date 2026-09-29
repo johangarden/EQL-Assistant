@@ -1,4 +1,4 @@
-<Window x:Class="EQLOverlay.Views.TriggerManagerWindow"
+﻿<Window x:Class="EQLOverlay.Views.TriggerManagerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="EQL Assistant — Manager"
@@ -1190,7 +1190,7 @@
                             <Border Style="{StaticResource PageSep}"/>
                             <CheckBox x:Name="TsLadderCheck" Content="Open on the whole ladder (off = the step you are on; the card's STEP | LADDER switch flips it too)" Margin="0,4,0,0"/>
                             <CheckBox x:Name="TsBagCountsCheck" Content="Ingredient counts from the last inventory dump (/outputfile inventory)" Margin="0,8,0,0"/>
-                            <CheckBox x:Name="TsToolbarCheck" Content="Anvil button on the toolbar" Margin="0,8,0,0"/>
+                            <CheckBox x:Name="TsToolbarCheck" Content="Tools button on the toolbar (the hammer)" Margin="0,8,0,0"/>
 
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Your skills" Style="{StaticResource SectionTitle}"/>

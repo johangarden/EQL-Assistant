@@ -16,7 +16,7 @@ namespace EQLOverlay.Views;
 /// over cast + reuse, so a big nuke on a long reuse can't pose as the best
 /// one to chain (owner: "a reuse of 10+ secs might not perform better").
 /// </summary>
-public partial class SpellLibraryWindow
+public partial class SpellLibraryPanel
 {
     private string _tab = "durations";
     private SpellYield? _yield;
@@ -137,7 +137,9 @@ public partial class SpellLibraryWindow
             last = now;
         };
         _whoTimer.Start();
-        Closed += (_, _) => _whoTimer?.Stop(); // panel law: timers die with the window
+        // Panel law: the timer dies when the panel leaves the screen (window closed,
+        // or the Tools rail moved on) and comes back with the next tab show.
+        Unloaded += (_, _) => { _whoTimer?.Stop(); _whoTimer = null; };
     }
 
     /// <summary>Render: flip the tab's filters as if clicked.</summary>
@@ -169,14 +171,21 @@ public partial class SpellLibraryWindow
     private static readonly Brush EffHigh = FreezeBrush(0x81, 0xC7, 0x84);
     private static readonly Brush EffBest = FreezeBrush(0x20, 0x1E, 0x18);
 
+    /// <summary>The heading over the tabs ("Spell library"; the Tools window names the tool).</summary>
+    public string Heading { get => HeadingText.Text; set => HeadingText.Text = value; }
+
+    /// <summary>The Tools window picks the tab from its own rail — no tab row there.</summary>
+    public bool TabRowShown { get; set; } = true;
+
     private void RenderTabs()
     {
+        TabRow.Visibility = Tabs.Count > 1 && TabRowShown ? Visibility.Visible : Visibility.Collapsed;
         MenuTabs.Render(TabRow, new[]
         {
             new MenuTabs.Item("durations", "Durations", Tip: "Learned buff durations per spell, and ＋ to add a bar trigger"),
             new MenuTabs.Item("efficiency", "Efficiency", Tip: "Damage and healing per mana — the wiki's figure, at your rank, and what your log says you got"),
             new MenuTabs.Item("invocations", "Invocations", Tip: "A real stretch of your log replayed under each invocation your classes recite — which one each fight wanted"),
-        }, _tab, ShowTab);
+        }.Where(i => Tabs.Contains(i.Id)).ToArray(), _tab, ShowTab);
     }
 
     /// <summary>Switch tabs ("durations" · "efficiency").</summary>
@@ -197,7 +206,7 @@ public partial class SpellLibraryWindow
         // The Invocations tab lays out to the window's width (wrapping bars, a
         // stretched timeline) — a horizontal scroller would hand it infinite width.
         MainScroll.HorizontalScrollBarVisibility = inv ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
-        if ((eff || inv) && Width < 1080) Width = Math.Min(1080, SystemParameters.WorkArea.Width - 40);
+        if ((eff || inv) && Window.GetWindow(this) is SpellLibraryWindow host && host.Width < 1080) host.Width = Math.Min(1080, SystemParameters.WorkArea.Width - 40);
         Refresh();
     }
 

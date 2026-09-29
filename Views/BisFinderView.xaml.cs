@@ -24,6 +24,11 @@ public partial class BisFinderView : UserControl
 
     private readonly List<string> _combo = new(); // insertion order: the 4th pick evicts the 1st
 
+    /// <summary>The Tools home's line: upgrades sitting in storage on the last board.</summary>
+    public int UpgradeCount { get; private set; }
+    /// <summary>A board was built from dump rows.</summary>
+    public bool HasBoard { get; private set; }
+
     /// <summary>Your level (the character window's /who or ding) — pool points scale with it.</summary>
     public Func<int>? LevelProvider { get; set; }
 
@@ -345,6 +350,8 @@ public partial class BisFinderView : UserControl
         var result = _weapons ? BisFinder.WeaponView(all, _style, _range, _backstab) : BisFinder.ArmorView(all);
         BuildVerdicts(result);
         BuildBoard(result);
+        UpgradeCount = result.Slots.Sum(sl => sl.Upgrades.Count());
+        HasBoard = _rows.Count > 0;
     }
 
     private void BuildVerdicts(BisFinder.Result result)

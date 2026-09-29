@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 using EQLOverlay.Interop;
@@ -28,7 +28,8 @@ public partial class ToolbarWindow : Window
     public Action? LootRequested { get; set; }
     public Action? SheetRequested { get; set; }
     /// <summary>The anvil: show / hide the tradeskill helper card.</summary>
-    public Action<object>? TradeskillsRequested { get; set; }
+    /// <summary>The hammer: open the Tools window (29 Sep — it replaced the anvil).</summary>
+    public Action<object>? ToolsRequested { get; set; }
 
     public ToolbarWindow(ConfigService config)
     {
@@ -59,9 +60,9 @@ public partial class ToolbarWindow : Window
     private void OnQuests(object sender, RoutedEventArgs e) => QuestsRequested?.Invoke();
     private void OnLoot(object sender, RoutedEventArgs e) => LootRequested?.Invoke();
     private void OnSheet(object sender, RoutedEventArgs e) => SheetRequested?.Invoke();
-    private void OnTradeskills(object sender, RoutedEventArgs e) => TradeskillsRequested?.Invoke(sender);
+    private void OnTools(object sender, RoutedEventArgs e) => ToolsRequested?.Invoke(sender);
 
-    /// <summary>Manager → Tradeskills → "Anvil button on the toolbar".</summary>
+    /// <summary>Manager → Tradeskills → "Tools button on the toolbar" (the key the anvil used to be).</summary>
     public void SetTradeskillButton(bool on) => TradeskillBtn.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>Selftest hooks: a door key's laid-out height (22, or 32 with labels) and the quest badge.</summary>

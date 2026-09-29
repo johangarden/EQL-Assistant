@@ -2570,6 +2570,7 @@ public partial class App : Application
                 EfficiencyChecks(Check);
                 BisPoolChecks(Check);
                 InvocationChecks(Check);
+                ToolsChecks(Check);
                 Check("reparse: the catch-up card says so, and the toolbar fill is the track times the fraction",
                     new ReparseProgress("a.txt", 1, 1, 0, 0, 0, Verb: "Catching up").Title == "Catching up a.txt"
                     && Math.Abs(new ViewModels.OverlayViewModel(new TriggerEngine(new Models.AppConfig(), new AlertService()), new Models.AppConfig())
@@ -3541,6 +3542,83 @@ public partial class App : Application
         Check("inv: a typed regen redraws the results at once and the box stays the same box (keeps focus)",
             wv.InvResultForTest is { RegenUsed: 900 } && ReferenceEquals(box, wv.InvRegenBoxForTest));
         wv.Close();
+    }
+
+    /// <summary>The Tools window on demo data (render + tests): races, a Brewing
+    /// value, a resist book with one notable mob, no inventory dump.</summary>
+    internal static Views.ToolsWindow ToolsDemo(out bool[] tsShown)
+    {
+        var lib = new SpellLibrary(new ConfigService());
+        var tsData = new TradeskillData();
+        string tsPath = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_ts.json");
+        try { File.Delete(tsPath); } catch { /* fresh */ }
+        var ts = new TradeskillWatch(tsData, null, tsPath);
+        ts.SetValue("Brewing", 87);
+        string rbPath = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_resists.json");
+        try { File.Delete(rbPath); } catch { /* fresh */ }
+        // The resist book learns from the parser's own lines (as live).
+        var rp = new CombatParser { SelfName = "Thorrak" };
+        var resists = new ResistBook(new ConfigService(), rp, rbPath);
+        for (int i = 0; i < 6; i++)
+            rp.ProcessLine(i < 5
+                ? $"[Tue Sep 29 20:00:{i * 5:00} 2026] A greater sphinx resisted your Envenomed Bolt!"
+                : "[Tue Sep 29 20:00:30 2026] Thorrak hit a greater sphinx for 410 points of poison damage by Envenomed Bolt.");
+        var shown = new[] { false };
+        tsShown = shown;
+        string skill = "Brewing";
+        var races = RaceDemo(DateTime.Now.AddHours(-2));
+        races.SetTracked("High Elf", true);
+        return new Views.ToolsWindow(new Views.ToolsWindow.Context
+        {
+            Library = lib,
+            Yield = EfficiencyDemo(),
+            Classes = () => "SHD/SHM/ENC",
+            Level = () => 50,
+            Snapshot = () => "Level 50 SHD/SHM/ENC · stated by /who at 22:31",
+            Races = races,
+            Resists = resists,
+            TsData = tsData,
+            Ts = ts,
+            TsVisible = () => shown[0],
+            TsSkill = () => skill,
+            ToggleTs = () => shown[0] = !shown[0],
+            PickTs = sk => skill = sk,
+        });
+    }
+
+    /// <summary>The Tools window (29 Sep): every page builds, the home says something per tool.</summary>
+    private static void ToolsChecks(Action<string, bool> Check)
+    {
+        var tw = ToolsDemo(out var shown);
+        tw.Left = -9000; tw.Top = -9000; tw.ShowActivated = false; tw.ShowInTaskbar = false;
+        tw.Show();
+        Check("tools: home opens first, with a live line for each of the five tools",
+            tw.PageShown == "home" && tw.HomeLines.Count == 5 && tw.HomeLines.All(l => l.Length > 0)
+            && tw.HomeLines[0].StartsWith("Best per mana at 41–50", StringComparison.Ordinal)
+            && tw.HomeLines[2].Contains("inventory", StringComparison.Ordinal)
+            && tw.HomeLines[3].Contains("★ High Elf", StringComparison.Ordinal)
+            && tw.HomeLines[4].Contains("sphinx", StringComparison.Ordinal));
+        tw.ShowPage("eff");
+        var libA = tw.LibraryForTest;
+        tw.ShowPage("inv");
+        Check("tools: Spell efficiency and Invocations share one spell library panel, no tab row of its own",
+            libA is not null && ReferenceEquals(libA, tw.LibraryForTest) && !libA.TabRowShown);
+        tw.ShowPage("races");
+        Check("tools: Race unlocks shows the races (moved from the Character window)", tw.RacesForTest is { RowCount: 6 });
+        tw.ShowPage("ts");
+        Check("tools: the Tradeskills page lays out the whole ladder and marks where 87 Brewing stands (Skull Ale, 31–151)",
+            tw.LadderLines.Count >= 5 && tw.LadderLines.Any(l => l.StartsWith("31-151 Skull Ale", StringComparison.Ordinal) && l.EndsWith(" NOW", StringComparison.Ordinal)) && tw.LadderLines.Count(l => l.EndsWith(" NOW", StringComparison.Ordinal)) == 1);
+        bool before = shown[0];
+        tw.ShowPage("res");
+        tw.ShowPage("bis");
+        Check("tools: Resists and BiS pages build; no dump means no BiS board, said plainly", tw.BisForTest is null && tw.PageShown == "bis" && shown[0] == before);
+        // Every page twice, in and out of order (owner, 29 Sep: the second Resists visit threw
+        // "Specified element is already the logical child of another element").
+        bool twice = true;
+        try { foreach (var pg in new[] { "res", "races", "res", "eff", "races", "inv", "eff", "home", "res", "ts", "races" }) tw.ShowPage(pg); }
+        catch (Exception ex) { twice = false; Log.Warn("tools revisit: " + ex.Message); }
+        Check("tools: every page opens again after another — the cached tools move between frames", twice && tw.RacesForTest is { RowCount: 6 });
+        tw.Close();
     }
 
     /// <summary>BiS finder pools (28 Sep): HP and mana scored as the stat points they equal.</summary>
@@ -5531,6 +5609,16 @@ public partial class App : Application
             if (page.EndsWith(":heal", StringComparison.OrdinalIgnoreCase)) lw.EffSetForTest(healing: true);
             if (page.EndsWith(":fire", StringComparison.OrdinalIgnoreCase)) lw.EffSetForTest(resist: "Fire", classes: "WIZ");
             mgr = lw;
+        }
+        else if (page.Equals("tools", StringComparison.OrdinalIgnoreCase) || page.StartsWith("tools:", StringComparison.OrdinalIgnoreCase))
+        {
+            // The Tools window on demo data: "tools" = home, "tools:<page>" = eff · inv · bis · races · res · ts.
+            var tw = ToolsDemo(out _);
+            tw.WindowStartupLocation = WindowStartupLocation.Manual;
+            tw.Left = -10000; tw.Top = -10000; tw.ShowInTaskbar = false; tw.ShowActivated = false;
+            tw.Show();
+            if (page.Contains(':')) tw.ShowPage(page[(page.IndexOf(':') + 1)..]);
+            mgr = tw;
         }
         else if (page.Equals("library:inv", StringComparison.OrdinalIgnoreCase) || page.Equals("library:invfile", StringComparison.OrdinalIgnoreCase))
         {
