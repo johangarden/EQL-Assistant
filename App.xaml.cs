@@ -2569,6 +2569,7 @@ public partial class App : Application
                 RaceChecks(Check);
                 EfficiencyChecks(Check);
                 BisPoolChecks(Check);
+                InvocationChecks(Check);
                 Check("reparse: the catch-up card says so, and the toolbar fill is the track times the fraction",
                     new ReparseProgress("a.txt", 1, 1, 0, 0, 0, Verb: "Catching up").Title == "Catching up a.txt"
                     && Math.Abs(new ViewModels.OverlayViewModel(new TriggerEngine(new Models.AppConfig(), new AlertService()), new Models.AppConfig())
@@ -3444,6 +3445,102 @@ public partial class App : Application
             y.ProcessLine(L("You healed Thorrak for 640 (702) hit points by Superior Healing IV."));
         }
         return y;
+    }
+
+    /// <summary>A synthetic stretch for the Invocations tab (render + tests): a short
+    /// cheap fight, a long spam, an Over Channel stretch with fewer resists.</summary>
+    internal static List<string> InvocationDemo(DateTime t0)
+    {
+        var lines = new List<string>();
+        string L(double sec, string body) => $"[{t0.AddSeconds(sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+        lines.Add(L(-120, "You begin reciting the recovery invocation."));
+        // Fight 1 — short: 6 bolts in a minute.
+        for (int i = 0; i < 6; i++)
+        {
+            lines.Add(L(i * 10, "You begin casting Envenomed Bolt X."));
+            lines.Add(L(i * 10 + 3, "A gnoll has taken 470 damage from your Envenomed Bolt."));
+            lines.Add(L(i * 10 + 4, "A gnoll hits YOU for 40 points of damage."));
+        }
+        // Fight 2 — long: a 5-minute spam, a cast every 5 s, one interrupted.
+        for (int i = 0; i < 60; i++)
+        {
+            double t = 300 + i * 5;
+            lines.Add(L(t, i % 2 == 0 ? "You begin casting Drain Soul VI." : "You begin casting Envenomed Bolt X."));
+            if (i == 7) { lines.Add(L(t + 1, "Your Drain Soul spell is interrupted.")); continue; }
+            lines.Add(L(t + 3, "You hit a windrider drake for 380 points of magic damage by Drain Soul VI."));
+            lines.Add(L(t + 4, "A windrider drake hits YOU for 120 points of damage."));
+            if (i % 12 == 5) lines.Add(L(t + 3, "A windrider drake resisted your Envenomed Bolt!"));
+        }
+        // Fight 3 — Over Channel: fewer resists.
+        lines.Add(L(700, "You begin reciting the overchannel invocation."));
+        for (int i = 0; i < 30; i++)
+        {
+            double t = 720 + i * 5;
+            lines.Add(L(t, "You begin casting Envenomed Bolt X."));
+            lines.Add(L(t + 3, "A sphinx has taken 470 damage from your Envenomed Bolt."));
+            lines.Add(L(t + 4, "A sphinx hits YOU for 60 points of damage."));
+            if (i % 30 == 7) lines.Add(L(t + 3, "A sphinx resisted your Envenomed Bolt!"));
+        }
+        return lines;
+    }
+
+    /// <summary>Invocations (29 Sep): the rules per combo, the stretch reader, the replay, the log's tail.</summary>
+    private static void InvocationChecks(Action<string, bool> Check)
+    {
+        var sk = InvocationPlanner.RulesFor(new[] { "SHD", "SHM", "ENC" });
+        var wiz = InvocationPlanner.RulesFor(new[] { "WIZ", "ENC", "NEC" });
+        Check("inv: the rules follow the combo — SHD/SHM/ENC 20% faster / −10%, Empower +30%, resist −180; WIZ/ENC/NEC 40% / −20%, +40%, −195",
+            sk is { IntCount: 1, PureCount: 2, AmSpeed: 0.2, AmSave: 0.1, OcAdjust: 180 } && Math.Abs(sk.EmpDamage - 0.3) < 1e-9
+            && Math.Abs(wiz.AmSpeed - 0.4) < 1e-9 && Math.Abs(wiz.AmSave - 0.2) < 1e-9 && Math.Abs(wiz.EmpDamage - 0.4) < 1e-9 && wiz.OcAdjust == 195);
+        Check("inv: who recites what — a SHD alone has no Empower, a WAR none at all, SHD/SHM/ENC all five",
+            !InvocationPlanner.Available(new[] { "SHD" }).Contains("Empower") && InvocationPlanner.Available(new[] { "SHD" }).Contains("Arcane Mastery")
+            && InvocationPlanner.Available(new[] { "WAR" }).Count == 0 && InvocationPlanner.Available(new[] { "SHD", "SHM", "ENC" }).Count == 5);
+
+        var lib = new SpellLibrary(new ConfigService());
+        var t0 = new DateTime(2026, 9, 21, 22, 30, 0);
+        var lines = InvocationDemo(t0);
+        var st = InvocationPlanner.Parse(lines, t0.AddMinutes(-1), t0.AddMinutes(20), lib);
+        Check("inv: the stretch — 96 casts (one interrupted), three fights, the damage, resists by the invocation that was up",
+            st.Casts.Count == 96 && st.Casts.Count(c => !c.Landed) == 1 && st.Fights.Count == 3
+            && st.Damage.Sum(d => d.Amount) == 6 * 470 + 59 * 380 + 30 * 470
+            && st.Casts.First().Rank == 10 && st.Casts.First().Invocation == "Recovery"
+            && st.Casts.Last().Invocation == "Over Channel" && st.ResistsBy["Recovery"].Resists == 5 && st.ResistsBy["Over Channel"].Resists == 1
+            && lib.FindByName("Odium")?.Mana > 0);
+        var poor = InvocationPlanner.Replay(st, lib, new[] { "SHD", "SHM", "ENC" }, 0, 2600);
+        var rich = InvocationPlanner.Replay(st, lib, new[] { "SHD", "SHM", "ENC" }, 400, 20000);
+        Check("inv: the log proves a regen floor when none is typed, and uses it",
+            poor.ProvenRegen > 0 && poor.RegenUsed == poor.ProvenRegen && rich.RegenUsed == 400);
+        Check("inv: a short cheap fight can afford Empower — the most damage; the long spam on a small pool can't",
+            poor.Fights[0].Pick == "Empower" && poor.Fights[0].Affordable && poor.Fights[1].Pick != "Empower");
+        Check("inv: Inversion keeps more mana than Recovery on a spam at a low regen; Empower costs the most",
+            poor.Ledgers.First(l => l.Name == "Inversion").VsRecovery > poor.Ledgers.First(l => l.Name == "Empower").VsRecovery
+            && poor.Ledgers.First(l => l.Name == "Empower").Damage > poor.Ledgers.First(l => l.Name == "Recovery").Damage);
+        Check("inv: Over Channel measured from your resists here (5 of 66 → 1 of 30 in the demo), else scored as no change",
+            poor.OcFactor > 1 && poor.ResistNote.Contains("Over Channel", StringComparison.Ordinal)
+            && InvocationPlanner.Replay(InvocationPlanner.Parse(lines, t0.AddMinutes(-1), t0.AddMinutes(9), lib), lib, new[] { "SHD", "SHM", "ENC" }, 0, 2600).OcFactor == 1);
+
+        // The tail of a big log: exactly the lines since the cutoff (plus 20 min for the invocation up).
+        string tail = Path.Combine(Path.GetTempPath(), "eql_selftest_inv_tail.txt");
+        using (var w = new StreamWriter(tail))
+            for (int i = 0; i < 20000; i++) w.WriteLine($"[{t0.AddSeconds(i).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] You feel a line {i}.");
+        var got = InvocationPlanner.ReadSince(tail, t0.AddSeconds(19000));
+        Check("inv: the log's tail reads backwards — the last 1,000 lines plus the 20 minutes before",
+            got.Count == 1000 + 1200 && got[0].Contains("line 17800", StringComparison.Ordinal) && got[^1].Contains("line 19999", StringComparison.Ordinal));
+        try { File.Delete(tail); } catch { /* temp */ }
+
+        var wv = new Views.SpellLibraryWindow(lib, _ => { }, null, null, () => "SHD/SHM/ENC", () => 50, null, () => "Level 50 SHD/SHM/ENC · stated by /who at 22:31")
+        { Left = -9000, Top = -9000, ShowActivated = false, ShowInTaskbar = false };
+        wv.Show();
+        wv.ShowTab("invocations");
+        wv.InvUseLinesForTest(lines, t0.AddMinutes(20), 0, 2600);
+        Check("inv: the tab paints the replay — three fights, a pick each, the ledger for all five",
+            wv.InvResultForTest is { Fights.Count: 3, Ledgers.Count: 5 } r && r.Fights.All(f => f.Pick.Length > 0));
+        var box = wv.InvRegenBoxForTest!;
+        box.Text = "900";
+        box.RaiseEvent(new RoutedEventArgs(UIElement.LostFocusEvent));
+        Check("inv: a typed regen redraws the results at once and the box stays the same box (keeps focus)",
+            wv.InvResultForTest is { RegenUsed: 900 } && ReferenceEquals(box, wv.InvRegenBoxForTest));
+        wv.Close();
     }
 
     /// <summary>BiS finder pools (28 Sep): HP and mana scored as the stat points they equal.</summary>
@@ -5433,6 +5530,26 @@ public partial class App : Application
             lw.ShowTab("efficiency");
             if (page.EndsWith(":heal", StringComparison.OrdinalIgnoreCase)) lw.EffSetForTest(healing: true);
             if (page.EndsWith(":fire", StringComparison.OrdinalIgnoreCase)) lw.EffSetForTest(resist: "Fire", classes: "WIZ");
+            mgr = lw;
+        }
+        else if (page.Equals("library:inv", StringComparison.OrdinalIgnoreCase) || page.Equals("library:invfile", StringComparison.OrdinalIgnoreCase))
+        {
+            // The Invocations tab: on the synthetic stretch, or (invfile) on the log
+            // file in EQL_INV_LOG ending at EQL_INV_END ("yyyy-MM-dd HH:mm"), 60 min.
+            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { }, null, null, () => "SHD/SHM/ENC", () => 50,
+                null, () => "Level 50 SHD/SHM/ENC · stated by /who at 22:31")
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            lw.Show();
+            lw.ShowTab("invocations");
+            if (page.EndsWith("invfile", StringComparison.OrdinalIgnoreCase) && Environment.GetEnvironmentVariable("EQL_INV_LOG") is { Length: > 0 } invLog)
+            {
+                var end = DateTime.ParseExact(Environment.GetEnvironmentVariable("EQL_INV_END") ?? "", "yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+                lw.InvUseLinesForTest(File.ReadAllLines(invLog).ToList(), end, int.TryParse(Environment.GetEnvironmentVariable("EQL_INV_REGEN"), out int rg) ? rg : 14, 2600);
+            }
+            else lw.InvUseLinesForTest(InvocationDemo(new DateTime(2026, 9, 21, 22, 30, 0)), new DateTime(2026, 9, 21, 22, 50, 0), 14, 2600);
             mgr = lw;
         }
         else if (page.StartsWith("library:", StringComparison.OrdinalIgnoreCase))

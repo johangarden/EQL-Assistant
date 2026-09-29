@@ -1880,6 +1880,7 @@ public partial class MainWindow : Window
                 ClassesText = () => KnownClassesText() is { Length: > 0 } k ? k : SpellEfficiency.ClassesFromName(_config.ActiveLoadout),
                 CurrentLevel = EffLevel,
                 WhoSnapshot = EffSnapshotText,
+                LogPath = () => _watcher?.CurrentPath,
             };
             _manager.Closed += (_, _) => _manager = null;
             _manager.Show();
@@ -2588,7 +2589,7 @@ public partial class MainWindow : Window
         int level = EffLevel();
         string src;
         if (_session?.LevelStatement is { } st && st.Level > 0)
-            src = (st.FromWho ? "stated by /who" : "from your last ding") + $" at {st.Ts:HH:mm}" + (st.Ts.Date != DateTime.Today ? $" on {st.Ts:d MMM}" : "");
+            src = (st.FromWho ? "stated by /who" : "from your last ding") + $" at {st.Ts.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)}" + (st.Ts.Date != DateTime.Today ? $" on {st.Ts:d MMM}" : "");
         else if (classes.Length > 0 || level > 0) src = "saved from your last /who";
         else
         {

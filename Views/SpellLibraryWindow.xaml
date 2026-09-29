@@ -31,7 +31,7 @@
             <TextBlock x:Name="DurHint" Foreground="#7F93AD" FontSize="11" Margin="0,2,0,8" TextWrapping="Wrap"
                        Text="Every spell the duration learner has measured — the estimate the bars use (log = learned from your own cast→fade cycles, db = the library's figure), sample count and spread. Search reaches the WHOLE ~1400-spell library; ＋ Me adds a ready-made countdown bar trigger (type, color, duration and fade voice prefilled) to the current loadout, ＋ Pet tracks the buff on your pet instead."/>
 
-            <DockPanel Margin="0,0,0,8">
+            <DockPanel x:Name="SearchRow" Margin="0,0,0,8">
                 <ComboBox x:Name="ClassBox" DockPanel.Dock="Right" Width="110" Margin="8,0,0,0"
                           MinHeight="30" SelectionChanged="Filters_Changed"/>
                 <TextBox x:Name="SearchBox" TextChanged="Filters_Changed"
@@ -45,10 +45,12 @@
 
         <TextBlock x:Name="EffFoot" DockPanel.Dock="Bottom" Visibility="Collapsed" Foreground="#5C6B82" FontSize="10.5"
                    TextWrapping="Wrap" Margin="0,8,0,0"/>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="MainScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
             <Grid>
                 <Grid x:Name="DurTableHost" VerticalAlignment="Top"/>
                 <Grid x:Name="EffTableHost" VerticalAlignment="Top" Visibility="Collapsed"/>
+                <!-- INVOCATIONS (owner, 29 Sep): a real stretch of your log replayed under each invocation -->
+                <StackPanel x:Name="InvHost" VerticalAlignment="Top" Visibility="Collapsed"/>
             </Grid>
         </ScrollViewer>
     </DockPanel>
