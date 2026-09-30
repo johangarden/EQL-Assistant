@@ -3712,6 +3712,8 @@ public partial class App : Application
         Check("slot finder: Wrist remembered; 3 wearable by SHD/SHM/ENC (2 worn + the Manacle), 1 more for DRU/BRD/WIZ, 1 for neither; socketed exaltations stay out",
             sf.SlotShown == "WRIST" && sf.GroupCountsForTest[SlotFinder.Fit.You] == 3 && sf.GroupCountsForTest[SlotFinder.Fit.Compare] == 1
             && sf.GroupCountsForTest[SlotFinder.Fit.Neither] == 1 && !sf.RowNamesForTest.Any(n => n.Contains("Serpentine")) && sf.RowNamesForTest.Count == 4);
+        Check("slot finder: a pick in the compare popup keeps it open (the anchor chip is not rebuilt under it)",
+            sf.PickInPopupForTest("CLR"));
         var wristItems = SlotFinder.Build(tw.SlotsForTest is not null ? InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows : new(), new ItemStats()).First(s => s.Key == "WRIST").Items;
         Check("slot finder: the worn bracer reads worn in Wrist, the bank one reads 'Bank 1', the tally of the rest names WAR",
             wristItems.First(i => i.Name.StartsWith("Pristine")).WornIn("WRIST") && !wristItems.First(i => i.Name.StartsWith("Insidious")).Worn

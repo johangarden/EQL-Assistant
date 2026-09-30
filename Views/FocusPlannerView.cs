@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
@@ -73,9 +73,13 @@ public sealed class FocusPlannerView : DockPanel
     internal void SetWantForTest(string family, FocusPlanner.Want w) { _wants[family] = w; Build(); }
     internal void UseWhatIfForTest(params string[] combo) { _whatIf.Clear(); _whatIf.AddRange(combo); _useWhatIf = true; LoadWants(); Build(); }
 
-    private void Build()
+    private void Build() { BuildTop(); BuildBody(); }
+
+    // The what-if popup anchors on a bar chip: a pick redraws the body only,
+    // the bar follows once the popup closes (owner, 30 Sep).
+    private void BuildTop()
     {
-        _top.Children.Clear(); _body.Children.Clear(); MoveLinesForTest.Clear();
+        _top.Children.Clear();
         if (_rows is null || _focus is null || _stats is null) return;
 
         // ---- the bar ----
@@ -92,7 +96,12 @@ public sealed class FocusPlannerView : DockPanel
         pool.Children.Add(Pill("worn sockets · key ring · stored items' sockets", Dim, ChipOn, ChipOnEdge));
         bar.Children.Add(pool);
         _top.Children.Add(bar);
+    }
 
+    private void BuildBody()
+    {
+        _body.Children.Clear(); MoveLinesForTest.Clear();
+        if (_rows is null || _focus is null || _stats is null) return;
         if (Combo.Count == 0)
         {
             _body.Children.Add(new TextBlock { Text = "Type /who in game so the planner knows your classes — or pick a what-if combo above.", Foreground = Hint, FontSize = 12, TextWrapping = TextWrapping.Wrap });
@@ -187,7 +196,7 @@ public sealed class FocusPlannerView : DockPanel
             var seg = new Segmented(new[] { new Segmented.Option("need", "Need", "Must be socketed — outweighs any number of nice-to-haves"), new Segmented.Option("nice", "Nice", "Fills a socket left over"), new Segmented.Option("off", "Off", "Not wanted for this combo") },
                 f.Want.ToString().ToLowerInvariant(), "#E8C15A") { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             string fam = f.Family.Name;
-            seg.Changed += id => { _wants[fam] = id == "need" ? FocusPlanner.Want.Need : id == "nice" ? FocusPlanner.Want.Nice : FocusPlanner.Want.Off; _prefs?.Set(WantsKey, FocusPlanner.Pack(_wants)); Build(); };
+            seg.Changed += id => { _wants[fam] = id == "need" ? FocusPlanner.Want.Need : id == "nice" ? FocusPlanner.Want.Nice : FocusPlanner.Want.Off; _prefs?.Set(WantsKey, FocusPlanner.Pack(_wants)); BuildBody(); };
             Grid.SetColumn(seg, 1); g.Children.Add(seg);
             sp.Children.Add(new Border { Child = g, Padding = new Thickness(0, 5, 0, 5), BorderBrush = Row, BorderThickness = new Thickness(0, 0, 0, 1) });
         }
@@ -337,7 +346,7 @@ public sealed class FocusPlannerView : DockPanel
                 if (!_whatIf.Remove(c)) { _whatIf.Add(c); while (_whatIf.Count > 3) _whatIf.RemoveAt(0); }
                 _useWhatIf = _whatIf.Count > 0;
                 _prefs?.Set($"whatif:{_charKey}", string.Join("/", _whatIf));
-                Paint(); LoadWants(); Build();
+                Paint(); LoadWants(); BuildBody();
             };
             grid.Children.Add(b);
         }
@@ -351,6 +360,7 @@ public sealed class FocusPlannerView : DockPanel
             PlacementTarget = at, Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true, VerticalOffset = 6,
             Child = new Border { Background = Surface, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(7), Padding = new Thickness(10), Child = sp },
         };
+        _picker.Closed += (_, _) => BuildTop(); // the chip's words catch up
         _picker.IsOpen = true;
     }
 

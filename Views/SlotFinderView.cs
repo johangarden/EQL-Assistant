@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
@@ -74,10 +74,14 @@ public sealed class SlotFinderView : DockPanel
 
     private void Save() { _prefs?.Set($"compare:{_charKey}", string.Join("/", _compare)); _prefs?.Set($"slot:{_charKey}", _slot); }
 
-    private void Build()
+    private void Build() { BuildTop(); BuildBody(); }
+
+    // The popup's anchor lives in the bar: a pick redraws the body only, and the
+    // bar follows once the popup closes (owner, 30 Sep: "the class picker closes immediately").
+    private void BuildTop()
     {
-        _top.Children.Clear(); _body.Children.Clear(); GroupCountsForTest.Clear(); RowNamesForTest.Clear();
-        if (_rows is null || _stats is null) return;
+        _top.Children.Clear();
+        if (_rows is null || _stats is null || _index.Count == 0) return;
         var current = _index.FirstOrDefault(s => s.Key == _slot) ?? _index[0];
 
         // ---- the bar: combos, lanes ----
@@ -131,6 +135,13 @@ public sealed class SlotFinderView : DockPanel
             slots.Children.Add(b);
         }
         _top.Children.Add(slots);
+    }
+
+    private void BuildBody()
+    {
+        _body.Children.Clear(); GroupCountsForTest.Clear(); RowNamesForTest.Clear();
+        if (_rows is null || _stats is null || _index.Count == 0) return;
+        var current = _index.FirstOrDefault(s => s.Key == _slot) ?? _index[0];
 
         // ---- the summary ----
         var shown = current.Items.Where(i => i.Copies.Any(c => _lanes.Contains(c.Lane))).ToList();
@@ -323,7 +334,7 @@ public sealed class SlotFinderView : DockPanel
         {
             var b = new Border { Tag = cls, CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Padding = new Thickness(0, 3, 0, 4), Margin = new Thickness(0, 0, 5, 5), Width = 54, Cursor = Cursors.Hand, Child = new TextBlock { Text = cls, FontSize = 11, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center } };
             string c = cls;
-            b.MouseLeftButtonDown += (_, e) => { e.Handled = true; if (!_compare.Remove(c)) { _compare.Add(c); while (_compare.Count > 3) _compare.RemoveAt(0); } Paint(); Save(); Build(); };
+            b.MouseLeftButtonDown += (_, e) => { e.Handled = true; if (!_compare.Remove(c)) { _compare.Add(c); while (_compare.Count > 3) _compare.RemoveAt(0); } Paint(); Save(); BuildBody(); };
             grid.Children.Add(b);
         }
         Paint();
@@ -336,7 +347,21 @@ public sealed class SlotFinderView : DockPanel
             PlacementTarget = at, Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true, VerticalOffset = 6,
             Child = new Border { Background = Surface, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(7), Padding = new Thickness(10), Child = sp },
         };
+        _picker.Closed += (_, _) => BuildTop(); // the chip's words catch up
         _picker.IsOpen = true;
+    }
+
+    /// <summary>Selftest: open the compare picker, click a class in it, and say whether it is still open.</summary>
+    internal bool PickInPopupForTest(string cls)
+    {
+        var anchor = _top.Children.OfType<WrapPanel>().FirstOrDefault()?.Children.OfType<StackPanel>().FirstOrDefault()?.Children.OfType<Border>().Skip(1).FirstOrDefault();
+        if (anchor is null) return false;
+        OpenPicker(anchor);
+        var chip = ((_picker!.Child as Border)!.Child as StackPanel)!.Children.OfType<UniformGrid>().First().Children.OfType<Border>().First(b => (string)b.Tag == cls);
+        chip.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = MouseLeftButtonDownEvent });
+        bool open = _picker.IsOpen && _compare.Contains(cls);
+        _picker.IsOpen = false;
+        return open;
     }
 
     // ---- bits ----
