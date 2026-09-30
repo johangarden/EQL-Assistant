@@ -3507,12 +3507,62 @@ public partial class App : Application
             && st.Casts.First().Rank == 10 && st.Casts.First().Invocation == "Recovery"
             && st.Casts.Last().Invocation == "Over Channel" && st.ResistsBy["Recovery"].Resists == 5 && st.ResistsBy["Over Channel"].Resists == 1
             && lib.FindByName("Odium")?.Mana > 0);
+        // Resists (30 Sep, rig log): per mob a damage cast reached; songs and snares stay out.
+        {
+            string L(double sec, string body) => $"[{t0.AddSeconds(sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+            var rl = new List<string> { L(-60, "You begin reciting the recovery invocation.") };
+            rl.Add(L(0, "You begin casting Frost Storm."));
+            rl.Add(L(3, "You hit a zol ghoul knight for 522 points of cold damage by Frost Storm."));
+            rl.Add(L(3, "You hit a zol ghoul knight for 522 points of cold damage by Frost Storm."));
+            rl.Add(L(3, "You hit a dar ghoul knight for 522 points of cold damage by Frost Storm."));
+            rl.Add(L(3, "A wan ghoul knight resisted your Frost Storm!"));
+            rl.Add(L(4, "You begin singing Largo's Melodic Binding."));
+            for (int i = 0; i < 6; i++) rl.Add(L(5 + i * 6, "A zol ghoul knight resisted your Largo's Melodic Binding!"));
+            rl.Add(L(40, "A dar ghoul knight resisted your Frost Storm!")); // no cast of it this close: not a try
+            var rs = InvocationPlanner.Parse(rl, t0.AddMinutes(-1), t0.AddMinutes(5), lib);
+            Check("inv: resists count per mob a damage cast reached — an AE's four lines are four tries, one resisted; song pulses stay out",
+                rs.ResistsBy.GetValueOrDefault("Recovery") == (4, 1));
+        }
         var poor = InvocationPlanner.Replay(st, lib, new[] { "SHD", "SHM", "ENC" }, 0, 2600);
         var rich = InvocationPlanner.Replay(st, lib, new[] { "SHD", "SHM", "ENC" }, 400, 20000);
         Check("inv: the log proves a regen floor when none is typed, and uses it",
             poor.ProvenRegen > 0 && poor.RegenUsed == poor.ProvenRegen && rich.RegenUsed == 400);
-        Check("inv: a short cheap fight can afford Empower — the most damage; the long spam on a small pool can't",
-            poor.Fights[0].Pick == "Empower" && poor.Fights[0].Affordable && poor.Fights[1].Pick != "Empower");
+        Check("inv: a deep pool affords Empower everywhere, full into every fight; the long spam on a small pool runs dry",
+            rich.Fights.All(f => f.Pick == "Empower" && f.Affordable) && rich.Fights[0].ManaIn == 20000
+            && !poor.Fights[1].Affordable && poor.Fights[1].ManaIn <= 2600);
+
+        // Carry-over (30 Sep): two pulls back to back on a pool that pays for one
+        // Empower fight — the second starts on what the first left; ten minutes
+        // apart, rested regen fills you up again.
+        {
+            string L(double sec, string body) => $"[{t0.AddSeconds(sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+            List<string> Pulls(double gap, bool oom)
+            {
+                var pl = new List<string> { L(-60, "You begin reciting the empowering invocation.") };
+                foreach (double at in new[] { 0.0, 50 + gap })
+                    for (int i = 0; i < 10; i++)
+                    {
+                        pl.Add(L(at + i * 5, "You begin casting Envenomed Bolt X."));
+                        pl.Add(L(at + i * 5 + 3, "A gnoll has taken 470 damage from your Envenomed Bolt."));
+                        if (oom && at > 0 && i == 8) pl.Add(L(at + i * 5 + 4, "Insufficient Mana to cast this spell!"));
+                    }
+                return pl;
+            }
+            double m = (lib.FindByBaseName("Envenomed Bolt")?.Mana ?? 0) * 0.8;
+            int cpool = (int)(10 * m * 1.3);
+            var chain = InvocationPlanner.Replay(InvocationPlanner.Parse(Pulls(20, oom: true), t0.AddMinutes(-1), t0.AddMinutes(20), lib),
+                lib, new[] { "SHD", "SHM", "ENC" }, 1, cpool);
+            var emp = chain.Ledgers.First(l => l.Name == "Empower");
+            Check("inv: chained, the second pull starts on what the first left; staying in Empower runs dry, the plan does no worse than any single invocation",
+                m > 0 && chain.Fights.Count == 2 && chain.Fights[0].ManaIn == cpool && chain.Fights[1].ManaIn < 0.5 * cpool
+                && emp.Dry >= 1 && chain.Fights.Sum(f => f.Damage) >= chain.Ledgers.Max(l => l.Damage) - 1);
+            Check("inv: as you played (Empower both) the replay runs you dry once — and so does the log's Insufficient Mana",
+                chain.PlayedDry == 1 && chain.LogDry == 1 && Views.SpellLibraryPanel.PlayedCheck(chain).Contains("shows 1 fight", StringComparison.Ordinal));
+            var rested = InvocationPlanner.Replay(InvocationPlanner.Parse(Pulls(600, oom: false), t0.AddMinutes(-1), t0.AddMinutes(30), lib),
+                lib, new[] { "SHD", "SHM", "ENC" }, 30, cpool);
+            Check("inv: ten minutes between pulls, rested regen (Recovery's, whatever is up) fills the pool — Empower both times",
+                rested.Fights.Count == 2 && rested.Fights[1].ManaIn == cpool && rested.Fights.All(f => f.Pick == "Empower" && f.Affordable));
+        }
         Check("inv: Inversion keeps more mana than Recovery on a spam at a low regen; Empower costs the most",
             poor.Ledgers.First(l => l.Name == "Inversion").VsRecovery > poor.Ledgers.First(l => l.Name == "Empower").VsRecovery
             && poor.Ledgers.First(l => l.Name == "Empower").Damage > poor.Ledgers.First(l => l.Name == "Recovery").Damage);
@@ -3568,13 +3618,26 @@ public partial class App : Application
         string skill = "Brewing";
         var races = RaceDemo(DateTime.Now.AddHours(-2));
         races.SetTracked("High Elf", true);
+        // A dump shaped like Thorrak's (17 Aug): worn items with focus sockets,
+        // exaltations socketed and loose on the key ring, wrist items for five classes.
+        // A real dump in env EQL_TOOLS_DUMP stands in for the demo one (renders against your own gear).
+        string dumpText = Environment.GetEnvironmentVariable("EQL_TOOLS_DUMP") is { Length: > 0 } dumpFile && File.Exists(dumpFile) ? File.ReadAllText(dumpFile) : ToolsDemoDump();
+        var demoDump = InventoryStore.Parse(dumpText);
+        var dumpRows = InventoryStore.CarryAll(demoDump).Rows;
+        string prefsPath = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json");
+        try { File.Delete(prefsPath); } catch { /* fresh */ }
+        var prefs = new ToolPrefs(prefsPath);
+        prefs.Set("slot:demo_paineel", "WRIST");
         return new Views.ToolsWindow(new Views.ToolsWindow.Context
         {
+            Dump = () => (dumpRows, new DateTime(2026, 8, 17, 21, 36, 0), demoDump),
+            CharKey = () => "demo_paineel",
+            ToolPrefsPath = prefsPath,
             Library = lib,
             Yield = EfficiencyDemo(),
             Classes = () => "SHD/SHM/ENC",
-            Level = () => 50,
-            Snapshot = () => "Level 50 SHD/SHM/ENC · stated by /who at 22:31",
+            Level = () => 44,
+            Snapshot = () => "Level 44 SHD/SHM/ENC · stated by /who at 22:31",
             Races = races,
             Resists = resists,
             TsData = tsData,
@@ -3586,18 +3649,113 @@ public partial class App : Application
         });
     }
 
+    /// <summary>The tab-separated inventory dump behind the Tools demo (real item names, so the wiki table knows them).</summary>
+    internal static string ToolsDemoDump() => string.Join("\r\n", new[]
+    {
+        "Location\tName\tID\tCount\tSlots",
+        "Head\tWicked Sallet +5\t177814\t1\t10",
+        "Head-Slot7\tWicked Sallet (Exaltation)\t177814\t1\t10",
+        "Face\tPolished Mithril Mask +1\t1\t1\t10",
+        "Face-Slot7\tPolished Mithril Mask (Exaltation)\t1\t1\t10",
+        "Neck\tTalisman of Kejaar Kerrath +5\t2\t1\t10",
+        "Neck-Slot7\tWhite Gold Necklace (Exaltation)\t3\t1\t10",
+        "Shoulders\tPauldrons of Power +1\t4\t1\t10",
+        "Shoulders-Slot7\tEmpty\t0\t0\t0",
+        "Wrist\tPristine Studded Leather Bracer +5\t5\t1\t10",
+        "Wrist-Slot7\tSerpentine Bracer (Exaltation)\t6\t1\t10",
+        "Wrist\tLustrous Russet Bracer +1\t7\t1\t10",
+        "Wrist-Slot7\tRuned Mithril Bracer (Exaltation)\t8\t1\t10",
+        "Secondary\tNisch Mas Ilkvel +4\t9\t1\t10",
+        "Secondary-Slot7\tNisch Mas Ilkvel (Exaltation)\t9\t1\t10",
+        "Feet\tLustrous Russet Boots +1\t10\t1\t10",
+        "Feet-Slot7\tEmpty\t0\t0\t0",
+        "Chest\tPristine Studded Leather Tunic +6\t11\t1\t10",
+        "Chest-Slot7\tEmpty\t0\t0\t0",
+        "Primary\tThe Baron's Blade +5\t12\t1\t10",
+        "Primary-Slot7\tEmpty\t0\t0\t0",
+        "General 1\tBackpack\t13\t1\t8",
+        "General 1-Slot1\tRing of Pureblood +2\t14\t1\t10",
+        "Bank1\tInsidious Manacle +2\t15\t1\t10",
+        "Bank2\tVermiculated Bracelet +1\t16\t1\t10",
+        "Bank3\tIndicolite Bracer +3\t17\t1\t10",
+        "Bank4\tGilded Cloth +3\t18\t1\t10",
+        "Bank4-Slot7\tGilded Cloth (Exaltation)\t18\t1\t10",
+        "Bank5\tKelin`s Seven Stringed Lute +2\t11573\t1\t10",
+        "Bank5-Slot7\tKelin`s Seven Stringed Lute (Exaltation)\t11573\t1\t10",
+        "Held\tEmpty\t0\t0\t0",
+        "",
+        "KeyRing\tName\tID\t",
+        "Augmentation\tGreen Silken Drape (Exaltation)\t1412",
+        "Augmentation\tGolden Efreeti Boots (Exaltation)\t4407",
+        "Augmentation\tDamask Robe (Exaltation)\t1334",
+        "Augmentation\tEmissary Mask (Exaltation)\t177834",
+        "Equipment\tBoots of the Long Road +1\t177708",
+    });
+
     /// <summary>The Tools window (29 Sep): every page builds, the home says something per tool.</summary>
     private static void ToolsChecks(Action<string, bool> Check)
     {
         var tw = ToolsDemo(out var shown);
         tw.Left = -9000; tw.Top = -9000; tw.ShowActivated = false; tw.ShowInTaskbar = false;
         tw.Show();
-        Check("tools: home opens first, with a live line for each of the five tools",
-            tw.PageShown == "home" && tw.HomeLines.Count == 5 && tw.HomeLines.All(l => l.Length > 0)
+        Check("tools: home opens first, with a live line for each of the seven tools",
+            tw.PageShown == "home" && tw.HomeLines.Count == 7 && tw.HomeLines.All(l => l.Length > 0)
             && tw.HomeLines[0].StartsWith("Best per mana at 41–50", StringComparison.Ordinal)
-            && tw.HomeLines[2].Contains("inventory", StringComparison.Ordinal)
-            && tw.HomeLines[3].Contains("★ High Elf", StringComparison.Ordinal)
-            && tw.HomeLines[4].Contains("sphinx", StringComparison.Ordinal));
+            && tw.HomeLines[3].StartsWith("Wrist is the fullest: 5 items, 3 your combo can wear", StringComparison.Ordinal)
+            && tw.HomeLines[4].StartsWith("3 moves would socket 3 of 4 needs", StringComparison.Ordinal)
+            && tw.HomeLines[5].Contains("★ High Elf", StringComparison.Ordinal)
+            && tw.HomeLines[6].Contains("sphinx", StringComparison.Ordinal));
+
+        // The slot finder (30 Sep): Wrist, worn + bank, three combos' worth of bracers.
+        tw.ShowPage("slots");
+        var sf = tw.SlotsForTest!;
+        Check("slot finder: Wrist remembered; 3 wearable by SHD/SHM/ENC (2 worn + the Manacle), 2 for other classes folded away; socketed exaltations stay out",
+            sf.SlotShown == "WRIST" && sf.GroupCountsForTest[SlotFinder.Fit.You] == 3 && sf.GroupCountsForTest[SlotFinder.Fit.Neither] == 2
+            && !sf.RowNamesForTest.Any(n => n.Contains("Serpentine")) && sf.RowNamesForTest.Count == 3);
+        sf.YouPickerForTest.ClickForTest("DRU"); // SHD/SHM/ENC + DRU → SHM/ENC/DRU: the druid bracelet joins your side
+        Check("slot finder: a pick in the picker redraws the board and is remembered for the days /who hasn't said",
+            sf.YouPickerForTest.Combo.SequenceEqual(new[] { "SHM", "ENC", "DRU" }) && sf.GroupCountsForTest[SlotFinder.Fit.You] == 4
+            && new ToolPrefs(Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json")).Get("you:demo_paineel") == "SHM/ENC/DRU");
+        var wristItems = SlotFinder.Build(tw.SlotsForTest is not null ? InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows : new(), new ItemStats()).First(s => s.Key == "WRIST").Items;
+        Check("slot finder: the worn bracer reads worn in Wrist, the bank one reads 'Bank 1', the tally of the rest names WAR",
+            wristItems.First(i => i.Name.StartsWith("Pristine")).WornIn("WRIST") && !wristItems.First(i => i.Name.StartsWith("Insidious")).Worn
+            && SlotFinder.PrettyLocation("Bank1", "bank") == "Bank 1" && SlotFinder.PrettyLocation("SharedBank1-Slot3", "bank") == "Shared bank 1 · slot 3"
+            && SlotFinder.PrettyLocation("General 8-Slot6", "bags") == "Bag 8 · slot 6"
+            && SlotFinder.Tally(wristItems.Where(i => SlotFinder.FitOf(i, new[] { "SHD", "SHM", "ENC" }, new[] { "DRU", "BRD", "WIZ" }) == SlotFinder.Fit.Neither)) is [("WAR", 1)]);
+
+        // The focus planner (30 Sep): the exact plan on the demo dump.
+        tw.ShowPage("focus");
+        var fp = tw.FocusForTest!;
+        var plan = fp.PlanForTest!;
+        string PlanIn(string sock) => plan.Sockets.First(p => p.Socket.Label == sock).Plan?.Name ?? "";
+        Check("focus: 10 open sockets; Face keeps Improved Damage II over Emissary Mask's decayed Healing I; Secondary keeps Mana Preservation II; Shoulders, Chest and Feet get filled — 3 moves",
+            plan.Exact && plan.Sockets.Count(p => !p.Socket.Fixed) == 10 && plan.Moves == 3
+            && PlanIn("Face").StartsWith("Polished Mithril Mask") && PlanIn("Secondary").StartsWith("Nisch Mas Ilkvel")
+            && PlanIn("Shoulders").StartsWith("Gilded Cloth") && PlanIn("Chest").StartsWith("Green Silken Drape") && PlanIn("Feet").StartsWith("Golden Efreeti Boots")
+            && PlanIn("Primary") == "");
+        Check("focus: the move reads as a sentence — what to take out, where it is, what it goes into",
+            FocusPlanner.MoveText(plan.Sockets.First(p => p.Socket.Label == "Shoulders")) == "Pull the Gilded Cloth exaltation out of Gilded Cloth +3 (Bank 4) and socket it into Pauldrons of Power +1 (Shoulders)."
+            && FocusPlanner.MoveText(plan.Sockets.First(p => p.Socket.Label == "Feet")) == "Take the Golden Efreeti Boots exaltation from the key ring and socket it into Lustrous Russet Boots +1 (Feet).");
+        Check("focus: the head's Mana Preservation I is shadowed by the II in Secondary; Improved Healing (a Need) goes without and Face is the conflict; Spell Haste II is worth hunting",
+            fp.MoveLinesForTest.Any(l => l.StartsWith("Head: shadowed by Mana Preservation II in Secondary", StringComparison.Ordinal))
+            && plan.NeedsPlaced == 3 && plan.Needs == 4 && plan.Conflicts.Any(c => c.Socket.Label == "Face" && c.Wanting.Any(e => e.Family.Name == "Improved Healing"))
+            && plan.Hunts.Any(h => h.Tier.Effect == "Spell Haste II") && plan.Hunts.Any(h => h.Tier.Effect == "Improved Damage III" && h.OpenSocket.Length == 0)
+            && !plan.Families.First(f => f.Family.Name == "String Resonance").Shown);
+        fp.SetComboForTest("DRU", "BRD", "WIZ");
+        var wi = fp.PlanForTest!;
+        Check("focus: with a bard, String Resonance shows (Nice by default) and Mana Preservation II still holds Secondary",
+            wi.Families.First(f => f.Family.Name == "String Resonance").Shown && wi.Families.First(f => f.Family.Name == "String Resonance").Want == FocusPlanner.Want.Nice
+            && wi.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Nisch"));
+        fp.SetWantForTest("String Resonance", FocusPlanner.Want.Need);
+        var wi2 = fp.PlanForTest!;
+        Check("focus: two Needs on Secondary tie — the one already socketed stays, and the conflict note names the loser",
+            wi2.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Nisch")
+            && wi2.Conflicts.Any(c => c.Socket.Label == "Secondary" && c.Wanting.Any(e => e.Family.Name == "String Resonance")));
+        fp.SetWantForTest("Mana Preservation", FocusPlanner.Want.Nice);
+        var wi3 = fp.PlanForTest!;
+        Check("focus: Mana Preservation marked Nice hands Secondary to the lute; the SHD-only sallet's tier I can't stand in for DRU/BRD/WIZ — 4 moves",
+            wi3.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Kelin") && wi3.Sockets.First(p => p.Socket.Label == "Head").Plan is null
+            && wi3.Foreign.Any(e => e.Name.StartsWith("Wicked Sallet")) && wi3.Moves == 4);
         tw.ShowPage("eff");
         var libA = tw.LibraryForTest;
         tw.ShowPage("inv");
@@ -3611,7 +3769,27 @@ public partial class App : Application
         bool before = shown[0];
         tw.ShowPage("res");
         tw.ShowPage("bis");
-        Check("tools: Resists and BiS pages build; no dump means no BiS board, said plainly", tw.BisForTest is null && tw.PageShown == "bis" && shown[0] == before);
+        Check("tools: Resists and BiS pages build on the demo dump", tw.BisForTest is { HasBoard: true } && tw.PageShown == "bis" && shown[0] == before);
+
+        // Resists, light on open (30 Sep): 60 mobs → one page of 30 heads, the newest 5 with their tables.
+        {
+            string rbPath2 = Path.Combine(Path.GetTempPath(), "eql_selftest_resists_light.json");
+            try { File.Delete(rbPath2); } catch { /* fresh */ }
+            var rp2 = new CombatParser { SelfName = "Thorrak" }; // the book learns resists through the parser's lines
+            var big = new ResistBook(new ConfigService(), rp2, rbPath2);
+            var r1 = new DateTime(2026, 9, 29, 20, 0, 0);
+            for (int i = 0; i < 60; i++)
+            {
+                string at(int sec) => r1.AddSeconds(i * 30 + sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                rp2.ProcessLine($"[{at(0)}] You begin casting Envenomed Bolt X.");
+                rp2.ProcessLine($"[{at(3)}] A test mob {i:00} resisted your Envenomed Bolt!");
+            }
+            var rv = new Views.ResistsView();
+            rv.Init(big, () => "");
+            rv.Build();
+            Check("resists: 60 mobs paint one page of 30 heads, the newest 5 open with their tables; This zone is the default and falls back to all zones until one is known",
+                rv.MobCountForTest == Views.ResistsView.PageSize && rv.TableCountForTest == Views.ResistsView.AutoOpen);
+        }
         // Every page twice, in and out of order (owner, 29 Sep: the second Resists visit threw
         // "Specified element is already the logical child of another element").
         bool twice = true;
@@ -4760,6 +4938,40 @@ public partial class App : Application
             p.ProcessLine($"[{Ts(42)}] You slash a royal guard for 9 points of damage.");
             Check("multi-pull label gets +N", p.TargetLabel is "a rat +1" or "a royal guard +1");
 
+            // One-word named mobs (30 Sep, rig log — Plane of Fear: Dread's
+            // fights read "a thought bleeder +3"): it hits you / takes your
+            // hits, so it is a mob; the groupmate beside it stays a player.
+            {
+                var q = new CombatParser { SelfName = "Thorrak" };
+                q.ProcessLine($"[{Ts(0)}] You have entered Plane of Fear.");
+                q.ProcessLine($"[{Ts(1)}] You slash Dread for 46 points of damage.");
+                q.ProcessLine($"[{Ts(2)}] Genantik slashes Dread for 135 points of damage.");
+                q.ProcessLine($"[{Ts(3)}] Dread hits YOU for 86 points of damage.");
+                q.ProcessLine($"[{Ts(4)}] A thought bleeder bashes YOU for 9 points of damage.");
+                q.ProcessLine($"[{Ts(5)}] You slash a thought bleeder for 30 points of damage.");
+                Check("named mob: a one-word boss that fights you is an enemy, the groupmate is not",
+                    q.IsEnemyName("Dread") && !q.IsEnemyName("Genantik") && q.TargetLabel == "Dread +1"
+                    && q.GetRows(false).First(r => r.Name == "Dread").Enemy);
+                q.ProcessLine($"[{Ts(6)}] You have entered Plane of Hate.");
+                Check("named mob: the learned name stays in its zone", !q.IsEnemyName("Dread"));
+                double mine = q.GetRows(false).FirstOrDefault(r => r.Name == "Thorrak").Total, inBefore = q.IncomingSelfTotal;
+                q.ProcessLine($"[{Ts(7)}] You hit yourself for 1540 points of unresistable damage by Cannibalization I.");
+                Check("cannibalize: hitting yourself is not your damage, nor incoming",
+                    q.GetRows(false).FirstOrDefault(r => r.Name == "Thorrak").Total == mine && q.IncomingSelfTotal == inBefore);
+                var solo = new CombatParser { SelfName = "Thorrak" };
+                solo.ProcessLine($"[{Ts(10)}] You hit yourself for 1540 points of unresistable damage by Cannibalization I.");
+                solo.Tick(DateTime.MaxValue);
+                Check("cannibalize: alone it opens no fight (the 1 s \"fight\" stubs)", !solo.HasData && solo.History.Count == 0);
+
+                // A raid target is a mob even when it never touches you, and names the pull over its adds.
+                var fq = new CombatParser { SelfName = "Thorrak", KnownEnemy = n => n.Equals("Fright", StringComparison.OrdinalIgnoreCase) };
+                fq.ProcessLine($"[{Ts(1)}] Genantik slashes Fright for 135 points of damage.");
+                fq.ProcessLine($"[{Ts(2)}] Fright hits Genantik for 80 points of damage.");
+                fq.ProcessLine($"[{Ts(3)}] You slash a thought bleeder for 400 points of damage.");
+                Check("named mob: a raid target names the fight over a harder-hit add",
+                    fq.TargetLabel == "Fright +1" && !fq.IsEnemyName("Genantik"));
+            }
+
             // Session skill tracker: accumulates ACROSS fights (1 hit + 1 miss in
             // the first fight, 2 more hits in this one) and ignores fight resets.
             Check("session skills accumulate across fights",
@@ -5246,6 +5458,9 @@ public partial class App : Application
             foreach (var kv in incAb.OrderByDescending(kv => kv.Value).Take(8))
                 report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
             report.AppendLine($"--- loot: {lootUp} upgrades, {lootKept} kept, {lootSold} vendored for {LootTracker.FormatCoins(lootCopper)} ---");
+            report.AppendLine("--- last fights (newest first) ---");
+            foreach (var f in p.History.Take(20))
+                report.AppendLine($"  {f.EndedAt:dd MMM HH:mm:ss}  {f.Label}  {f.DurationSeconds:0}s");
 
             // Proc watcher probe (the Companion's table, on OUR log): lanes with
             // counts, damage/heal, and both rates over the session denominators.
@@ -5624,8 +5839,9 @@ public partial class App : Application
         {
             // The Invocations tab: on the synthetic stretch, or (invfile) on the log
             // file in EQL_INV_LOG ending at EQL_INV_END ("yyyy-MM-dd HH:mm"), 60 min.
-            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { }, null, null, () => "SHD/SHM/ENC", () => 50,
-                null, () => "Level 50 SHD/SHM/ENC · stated by /who at 22:31")
+            string invClasses = Environment.GetEnvironmentVariable("EQL_INV_CLASSES") is { Length: > 0 } ic ? ic : "SHD/SHM/ENC";
+            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { }, null, null, () => invClasses, () => 50,
+                null, () => $"Level 50 {invClasses} · stated by /who at 22:31")
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
@@ -5635,7 +5851,8 @@ public partial class App : Application
             if (page.EndsWith("invfile", StringComparison.OrdinalIgnoreCase) && Environment.GetEnvironmentVariable("EQL_INV_LOG") is { Length: > 0 } invLog)
             {
                 var end = DateTime.ParseExact(Environment.GetEnvironmentVariable("EQL_INV_END") ?? "", "yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
-                lw.InvUseLinesForTest(File.ReadAllLines(invLog).ToList(), end, int.TryParse(Environment.GetEnvironmentVariable("EQL_INV_REGEN"), out int rg) ? rg : 14, 2600);
+                lw.InvUseLinesForTest(File.ReadAllLines(invLog).ToList(), end, int.TryParse(Environment.GetEnvironmentVariable("EQL_INV_REGEN"), out int rg) ? rg : 14,
+                    int.TryParse(Environment.GetEnvironmentVariable("EQL_INV_POOL"), out int pl) ? pl : 2600);
             }
             else lw.InvUseLinesForTest(InvocationDemo(new DateTime(2026, 9, 21, 22, 30, 0)), new DateTime(2026, 9, 21, 22, 50, 0), 14, 2600);
             mgr = lw;

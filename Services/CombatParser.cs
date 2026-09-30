@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
@@ -38,6 +38,29 @@ public sealed class CombatParser
     // can hold several (pet dies, you summon again). Without this memory the
     // old pets read as strangers and solo fights get tagged "group".
     private readonly HashSet<string> _knownPets = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Names that are enemies whatever their shape — the raid target
+    /// list (Dread, Fright, Terror: one word, like a player). Set by the host.</summary>
+    public Func<string, bool>? KnownEnemy { get; set; }
+
+    // ONE-WORD NAMED MOBS (30 Sep, rig log — Plane of Fear): "Dread" reads
+    // like a player, so its fight was named after an add ("a thought bleeder
+    // +3") and it never reached the raid auto-keep. The log proves it: in
+    // PvE nothing player-shaped hits you or your pet, and nothing you or
+    // your pet hit is a player. Learned per zone (a duel is the one lie, and
+    // it stays in the zone it happened in).
+    private readonly HashSet<string> _namedEnemies = new(StringComparer.OrdinalIgnoreCase);
+
+    private void LearnNamedEnemy(string attacker, string target)
+    {
+        bool mineA = IsSelf(attacker) || IsPet(attacker);
+        bool mineT = IsSelf(target) || IsPet(target);
+        if (mineA == mineT) return;
+        string other = (mineA ? target : attacker).Trim();
+        if (other.Length == 0 || other.Contains(' ') || IsSelf(other) || IsPet(other)) return;
+        if (!char.IsUpper(other[0])) return;
+        _namedEnemies.Add(other);
+    }
 
     /// <summary>Was this name ever YOUR pet (this session or seeded)?</summary>
     public bool IsKnownPet(string name) => _knownPets.Contains(name.Trim());
@@ -967,18 +990,21 @@ public sealed class CombatParser
 
     /// <summary>
     /// The fight label: the enemy that took the most damage, with "+N" when the
-    /// pull contained more enemies (e.g. "a royal guard +3").
+    /// pull contained more enemies (e.g. "a royal guard +3"). A raid target in
+    /// the pull names it whatever its adds took ("Dread +3").
     /// </summary>
     public string TargetLabel
     {
         get
         {
-            string best = ""; double most = -1; int enemies = 0;
+            string best = ""; double most = -1; int enemies = 0; bool bestIsTarget = false;
             foreach (var (name, dmg) in _taken)
             {
                 if (!IsEnemyName(name)) continue;
                 enemies++;
-                if (dmg > most) { most = dmg; best = name; }
+                bool target = KnownEnemy?.Invoke(name) == true;
+                if ((target && !bestIsTarget) || (target == bestIsTarget && dmg > most))
+                { most = dmg; best = name; bestIsTarget = target; }
             }
             if (enemies == 0)
             {
@@ -999,12 +1025,15 @@ public sealed class CombatParser
     /// enemies merge into one bucket. To keep the rankings honest, anything
     /// enemy-shaped is split out of them: player (and pet) names in EQ are
     /// always a single word, while mobs are "a/an/the ..." or multi-word names.
-    /// Rare single-word named mobs will slip through as "players".
+    /// Single-word named mobs (Dread, Cazic-Thule) are enemies once they hit
+    /// you or your pet or take your hits, or when they're raid targets.
     /// </summary>
     public bool IsEnemyName(string name)
     {
         if (IsSelf(name) || IsPet(name)) return false;
-        return name.Trim().Contains(' '); // "a royal guard", "Lady Vox", …
+        string n = name.Trim();
+        if (n.Contains(' ')) return true; // "a royal guard", "Lady Vox", …
+        return _namedEnemies.Contains(n) || KnownEnemy?.Invoke(n) == true;
     }
 
     // ---- line formats (confirmed from the real EQ Legends log) ---------------
@@ -1171,6 +1200,7 @@ public sealed class CombatParser
         {
             CurrentZone = body[ZonePrefix.Length..^1];
             _enemyDots.Clear(); // hostiles are left behind on zone
+            _namedEnemies.Clear();
             return;
         }
 
@@ -1775,7 +1805,17 @@ public sealed class CombatParser
         target = Normalize(target);
         if (IsReflexive(target)) target = attacker;
         DamageDealt?.Invoke(attacker, target, amount, time, dot);
+        // Your own spell on yourself ("You hit yourself for 1540 points of
+        // unresistable damage by Cannibalization I.", rig log 28 Sep) is no
+        // fight: it opened one-second "fight" stubs in the history and, mid
+        // fight, counted as 1,540 of YOUR damage. The death recap keeps it.
+        if (IsSelf(attacker) && IsSelf(target))
+        {
+            RecapNote(time, attacker, ability, amount, heal: false, crit, flavor: SctFlavor.Spell);
+            return;
+        }
         Touch(time);
+        LearnNamedEnemy(attacker, target);
         TrackSides(attacker, target);
 
         Bump(_damage, attacker, amount);
