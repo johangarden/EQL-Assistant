@@ -3618,13 +3618,26 @@ public partial class App : Application
         string skill = "Brewing";
         var races = RaceDemo(DateTime.Now.AddHours(-2));
         races.SetTracked("High Elf", true);
+        // A dump shaped like Thorrak's (17 Aug): worn items with focus sockets,
+        // exaltations socketed and loose on the key ring, wrist items for five classes.
+        // A real dump in env EQL_TOOLS_DUMP stands in for the demo one (renders against your own gear).
+        string dumpText = Environment.GetEnvironmentVariable("EQL_TOOLS_DUMP") is { Length: > 0 } dumpFile && File.Exists(dumpFile) ? File.ReadAllText(dumpFile) : ToolsDemoDump();
+        var dumpRows = InventoryStore.CarryAll(InventoryStore.Parse(dumpText)).Rows;
+        string prefsPath = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json");
+        try { File.Delete(prefsPath); } catch { /* fresh */ }
+        var prefs = new ToolPrefs(prefsPath);
+        prefs.Set("compare:demo_paineel", "DRU/BRD/WIZ");
+        prefs.Set("slot:demo_paineel", "WRIST");
         return new Views.ToolsWindow(new Views.ToolsWindow.Context
         {
+            Dump = () => (dumpRows, new DateTime(2026, 8, 17, 21, 36, 0)),
+            CharKey = () => "demo_paineel",
+            ToolPrefsPath = prefsPath,
             Library = lib,
             Yield = EfficiencyDemo(),
             Classes = () => "SHD/SHM/ENC",
-            Level = () => 50,
-            Snapshot = () => "Level 50 SHD/SHM/ENC · stated by /who at 22:31",
+            Level = () => 44,
+            Snapshot = () => "Level 44 SHD/SHM/ENC · stated by /who at 22:31",
             Races = races,
             Resists = resists,
             TsData = tsData,
@@ -3636,18 +3649,106 @@ public partial class App : Application
         });
     }
 
+    /// <summary>The tab-separated inventory dump behind the Tools demo (real item names, so the wiki table knows them).</summary>
+    internal static string ToolsDemoDump() => string.Join("\r\n", new[]
+    {
+        "Location\tName\tID\tCount\tSlots",
+        "Head\tWicked Sallet +5\t177814\t1\t10",
+        "Head-Slot7\tWicked Sallet (Exaltation)\t177814\t1\t10",
+        "Face\tPolished Mithril Mask +1\t1\t1\t10",
+        "Face-Slot7\tPolished Mithril Mask (Exaltation)\t1\t1\t10",
+        "Neck\tTalisman of Kejaar Kerrath +5\t2\t1\t10",
+        "Neck-Slot7\tWhite Gold Necklace (Exaltation)\t3\t1\t10",
+        "Shoulders\tPauldrons of Power +1\t4\t1\t10",
+        "Shoulders-Slot7\tEmpty\t0\t0\t0",
+        "Wrist\tPristine Studded Leather Bracer +5\t5\t1\t10",
+        "Wrist-Slot7\tSerpentine Bracer (Exaltation)\t6\t1\t10",
+        "Wrist\tLustrous Russet Bracer +1\t7\t1\t10",
+        "Wrist-Slot7\tRuned Mithril Bracer (Exaltation)\t8\t1\t10",
+        "Secondary\tNisch Mas Ilkvel +4\t9\t1\t10",
+        "Secondary-Slot7\tNisch Mas Ilkvel (Exaltation)\t9\t1\t10",
+        "Feet\tLustrous Russet Boots +1\t10\t1\t10",
+        "Feet-Slot7\tEmpty\t0\t0\t0",
+        "Chest\tPristine Studded Leather Tunic +6\t11\t1\t10",
+        "Chest-Slot7\tEmpty\t0\t0\t0",
+        "Primary\tThe Baron's Blade +5\t12\t1\t10",
+        "Primary-Slot7\tEmpty\t0\t0\t0",
+        "General 1\tBackpack\t13\t1\t8",
+        "General 1-Slot1\tRing of Pureblood +2\t14\t1\t10",
+        "Bank1\tInsidious Manacle +2\t15\t1\t10",
+        "Bank2\tVermiculated Bracelet +1\t16\t1\t10",
+        "Bank3\tIndicolite Bracer +3\t17\t1\t10",
+        "Bank4\tGilded Cloth +3\t18\t1\t10",
+        "Bank4-Slot7\tGilded Cloth (Exaltation)\t18\t1\t10",
+        "Bank5\tKelin`s Seven Stringed Lute +2\t11573\t1\t10",
+        "Bank5-Slot7\tKelin`s Seven Stringed Lute (Exaltation)\t11573\t1\t10",
+        "Held\tEmpty\t0\t0\t0",
+        "",
+        "KeyRing\tName\tID\t",
+        "Augmentation\tGreen Silken Drape (Exaltation)\t1412",
+        "Augmentation\tGolden Efreeti Boots (Exaltation)\t4407",
+        "Augmentation\tDamask Robe (Exaltation)\t1334",
+        "Augmentation\tEmissary Mask (Exaltation)\t177834",
+        "Equipment\tBoots of the Long Road +1\t177708",
+    });
+
     /// <summary>The Tools window (29 Sep): every page builds, the home says something per tool.</summary>
     private static void ToolsChecks(Action<string, bool> Check)
     {
         var tw = ToolsDemo(out var shown);
         tw.Left = -9000; tw.Top = -9000; tw.ShowActivated = false; tw.ShowInTaskbar = false;
         tw.Show();
-        Check("tools: home opens first, with a live line for each of the five tools",
-            tw.PageShown == "home" && tw.HomeLines.Count == 5 && tw.HomeLines.All(l => l.Length > 0)
+        Check("tools: home opens first, with a live line for each of the seven tools",
+            tw.PageShown == "home" && tw.HomeLines.Count == 7 && tw.HomeLines.All(l => l.Length > 0)
             && tw.HomeLines[0].StartsWith("Best per mana at 41–50", StringComparison.Ordinal)
-            && tw.HomeLines[2].Contains("inventory", StringComparison.Ordinal)
-            && tw.HomeLines[3].Contains("★ High Elf", StringComparison.Ordinal)
-            && tw.HomeLines[4].Contains("sphinx", StringComparison.Ordinal));
+            && tw.HomeLines[3].StartsWith("Wrist is the fullest: 5 items, 3 your combo can wear", StringComparison.Ordinal)
+            && tw.HomeLines[4].StartsWith("3 moves would socket 3 of 4 needs", StringComparison.Ordinal)
+            && tw.HomeLines[5].Contains("★ High Elf", StringComparison.Ordinal)
+            && tw.HomeLines[6].Contains("sphinx", StringComparison.Ordinal));
+
+        // The slot finder (30 Sep): Wrist, worn + bank, three combos' worth of bracers.
+        tw.ShowPage("slots");
+        var sf = tw.SlotsForTest!;
+        Check("slot finder: Wrist remembered; 3 wearable by SHD/SHM/ENC (2 worn + the Manacle), 1 more for DRU/BRD/WIZ, 1 for neither; socketed exaltations stay out",
+            sf.SlotShown == "WRIST" && sf.GroupCountsForTest[SlotFinder.Fit.You] == 3 && sf.GroupCountsForTest[SlotFinder.Fit.Compare] == 1
+            && sf.GroupCountsForTest[SlotFinder.Fit.Neither] == 1 && !sf.RowNamesForTest.Any(n => n.Contains("Serpentine")) && sf.RowNamesForTest.Count == 4);
+        var wristItems = SlotFinder.Build(tw.SlotsForTest is not null ? InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows : new(), new ItemStats()).First(s => s.Key == "WRIST").Items;
+        Check("slot finder: the worn bracer reads worn in Wrist, the bank one reads 'Bank 1', the tally of the rest names WAR",
+            wristItems.First(i => i.Name.StartsWith("Pristine")).WornIn("WRIST") && !wristItems.First(i => i.Name.StartsWith("Insidious")).Worn
+            && SlotFinder.PrettyLocation("Bank1", "bank") == "Bank 1" && SlotFinder.PrettyLocation("SharedBank1-Slot3", "bank") == "Shared bank 1 · slot 3"
+            && SlotFinder.PrettyLocation("General 8-Slot6", "bags") == "Bag 8 · slot 6"
+            && SlotFinder.Tally(wristItems.Where(i => SlotFinder.FitOf(i, new[] { "SHD", "SHM", "ENC" }, new[] { "DRU", "BRD", "WIZ" }) == SlotFinder.Fit.Neither)) is [("WAR", 1)]);
+
+        // The focus planner (30 Sep): the exact plan on the demo dump.
+        tw.ShowPage("focus");
+        var fp = tw.FocusForTest!;
+        var plan = fp.PlanForTest!;
+        string PlanIn(string sock) => plan.Sockets.First(p => p.Socket.Label == sock).Plan?.Name ?? "";
+        Check("focus: 10 open sockets; Face keeps Improved Damage II over Emissary Mask's decayed Healing I; Secondary keeps Mana Preservation II; Shoulders, Chest and Feet get filled — 3 moves",
+            plan.Exact && plan.Sockets.Count(p => !p.Socket.Fixed) == 10 && plan.Moves == 3
+            && PlanIn("Face").StartsWith("Polished Mithril Mask") && PlanIn("Secondary").StartsWith("Nisch Mas Ilkvel")
+            && PlanIn("Shoulders").StartsWith("Gilded Cloth") && PlanIn("Chest").StartsWith("Green Silken Drape") && PlanIn("Feet").StartsWith("Golden Efreeti Boots")
+            && PlanIn("Primary") == "");
+        Check("focus: the head's Mana Preservation I is shadowed by the II in Secondary; Improved Healing (a Need) goes without and Face is the conflict; Spell Haste II is worth hunting",
+            fp.MoveLinesForTest.Any(l => l.StartsWith("Head: shadowed by Mana Preservation II in Secondary", StringComparison.Ordinal))
+            && plan.NeedsPlaced == 3 && plan.Needs == 4 && plan.Conflicts.Any(c => c.Socket.Label == "Face" && c.Wanting.Any(e => e.Family.Name == "Improved Healing"))
+            && plan.Hunts.Any(h => h.Tier.Effect == "Spell Haste II") && plan.Hunts.Any(h => h.Tier.Effect == "Improved Damage III" && h.OpenSocket.Length == 0)
+            && !plan.Families.First(f => f.Family.Name == "String Resonance").Shown);
+        fp.UseWhatIfForTest("DRU", "BRD", "WIZ");
+        var wi = fp.PlanForTest!;
+        Check("focus: with a bard, String Resonance shows (Nice by default) and Mana Preservation II still holds Secondary",
+            wi.Families.First(f => f.Family.Name == "String Resonance").Shown && wi.Families.First(f => f.Family.Name == "String Resonance").Want == FocusPlanner.Want.Nice
+            && wi.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Nisch"));
+        fp.SetWantForTest("String Resonance", FocusPlanner.Want.Need);
+        var wi2 = fp.PlanForTest!;
+        Check("focus: two Needs on Secondary tie — the one already socketed stays, and the conflict note names the loser",
+            wi2.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Nisch")
+            && wi2.Conflicts.Any(c => c.Socket.Label == "Secondary" && c.Wanting.Any(e => e.Family.Name == "String Resonance")));
+        fp.SetWantForTest("Mana Preservation", FocusPlanner.Want.Nice);
+        var wi3 = fp.PlanForTest!;
+        Check("focus: Mana Preservation marked Nice hands Secondary to the lute; the SHD-only sallet's tier I can't stand in for DRU/BRD/WIZ — 4 moves",
+            wi3.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Kelin") && wi3.Sockets.First(p => p.Socket.Label == "Head").Plan is null
+            && wi3.Foreign.Any(e => e.Name.StartsWith("Wicked Sallet")) && wi3.Moves == 4);
         tw.ShowPage("eff");
         var libA = tw.LibraryForTest;
         tw.ShowPage("inv");
@@ -3661,7 +3762,7 @@ public partial class App : Application
         bool before = shown[0];
         tw.ShowPage("res");
         tw.ShowPage("bis");
-        Check("tools: Resists and BiS pages build; no dump means no BiS board, said plainly", tw.BisForTest is null && tw.PageShown == "bis" && shown[0] == before);
+        Check("tools: Resists and BiS pages build on the demo dump", tw.BisForTest is { HasBoard: true } && tw.PageShown == "bis" && shown[0] == before);
         // Every page twice, in and out of order (owner, 29 Sep: the second Resists visit threw
         // "Specified element is already the logical child of another element").
         bool twice = true;

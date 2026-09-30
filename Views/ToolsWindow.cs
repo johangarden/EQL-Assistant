@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -41,6 +41,8 @@ public sealed class ToolsWindow : Window
         public Func<(List<InventoryStore.CarryRow>? Rows, DateTime Stamp)> Dump { get; init; } = () => (null, default);
         public ConfigService? Config { get; init; }
         public Func<string> CharKey { get; init; } = () => "";
+        /// <summary>tools-prefs.json — the slot finder's and focus planner's remembered picks.</summary>
+        public string? ToolPrefsPath { get; init; }
     }
 
     private static Brush F(string hex) { var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); b.Freeze(); return b; }
@@ -54,6 +56,8 @@ public sealed class ToolsWindow : Window
         ("eff", "Spell efficiency", "M4 20 L4 10 L6 10 L6 20 Z M10 20 L10 4 L12 4 L12 20 Z M16 20 L16 13 L18 13 L18 20 Z"),
         ("inv", "Invocations", "M12 4 A8 8 0 1 0 12.01 4 Z M11 7 L13 7 L13 12 L16 14 L15 15.6 L11 13 Z"),
         ("bis", "BiS finder", "M12 3 L19 6 L19 12 C19 16 16 19 12 21 C8 19 5 16 5 12 L5 6 Z"),
+        ("slots", "Slot finder", "M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M16 14 H18 V16.5 H20.5 V18.5 H18 V21 H16 V18.5 H13.5 V16.5 H16 Z"),
+        ("focus", "Focus planner", "M12 2.5 L14.7 8.4 L21 9.2 L16.4 13.6 L17.6 20 L12 16.9 L6.4 20 L7.6 13.6 L3 9.2 L9.3 8.4 Z"),
         ("races", "Race unlocks", "M9 5 A3.5 3.5 0 1 0 9.01 5 Z M3 20 C3 15 6 13 9 13 C12 13 15 15 15 20 Z M16.5 7 A2.8 2.8 0 1 0 16.51 7 Z M16 20 C16 16 17 14.5 18.5 14.5 C20 14.5 21.5 16 21.5 20 Z"),
         ("res", "Resists", "M12 3 C15 7 18 9 18 13 A6 6 0 0 1 6 13 C6 9 9 7 12 3 Z"),
         ("ts", "Tradeskills", "M5 21 L4 20 L13 11 L14 12 Z M11.5 6.5 L14.5 3.5 L20.5 9.5 L17.5 12.5 Z"),
@@ -67,6 +71,12 @@ public sealed class ToolsWindow : Window
     private BisFinderView? _bis;
     private RacesView? _races;
     private ResistsView? _resists;
+    private SlotFinderView? _slots;
+    private FocusPlannerView? _focus;
+    // One wiki item table for the BiS finder, the slot finder and the focus planner.
+    private readonly Lazy<ItemStats> _stats = new(() => new ItemStats());
+    private readonly Lazy<FocusEffects> _focusData = new(() => new FocusEffects());
+    private ToolPrefs? _prefs;
 
     public ToolsWindow(Context context)
     {
@@ -110,6 +120,8 @@ public sealed class ToolsWindow : Window
         {
             "eff" or "inv" => LibraryPage(id == "eff" ? "efficiency" : "invocations"),
             "bis" => BisPage(),
+            "slots" => SlotPage(),
+            "focus" => FocusPage(),
             "races" => RacesPage(),
             "res" => ResistsPage(),
             "ts" => TradeskillPage(),
@@ -194,6 +206,30 @@ public sealed class ToolsWindow : Window
                     int n = _bis?.UpgradeCount ?? 0;
                     return ("The best of what you own, slot by slot.",
                         _bis is null || !_bis.HasBoard ? "Type /outputfile inventory in game for your gear." : n > 0 ? $"{n} upgrade(s) sitting in storage" : "You're wearing your best.");
+                }
+                case "slots":
+                {
+                    var (rows, _) = _c.Dump();
+                    if (rows is null) return ("Every item that fits one slot, wherever it sits, lit for the classes that can wear it.", "Type /outputfile inventory in game for your gear.");
+                    var you = combo;
+                    var busiest = SlotFinder.Build(rows, _stats.Value).OrderByDescending(s => s.Items.Sum(i => i.Count)).FirstOrDefault();
+                    if (busiest is null || busiest.Items.Count == 0) return ("Every item that fits one slot, wherever it sits, lit for the classes that can wear it.", "Nothing wearable in the dump.");
+                    int yours = busiest.Items.Where(i => SlotFinder.FitOf(i, you, Array.Empty<string>()) == SlotFinder.Fit.You).Sum(i => i.Count);
+                    return ("Every item that fits one slot, wherever it sits, lit for the classes that can wear it.",
+                        $"{busiest.Label} is the fullest: {busiest.Items.Sum(i => i.Count)} items, {yours} your combo can wear");
+                }
+                case "focus":
+                {
+                    var (rows, _) = _c.Dump();
+                    if (rows is null) return ("Which focus exaltation goes in which socket — needs first, nice-to-haves after.", "Type /outputfile inventory in game for your gear.");
+                    if (combo.Count == 0) return ("Which focus exaltation goes in which socket — needs first, nice-to-haves after.", "Type /who in game for your classes.");
+                    var prefs = _prefs ??= new ToolPrefs(_c.ToolPrefsPath);
+                    var wants = FocusPlanner.Unpack(prefs.Get($"focus:{_c.CharKey()}:{string.Join("/", combo)}"), FocusPlanner.DefaultWants(combo));
+                    var plan = FocusPlanner.Build(rows, _focusData.Value, _stats.Value, combo, _c.Level(), wants);
+                    return ("Which focus exaltation goes in which socket — needs first, nice-to-haves after.",
+                        plan.Sockets.Count == 0 ? "No open focus sockets yet — they open at +1."
+                        : plan.Moves == 0 ? $"Your sockets hold the best you own · needs {plan.NeedsPlaced} of {plan.Needs}"
+                        : $"{plan.Moves} move{(plan.Moves == 1 ? "" : "s")} would socket {plan.NeedsPlaced} of {plan.Needs} needs and {plan.NicesPlaced} of {plan.Nices} nice-to-haves");
                 }
                 case "races":
                 {
@@ -365,7 +401,7 @@ public sealed class ToolsWindow : Window
         var (rows, stamp) = _c.Dump();
         if (rows is null) return;
         _bis = new BisFinderView();
-        _bis.Init(new ItemStats(), _c.Config, _c.CharKey());
+        _bis.Init(_stats.Value, _c.Config, _c.CharKey());
         _bis.LevelProvider = _c.Level;
         _bis.Update(rows, _c.Classes(), stamp.ToString("dd MMM HH:mm", System.Globalization.CultureInfo.InvariantCulture));
     }
@@ -383,6 +419,42 @@ public sealed class ToolsWindow : Window
 
     /// <summary>Selftest: the BiS finder once built.</summary>
     internal BisFinderView? BisForTest => _bis;
+
+    private UIElement SlotPage()
+    {
+        var (rows, stamp) = _c.Dump();
+        if (rows is null)
+            return Framed("Slot finder", "Every item that fits one slot, wherever it sits.",
+                new TextBlock { Text = "No inventory dump found — type /outputfile inventory in game, then open this page again.", Foreground = Hint, FontSize = 12, TextWrapping = TextWrapping.Wrap });
+        if (_slots is null)
+        {
+            _slots = new SlotFinderView();
+            _slots.Init(_stats.Value, _prefs ??= new ToolPrefs(_c.ToolPrefsPath), _c.CharKey());
+        }
+        _slots.Update(rows, _c.Classes(), stamp.ToString("dd MMM HH:mm", System.Globalization.CultureInfo.InvariantCulture));
+        return Framed("Slot finder", "Every item that fits one slot, wherever it sits — worn, bags, bank, depot, hoard, storage — lit for the classes you play now, and for a combo you might switch to.", _slots);
+    }
+
+    /// <summary>Selftest: the slot finder once built.</summary>
+    internal SlotFinderView? SlotsForTest => _slots;
+
+    private UIElement FocusPage()
+    {
+        var (rows, _) = _c.Dump();
+        if (rows is null)
+            return Framed("Focus planner", "Which focus exaltation goes in which of your worn items' focus sockets.",
+                new TextBlock { Text = "No inventory dump found — type /outputfile inventory in game, then open this page again.", Foreground = Hint, FontSize = 12, TextWrapping = TextWrapping.Wrap });
+        if (_focus is null)
+        {
+            _focus = new FocusPlannerView();
+            _focus.Init(_focusData.Value, _stats.Value, _prefs ??= new ToolPrefs(_c.ToolPrefsPath), _c.CharKey());
+        }
+        _focus.Update(rows, _c.Classes(), _c.Level());
+        return Framed("Focus planner", "Which focus exaltation goes in which of your worn items' focus sockets. Mark what you need; nice-to-haves fill the sockets left over. Instrument foci show only with a bard in the combo.", _focus);
+    }
+
+    /// <summary>Selftest: the focus planner once built.</summary>
+    internal FocusPlannerView? FocusForTest => _focus;
 
     private UIElement RacesPage()
     {

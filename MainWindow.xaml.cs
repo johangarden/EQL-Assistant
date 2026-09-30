@@ -1211,6 +1211,7 @@ public partial class MainWindow : Window
                 Snapshot = EffSnapshotText,
                 LogPath = () => _watcher?.CurrentPath,
                 ViewStatePath = Path.Combine(_configService.ConfigDirectory, "tools-view.json"),
+                ToolPrefsPath = Path.Combine(_configService.ConfigDirectory, "tools-prefs.json"),
                 Races = _races,
                 Resists = _resists,
                 Zone = () => _combat.CurrentZone,
