@@ -212,9 +212,9 @@ make a decision — spell efficiency, invocations (one shared
 `SpellLibraryPanel`, the tab picked by the rail), the BiS finder, the SLOT
 FINDER (30 Sep, `SlotFinder` + `SlotFinderView`: every wearable dump item
 indexed by the slot it fits — a 1H under Primary AND Secondary — copies folded
-by name with every location, grouped by who can wear it: your /who combo
-gold, a remembered COMPARE combo teal, neither folded; a 16-class strip per
-row; a per-class tally of the rest nudges the compare combo), the FOCUS
+by name with every location (no place filter — the place on each row is
+enough), your combo's items gold, the rest folded with a per-class tally; a
+16-class strip per row), the FOCUS
 PLANNER (30 Sep, `FocusPlanner` + `FocusPlannerView`: eqlwiki's Exaltations
 rules — a worn item's Focus socket (Slot7) opens at +1, an exaltation keeps
 its source item's SLOT (and, assumed, its classes), the same focus never
@@ -236,8 +236,9 @@ the BiS finder's, prepicked by /who, else the user picks"): the 16 chips,
 ≤3 lit, gold for you / teal for a compare combo; /who prefills when the game
 has said, otherwise the page's last hand pick stands (`tools-prefs.json`).
 Every dump-fed page (BiS, Slot finder, Focus planner) opens with the
-`SourceStrip`: the /who line and the dump's age + missing storages in the
-character sheet's words — amber = something to type in game. The
+`SourceStrip`: the /who line, the dump's age, and the character sheet's
+storage pills (a pill per storage: in this dump · its age, or amber with its
+last capture / "never") — amber = something to type in game. The
 toolbar's hammer (it replaced the anvil) opens it and wears a gold pip
 while the tradeskill card is up. Live panels stay under ☰ → Panels, records
 (loot, raids, fights, charmed pets) in their own windows; the Character

@@ -416,8 +416,27 @@ public sealed class ToolsWindow : Window
         return Framed("BiS finder", "The best of what you own, slot by slot — moved here from the Character window.", _bis, Sources(dump, stamp));
     }
 
-    /// <summary>The /who and dump lines every dump-fed page opens with — the character sheet's words.</summary>
-    private UIElement Sources(InventoryStore.Dump? dump, DateTime stamp) => SourceStrip.Both(_c.Snapshot(), dump, stamp);
+    /// <summary>The /who and dump lines every dump-fed page opens with — the character
+    /// sheet's words and its storage pills. Storages this dump carries are remembered
+    /// as captured now, the way the Character window remembers them.</summary>
+    private UIElement Sources(InventoryStore.Dump? dump, DateTime stamp)
+    {
+        Dictionary<string, DateTime>? seen = null;
+        try
+        {
+            if (dump is not null && _c.Config is { } cfg)
+            {
+                string key = _c.CharKey();
+                seen = cfg.LoadSectionTimes(key);
+                bool changed = false;
+                foreach (var (k, _) in InventoryStore.StorageDefs)
+                    if ((dump.Covered.Contains(k) || (k == "hoard" && dump.HasExtraItemSection)) && (!seen.TryGetValue(k, out var t) || t < stamp)) { seen[k] = stamp; changed = true; }
+                if (changed) cfg.SaveSectionTimes(key, seen);
+            }
+        }
+        catch (Exception ex) { Log.Warn("tools sources: " + ex.Message); }
+        return SourceStrip.Both(_c.Snapshot(), dump, stamp, seen);
+    }
 
     /// <summary>Selftest: the BiS finder once built.</summary>
     internal BisFinderView? BisForTest => _bis;

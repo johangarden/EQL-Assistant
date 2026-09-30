@@ -3627,7 +3627,6 @@ public partial class App : Application
         string prefsPath = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json");
         try { File.Delete(prefsPath); } catch { /* fresh */ }
         var prefs = new ToolPrefs(prefsPath);
-        prefs.Set("compare:demo_paineel", "DRU/BRD/WIZ");
         prefs.Set("slot:demo_paineel", "WRIST");
         return new Views.ToolsWindow(new Views.ToolsWindow.Context
         {
@@ -3710,14 +3709,13 @@ public partial class App : Application
         // The slot finder (30 Sep): Wrist, worn + bank, three combos' worth of bracers.
         tw.ShowPage("slots");
         var sf = tw.SlotsForTest!;
-        Check("slot finder: Wrist remembered; 3 wearable by SHD/SHM/ENC (2 worn + the Manacle), 1 more for DRU/BRD/WIZ, 1 for neither; socketed exaltations stay out",
-            sf.SlotShown == "WRIST" && sf.GroupCountsForTest[SlotFinder.Fit.You] == 3 && sf.GroupCountsForTest[SlotFinder.Fit.Compare] == 1
-            && sf.GroupCountsForTest[SlotFinder.Fit.Neither] == 1 && !sf.RowNamesForTest.Any(n => n.Contains("Serpentine")) && sf.RowNamesForTest.Count == 4);
-        sf.ComparePickerForTest.ClickForTest("CLR"); // DRU/BRD/WIZ + CLR → BRD/WIZ/CLR: the DRU bracelet drops out of teal
-        Check("slot finder: a pick in the compare picker redraws the board and is remembered",
-            sf.ComparePickerForTest.Combo.SequenceEqual(new[] { "BRD", "WIZ", "CLR" }) && sf.GroupCountsForTest[SlotFinder.Fit.Compare] == 0
-            && new ToolPrefs(Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json")).Get("compare:demo_paineel") == "BRD/WIZ/CLR");
-        sf.ComparePickerForTest.ClickForTest("CLR"); sf.ComparePickerForTest.ClickForTest("DRU");
+        Check("slot finder: Wrist remembered; 3 wearable by SHD/SHM/ENC (2 worn + the Manacle), 2 for other classes folded away; socketed exaltations stay out",
+            sf.SlotShown == "WRIST" && sf.GroupCountsForTest[SlotFinder.Fit.You] == 3 && sf.GroupCountsForTest[SlotFinder.Fit.Neither] == 2
+            && !sf.RowNamesForTest.Any(n => n.Contains("Serpentine")) && sf.RowNamesForTest.Count == 3);
+        sf.YouPickerForTest.ClickForTest("DRU"); // SHD/SHM/ENC + DRU → SHM/ENC/DRU: the druid bracelet joins your side
+        Check("slot finder: a pick in the picker redraws the board and is remembered for the days /who hasn't said",
+            sf.YouPickerForTest.Combo.SequenceEqual(new[] { "SHM", "ENC", "DRU" }) && sf.GroupCountsForTest[SlotFinder.Fit.You] == 4
+            && new ToolPrefs(Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json")).Get("you:demo_paineel") == "SHM/ENC/DRU");
         var wristItems = SlotFinder.Build(tw.SlotsForTest is not null ? InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows : new(), new ItemStats()).First(s => s.Key == "WRIST").Items;
         Check("slot finder: the worn bracer reads worn in Wrist, the bank one reads 'Bank 1', the tally of the rest names WAR",
             wristItems.First(i => i.Name.StartsWith("Pristine")).WornIn("WRIST") && !wristItems.First(i => i.Name.StartsWith("Insidious")).Worn

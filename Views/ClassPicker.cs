@@ -37,7 +37,7 @@ public sealed class ClassPicker : Border
         var c = (Color)ColorConverter.ConvertFromString(accent);
         var bg = new SolidColorBrush(Color.FromArgb(0x30, c.R, c.G, c.B)); bg.Freeze(); _onBg = bg;
         Background = Surface; BorderBrush = Line; BorderThickness = new Thickness(1); CornerRadius = new CornerRadius(6);
-        Padding = new Thickness(12, 8, 8, 6); Margin = new Thickness(0, 0, 12, 8); VerticalAlignment = VerticalAlignment.Top;
+        Padding = new Thickness(12, 8, 8, 6); Margin = new Thickness(0, 0, 12, 8); VerticalAlignment = VerticalAlignment.Top; HorizontalAlignment = HorizontalAlignment.Left;
         var sp = new StackPanel();
         sp.Children.Add(new TextBlock { Text = title, Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 7) });
         foreach (var cls in BisFinder.AllClasses)
