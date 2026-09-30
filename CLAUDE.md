@@ -230,7 +230,14 @@ tier up per wanted family with its carriers and an open socket; marks per
 combo in `tools-prefs.json` via `ToolPrefs`, a what-if combo has its own),
 race unlocks, resists (`ResistsView`, also in Fight history) and the
 tradeskill helper (its card is shown/hidden from Tools; the ladder is a page).
-One `ItemStats` and one `FocusEffects` are shared lazily across the pages. The
+One `ItemStats` and one `FocusEffects` are shared lazily across the pages.
+ONE CLASS PICKER (`ClassPicker`, 30 Sep — owner: "only a class picker like
+the BiS finder's, prepicked by /who, else the user picks"): the 16 chips,
+≤3 lit, gold for you / teal for a compare combo; /who prefills when the game
+has said, otherwise the page's last hand pick stands (`tools-prefs.json`).
+Every dump-fed page (BiS, Slot finder, Focus planner) opens with the
+`SourceStrip`: the /who line and the dump's age + missing storages in the
+character sheet's words — amber = something to type in game. The
 toolbar's hammer (it replaced the anvil) opens it and wears a gold pip
 while the tradeskill card is up. Live panels stay under ☰ → Panels, records
 (loot, raids, fights, charmed pets) in their own windows; the Character

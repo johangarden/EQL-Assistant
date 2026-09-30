@@ -3622,7 +3622,8 @@ public partial class App : Application
         // exaltations socketed and loose on the key ring, wrist items for five classes.
         // A real dump in env EQL_TOOLS_DUMP stands in for the demo one (renders against your own gear).
         string dumpText = Environment.GetEnvironmentVariable("EQL_TOOLS_DUMP") is { Length: > 0 } dumpFile && File.Exists(dumpFile) ? File.ReadAllText(dumpFile) : ToolsDemoDump();
-        var dumpRows = InventoryStore.CarryAll(InventoryStore.Parse(dumpText)).Rows;
+        var demoDump = InventoryStore.Parse(dumpText);
+        var dumpRows = InventoryStore.CarryAll(demoDump).Rows;
         string prefsPath = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json");
         try { File.Delete(prefsPath); } catch { /* fresh */ }
         var prefs = new ToolPrefs(prefsPath);
@@ -3630,7 +3631,7 @@ public partial class App : Application
         prefs.Set("slot:demo_paineel", "WRIST");
         return new Views.ToolsWindow(new Views.ToolsWindow.Context
         {
-            Dump = () => (dumpRows, new DateTime(2026, 8, 17, 21, 36, 0)),
+            Dump = () => (dumpRows, new DateTime(2026, 8, 17, 21, 36, 0), demoDump),
             CharKey = () => "demo_paineel",
             ToolPrefsPath = prefsPath,
             Library = lib,
@@ -3712,8 +3713,11 @@ public partial class App : Application
         Check("slot finder: Wrist remembered; 3 wearable by SHD/SHM/ENC (2 worn + the Manacle), 1 more for DRU/BRD/WIZ, 1 for neither; socketed exaltations stay out",
             sf.SlotShown == "WRIST" && sf.GroupCountsForTest[SlotFinder.Fit.You] == 3 && sf.GroupCountsForTest[SlotFinder.Fit.Compare] == 1
             && sf.GroupCountsForTest[SlotFinder.Fit.Neither] == 1 && !sf.RowNamesForTest.Any(n => n.Contains("Serpentine")) && sf.RowNamesForTest.Count == 4);
-        Check("slot finder: a pick in the compare popup keeps it open (the anchor chip is not rebuilt under it)",
-            sf.PickInPopupForTest("CLR"));
+        sf.ComparePickerForTest.ClickForTest("CLR"); // DRU/BRD/WIZ + CLR → BRD/WIZ/CLR: the DRU bracelet drops out of teal
+        Check("slot finder: a pick in the compare picker redraws the board and is remembered",
+            sf.ComparePickerForTest.Combo.SequenceEqual(new[] { "BRD", "WIZ", "CLR" }) && sf.GroupCountsForTest[SlotFinder.Fit.Compare] == 0
+            && new ToolPrefs(Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json")).Get("compare:demo_paineel") == "BRD/WIZ/CLR");
+        sf.ComparePickerForTest.ClickForTest("CLR"); sf.ComparePickerForTest.ClickForTest("DRU");
         var wristItems = SlotFinder.Build(tw.SlotsForTest is not null ? InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows : new(), new ItemStats()).First(s => s.Key == "WRIST").Items;
         Check("slot finder: the worn bracer reads worn in Wrist, the bank one reads 'Bank 1', the tally of the rest names WAR",
             wristItems.First(i => i.Name.StartsWith("Pristine")).WornIn("WRIST") && !wristItems.First(i => i.Name.StartsWith("Insidious")).Worn
@@ -3739,7 +3743,7 @@ public partial class App : Application
             && plan.NeedsPlaced == 3 && plan.Needs == 4 && plan.Conflicts.Any(c => c.Socket.Label == "Face" && c.Wanting.Any(e => e.Family.Name == "Improved Healing"))
             && plan.Hunts.Any(h => h.Tier.Effect == "Spell Haste II") && plan.Hunts.Any(h => h.Tier.Effect == "Improved Damage III" && h.OpenSocket.Length == 0)
             && !plan.Families.First(f => f.Family.Name == "String Resonance").Shown);
-        fp.UseWhatIfForTest("DRU", "BRD", "WIZ");
+        fp.SetComboForTest("DRU", "BRD", "WIZ");
         var wi = fp.PlanForTest!;
         Check("focus: with a bard, String Resonance shows (Nice by default) and Mana Preservation II still holds Secondary",
             wi.Families.First(f => f.Family.Name == "String Resonance").Shown && wi.Families.First(f => f.Family.Name == "String Resonance").Want == FocusPlanner.Want.Nice

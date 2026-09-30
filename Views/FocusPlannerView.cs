@@ -29,40 +29,40 @@ public sealed class FocusPlannerView : DockPanel
     private ToolPrefs? _prefs;
     private string _charKey = "";
     private List<InventoryStore.CarryRow>? _rows;
-    private readonly List<string> _who = new();
-    private readonly List<string> _whatIf = new();
-    private bool _useWhatIf;
+    private readonly List<string> _combo = new();
+    private string _who = "";
     private int _level;
+    private readonly ClassPicker _pick = new("CLASS COMBO · PICK UP TO 3", "#E8C15A");
     private Dictionary<string, FocusPlanner.Want> _wants = new(StringComparer.OrdinalIgnoreCase);
     private readonly StackPanel _top = new();
     private readonly StackPanel _body = new();
-    private Popup? _picker;
 
     public FocusPlannerView()
     {
         SetDock(_top, Dock.Top);
         Children.Add(_top);
+        _pick.Changed += c => { _combo.Clear(); _combo.AddRange(c); _prefs?.Set($"focuscombo:{_charKey}", string.Join("/", _combo)); LoadWants(); BuildTop(); BuildBody(); };
         Children.Add(new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = _body });
     }
 
     public void Init(FocusEffects focus, ItemStats stats, ToolPrefs? prefs, string charKey)
     {
         _focus = focus; _stats = stats; _prefs = prefs; _charKey = charKey;
-        _whatIf.Clear();
-        _whatIf.AddRange((prefs?.Get($"whatif:{charKey}") ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries).Take(3));
+        _combo.Clear();
+        _combo.AddRange((prefs?.Get($"focuscombo:{charKey}") ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries).Take(3));
     }
 
     public void Update(List<InventoryStore.CarryRow> rows, string whoClasses, int level)
     {
-        _rows = rows; _level = level;
-        _who.Clear();
-        _who.AddRange(whoClasses.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(3));
-        if (_useWhatIf && _whatIf.Count == 0) _useWhatIf = false;
+        _rows = rows; _level = level; _who = whoClasses;
+        // /who prefills when the game has said; otherwise the last hand pick stands (owner, 30 Sep).
+        var who = whoClasses.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(3).ToList();
+        if (who.Count > 0) { _combo.Clear(); _combo.AddRange(who); }
         LoadWants();
         Build();
     }
 
-    private IReadOnlyList<string> Combo => _useWhatIf ? _whatIf : _who;
+    private IReadOnlyList<string> Combo => _combo;
     private string WantsKey => $"focus:{_charKey}:{string.Join("/", Combo)}";
 
     private void LoadWants() => _wants = FocusPlanner.Unpack(_prefs?.Get(WantsKey) ?? "", FocusPlanner.DefaultWants(Combo));
@@ -71,7 +71,8 @@ public sealed class FocusPlannerView : DockPanel
     internal FocusPlanner.Plan? PlanForTest { get; private set; }
     internal List<string> MoveLinesForTest { get; } = new();
     internal void SetWantForTest(string family, FocusPlanner.Want w) { _wants[family] = w; Build(); }
-    internal void UseWhatIfForTest(params string[] combo) { _whatIf.Clear(); _whatIf.AddRange(combo); _useWhatIf = true; LoadWants(); Build(); }
+    internal void SetComboForTest(params string[] combo) { _combo.Clear(); _combo.AddRange(combo); LoadWants(); Build(); }
+    internal ClassPicker PickerForTest => _pick;
 
     private void Build() { BuildTop(); BuildBody(); }
 
@@ -82,20 +83,12 @@ public sealed class FocusPlannerView : DockPanel
         _top.Children.Clear();
         if (_rows is null || _focus is null || _stats is null) return;
 
-        // ---- the bar ----
-        var bar = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
-        var combos = Group("COMBO");
-        var you = ComboChip(_who.Count > 0 ? string.Join("/", _who) : "no /who yet", _level > 0 ? $"· {_level} /who" : "/who", !_useWhatIf);
-        you.MouseLeftButtonDown += (_, e) => { e.Handled = true; if (_who.Count == 0) return; _useWhatIf = false; LoadWants(); Build(); };
-        combos.Children.Add(you);
-        var wi = ComboChip(_whatIf.Count > 0 ? string.Join("/", _whatIf) : "pick a combo", "what-if ▾", _useWhatIf);
-        wi.MouseLeftButtonDown += (_, e) => e.Handled = true;
-        wi.MouseLeftButtonUp += (_, e) => { e.Handled = true; OpenPicker(wi); }; // on the release — see SlotFinderView
-        combos.Children.Add(wi);
-        bar.Children.Add(combos);
-        var pool = Group("POOL");
-        pool.Children.Add(Pill("worn sockets · key ring · stored items' sockets", Dim, ChipOn, ChipOnEdge));
-        bar.Children.Add(pool);
+        // ---- the bar: the one picker ----
+        _pick.Set(_combo);
+        _pick.Hint = _who.Length > 0 ? $"Prefilled from /who ({_who}) — change it for a what-if; each combo keeps its own marks." : _combo.Count > 0 ? "No /who yet — your last pick; type /who in game to prefill." : "No /who yet — pick your classes, or type /who in game.";
+        if (_pick.Parent is Panel pp) pp.Children.Remove(_pick);
+        var bar = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
+        bar.Children.Add(_pick);
         _top.Children.Add(bar);
     }
 
@@ -105,7 +98,7 @@ public sealed class FocusPlannerView : DockPanel
         if (_rows is null || _focus is null || _stats is null) return;
         if (Combo.Count == 0)
         {
-            _body.Children.Add(new TextBlock { Text = "Type /who in game so the planner knows your classes — or pick a what-if combo above.", Foreground = Hint, FontSize = 12, TextWrapping = TextWrapping.Wrap });
+            _body.Children.Add(new TextBlock { Text = "Pick your classes above (or type /who in game) — the planner needs them to know which foci and exaltations are yours.", Foreground = Hint, FontSize = 12, TextWrapping = TextWrapping.Wrap });
             return;
         }
         var plan = FocusPlanner.Build(_rows, _focus, _stats, Combo, _level, _wants);
@@ -133,6 +126,7 @@ public sealed class FocusPlannerView : DockPanel
         {
             Foreground = Faint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0),
             Text = "Rules (eqlwiki, Exaltations): a worn item's Focus socket opens at +1, one per item; an exaltation keeps its source item's slot — a Face item's focus fits a Face socket; the same focus never stacks, so only its best tier counts. "
+                 + "The pool is every focus exaltation you own: in your worn items' sockets, loose on the key ring, and in stored items' sockets. "
                  + "Assumed, not stated: an exaltation keeps its source item's class restrictions; an Any Slot item's socket takes any exaltation (they're used last); a tier past its level cap fades toward 30% over 30 levels. "
                  + "Reciting the moves is on you — the plan doesn't know about copper.",
         });
@@ -332,70 +326,7 @@ public sealed class FocusPlannerView : DockPanel
 
     private string Want(FocusPlanner.Exalt e) => (_wants.TryGetValue(e.Family.Name, out var w) ? w : FocusPlanner.Want.Off).ToString();
 
-    private void OpenPicker(UIElement at)
-    {
-        if (_picker is not null) _picker.IsOpen = false;
-        var grid = new UniformGrid { Columns = 4 };
-        void Paint()
-        {
-            foreach (var child in grid.Children)
-                if (child is Border b && b.Tag is string cls)
-                {
-                    bool on = _whatIf.Contains(cls);
-                    b.Background = on ? GoldBg : Card; b.BorderBrush = on ? GoldEdge : Edge;
-                    if (b.Child is TextBlock t) t.Foreground = on ? Gold : Hint;
-                }
-        }
-        foreach (var cls in BisFinder.AllClasses)
-        {
-            var b = new Border { Tag = cls, CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Padding = new Thickness(0, 3, 0, 4), Margin = new Thickness(0, 0, 5, 5), Width = 54, Cursor = Cursors.Hand, Child = new TextBlock { Text = cls, FontSize = 11, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center } };
-            string c = cls;
-            b.MouseLeftButtonDown += (_, e) =>
-            {
-                e.Handled = true;
-                if (!_whatIf.Remove(c)) { _whatIf.Add(c); while (_whatIf.Count > 3) _whatIf.RemoveAt(0); }
-                _useWhatIf = _whatIf.Count > 0;
-                _prefs?.Set($"whatif:{_charKey}", string.Join("/", _whatIf));
-                Paint(); LoadWants(); BuildBody();
-            };
-            grid.Children.Add(b);
-        }
-        Paint();
-        var sp = new StackPanel();
-        sp.Children.Add(new TextBlock { Text = "WHAT IF · PICK UP TO 3", Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 7) });
-        sp.Children.Add(grid);
-        sp.Children.Add(new TextBlock { Text = "A combo you might switch to, at the same level. Its Need / Nice / Off marks are its own.", Foreground = Faint, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0), MaxWidth = 236 });
-        _picker = new Popup
-        {
-            PlacementTarget = at, Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true, VerticalOffset = 6,
-            Child = new Border { Background = Surface, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(7), Padding = new Thickness(10), Child = sp },
-        };
-        _picker.Closed += (_, _) => BuildTop(); // the chip's words catch up
-        _picker.IsOpen = true;
-    }
-
     // ---- bits ----
-
-    private static StackPanel Group(string label)
-    {
-        var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 22, 4) };
-        sp.Children.Add(new TextBlock { Text = label, Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center });
-        return sp;
-    }
-
-    private static Border Pill(string text, Brush fg, Brush bg, Brush edge) => new()
-    {
-        CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1), BorderBrush = edge, Background = bg, Padding = new Thickness(10, 3, 10, 4), Margin = new Thickness(0, 0, 6, 4),
-        Child = new TextBlock { Text = text, FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = fg },
-    };
-
-    private static Border ComboChip(string text, string small, bool on)
-    {
-        var sp = new StackPanel { Orientation = Orientation.Horizontal };
-        sp.Children.Add(new TextBlock { Text = text, FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = on ? Gold : Hint, VerticalAlignment = VerticalAlignment.Center });
-        sp.Children.Add(new TextBlock { Text = small, FontSize = 10.5, Foreground = on ? F("#B89A4A") : Faint, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-        return new Border { CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1), BorderBrush = on ? GoldEdge : Edge, Background = on ? GoldBg : Card, Padding = new Thickness(10, 3, 10, 4), Margin = new Thickness(0, 0, 6, 4), Child = sp, Cursor = Cursors.Hand };
-    }
 
     private static Border Panel(string title, string note, UIElement body)
     {

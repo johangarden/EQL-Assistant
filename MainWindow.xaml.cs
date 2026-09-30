@@ -45,7 +45,7 @@ public partial class MainWindow : Window
     private bool _yieldBusy;
     private FactionHelperWindow? _factionWin;
     private ToolsWindow? _toolsWin;
-    private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _dumpCache;
+    private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows, InventoryStore.Dump Dump)? _dumpCache;
     // Toolbar news badges (21 Sep): live drops / raid kills since their window was last opened.
     private int _lootNew, _raidNew;
     private bool _badgeHooks;
@@ -1221,7 +1221,7 @@ public partial class MainWindow : Window
                 TsSkill = () => _config.Overlay.TradeskillOpen,
                 ToggleTs = ToggleTradeskill,
                 PickTs = PickTradeskill,
-                Dump = () => { var rows = DumpRows(out var st); return (rows, st); },
+                Dump = () => { var rows = DumpRows(out var st); return (rows, st, rows is null ? null : _dumpCache?.Dump); },
                 Config = _configService,
                 CharKey = () =>
                 {
@@ -1287,7 +1287,10 @@ public partial class MainWindow : Window
             if (path is null || !File.Exists(path)) return null;
             stamp = File.GetLastWriteTime(path);
             if (_dumpCache is not { } c || c.Path != path || c.Stamp != stamp)
-                _dumpCache = (path, stamp, InventoryStore.CarryAll(InventoryStore.Parse(File.ReadAllText(path))).Rows);
+            {
+                var parsed = InventoryStore.Parse(File.ReadAllText(path));
+                _dumpCache = (path, stamp, InventoryStore.CarryAll(parsed).Rows, parsed);
+            }
             return _dumpCache.Value.Rows;
         }
         catch { return null; }

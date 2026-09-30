@@ -33,18 +33,23 @@ public sealed class SlotFinderView : DockPanel
     private List<SlotFinder.SlotList> _index = new();
     private readonly List<string> _you = new();
     private readonly List<string> _compare = new();
+    private string _who = "";
+    private readonly ClassPicker _youPick = new("YOUR COMBO · PICK UP TO 3", "#E8C15A");
+    private readonly ClassPicker _cmpPick = new("COMPARE WITH · PICK UP TO 3", "#4DD0C8");
     private readonly HashSet<string> _lanes = new(SlotFinder.Lanes, StringComparer.Ordinal);
     private readonly HashSet<SlotFinder.Fit> _folded = new() { SlotFinder.Fit.Neither };
     private string _slot = "WRIST";
     private string _stamp = "";
     private readonly StackPanel _top = new();
     private readonly StackPanel _body = new();
-    private Popup? _picker;
 
     public SlotFinderView()
     {
         SetDock(_top, Dock.Top);
         Children.Add(_top);
+        // The pickers live outside the rebuilt bar, so a pick never rebuilds them under the mouse.
+        _youPick.Changed += c => { _you.Clear(); _you.AddRange(c); Save(); BuildTop(); BuildBody(); };
+        _cmpPick.Changed += c => { _compare.Clear(); _compare.AddRange(c); Save(); BuildTop(); BuildBody(); };
         Children.Add(new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = _body });
     }
 
@@ -53,16 +58,19 @@ public sealed class SlotFinderView : DockPanel
         _stats = stats; _prefs = prefs; _charKey = charKey;
         _compare.Clear();
         _compare.AddRange((prefs?.Get($"compare:{charKey}") ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries).Take(3));
+        _you.Clear();
+        _you.AddRange((prefs?.Get($"you:{charKey}") ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries).Take(3));
         string slot = prefs?.Get($"slot:{charKey}") ?? "";
         if (slot.Length > 0 && BisFinder.Slots.Any(s => s.Key == slot)) _slot = slot;
     }
 
-    /// <summary>New dump rows and the /who combo (the you-side always follows /who).</summary>
+    /// <summary>New dump rows and the /who combo: /who prefills your side when the game
+    /// has said; otherwise your last hand pick stands (owner, 30 Sep).</summary>
     public void Update(List<InventoryStore.CarryRow> rows, string whoClasses, string stamp)
     {
-        _rows = rows; _stamp = stamp;
-        _you.Clear();
-        _you.AddRange(whoClasses.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(3));
+        _rows = rows; _stamp = stamp; _who = whoClasses;
+        var who = whoClasses.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(3).ToList();
+        if (who.Count > 0) { _you.Clear(); _you.AddRange(who); }
         if (_stats is not null) _index = SlotFinder.Build(rows, _stats);
         Build();
     }
@@ -72,7 +80,11 @@ public sealed class SlotFinderView : DockPanel
     internal Dictionary<SlotFinder.Fit, int> GroupCountsForTest { get; } = new();
     internal List<string> RowNamesForTest { get; } = new();
 
-    private void Save() { _prefs?.Set($"compare:{_charKey}", string.Join("/", _compare)); _prefs?.Set($"slot:{_charKey}", _slot); }
+    private void Save() { _prefs?.Set($"compare:{_charKey}", string.Join("/", _compare)); _prefs?.Set($"you:{_charKey}", string.Join("/", _you)); _prefs?.Set($"slot:{_charKey}", _slot); }
+
+    /// <summary>Selftest: the pickers.</summary>
+    internal ClassPicker YouPickerForTest => _youPick;
+    internal ClassPicker ComparePickerForTest => _cmpPick;
 
     private void Build() { BuildTop(); BuildBody(); }
 
@@ -84,19 +96,15 @@ public sealed class SlotFinderView : DockPanel
         if (_rows is null || _stats is null || _index.Count == 0) return;
         var current = _index.FirstOrDefault(s => s.Key == _slot) ?? _index[0];
 
-        // ---- the bar: combos, lanes ----
+        // ---- the bar: the two pickers, then the places ----
+        _youPick.Set(_you); _cmpPick.Set(_compare);
+        _youPick.Hint = _who.Length > 0 ? $"Prefilled from /who ({_who}) — change it here for a what-if." : _you.Count > 0 ? "No /who yet — your last pick; type /who in game to prefill." : "No /who yet — pick your classes, or type /who in game.";
+        _cmpPick.Hint = _compare.Count > 0 ? "Items only this combo can wear light teal. Remembered." : "A combo you might switch to — its items light teal.";
+        var pickers = new WrapPanel { Margin = new Thickness(0, 0, 0, 2) };
+        Detach(_youPick); Detach(_cmpPick);
+        pickers.Children.Add(_youPick); pickers.Children.Add(_cmpPick);
+        _top.Children.Add(pickers);
         var bar = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
-        var combos = Group("COMBOS");
-        combos.Children.Add(Chip(_you.Count > 0 ? string.Join("/", _you) : "no /who yet", _you.Count > 0 ? "you · /who" : "type /who in game", Gold, GoldBg, GoldEdge, GoldDim, dot: Gold));
-        var cmp = Chip(_compare.Count > 0 ? string.Join("/", _compare) : "pick a combo", "compare ▾", Teal, TealBg, TealEdge, F("#3E9F99"), dot: Teal);
-        cmp.Cursor = Cursors.Hand;
-        cmp.ToolTip = "A combo you might switch to — its items light teal";
-        // Opened on the RELEASE: an auto-close popup opened on the press reads the
-        // release that follows (over the chip, outside the popup) as a click away.
-        cmp.MouseLeftButtonDown += (_, e) => e.Handled = true;
-        cmp.MouseLeftButtonUp += (_, e) => { e.Handled = true; OpenPicker(cmp); };
-        combos.Children.Add(cmp);
-        bar.Children.Add(combos);
         var where = Group("WHERE");
         foreach (var lane in SlotFinder.Lanes)
         {
@@ -159,7 +167,7 @@ public sealed class SlotFinderView : DockPanel
         void Sum(string n, string label, Brush fg) { var t = new TextBlock { FontSize = 12, Margin = new Thickness(0, 0, 16, 0), VerticalAlignment = VerticalAlignment.Center }; t.Inlines.Add(new Run(n) { Foreground = fg, FontWeight = FontWeights.SemiBold }); t.Inlines.Add(new Run(" " + label) { Foreground = Hint }); sum.Children.Add(t); }
         Sum(shown.Sum(i => i.Count).ToString(), "items", Dim);
         Sum(shown.Count(i => i.Worn).ToString(), "worn", Dim);
-        Sum(groups[SlotFinder.Fit.You].Sum(i => i.Count).ToString(), _you.Count > 0 ? "your combo can wear" : "for you (no /who yet)", Gold);
+        Sum(groups[SlotFinder.Fit.You].Sum(i => i.Count).ToString(), _you.Count > 0 ? "your combo can wear" : "for you (pick your classes above)", Gold);
         if (_compare.Count > 0) Sum(groups[SlotFinder.Fit.Compare].Sum(i => i.Count).ToString(), $"more for {string.Join("/", _compare)}", Teal);
         Sum(groups[SlotFinder.Fit.Neither].Sum(i => i.Count).ToString(), "for classes in neither", Dim);
         if (_stamp.Length > 0) Sum("", $"snapshot {_stamp}", Faint);
@@ -175,7 +183,7 @@ public sealed class SlotFinderView : DockPanel
             Cell(grid, c == 5 ? ClassHeader() : new TextBlock { Text = heads[c], Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold }, 0, c, right: c == 1);
         int row = 1;
         foreach (var (fit, title) in new[] {
-            (SlotFinder.Fit.You, _you.Count > 0 ? $"WEARABLE BY YOU · {string.Join("/", _you)}" : "WEARABLE BY YOU"),
+            (SlotFinder.Fit.You, _you.Count > 0 ? $"WEARABLE BY YOU · {string.Join("/", _you)}" : ""),
             (SlotFinder.Fit.Compare, _compare.Count > 0 ? $"WITH {string.Join("/", _compare)}" : ""),
             (SlotFinder.Fit.Unknown, "CLASSES UNKNOWN TO THE WIKI"),
             (SlotFinder.Fit.Neither, "NEITHER COMBO") })
@@ -283,7 +291,7 @@ public sealed class SlotFinderView : DockPanel
 
     private UIElement ForCell(SlotFinder.Fit fit, SlotFinder.Item it)
     {
-        var sp = new StackPanel { Orientation = Orientation.Horizontal, ToolTip = $"{(_you.Count > 0 ? string.Join("/", _you) : "you")} · {(_compare.Count > 0 ? string.Join("/", _compare) : "the combo you compare")}" };
+        var sp = new StackPanel { Orientation = Orientation.Horizontal, ToolTip = $"{(_you.Count > 0 ? string.Join("/", _you) : "your combo")} · {(_compare.Count > 0 ? string.Join("/", _compare) : "the combo you compare")}" };
         bool you = fit == SlotFinder.Fit.You;
         bool cmp = _compare.Count > 0 && !string.IsNullOrWhiteSpace(it.Rec.Classes) && BisFinder.ClassAllowed(it.Rec.Classes, _compare);
         sp.Children.Add(new Ellipse { Width = 10, Height = 10, Fill = you ? Gold : Brushes.Transparent, Stroke = you ? Gold : Edge, StrokeThickness = 1.5, Margin = new Thickness(0, 0, 5, 0) });
@@ -321,52 +329,9 @@ public sealed class SlotFinderView : DockPanel
         return sp;
     }
 
-    private void OpenPicker(UIElement at)
+    private static void Detach(UIElement el)
     {
-        if (_picker is not null) _picker.IsOpen = false;
-        var grid = new UniformGrid { Columns = 4 };
-        void Paint()
-        {
-            foreach (var child in grid.Children)
-                if (child is Border b && b.Tag is string cls)
-                {
-                    bool on = _compare.Contains(cls);
-                    b.Background = on ? TealBg : Card; b.BorderBrush = on ? TealEdge : Edge;
-                    if (b.Child is TextBlock t) t.Foreground = on ? Teal : Hint;
-                }
-        }
-        foreach (var cls in BisFinder.AllClasses)
-        {
-            var b = new Border { Tag = cls, CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Padding = new Thickness(0, 3, 0, 4), Margin = new Thickness(0, 0, 5, 5), Width = 54, Cursor = Cursors.Hand, Child = new TextBlock { Text = cls, FontSize = 11, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center } };
-            string c = cls;
-            b.MouseLeftButtonDown += (_, e) => { e.Handled = true; if (!_compare.Remove(c)) { _compare.Add(c); while (_compare.Count > 3) _compare.RemoveAt(0); } Paint(); Save(); BuildBody(); };
-            grid.Children.Add(b);
-        }
-        Paint();
-        var sp = new StackPanel();
-        sp.Children.Add(new TextBlock { Text = "COMPARE WITH · PICK UP TO 3", Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 7) });
-        sp.Children.Add(grid);
-        sp.Children.Add(new TextBlock { Text = "Remembered. An item counts for a combo when ANY of its classes may wear it.", Foreground = Faint, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0), MaxWidth = 236 });
-        _picker = new Popup
-        {
-            PlacementTarget = at, Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true, VerticalOffset = 6,
-            Child = new Border { Background = Surface, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(7), Padding = new Thickness(10), Child = sp },
-        };
-        _picker.Closed += (_, _) => BuildTop(); // the chip's words catch up
-        _picker.IsOpen = true;
-    }
-
-    /// <summary>Selftest: open the compare picker, click a class in it, and say whether it is still open.</summary>
-    internal bool PickInPopupForTest(string cls)
-    {
-        var anchor = _top.Children.OfType<WrapPanel>().FirstOrDefault()?.Children.OfType<StackPanel>().FirstOrDefault()?.Children.OfType<Border>().Skip(1).FirstOrDefault();
-        if (anchor is null) return false;
-        OpenPicker(anchor);
-        var chip = ((_picker!.Child as Border)!.Child as StackPanel)!.Children.OfType<UniformGrid>().First().Children.OfType<Border>().First(b => (string)b.Tag == cls);
-        chip.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, 0, MouseButton.Left) { RoutedEvent = MouseLeftButtonDownEvent });
-        bool open = _picker.IsOpen && _compare.Contains(cls);
-        _picker.IsOpen = false;
-        return open;
+        if (el is FrameworkElement { Parent: Panel p }) p.Children.Remove(el);
     }
 
     // ---- bits ----

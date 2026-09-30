@@ -38,7 +38,7 @@ public sealed class ToolsWindow : Window
         public Func<string> TsSkill { get; init; } = () => "";
         public Action ToggleTs { get; init; } = () => { };
         public Action<string> PickTs { get; init; } = _ => { };
-        public Func<(List<InventoryStore.CarryRow>? Rows, DateTime Stamp)> Dump { get; init; } = () => (null, default);
+        public Func<(List<InventoryStore.CarryRow>? Rows, DateTime Stamp, InventoryStore.Dump? Dump)> Dump { get; init; } = () => (null, default, null);
         public ConfigService? Config { get; init; }
         public Func<string> CharKey { get; init; } = () => "";
         /// <summary>tools-prefs.json — the slot finder's and focus planner's remembered picks.</summary>
@@ -209,7 +209,7 @@ public sealed class ToolsWindow : Window
                 }
                 case "slots":
                 {
-                    var (rows, _) = _c.Dump();
+                    var (rows, _, _) = _c.Dump();
                     if (rows is null) return ("Every item that fits one slot, wherever it sits, lit for the classes that can wear it.", "Type /outputfile inventory in game for your gear.");
                     var you = combo;
                     var busiest = SlotFinder.Build(rows, _stats.Value).OrderByDescending(s => s.Items.Sum(i => i.Count)).FirstOrDefault();
@@ -220,7 +220,7 @@ public sealed class ToolsWindow : Window
                 }
                 case "focus":
                 {
-                    var (rows, _) = _c.Dump();
+                    var (rows, _, _) = _c.Dump();
                     if (rows is null) return ("Which focus exaltation goes in which socket — needs first, nice-to-haves after.", "Type /outputfile inventory in game for your gear.");
                     if (combo.Count == 0) return ("Which focus exaltation goes in which socket — needs first, nice-to-haves after.", "Type /who in game for your classes.");
                     var prefs = _prefs ??= new ToolPrefs(_c.ToolPrefsPath);
@@ -398,7 +398,7 @@ public sealed class ToolsWindow : Window
     private void EnsureBis()
     {
         if (_bis is not null) return;
-        var (rows, stamp) = _c.Dump();
+        var (rows, stamp, dump) = _c.Dump();
         if (rows is null) return;
         _bis = new BisFinderView();
         _bis.Init(_stats.Value, _c.Config, _c.CharKey());
@@ -409,30 +409,31 @@ public sealed class ToolsWindow : Window
     private UIElement BisPage()
     {
         EnsureBis();
-        if (_bis is null)
-            return Framed("BiS finder", "The best of what you own, slot by slot.",
-                new TextBlock { Text = "No inventory dump found — type /outputfile inventory in game, then open this page again.", Foreground = Hint, FontSize = 12, TextWrapping = TextWrapping.Wrap });
-        var (rows, stamp) = _c.Dump();
-        if (rows is not null) _bis.Update(rows, _c.Classes(), stamp.ToString("dd MMM HH:mm", System.Globalization.CultureInfo.InvariantCulture));
-        return Framed("BiS finder", "The best of what you own, slot by slot — moved here from the Character window.", _bis);
+        var (rows, stamp, dump) = _c.Dump();
+        if (_bis is null || rows is null)
+            return Framed("BiS finder", "The best of what you own, slot by slot.", Sources(dump, stamp));
+        _bis.Update(rows, _c.Classes(), stamp.ToString("dd MMM HH:mm", System.Globalization.CultureInfo.InvariantCulture));
+        return Framed("BiS finder", "The best of what you own, slot by slot — moved here from the Character window.", _bis, Sources(dump, stamp));
     }
+
+    /// <summary>The /who and dump lines every dump-fed page opens with — the character sheet's words.</summary>
+    private UIElement Sources(InventoryStore.Dump? dump, DateTime stamp) => SourceStrip.Both(_c.Snapshot(), dump, stamp);
 
     /// <summary>Selftest: the BiS finder once built.</summary>
     internal BisFinderView? BisForTest => _bis;
 
     private UIElement SlotPage()
     {
-        var (rows, stamp) = _c.Dump();
+        var (rows, stamp, dump) = _c.Dump();
         if (rows is null)
-            return Framed("Slot finder", "Every item that fits one slot, wherever it sits.",
-                new TextBlock { Text = "No inventory dump found — type /outputfile inventory in game, then open this page again.", Foreground = Hint, FontSize = 12, TextWrapping = TextWrapping.Wrap });
+            return Framed("Slot finder", "Every item that fits one slot, wherever it sits.", Sources(dump, stamp));
         if (_slots is null)
         {
             _slots = new SlotFinderView();
             _slots.Init(_stats.Value, _prefs ??= new ToolPrefs(_c.ToolPrefsPath), _c.CharKey());
         }
         _slots.Update(rows, _c.Classes(), stamp.ToString("dd MMM HH:mm", System.Globalization.CultureInfo.InvariantCulture));
-        return Framed("Slot finder", "Every item that fits one slot, wherever it sits — worn, bags, bank, depot, hoard, storage — lit for the classes you play now, and for a combo you might switch to.", _slots);
+        return Framed("Slot finder", "Every item that fits one slot, wherever it sits — worn, bags, bank, depot, hoard, storage — lit for the classes you play now, and for a combo you might switch to.", _slots, Sources(dump, stamp));
     }
 
     /// <summary>Selftest: the slot finder once built.</summary>
@@ -440,17 +441,16 @@ public sealed class ToolsWindow : Window
 
     private UIElement FocusPage()
     {
-        var (rows, _) = _c.Dump();
+        var (rows, stamp, dump) = _c.Dump();
         if (rows is null)
-            return Framed("Focus planner", "Which focus exaltation goes in which of your worn items' focus sockets.",
-                new TextBlock { Text = "No inventory dump found — type /outputfile inventory in game, then open this page again.", Foreground = Hint, FontSize = 12, TextWrapping = TextWrapping.Wrap });
+            return Framed("Focus planner", "Which focus exaltation goes in which of your worn items' focus sockets.", Sources(dump, stamp));
         if (_focus is null)
         {
             _focus = new FocusPlannerView();
             _focus.Init(_focusData.Value, _stats.Value, _prefs ??= new ToolPrefs(_c.ToolPrefsPath), _c.CharKey());
         }
         _focus.Update(rows, _c.Classes(), _c.Level());
-        return Framed("Focus planner", "Which focus exaltation goes in which of your worn items' focus sockets. Mark what you need; nice-to-haves fill the sockets left over. Instrument foci show only with a bard in the combo.", _focus);
+        return Framed("Focus planner", "Which focus exaltation goes in which of your worn items' focus sockets. Mark what you need; nice-to-haves fill the sockets left over. Instrument foci show only with a bard in the combo.", _focus, Sources(dump, stamp));
     }
 
     /// <summary>Selftest: the focus planner once built.</summary>
@@ -483,13 +483,14 @@ public sealed class ToolsWindow : Window
         return sp;
     }
 
-    private static UIElement Framed(string title, string sub, UIElement body)
+    private static UIElement Framed(string title, string sub, UIElement body, UIElement? sources = null)
     {
         Detach(body); // the page's control is cached — last visit's frame still holds it (owner, 29 Sep: "already the logical child")
         var dp = new DockPanel();
         var t = PageTitle(title, sub);
         DockPanel.SetDock(t, Dock.Top);
         dp.Children.Add(t);
+        if (sources is not null) { DockPanel.SetDock(sources, Dock.Top); dp.Children.Add(sources); }
         dp.Children.Add(body);
         return dp;
     }
