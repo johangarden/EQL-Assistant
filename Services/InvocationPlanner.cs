@@ -181,13 +181,23 @@ public static class InvocationPlanner
 
     // ---- the replay ------------------------------------------------------------------
 
-    public sealed record Ledger(string Name, double Spent, double Regen, double VsRecovery, double Damage, int Won, double CastSec);
-    public sealed record FightPick(DateTime Start, DateTime End, int Casts, double ManaNeeded, string Pick, bool Affordable, double Damage)
+    /// <summary>One invocation over the stretch. <see cref="Damage"/> and <see cref="Dry"/>
+    /// are what STAYING in it all stretch would have dealt and how many fights it
+    /// would have run you dry in, mana carried from fight to fight.</summary>
+    public sealed record Ledger(string Name, double Spent, double Regen, double VsRecovery, double Damage, int Won, double CastSec, int Dry = 0);
+    /// <summary>One fight of the plan: <see cref="ManaIn"/> = what you'd bring in
+    /// following the plan; <see cref="Affordable"/> = the pick pays for the whole
+    /// fight from it (false = you'd run dry in any).</summary>
+    public sealed record FightPick(DateTime Start, DateTime End, int Casts, double ManaNeeded, string Pick, bool Affordable, double Damage, double ManaIn = 0)
     {
         public double Seconds => (End - Start).TotalSeconds;
     }
+    /// <summary><see cref="PlayedDry"/> = fights the replay runs you dry in AS YOU
+    /// PLAYED them (the invocation that was up), <see cref="LogDry"/> = fights the
+    /// log shows "Insufficient Mana" in — the model's check against the truth.</summary>
     public sealed record Result(List<Ledger> Ledgers, List<FightPick> Fights, int ProvenRegen, int RegenUsed,
-        double CombatSec, int Casts, int Unpriced, string ResistNote, double OcFactor, Rules Rules, List<string> Available)
+        double CombatSec, int Casts, int Unpriced, string ResistNote, double OcFactor, Rules Rules, List<string> Available,
+        int PlayedDry = 0, int LogDry = 0)
     {
         public Ledger? Best => Ledgers.OrderByDescending(l => l.Won).ThenByDescending(l => l.VsRecovery).FirstOrDefault();
     }
@@ -206,10 +216,20 @@ public static class InvocationPlanner
 
     public const int MinResistSample = 20;
 
-    /// <summary>Replay a stretch under every invocation the combo recites. A fight's
-    /// pick is the most spell damage it could have paid for from a full pool,
-    /// else the one that spends least. Regen used = the larger of what you
-    /// typed and what the log proves.</summary>
+    /// <summary>Out of combat you are RESTED this long after the last hit (owner,
+    /// 30 Sep) — and rested, Recovery's regen runs whichever invocation is up
+    /// (eqlwiki). A fight window already ends 6 s past its last hit.</summary>
+    public const double RestedAfterSec = 10;
+    private const double FightTailSec = 6;
+
+    /// <summary>Replay a stretch under every invocation the combo recites, mana
+    /// CARRIED from fight to fight (30 Sep): each fight starts with what the last
+    /// left plus the gap's regen — your invocation's until you're rested, then
+    /// Recovery's for everyone — capped at the pool; the stretch starts full.
+    /// The picks are the switches that deal the most spell damage over the whole
+    /// stretch (a fight you'd run dry in counts only the casts you could pay for),
+    /// so a greedy Empower pull that starves the next one loses. Regen used =
+    /// the larger of what you typed and what the log proves.</summary>
     public static Result Replay(Stretch st, SpellLibrary library, IReadOnlyCollection<string> combo, int typedRegen, int pool)
     {
         var rules = RulesFor(combo);
@@ -254,37 +274,110 @@ public static class InvocationPlanner
         double RegenMult(string n) => n == Recovery ? 2 : 1;
         double DmgMult(string n) => n == Empower ? 1 + rules.EmpDamage : n == OverChannel ? ocFactor : 1;
 
-        var won = names.ToDictionary(n => n, _ => 0);
-        var regenBy = names.ToDictionary(n => n, _ => 0.0);
-        var picks = new List<FightPick>();
-        foreach (var f in st.Fights)
+        // Per fight, per invocation: what it spends, what it regens in the fight, its damage.
+        var fights = st.Fights.Select((f, i) =>
         {
             double len = (f.End - f.Start).TotalSeconds;
             var fc = priced.Where(p => p.C.At >= f.Start.AddSeconds(-3) && p.C.At <= f.End).ToList();
             double dmg = st.Damage.Where(d => d.At >= f.Start.AddSeconds(-3) && d.At <= f.End.AddSeconds(3)).Sum(d => d.Amount);
-            var opts = names.Select(n =>
+            double gap = i + 1 < st.Fights.Count ? Math.Max(0, (st.Fights[i + 1].Start - f.End).TotalSeconds) : 0;
+            // No casts of yours in it (a DoT still ticking, a proc): no invocation changes its damage.
+            var by = names.ToDictionary(n => n, n => (Spend: fc.Sum(p => Cost(n, p, rules)), Regen: regen * RegenMult(n) * len / 6, Damage: fc.Count > 0 ? dmg * DmgMult(n) : dmg));
+            string played = fc.GroupBy(p => p.C.Invocation).OrderByDescending(g => g.Count()).Select(g => g.Key).FirstOrDefault() ?? "";
+            return (F: f, Casts: fc.Count, Need: fc.Sum(p => p.Mana), Gap: gap, By: by, Played: played);
+        }).ToList();
+
+        // A fight from manaIn under n: what's left, whether it ran dry, the share of its casts paid for.
+        (double Left, bool Dry, double Paid) Step(double manaIn, (double Spend, double Regen, double Damage) o)
+        {
+            double drain = o.Spend - o.Regen;
+            if (drain <= manaIn + 1e-6) return (manaIn - drain, false, 1);
+            return (0, true, o.Spend <= 0 ? 1 : Math.Clamp((manaIn + o.Regen) / o.Spend, 0, 1));
+        }
+        // The gap after a fight, in n until rested, then rested (Recovery's regen for all).
+        double GapRegen(double gap, string n)
+        {
+            double early = Math.Min(gap, Math.Max(0, RestedAfterSec - FightTailSec));
+            return regen / 6.0 * (early * RegenMult(n) + (gap - early) * 2);
+        }
+        double Next(double left, int i, string n) => Math.Min(pool, left + GapRegen(fights[i].Gap, n));
+
+        // Staying in one invocation all stretch.
+        var stay = names.ToDictionary(n => n, n =>
+        {
+            double mana = pool, total = 0; int dry = 0;
+            for (int i = 0; i < fights.Count; i++)
             {
-                double spend = fc.Sum(p => Cost(n, p, rules)), rg = regen * RegenMult(n) * len / 6;
-                return (Name: n, Drain: spend - rg, Regen: rg, Damage: dmg * DmgMult(n));
-            }).ToList();
-            foreach (var o in opts) regenBy[o.Name] += o.Regen;
-            if (opts.Count == 0) continue;
-            var afford = opts.Where(o => o.Drain <= pool).ToList();
-            var pick = afford.Count > 0
-                ? afford.OrderByDescending(o => o.Damage).ThenBy(o => o.Drain).First()
-                : opts.OrderBy(o => o.Drain).First();
-            won[pick.Name]++;
-            picks.Add(new FightPick(f.Start, f.End, fc.Count, fc.Sum(p => p.Mana), pick.Name, afford.Count > 0, pick.Damage));
+                var (left, d, paid) = Step(mana, fights[i].By[n]);
+                total += fights[i].By[n].Damage * paid;
+                if (d) dry++;
+                mana = Next(left, i, n);
+            }
+            return (Damage: total, Dry: dry);
+        });
+
+        // As you played: the invocation that was up (unknown = no invocation's rules → Recovery-less base).
+        int playedDry = 0;
+        {
+            double mana = pool;
+            for (int i = 0; i < fights.Count; i++)
+            {
+                string n = names.Contains(fights[i].Played) ? fights[i].Played : "";
+                var o = n.Length > 0 ? fights[i].By[n] : (Spend: fights[i].Need, Regen: regen * (fights[i].F.End - fights[i].F.Start).TotalSeconds / 6, Damage: 0.0);
+                var (left, d, _) = Step(mana, o);
+                if (d) playedDry++;
+                mana = Math.Min(pool, left + GapRegen(fights[i].Gap, n));
+            }
+        }
+        int logDry = st.Fights.Count(f => st.OutOfMana.Any(o => o >= f.Start && o <= f.End.AddSeconds(3)));
+
+        // The plan: the most damage over the stretch, mana in buckets (≤ 200 levels).
+        double bucket = Math.Max(1, pool / 200.0);
+        int levels = (int)Math.Floor(pool / bucket) + 1;
+        int Lv(double mana) => Math.Clamp((int)Math.Floor(mana / bucket + 1e-9), 0, levels - 1);
+        var value = new double[fights.Count + 1, levels];
+        var choice = new string[fights.Count, levels];
+        for (int i = fights.Count - 1; i >= 0; i--)
+            for (int m = 0; m < levels; m++)
+            {
+                double best = double.NegativeInfinity, bestLeft = -1; string pick = names.FirstOrDefault() ?? "";
+                foreach (var n in names)
+                {
+                    var o = fights[i].By[n];
+                    var (left, _, paid) = Step(m * bucket, o);
+                    double v = o.Damage * paid + value[i + 1, Lv(Next(left, i, n))];
+                    // Ties (no damage at stake): keep more mana, then Recovery's list order.
+                    if (v > best + 1e-6 || (Math.Abs(v - best) <= 1e-6 && left > bestLeft + 1e-6))
+                    { best = v; bestLeft = left; pick = n; }
+                }
+                value[i, m] = best; choice[i, m] = pick;
+            }
+
+        var won = names.ToDictionary(n => n, _ => 0);
+        var regenBy = names.ToDictionary(n => n, n => fights.Sum(f => f.By[n].Regen));
+        var picks = new List<FightPick>();
+        {
+            double mana = pool;
+            for (int i = 0; i < fights.Count; i++)
+            {
+                if (names.Count == 0) break;
+                string n = choice[i, Lv(mana)];
+                var o = fights[i].By[n];
+                var (left, d, paid) = Step(mana, o);
+                // A fight without your casts wants nothing — it still carries the mana on.
+                if (fights[i].Casts > 0) won[n]++;
+                picks.Add(new FightPick(fights[i].F.Start, fights[i].F.End, fights[i].Casts, fights[i].Need, fights[i].Casts > 0 ? n : "", !d, o.Damage * paid, mana));
+                mana = Next(left, i, n);
+            }
         }
 
-        double totalDmg = st.Damage.Sum(d => d.Amount);
-        var ledgers = names.Select(n => new Ledger(n, priced.Sum(p => Cost(n, p, rules)), regenBy[n], 0, totalDmg * DmgMult(n), won[n],
-            priced.Sum(p => p.CastSec) * (n == ArcaneMastery ? 1 - rules.AmSpeed : 1))).ToList();
+        var ledgers = names.Select(n => new Ledger(n, priced.Sum(p => Cost(n, p, rules)), regenBy[n], 0, stay[n].Damage, won[n],
+            priced.Sum(p => p.CastSec) * (n == ArcaneMastery ? 1 - rules.AmSpeed : 1), stay[n].Dry)).ToList();
         var rec = ledgers.FirstOrDefault(l => l.Name == Recovery);
         if (rec is not null)
             ledgers = ledgers.Select(l => l with { VsRecovery = (l.Regen - l.Spent) - (rec.Regen - rec.Spent) }).ToList();
         return new Result(ledgers.OrderByDescending(l => l.Won).ThenByDescending(l => l.VsRecovery).ToList(), picks, proven, regen,
-            st.Fights.Sum(f => (f.End - f.Start).TotalSeconds), priced.Count, unpriced, resistNote, ocFactor, rules, names);
+            st.Fights.Sum(f => (f.End - f.Start).TotalSeconds), priced.Count, unpriced, resistNote, ocFactor, rules, names, playedDry, logDry);
     }
 
     // ---- reading the log's tail ----------------------------------------------------------

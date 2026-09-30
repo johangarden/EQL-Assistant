@@ -3527,8 +3527,42 @@ public partial class App : Application
         var rich = InvocationPlanner.Replay(st, lib, new[] { "SHD", "SHM", "ENC" }, 400, 20000);
         Check("inv: the log proves a regen floor when none is typed, and uses it",
             poor.ProvenRegen > 0 && poor.RegenUsed == poor.ProvenRegen && rich.RegenUsed == 400);
-        Check("inv: a short cheap fight can afford Empower — the most damage; the long spam on a small pool can't",
-            poor.Fights[0].Pick == "Empower" && poor.Fights[0].Affordable && poor.Fights[1].Pick != "Empower");
+        Check("inv: a deep pool affords Empower everywhere, full into every fight; the long spam on a small pool runs dry",
+            rich.Fights.All(f => f.Pick == "Empower" && f.Affordable) && rich.Fights[0].ManaIn == 20000
+            && !poor.Fights[1].Affordable && poor.Fights[1].ManaIn <= 2600);
+
+        // Carry-over (30 Sep): two pulls back to back on a pool that pays for one
+        // Empower fight — the second starts on what the first left; ten minutes
+        // apart, rested regen fills you up again.
+        {
+            string L(double sec, string body) => $"[{t0.AddSeconds(sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+            List<string> Pulls(double gap, bool oom)
+            {
+                var pl = new List<string> { L(-60, "You begin reciting the empowering invocation.") };
+                foreach (double at in new[] { 0.0, 50 + gap })
+                    for (int i = 0; i < 10; i++)
+                    {
+                        pl.Add(L(at + i * 5, "You begin casting Envenomed Bolt X."));
+                        pl.Add(L(at + i * 5 + 3, "A gnoll has taken 470 damage from your Envenomed Bolt."));
+                        if (oom && at > 0 && i == 8) pl.Add(L(at + i * 5 + 4, "Insufficient Mana to cast this spell!"));
+                    }
+                return pl;
+            }
+            double m = (lib.FindByBaseName("Envenomed Bolt")?.Mana ?? 0) * 0.8;
+            int cpool = (int)(10 * m * 1.3);
+            var chain = InvocationPlanner.Replay(InvocationPlanner.Parse(Pulls(20, oom: true), t0.AddMinutes(-1), t0.AddMinutes(20), lib),
+                lib, new[] { "SHD", "SHM", "ENC" }, 1, cpool);
+            var emp = chain.Ledgers.First(l => l.Name == "Empower");
+            Check("inv: chained, the second pull starts on what the first left; staying in Empower runs dry, the plan does no worse than any single invocation",
+                m > 0 && chain.Fights.Count == 2 && chain.Fights[0].ManaIn == cpool && chain.Fights[1].ManaIn < 0.5 * cpool
+                && emp.Dry >= 1 && chain.Fights.Sum(f => f.Damage) >= chain.Ledgers.Max(l => l.Damage) - 1);
+            Check("inv: as you played (Empower both) the replay runs you dry once — and so does the log's Insufficient Mana",
+                chain.PlayedDry == 1 && chain.LogDry == 1 && Views.SpellLibraryPanel.PlayedCheck(chain).Contains("shows 1 fight", StringComparison.Ordinal));
+            var rested = InvocationPlanner.Replay(InvocationPlanner.Parse(Pulls(600, oom: false), t0.AddMinutes(-1), t0.AddMinutes(30), lib),
+                lib, new[] { "SHD", "SHM", "ENC" }, 30, cpool);
+            Check("inv: ten minutes between pulls, rested regen (Recovery's, whatever is up) fills the pool — Empower both times",
+                rested.Fights.Count == 2 && rested.Fights[1].ManaIn == cpool && rested.Fights.All(f => f.Pick == "Empower" && f.Affordable));
+        }
         Check("inv: Inversion keeps more mana than Recovery on a spam at a low regen; Empower costs the most",
             poor.Ledgers.First(l => l.Name == "Inversion").VsRecovery > poor.Ledgers.First(l => l.Name == "Empower").VsRecovery
             && poor.Ledgers.First(l => l.Name == "Empower").Damage > poor.Ledgers.First(l => l.Name == "Recovery").Damage);
@@ -5677,8 +5711,9 @@ public partial class App : Application
         {
             // The Invocations tab: on the synthetic stretch, or (invfile) on the log
             // file in EQL_INV_LOG ending at EQL_INV_END ("yyyy-MM-dd HH:mm"), 60 min.
-            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { }, null, null, () => "SHD/SHM/ENC", () => 50,
-                null, () => "Level 50 SHD/SHM/ENC · stated by /who at 22:31")
+            string invClasses = Environment.GetEnvironmentVariable("EQL_INV_CLASSES") is { Length: > 0 } ic ? ic : "SHD/SHM/ENC";
+            var lw = new Views.SpellLibraryWindow(new SpellLibrary(new ConfigService()), _ => { }, null, null, () => invClasses, () => 50,
+                null, () => $"Level 50 {invClasses} · stated by /who at 22:31")
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,

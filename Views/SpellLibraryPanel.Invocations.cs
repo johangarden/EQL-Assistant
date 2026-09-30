@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -142,6 +142,8 @@ public partial class SpellLibraryPanel
         }
         else proof.Inlines.Add(new Run($"Your {_invRegen} a tick covers every fight of this stretch the log saw you finish without running dry."));
         if (st.OutOfMana.Count > 0) proof.Inlines.Add(new Run($"  You ran dry {st.OutOfMana.Count} time(s) here.") { Foreground = EffLow });
+        // The model's check against the truth: dry fights as you played them vs the log's own.
+        proof.Inlines.Add(new Run("  " + PlayedCheck(r)) { Foreground = r.PlayedDry > r.LogDry ? EffGold : DurDimFg });
         _invBody.Children.Add(proof);
 
         _invBody.Children.Add(InvVerdict(r));
@@ -158,12 +160,23 @@ public partial class SpellLibraryPanel
             Foreground = EffFaint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0),
             Text = "How it reads the stretch: every cast that landed, at the rank its cast line shows, priced by the wiki and re-priced by each invocation's rules for your combo; "
                  + "your regen in the seconds you were fighting (Recovery doubles it) — out of combat, Recovery's regen applies whichever invocation is up, so that part is the same for all. "
-                 + "A fight's pick is the most spell damage a full pool could have paid for, else the one that spends least. "
+                 + $"Mana carries from fight to fight: each starts with what the last one left plus the gap's regen — your invocation's for the first {InvocationPlanner.RestedAfterSec:0} s after the last hit, then rested, Recovery's for everyone — and the stretch starts full. "
+                 + "The picks are the switches that deal the most spell damage over the whole stretch; a fight you'd run dry in counts only the casts you could pay for. Reciting a switch takes a few seconds the replay doesn't charge. "
                  + $"Arcane Mastery's faster casting would have freed {Mmss(r.Ledgers.FirstOrDefault(l => l.Name == InvocationPlanner.Recovery)?.CastSec - r.Ledgers.FirstOrDefault(l => l.Name == InvocationPlanner.ArcaneMastery)?.CastSec ?? 0)} of casting — time a replay can't turn into extra casts, so it isn't scored. "
                  + $"Over Channel: {r.ResistNote}. Inversion and Over Channel also spend endurance, which the log never shows."
                  + (r.Unpriced > 0 ? $" {r.Unpriced} cast(s) without a wiki mana cost (items, abilities) stay out." : ""),
         });
         SaveViewState();
+    }
+
+    /// <summary>"As you played, the replay runs you dry in 2 fights; the log shows 1."</summary>
+    internal static string PlayedCheck(InvocationPlanner.Result r)
+    {
+        static string F(int n) => n == 1 ? "1 fight" : $"{n} fights";
+        string said = $"As you played it, the replay runs you dry in {F(r.PlayedDry)}; your log's \"Insufficient Mana\" shows {F(r.LogDry)}.";
+        return r.PlayedDry > r.LogDry
+            ? said + " The replay is short on mana — a higher regen or max mana than typed (sitting, potions, gear)?"
+            : said;
     }
 
     private StackPanel Hint(string text) => new() { Children = { new TextBlock { Text = text, Foreground = DurDimFg, FontSize = 12, Margin = new Thickness(2, 8, 0, 0), TextWrapping = TextWrapping.Wrap } } };
@@ -244,20 +257,27 @@ public partial class SpellLibraryPanel
         sp.Children.Add(new TextBlock { Text = $"{label} · REGEN {r.RegenUsed} A TICK · {_invPool:N0} MANA", Foreground = EffFaint, FontSize = 9.5, FontWeight = FontWeights.Bold });
         var head = new TextBlock { Margin = new Thickness(0, 2, 0, 0) };
         head.Inlines.Add(new Run(best.Name) { Foreground = EffText, FontSize = 15, FontWeight = FontWeights.Bold });
-        head.Inlines.Add(new Run($"  — wanted in {best.Won} of {r.Fights.Count} fights") { Foreground = DurDimFg, FontSize = 12 });
+        head.Inlines.Add(new Run($"  — wanted in {best.Won} of {r.Fights.Count(f => f.Pick.Length > 0)} fights") { Foreground = DurDimFg, FontSize = 12 });
         sp.Children.Add(head);
-        // Short vs long: the switch rule when they differ.
-        string Winner(IEnumerable<InvocationPlanner.FightPick> fs) => fs.GroupBy(f => f.Pick).OrderByDescending(g => g.Count()).Select(g => g.Key).FirstOrDefault() ?? "";
-        string ws = Winner(r.Fights.Where(f => f.Seconds < 180)), wl = Winner(r.Fights.Where(f => f.Seconds >= 180));
+        // The switch rule: where the plan leaves the main pick, and why.
+        var others = r.Fights.Where(f => f.Pick.Length > 0 && f.Pick != best.Name).ToList();
+        string switches = others.Count == 0 ? $"Stay in {best.Name} — every pull of the stretch wanted it. "
+            : others.GroupBy(f => f.Pick).Select(g => $"{g.Key} at {string.Join(" · ", g.Select(f => Hm(f.Start)))}").Aggregate((a, b) => a + "; " + b)
+              + (others.Any(f => f.Pick == InvocationPlanner.Recovery)
+                  ? $" — the pulls your mana couldn't pay for, or the ones that saved for the next; {best.Name} the rest. " : $"; {best.Name} the rest. ");
         string picks = string.Join(" · ", r.Ledgers.Where(l => l.Won > 0).Select(l => $"{l.Name} {l.Won}"));
+        // The plan against never switching out of Recovery.
         var rec = r.Ledgers.FirstOrDefault(l => l.Name == InvocationPlanner.Recovery);
-        string money = rec is null || best.Name == InvocationPlanner.Recovery ? "" :
-            $" Over the stretch {best.Name} would have left you {Math.Abs(best.VsRecovery):N0} mana {(best.VsRecovery >= 0 ? "better" : "worse")} off than Recovery, for {Math.Abs(best.Damage - rec.Damage):N0} {(best.Damage >= rec.Damage ? "more" : "less")} spell damage.";
+        double planDmg = r.Fights.Sum(f => f.Damage);
+        int planDry = r.Fights.Count(f => f.Pick.Length > 0 && !f.Affordable);
+        string money = rec is null ? "" :
+            $" Switching like that deals {planDmg:N0} spell damage — {Math.Abs(planDmg - rec.Damage):N0} {(planDmg >= rec.Damage ? "more" : "less")} than staying in Recovery"
+            + (planDry > 0 ? $", and runs you dry in {planDry} fight{(planDry == 1 ? "" : "s")} (fewer casts, but each one hits harder)." : ", without running you dry.");
         sp.Children.Add(new TextBlock
         {
             Foreground = DurDimFg, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0),
-            Text = (ws.Length > 0 && wl.Length > 0 && ws != wl ? $"Short fights (under 3 min) wanted {ws}, the long ones {wl} — switch as the pull tells you. " : "")
-                   + $"Picks: {picks}." + money,
+            Text = switches + $"Picks: {picks}." + money
+                   + (best.Dry > 0 && best.Name != InvocationPlanner.Recovery ? $" Never switching out of {best.Name} would run you dry in {best.Dry} fight{(best.Dry == 1 ? "" : "s")}." : ""),
         });
         return new Border { Background = EffSurface, BorderBrush = EffGoldEdge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 8, 12, 10), Margin = new Thickness(0, 0, 0, 10), Child = sp };
     }
@@ -276,7 +296,7 @@ public partial class SpellLibraryPanel
             {
                 Width = Math.Max(2, X(f.End) - X(f.Start)), Height = 40, RadiusX = 3, RadiusY = 3, Stroke = c, StrokeThickness = 1,
                 Fill = new SolidColorBrush(((SolidColorBrush)c).Color) { Opacity = 0.28 },
-                ToolTip = $"{Hm(f.Start, true)} · {Mmss(f.Seconds)} · {f.Casts} casts · wanted {f.Pick}",
+                ToolTip = $"{Hm(f.Start, true)} · {Mmss(f.Seconds)} · {f.Casts} casts · start {f.ManaIn:N0} mana · " + (f.Pick.Length > 0 ? $"wanted {f.Pick}" : "no casts of yours"),
             };
             Canvas.SetLeft(rect, X(f.Start)); Canvas.SetTop(rect, 16);
             cv.Children.Add(rect);
@@ -327,28 +347,29 @@ public partial class SpellLibraryPanel
 
     private Border InvLedger(InvocationPlanner.Result r)
     {
-        var g = TableGrid(new[] { "INVOCATION", "SPENT", "REGEN", "VS RECOVERY", "DAMAGE", "WON" });
+        var g = TableGrid(new[] { "INVOCATION", "SPENT", "REGEN", "VS RECOVERY", "DAMAGE", "DRY", "WON" });
         int row = 1;
         var best = r.Best;
         foreach (var l in r.Ledgers)
         {
             g.RowDefinitions.Add(new RowDefinition());
-            if (ReferenceEquals(l, best)) Band(g, row, 6);
+            if (ReferenceEquals(l, best)) Band(g, row, 7);
             TCell(g, Swatch(l.Name), row, 0);
             TCell(g, Txt($"{l.Spent:N0}"), row, 1);
             TCell(g, Txt($"{l.Regen:N0}"), row, 2);
             TCell(g, Txt(l.Name == InvocationPlanner.Recovery ? "—" : (l.VsRecovery >= 0 ? "+" : "−") + $"{Math.Abs(l.VsRecovery):N0}",
                 l.Name == InvocationPlanner.Recovery ? EffFaint : l.VsRecovery >= 0 ? EffHigh : EffLow), row, 3);
             TCell(g, Txt($"{l.Damage:N0}"), row, 4);
-            TCell(g, Txt(l.Won.ToString(), EffText, bold: true), row, 5);
+            TCell(g, Txt(l.Dry.ToString(), l.Dry > 0 ? EffLow : EffFaint), row, 5);
+            TCell(g, Txt(l.Won.ToString(), EffText, bold: true), row, 6);
             row++;
         }
-        return Panel("OVER THE STRETCH", "out-of-combat regen is the same for all — Recovery's applies anyway", g);
+        return Panel("OVER THE STRETCH", "damage and dry fights staying in it all stretch · won = the plan's picks", g);
     }
 
     private Border InvFights(InvocationPlanner.Result r)
     {
-        var g = TableGrid(new[] { "FIGHT", "LENGTH", "CASTS", "MANA NEEDED", "WANTED" });
+        var g = TableGrid(new[] { "FIGHT", "LENGTH", "CASTS", "START", "MANA NEEDED", "WANTED" });
         int row = 1;
         foreach (var f in r.Fights)
         {
@@ -356,13 +377,16 @@ public partial class SpellLibraryPanel
             TCell(g, Txt(Hm(f.Start)), row, 0);
             TCell(g, Txt(Mmss(f.Seconds)), row, 1);
             TCell(g, Txt(f.Casts.ToString()), row, 2);
-            TCell(g, Txt($"{f.ManaNeeded:N0}"), row, 3);
+            // What you'd bring in following the plan — dim when full, amber when chained low.
+            TCell(g, Txt($"{f.ManaIn:N0}", f.ManaIn >= 0.9 * _invPool ? EffFaint : f.ManaIn < 0.5 * _invPool ? EffLow : EffGold), row, 3);
+            TCell(g, Txt($"{f.ManaNeeded:N0}"), row, 4);
+            if (f.Pick.Length == 0) { TCell(g, Txt("no casts", EffFaint), row, 5); row++; continue; }
             var pick = Swatch(f.Pick);
-            if (!f.Affordable) ((TextBlock)pick.Children[1]).Inlines.Add(new Run(" · runs dry in any") { Foreground = EffLow, FontWeight = FontWeights.Normal });
-            TCell(g, pick, row, 4);
+            if (!f.Affordable) ((TextBlock)pick.Children[1]).Inlines.Add(new Run(" · runs dry") { Foreground = EffLow, FontWeight = FontWeights.Normal });
+            TCell(g, pick, row, 5);
             row++;
         }
-        return Panel("FIGHT BY FIGHT", "the most damage a full pool could pay for", g);
+        return Panel("FIGHT BY FIGHT", "start = the mana you'd bring in, carried from the last fight", g);
     }
 
     private static Grid TableGrid(string[] heads)
