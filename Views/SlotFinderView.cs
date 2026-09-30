@@ -91,18 +91,23 @@ public sealed class SlotFinderView : DockPanel
         var cmp = Chip(_compare.Count > 0 ? string.Join("/", _compare) : "pick a combo", "compare ▾", Teal, TealBg, TealEdge, F("#3E9F99"), dot: Teal);
         cmp.Cursor = Cursors.Hand;
         cmp.ToolTip = "A combo you might switch to — its items light teal";
-        cmp.MouseLeftButtonDown += (_, e) => { e.Handled = true; OpenPicker(cmp); };
+        // Opened on the RELEASE: an auto-close popup opened on the press reads the
+        // release that follows (over the chip, outside the popup) as a click away.
+        cmp.MouseLeftButtonDown += (_, e) => e.Handled = true;
+        cmp.MouseLeftButtonUp += (_, e) => { e.Handled = true; OpenPicker(cmp); };
         combos.Children.Add(cmp);
         bar.Children.Add(combos);
         var where = Group("WHERE");
         foreach (var lane in SlotFinder.Lanes)
         {
             bool on = _lanes.Contains(lane);
+            // On = gold with a tick; off = dimmed, so the filter reads at a glance (owner, 30 Sep).
             var c = new Border
             {
                 CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1), Padding = new Thickness(10, 3, 10, 4), Margin = new Thickness(0, 0, 6, 4), Cursor = Cursors.Hand,
-                Background = on ? ChipOn : Card, BorderBrush = on ? ChipOnEdge : Edge,
-                Child = new TextBlock { Text = SlotFinder.LaneLabel(lane), FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = on ? Dim : Hint },
+                Background = on ? GoldBg : Brushes.Transparent, BorderBrush = on ? GoldEdge : Line,
+                Child = new TextBlock { Text = (on ? "✓ " : "") + SlotFinder.LaneLabel(lane), FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = on ? Gold : Faint },
+                ToolTip = on ? $"Listing {SlotFinder.LaneLabel(lane).ToLowerInvariant()} — click to leave it out" : $"Not listing {SlotFinder.LaneLabel(lane).ToLowerInvariant()} — click to include it",
             };
             string l = lane;
             c.MouseLeftButtonDown += (_, e) => { e.Handled = true; if (!_lanes.Remove(l)) _lanes.Add(l); Build(); };

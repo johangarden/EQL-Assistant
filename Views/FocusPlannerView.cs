@@ -89,7 +89,8 @@ public sealed class FocusPlannerView : DockPanel
         you.MouseLeftButtonDown += (_, e) => { e.Handled = true; if (_who.Count == 0) return; _useWhatIf = false; LoadWants(); Build(); };
         combos.Children.Add(you);
         var wi = ComboChip(_whatIf.Count > 0 ? string.Join("/", _whatIf) : "pick a combo", "what-if ▾", _useWhatIf);
-        wi.MouseLeftButtonDown += (_, e) => { e.Handled = true; OpenPicker(wi); };
+        wi.MouseLeftButtonDown += (_, e) => e.Handled = true;
+        wi.MouseLeftButtonUp += (_, e) => { e.Handled = true; OpenPicker(wi); }; // on the release — see SlotFinderView
         combos.Children.Add(wi);
         bar.Children.Add(combos);
         var pool = Group("POOL");
