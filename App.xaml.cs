@@ -3770,6 +3770,26 @@ public partial class App : Application
         tw.ShowPage("res");
         tw.ShowPage("bis");
         Check("tools: Resists and BiS pages build on the demo dump", tw.BisForTest is { HasBoard: true } && tw.PageShown == "bis" && shown[0] == before);
+
+        // Resists, light on open (30 Sep): 60 mobs → one page of 30 heads, the newest 5 with their tables.
+        {
+            string rbPath2 = Path.Combine(Path.GetTempPath(), "eql_selftest_resists_light.json");
+            try { File.Delete(rbPath2); } catch { /* fresh */ }
+            var rp2 = new CombatParser { SelfName = "Thorrak" }; // the book learns resists through the parser's lines
+            var big = new ResistBook(new ConfigService(), rp2, rbPath2);
+            var r1 = new DateTime(2026, 9, 29, 20, 0, 0);
+            for (int i = 0; i < 60; i++)
+            {
+                string at(int sec) => r1.AddSeconds(i * 30 + sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                rp2.ProcessLine($"[{at(0)}] You begin casting Envenomed Bolt X.");
+                rp2.ProcessLine($"[{at(3)}] A test mob {i:00} resisted your Envenomed Bolt!");
+            }
+            var rv = new Views.ResistsView();
+            rv.Init(big, () => "");
+            rv.Build();
+            Check("resists: 60 mobs paint one page of 30 heads, the newest 5 open with their tables; This zone is the default and falls back to all zones until one is known",
+                rv.MobCountForTest == Views.ResistsView.PageSize && rv.TableCountForTest == Views.ResistsView.AutoOpen);
+        }
         // Every page twice, in and out of order (owner, 29 Sep: the second Resists visit threw
         // "Specified element is already the logical child of another element").
         bool twice = true;

@@ -228,7 +228,10 @@ instrument foci only with BRD, summoned families only when owned; conflicts
 = a socket several wanted foci fit where one went without; hunts = the next
 tier up per wanted family with its carriers and an open socket; marks per
 combo in `tools-prefs.json` via `ToolPrefs`, a what-if combo has its own),
-race unlocks, resists (`ResistsView`, also in Fight history) and the
+race unlocks, resists (`ResistsView`, also in Fight history — LIGHT ON OPEN,
+30 Sep: a head per mob, tables only for open heads (the newest 5 open by
+themselves, a search opens its hits), 30 heads a page, search and live lines
+debounced; THIS ZONE by default, every zone until the log names one) and the
 tradeskill helper (its card is shown/hidden from Tools; the ladder is a page).
 One `ItemStats` and one `FocusEffects` are shared lazily across the pages.
 ONE CLASS PICKER (`ClassPicker`, 30 Sep — owner: "only a class picker like
