@@ -142,7 +142,11 @@ the affected suites (with `-Wait`) before committing.
   "keep open" — a hit takes over for 20 s).
 - `TriggerEngine` — bars/matrix/flash/repop triggers; cast-anchor gate;
   learned-duration hook. `CombatParser` — fights, drill-down, SCT events,
-  death recap, session skills + proc watcher. `RaidKills`, `LootTracker`,
+  death recap, session skills + proc watcher; enemy = a multi-word name, OR a
+  one-word name that hit you/your pet or took your hits (learned per zone —
+  Dread, Fright, Terror, 30 Sep) OR a raid target (`KnownEnemy`), which also
+  names the pull over its adds; your own spell on yourself (Cannibalize) is
+  no fight. `RaidKills`, `LootTracker`,
   `SkyQuests`, `QuestLines` (embedded `data/quest-lines.json`: multi-step
   weapon quests tracked as proven-condition SETS — kills, loot, sealed
   trades, said keywords; right-clicks are owner ticks. INTENT rule (17 Sep):

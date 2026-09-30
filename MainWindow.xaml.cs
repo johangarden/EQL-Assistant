@@ -263,6 +263,7 @@ public partial class MainWindow : Window
         _combat.SctEvent += OnSctEvent;
         _combat.PlayerDied += OnPlayerDied;
         _combat.FightArchived += OnFightArchived;
+        _combat.KnownEnemy = _raids.IsTarget; // one-word raid bosses (Dread) are mobs
         _engine = new TriggerEngine(_config, _alerts);
         _engine.LearnedDuration = name => _durations.LearnedMaxSeconds(name);
         _engine.LearnedFresh = name => _durations.ConsumeFresh(name);

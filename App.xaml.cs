@@ -4760,6 +4760,40 @@ public partial class App : Application
             p.ProcessLine($"[{Ts(42)}] You slash a royal guard for 9 points of damage.");
             Check("multi-pull label gets +N", p.TargetLabel is "a rat +1" or "a royal guard +1");
 
+            // One-word named mobs (30 Sep, rig log — Plane of Fear: Dread's
+            // fights read "a thought bleeder +3"): it hits you / takes your
+            // hits, so it is a mob; the groupmate beside it stays a player.
+            {
+                var q = new CombatParser { SelfName = "Thorrak" };
+                q.ProcessLine($"[{Ts(0)}] You have entered Plane of Fear.");
+                q.ProcessLine($"[{Ts(1)}] You slash Dread for 46 points of damage.");
+                q.ProcessLine($"[{Ts(2)}] Genantik slashes Dread for 135 points of damage.");
+                q.ProcessLine($"[{Ts(3)}] Dread hits YOU for 86 points of damage.");
+                q.ProcessLine($"[{Ts(4)}] A thought bleeder bashes YOU for 9 points of damage.");
+                q.ProcessLine($"[{Ts(5)}] You slash a thought bleeder for 30 points of damage.");
+                Check("named mob: a one-word boss that fights you is an enemy, the groupmate is not",
+                    q.IsEnemyName("Dread") && !q.IsEnemyName("Genantik") && q.TargetLabel == "Dread +1"
+                    && q.GetRows(false).First(r => r.Name == "Dread").Enemy);
+                q.ProcessLine($"[{Ts(6)}] You have entered Plane of Hate.");
+                Check("named mob: the learned name stays in its zone", !q.IsEnemyName("Dread"));
+                double mine = q.GetRows(false).FirstOrDefault(r => r.Name == "Thorrak").Total, inBefore = q.IncomingSelfTotal;
+                q.ProcessLine($"[{Ts(7)}] You hit yourself for 1540 points of unresistable damage by Cannibalization I.");
+                Check("cannibalize: hitting yourself is not your damage, nor incoming",
+                    q.GetRows(false).FirstOrDefault(r => r.Name == "Thorrak").Total == mine && q.IncomingSelfTotal == inBefore);
+                var solo = new CombatParser { SelfName = "Thorrak" };
+                solo.ProcessLine($"[{Ts(10)}] You hit yourself for 1540 points of unresistable damage by Cannibalization I.");
+                solo.Tick(DateTime.MaxValue);
+                Check("cannibalize: alone it opens no fight (the 1 s \"fight\" stubs)", !solo.HasData && solo.History.Count == 0);
+
+                // A raid target is a mob even when it never touches you, and names the pull over its adds.
+                var fq = new CombatParser { SelfName = "Thorrak", KnownEnemy = n => n.Equals("Fright", StringComparison.OrdinalIgnoreCase) };
+                fq.ProcessLine($"[{Ts(1)}] Genantik slashes Fright for 135 points of damage.");
+                fq.ProcessLine($"[{Ts(2)}] Fright hits Genantik for 80 points of damage.");
+                fq.ProcessLine($"[{Ts(3)}] You slash a thought bleeder for 400 points of damage.");
+                Check("named mob: a raid target names the fight over a harder-hit add",
+                    fq.TargetLabel == "Fright +1" && !fq.IsEnemyName("Genantik"));
+            }
+
             // Session skill tracker: accumulates ACROSS fights (1 hit + 1 miss in
             // the first fight, 2 more hits in this one) and ignores fight resets.
             Check("session skills accumulate across fights",
@@ -5246,6 +5280,9 @@ public partial class App : Application
             foreach (var kv in incAb.OrderByDescending(kv => kv.Value).Take(8))
                 report.AppendLine($"  {kv.Key}: {kv.Value:N0}");
             report.AppendLine($"--- loot: {lootUp} upgrades, {lootKept} kept, {lootSold} vendored for {LootTracker.FormatCoins(lootCopper)} ---");
+            report.AppendLine("--- last fights (newest first) ---");
+            foreach (var f in p.History.Take(20))
+                report.AppendLine($"  {f.EndedAt:dd MMM HH:mm:ss}  {f.Label}  {f.DurationSeconds:0}s");
 
             // Proc watcher probe (the Companion's table, on OUR log): lanes with
             // counts, damage/heal, and both rates over the session denominators.
