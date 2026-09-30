@@ -209,7 +209,7 @@ public sealed class FocusPlannerView : DockPanel
         var g = new Grid();
         foreach (var w in new[] { GridLength.Auto, GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star) }) g.ColumnDefinitions.Add(new ColumnDefinition { Width = w });
         g.RowDefinitions.Add(new RowDefinition());
-        string[] heads = { "SOCKET · ITEM", "NOW", "PLAN", "MOVE" };
+        string[] heads = { "SOCKET · ITEM", "NOW", "PLAN", "WHAT TO DO" };
         for (int c = 0; c < heads.Length; c++) Cell(g, new TextBlock { Text = heads[c], Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold }, 0, c);
         int row = 1;
         var byFam = plan.Sockets.Where(p => p.Plan is not null).ToDictionary(p => p.Plan!.Family, p => p);
@@ -234,10 +234,17 @@ public sealed class FocusPlannerView : DockPanel
             else if (!change && p.Plan is not null) { moveText = "keep"; mv.Inlines.Add(new Run(moveText) { Foreground = Faint }); }
             else if (p.Plan is not null)
             {
-                string from = p.Plan.InSocket is not null ? $"move from {p.Plan.InSocket}" : p.Plan.Place == "the key ring" ? "from the key ring" : $"take it out — {p.Plan.Place}";
-                moveText = $"{p.Plan.Name.Replace(" (Exaltation)", "")} — {from}";
-                mv.Inlines.Add(new Run(moveText) { Foreground = Green });
-                if (p.Now is not null) { mv.Inlines.Add(new LineBreak()); mv.Inlines.Add(new Run($"{p.Now.Name.Replace(" (Exaltation)", "")} → key ring") { Foreground = Warn }); moveText += " / out"; }
+                moveText = FocusPlanner.MoveText(p);
+                if (p.Now is not null)
+                {
+                    // Two steps, two colours: the one coming out, then the one going in.
+                    int cut = moveText.IndexOf(" Then: ", StringComparison.Ordinal);
+                    mv.Inlines.Add(new Run(moveText[..cut]) { Foreground = Warn });
+                    mv.Inlines.Add(new LineBreak());
+                    string rest = moveText[(cut + " Then: ".Length)..];
+                    mv.Inlines.Add(new Run("Then " + rest) { Foreground = Green });
+                }
+                else mv.Inlines.Add(new Run(moveText) { Foreground = Green });
             }
             else if (shadow)
             {
@@ -266,6 +273,8 @@ public sealed class FocusPlannerView : DockPanel
         }
         if (plan.Sockets.Count == 0)
             sp.Children.Add(new TextBlock { Text = "No open focus sockets — a worn item's Focus socket opens at +1.", Foreground = Hint, FontSize = 12 });
+        else if (plan.Moves > 0)
+            sp.Children.Add(new TextBlock { Text = "Green rows are the moves. In game: open the item, drag the exaltation out of its Focus socket (it lands on the key ring's Exaltations tab), then drag it into the other item's Focus socket.", Foreground = Faint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
         return sp;
     }
 

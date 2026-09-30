@@ -1,4 +1,4 @@
-namespace EQLOverlay.Services;
+﻿namespace EQLOverlay.Services;
 
 /// <summary>
 /// The focus planner (owner, 30 Sep: "with the current gear, what focus
@@ -25,9 +25,12 @@ public static class FocusPlanner
     public sealed record Socket(string Label, string SlotKey, string Item, string Location, int Line, bool AnySlot, bool Fixed = false);
 
     /// <summary>One focus exaltation you own, and where it sits now.</summary>
+    /// <summary>Host = the item it sits inside (worn or stored), Where = that item's place in plain words.</summary>
     public sealed record Exalt(string Name, string Key, FocusEffects.Family Family, FocusEffects.Tier Tier, IReadOnlyList<string> Slots,
-        string Classes, string Place, string? InSocket, int Line, bool Fixed = false)
+        string Classes, string Place, string? InSocket, int Line, bool Fixed = false, string Host = "", string Where = "")
     {
+        /// <summary>The name without the " (Exaltation)" tail.</summary>
+        public string Short => Name.Replace(" (Exaltation)", "");
         public string TierLabel => FocusEffects.TierShort(Family, Tier.TierNum);
         public string Effect => Tier.Effect;
     }
@@ -149,26 +152,29 @@ public static class FocusPlanner
                     slots = SlotFinder.SlotKeys(new ItemStats.Record { Slot = iref.Slot });
                 if (classes.Length == 0 && iref is not null) classes = iref.Classes;
             }
-            string? inSocket = null; string place;
+            string? inSocket = null; string place, hostName = "", where = "";
             if (fixedFocus)
             {
                 var s = sockets.First(s => s.Fixed && s.Line == r.Line);
-                inSocket = s.Label; place = $"on {r.Name} (worn, +0)";
+                inSocket = s.Label; place = $"on {r.Name} (worn, +0)"; hostName = r.Name; where = "worn";
             }
             else if (r.Lane == "worn" && r.Host.Length > 0 && r.Location.EndsWith(FocusSocketSuffix, StringComparison.Ordinal))
             {
                 var host = sockets.LastOrDefault(s => !s.Fixed && s.Line < r.Line && s.Item == r.Host && r.Location == s.Location + FocusSocketSuffix);
-                inSocket = host?.Label; place = host is not null ? $"in {host.Label}" : $"in {r.Host} (worn)";
+                inSocket = host?.Label; place = host is not null ? $"in {host.Label}" : $"in {r.Host} (worn)"; hostName = r.Host; where = "worn";
             }
             else if (r.Lane == "keyring") place = "the key ring";
             else if (r.Host.Length > 0)
-                place = $"in {r.Host} · {SlotFinder.PrettyLocation(InventoryStore.SplitBase(r.Location) + HostChain(r.Location), r.Lane)}";
-            else place = SlotFinder.PrettyLocation(r.Location, r.Lane);
+            {
+                hostName = r.Host; where = SlotFinder.PrettyLocation(InventoryStore.SplitBase(r.Location) + HostChain(r.Location), r.Lane);
+                place = $"in {hostName} · {where}";
+            }
+            else { where = SlotFinder.PrettyLocation(r.Location, r.Lane); place = where; }
             var first = hits[0];
-            pool.Add(new Exalt(r.Name, FocusEffects.ItemKey(r.Name), first.Fam, first.Tier, slots, classes, place, inSocket, r.Line, fixedFocus));
+            pool.Add(new Exalt(r.Name, FocusEffects.ItemKey(r.Name), first.Fam, first.Tier, slots, classes, place, inSocket, r.Line, fixedFocus, hostName, where));
             // A rare item carrying two foci: the same physical exaltation, a row per family.
             foreach (var (fam, tier) in hits.Skip(1))
-                pool.Add(new Exalt(r.Name, FocusEffects.ItemKey(r.Name), fam, tier, slots, classes, place, inSocket, r.Line, fixedFocus));
+                pool.Add(new Exalt(r.Name, FocusEffects.ItemKey(r.Name), fam, tier, slots, classes, place, inSocket, r.Line, fixedFocus, hostName, where));
         }
         return pool;
     }
@@ -299,6 +305,20 @@ public static class FocusPlanner
             }
         }
         return new Plan(placements, families, hunts, conflicts, foreign, unplaceable, pool, moves, exact);
+    }
+
+    /// <summary>The move in plain words (owner, 30 Sep: "make the move note more explanatory"):
+    /// what to take out, where it is now, what it goes into.</summary>
+    public static string MoveText(Placement p)
+    {
+        if (p.Plan is null) return "";
+        var e = p.Plan;
+        string into = $"socket it into {p.Socket.Item} ({p.Socket.Label})";
+        string move = e.InSocket is not null ? $"Take the {e.Short} exaltation out of {e.Host} ({e.InSocket}, worn) and {into}."
+            : e.Place == "the key ring" ? $"Take the {e.Short} exaltation from the key ring and {into}."
+            : e.Host.Length > 0 ? $"Pull the {e.Short} exaltation out of {e.Host} ({e.Where}) and {into}."
+            : $"Take the {e.Short} exaltation from {e.Where} and {into}.";
+        return p.Now is null ? move : $"First take the {p.Now.Short} exaltation out of {p.Socket.Item} — it goes back to the key ring. Then: {char.ToLowerInvariant(move[0])}{move[1..]}";
     }
 
     private static string Pretty(string key) => BisFinder.Slots.FirstOrDefault(s => s.Key == key).Label ?? key;

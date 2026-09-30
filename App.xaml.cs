@@ -3731,6 +3731,9 @@ public partial class App : Application
             && PlanIn("Face").StartsWith("Polished Mithril Mask") && PlanIn("Secondary").StartsWith("Nisch Mas Ilkvel")
             && PlanIn("Shoulders").StartsWith("Gilded Cloth") && PlanIn("Chest").StartsWith("Green Silken Drape") && PlanIn("Feet").StartsWith("Golden Efreeti Boots")
             && PlanIn("Primary") == "");
+        Check("focus: the move reads as a sentence — what to take out, where it is, what it goes into",
+            FocusPlanner.MoveText(plan.Sockets.First(p => p.Socket.Label == "Shoulders")) == "Pull the Gilded Cloth exaltation out of Gilded Cloth +3 (Bank 4) and socket it into Pauldrons of Power +1 (Shoulders)."
+            && FocusPlanner.MoveText(plan.Sockets.First(p => p.Socket.Label == "Feet")) == "Take the Golden Efreeti Boots exaltation from the key ring and socket it into Lustrous Russet Boots +1 (Feet).");
         Check("focus: the head's Mana Preservation I is shadowed by the II in Secondary; Improved Healing (a Need) goes without and Face is the conflict; Spell Haste II is worth hunting",
             fp.MoveLinesForTest.Any(l => l.StartsWith("Head: shadowed by Mana Preservation II in Secondary", StringComparison.Ordinal))
             && plan.NeedsPlaced == 3 && plan.Needs == 4 && plan.Conflicts.Any(c => c.Socket.Label == "Face" && c.Wanting.Any(e => e.Family.Name == "Improved Healing"))
