@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -75,7 +75,12 @@ public static class InvocationPlanner
         public List<(DateTime Start, DateTime End)> Fights { get; } = new();
         public List<(DateTime At, int Amount)> Damage { get; } = new();
         public List<DateTime> OutOfMana { get; } = new();
-        /// <summary>Your detrimental casts and the resists they drew, by the invocation that was up.</summary>
+        /// <summary>Your DAMAGE spells' tries on a mob and the resists they drew, by the
+        /// invocation that was up — one try per hit or resist line a cast drew (an AE on
+        /// four mobs is four; a DoT's ticks are one), so "X resisted your Y!" (printed per mob) and the landings
+        /// count in the same unit. Songs and non-damage spells stay out: a song
+        /// prints a resist every pulse off one begin line (Largo's Melodic
+        /// Binding made 49% of a Wizard's night, rig log 29 Sep).</summary>
         public Dictionary<string, (int Casts, int Resists)> ResistsBy { get; } = new(StringComparer.OrdinalIgnoreCase);
         public int Lines { get; set; }
     }
@@ -84,9 +89,11 @@ public static class InvocationPlanner
     private static readonly Regex InvRx = new(@"^You begin reciting the (?<i>.+?) invocation\.$", RegexOptions.Compiled);
     private static readonly Regex CastRx = new(@"^You begin casting (?<s>.+?)\.$", RegexOptions.Compiled);
     private static readonly Regex IntrRx = new(@"^Your (?<s>.+?) spell is interrupted\.$", RegexOptions.Compiled);
-    private static readonly Regex HitRx = new(@"^You hit .+? for (?<n>\d+) points of .+? damage by ", RegexOptions.Compiled);
-    private static readonly Regex TickRx = new(@"^.+? has taken (?<n>\d+) damage from your ", RegexOptions.Compiled);
-    private static readonly Regex ResistRx = new(@"^.+? resisted your (?<s>.+?)!$", RegexOptions.Compiled);
+    private static readonly Regex HitRx = new(@"^You hit (?<t>.+?) for (?<n>\d+) points of .+? damage by (?<s>.+?)\.", RegexOptions.Compiled);
+    private static readonly Regex TickRx = new(@"^(?<t>.+?) has taken (?<n>\d+) damage from your (?<s>.+?)\.", RegexOptions.Compiled);
+    private static readonly Regex ResistRx = new(@"^(?<t>.+?) resisted your (?<s>.+?)!$", RegexOptions.Compiled);
+    /// <summary>A cast's landings and resists arrive within this of its begin line.</summary>
+    private const double TryWindowSec = 12;
     private const string OomLine = "Insufficient Mana to cast this spell!";
     public const double FightGapSec = 15;
 
@@ -113,6 +120,17 @@ public static class InvocationPlanner
         var st = new Stretch { From = from, To = to };
         string inv = "";
         var marks = new List<DateTime>();
+        // Per damage spell: when its latest cast began and the mobs it has reached.
+        var tries = new Dictionary<string, (DateTime At, HashSet<string> Mobs)>(StringComparer.OrdinalIgnoreCase);
+        // Every hit line and resist line is one try (an AE's waves and twins print
+        // one each way); a DoT's ticks are ONE try on that mob.
+        void Try(string spell, string mob, DateTime t, bool resisted, bool tick = false)
+        {
+            if (!tries.TryGetValue(SpellDurations.BaseKey(spell), out var c) || (t - c.At).TotalSeconds > TryWindowSec) return;
+            if (!c.Mobs.Add(mob.Trim().ToLowerInvariant()) && tick) return;
+            var r = st.ResistsBy.GetValueOrDefault(inv);
+            st.ResistsBy[inv] = (r.Casts + 1, r.Resists + (resisted ? 1 : 0));
+        }
         foreach (var line in lines)
         {
             var m = TsRx.Match(line);
@@ -128,11 +146,8 @@ public static class InvocationPlanner
             {
                 string s = x.Groups["s"].Value;
                 st.Casts.Add(new Cast(t, SpellDurations.BaseName(s), SpellYield.RankOf(s), true, inv));
-                if (library?.FindByBaseName(SpellDurations.BaseName(s)) is { Bucket: "Debuff" })
-                {
-                    var r = st.ResistsBy.GetValueOrDefault(inv);
-                    st.ResistsBy[inv] = (r.Casts + 1, r.Resists);
-                }
+                if (library is null || library.FindByBaseName(SpellDurations.BaseName(s)) is { } sp && SpellEfficiency.IsDamage(sp.Effect))
+                    tries[SpellDurations.BaseKey(s)] = (t, new HashSet<string>(StringComparer.Ordinal));
             }
             else if (b.EndsWith(" spell is interrupted.", StringComparison.Ordinal) && (x = IntrRx.Match(b)).Success)
             {
@@ -141,14 +156,11 @@ public static class InvocationPlanner
                     if (st.Casts[i].Landed && SpellDurations.BaseKey(st.Casts[i].Spell) == key) { st.Casts[i] = st.Casts[i] with { Landed = false }; break; }
             }
             else if (b.StartsWith("You hit ", StringComparison.Ordinal) && (x = HitRx.Match(b)).Success)
-            { st.Damage.Add((t, int.Parse(x.Groups["n"].Value))); marks.Add(t); }
+            { st.Damage.Add((t, int.Parse(x.Groups["n"].Value))); marks.Add(t); Try(x.Groups["s"].Value, x.Groups["t"].Value, t, false); }
             else if (b.Contains(" damage from your ", StringComparison.Ordinal) && (x = TickRx.Match(b)).Success)
-            { st.Damage.Add((t, int.Parse(x.Groups["n"].Value))); marks.Add(t); }
-            else if (b.EndsWith("!", StringComparison.Ordinal) && b.Contains(" resisted your ", StringComparison.Ordinal) && ResistRx.IsMatch(b))
-            {
-                var r = st.ResistsBy.GetValueOrDefault(inv);
-                st.ResistsBy[inv] = (r.Casts, r.Resists + 1);
-            }
+            { st.Damage.Add((t, int.Parse(x.Groups["n"].Value))); marks.Add(t); Try(x.Groups["s"].Value, x.Groups["t"].Value, t, false, tick: true); }
+            else if (b.EndsWith("!", StringComparison.Ordinal) && b.Contains(" resisted your ", StringComparison.Ordinal) && (x = ResistRx.Match(b)).Success)
+                Try(x.Groups["s"].Value, x.Groups["t"].Value, t, true);
             else if (b == OomLine) st.OutOfMana.Add(t);
             else if (b.Contains(" YOU for ", StringComparison.Ordinal) || b.Contains(" YOU, but ", StringComparison.Ordinal)
                      || b.StartsWith("You slash ", StringComparison.Ordinal) || b.StartsWith("You try to ", StringComparison.Ordinal))
@@ -221,9 +233,9 @@ public static class InvocationPlanner
         {
             double b = (double)rest.Resists / rest.Casts, o = (double)oc.Resists / oc.Casts;
             ocFactor = Math.Max(0.5, (1 - o) / Math.Max(0.01, 1 - b));
-            resistNote = $"your resists here: {(b * 100).ToString("0.0", CultureInfo.InvariantCulture)}% → {(o * 100).ToString("0.0", CultureInfo.InvariantCulture)}% in Over Channel";
+            resistNote = $"your damage spells' resists here, per mob they reached: {(b * 100).ToString("0.0", CultureInfo.InvariantCulture)}% ({rest.Resists} of {rest.Casts}) → {(o * 100).ToString("0.0", CultureInfo.InvariantCulture)}% in Over Channel ({oc.Resists} of {oc.Casts})";
         }
-        else resistNote = "too few Over Channel casts here to measure its resists — scored as no change";
+        else resistNote = $"too few Over Channel tries here to measure its resists ({oc.Casts} of {MinResistSample}) — scored as no change";
 
         // The floor the log proves: in fights you didn't run dry in, what you spent
         // (as the invocation that was up priced it) past a full pool came from regen.

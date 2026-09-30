@@ -3507,6 +3507,22 @@ public partial class App : Application
             && st.Casts.First().Rank == 10 && st.Casts.First().Invocation == "Recovery"
             && st.Casts.Last().Invocation == "Over Channel" && st.ResistsBy["Recovery"].Resists == 5 && st.ResistsBy["Over Channel"].Resists == 1
             && lib.FindByName("Odium")?.Mana > 0);
+        // Resists (30 Sep, rig log): per mob a damage cast reached; songs and snares stay out.
+        {
+            string L(double sec, string body) => $"[{t0.AddSeconds(sec).ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+            var rl = new List<string> { L(-60, "You begin reciting the recovery invocation.") };
+            rl.Add(L(0, "You begin casting Frost Storm."));
+            rl.Add(L(3, "You hit a zol ghoul knight for 522 points of cold damage by Frost Storm."));
+            rl.Add(L(3, "You hit a zol ghoul knight for 522 points of cold damage by Frost Storm."));
+            rl.Add(L(3, "You hit a dar ghoul knight for 522 points of cold damage by Frost Storm."));
+            rl.Add(L(3, "A wan ghoul knight resisted your Frost Storm!"));
+            rl.Add(L(4, "You begin singing Largo's Melodic Binding."));
+            for (int i = 0; i < 6; i++) rl.Add(L(5 + i * 6, "A zol ghoul knight resisted your Largo's Melodic Binding!"));
+            rl.Add(L(40, "A dar ghoul knight resisted your Frost Storm!")); // no cast of it this close: not a try
+            var rs = InvocationPlanner.Parse(rl, t0.AddMinutes(-1), t0.AddMinutes(5), lib);
+            Check("inv: resists count per mob a damage cast reached — an AE's four lines are four tries, one resisted; song pulses stay out",
+                rs.ResistsBy.GetValueOrDefault("Recovery") == (4, 1));
+        }
         var poor = InvocationPlanner.Replay(st, lib, new[] { "SHD", "SHM", "ENC" }, 0, 2600);
         var rich = InvocationPlanner.Replay(st, lib, new[] { "SHD", "SHM", "ENC" }, 400, 20000);
         Check("inv: the log proves a regen floor when none is typed, and uses it",
@@ -5672,7 +5688,8 @@ public partial class App : Application
             if (page.EndsWith("invfile", StringComparison.OrdinalIgnoreCase) && Environment.GetEnvironmentVariable("EQL_INV_LOG") is { Length: > 0 } invLog)
             {
                 var end = DateTime.ParseExact(Environment.GetEnvironmentVariable("EQL_INV_END") ?? "", "yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
-                lw.InvUseLinesForTest(File.ReadAllLines(invLog).ToList(), end, int.TryParse(Environment.GetEnvironmentVariable("EQL_INV_REGEN"), out int rg) ? rg : 14, 2600);
+                lw.InvUseLinesForTest(File.ReadAllLines(invLog).ToList(), end, int.TryParse(Environment.GetEnvironmentVariable("EQL_INV_REGEN"), out int rg) ? rg : 14,
+                    int.TryParse(Environment.GetEnvironmentVariable("EQL_INV_POOL"), out int pl) ? pl : 2600);
             }
             else lw.InvUseLinesForTest(InvocationDemo(new DateTime(2026, 9, 21, 22, 30, 0)), new DateTime(2026, 9, 21, 22, 50, 0), 14, 2600);
             mgr = lw;
