@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -196,6 +196,13 @@ public sealed class SlotFinderView : DockPanel
                 });
             _body.Children.Add(wp);
         }
+        var unknown = SlotFinder.Unknown(_rows, _stats);
+        if (unknown.Count > 0)
+            _body.Children.Add(new TextBlock
+            {
+                Foreground = Hint, FontSize = 11.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0),
+                Text = $"{unknown.Count} item{(unknown.Count == 1 ? "" : "s")} the wiki table doesn't know, so {(unknown.Count == 1 ? "it isn't" : "they aren't")} under any slot: {string.Join(", ", unknown.Take(8))}{(unknown.Count > 8 ? ", …" : "")}. Bags, food, quest pieces and brand-new items land here.",
+            });
         _body.Children.Add(new TextBlock
         {
             Foreground = Faint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0),

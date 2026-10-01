@@ -3673,6 +3673,8 @@ public partial class App : Application
         "Chest-Slot7\tEmpty\t0\t0\t0",
         "Primary\tThe Baron's Blade +5\t12\t1\t10",
         "Primary-Slot7\tEmpty\t0\t0\t0",
+        "Hands\tSlime Blood of Cazic-Thule +7\t19\t1\t10",
+        "Hands-Slot7\tEmpty\t0\t0\t0",
         "General 1\tBackpack\t13\t1\t8",
         "General 1-Slot1\tRing of Pureblood +2\t14\t1\t10",
         "Bank1\tInsidious Manacle +2\t15\t1\t10",
@@ -3716,6 +3718,11 @@ public partial class App : Application
         Check("slot finder: a pick in the picker redraws the board and is remembered for the days /who hasn't said",
             sf.YouPickerForTest.Combo.SequenceEqual(new[] { "SHM", "ENC", "DRU" }) && sf.GroupCountsForTest[SlotFinder.Fit.You] == 4
             && new ToolPrefs(Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json")).Get("you:demo_paineel") == "SHM/ENC/DRU");
+        // The hyphen (1 Oct): the game's "Cazic-Thule" finds the wiki's "Cazic Thule" page, and the Fear gauntlets stand under Hands.
+        var allSlots = SlotFinder.Build(InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows, new ItemStats());
+        Check("slot finder: a hyphen in the dump's name finds the wiki's hyphen-less page — Slime Blood of Cazic-Thule stands worn under Hands",
+            new ItemStats().Lookup("Slime Blood of Cazic-Thule +7") is { Slot: "HANDS", Ac: 16 }
+            && allSlots.First(s => s.Key == "HANDS").Items.Any(i => i.Name.StartsWith("Slime Blood") && i.WornIn("HANDS")));
         var wristItems = SlotFinder.Build(tw.SlotsForTest is not null ? InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows : new(), new ItemStats()).First(s => s.Key == "WRIST").Items;
         Check("slot finder: the worn bracer reads worn in Wrist, the bank one reads 'Bank 1', the tally of the rest names WAR",
             wristItems.First(i => i.Name.StartsWith("Pristine")).WornIn("WRIST") && !wristItems.First(i => i.Name.StartsWith("Insidious")).Worn
@@ -3728,8 +3735,8 @@ public partial class App : Application
         var fp = tw.FocusForTest!;
         var plan = fp.PlanForTest!;
         string PlanIn(string sock) => plan.Sockets.First(p => p.Socket.Label == sock).Plan?.Name ?? "";
-        Check("focus: 10 open sockets; Face keeps Improved Damage II over Emissary Mask's decayed Healing I; Secondary keeps Mana Preservation II; Shoulders, Chest and Feet get filled — 3 moves",
-            plan.Exact && plan.Sockets.Count(p => !p.Socket.Fixed) == 10 && plan.Moves == 3
+        Check("focus: 11 open sockets; Face keeps Improved Damage II over Emissary Mask's decayed Healing I; Secondary keeps Mana Preservation II; Shoulders, Chest and Feet get filled — 3 moves",
+            plan.Exact && plan.Sockets.Count(p => !p.Socket.Fixed) == 11 && plan.Moves == 3
             && PlanIn("Face").StartsWith("Polished Mithril Mask") && PlanIn("Secondary").StartsWith("Nisch Mas Ilkvel")
             && PlanIn("Shoulders").StartsWith("Gilded Cloth") && PlanIn("Chest").StartsWith("Green Silken Drape") && PlanIn("Feet").StartsWith("Golden Efreeti Boots")
             && PlanIn("Primary") == "");

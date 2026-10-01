@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -53,19 +53,31 @@ public sealed class ItemStats
     };
 
     private readonly Dictionary<string, Record> _items;
+    // The same keys with hyphens read as spaces: the game says "Slime Blood of
+    // Cazic-Thule", the wiki page "Slime Blood of Cazic Thule" (owner, 1 Oct —
+    // the Fear gauntlets missing from the BiS finder).
+    private readonly Dictionary<string, Record> _loose = new(StringComparer.Ordinal);
 
     public int Count => _items.Count;
 
     public ItemStats()
     {
         _items = Load();
+        foreach (var (key, rec) in _items)
+            _loose.TryAdd(Loose(key), rec);
     }
 
+    private static string Loose(string key) => string.Join(' ', key.Replace('-', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
     /// <summary>The wiki record for an item name (any spelling the dump
-    /// uses — +N, "(Exaltation)", backticks and apostrophes all fold), or
-    /// null when the wiki has no page for it.</summary>
-    public Record? Lookup(string itemName) =>
-        _items.TryGetValue(FocusEffects.ItemKey(itemName), out var rec) ? rec : null;
+    /// uses — +N, "(Exaltation)", backticks and apostrophes all fold, and a
+    /// hyphen reads as a space), or null when the wiki has no page for it.</summary>
+    public Record? Lookup(string itemName)
+    {
+        string key = FocusEffects.ItemKey(itemName);
+        if (_items.TryGetValue(key, out var rec)) return rec;
+        return _loose.TryGetValue(Loose(key), out rec) ? rec : null;
+    }
 
     /// <summary>The wiki says it's a bag ("Capacity: N" in the flags line).
     /// Catches what the dump cannot: an ALL-EMPTY 10-slot bag (Kavruul's)

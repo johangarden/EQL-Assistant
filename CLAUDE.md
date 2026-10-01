@@ -214,7 +214,9 @@ FINDER (30 Sep, `SlotFinder` + `SlotFinderView`: every wearable dump item
 indexed by the slot it fits — a 1H under Primary AND Secondary — copies folded
 by name with every location (no place filter — the place on each row is
 enough), your combo's items gold, the rest folded with a per-class tally; a
-16-class strip per row), the FOCUS
+16-class strip per row; items the wiki table doesn't know are NAMED under
+the table, never hidden — and `ItemStats.Lookup` reads a hyphen as a space,
+the game's "Cazic-Thule" being the wiki's "Cazic Thule", 1 Oct), the FOCUS
 PLANNER (30 Sep, `FocusPlanner` + `FocusPlannerView`: eqlwiki's Exaltations
 rules — a worn item's Focus socket (Slot7) opens at +1, an exaltation keeps
 its source item's SLOT (and, assumed, its classes), the same focus never

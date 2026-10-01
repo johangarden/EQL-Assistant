@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 namespace EQLOverlay.Services;
 
@@ -124,6 +124,22 @@ public static class SlotFinder
             result.Add(new SlotList(key, key == "FINGER" ? "Fingers" : label, items));
         }
         return result;
+    }
+
+    /// <summary>Items in the listed places the wiki table has no record for —
+    /// shown, not hidden (owner, 1 Oct: "why isn't it part of the recommendation?").</summary>
+    public static List<string> Unknown(IEnumerable<InventoryStore.CarryRow> rows, ItemStats stats)
+    {
+        var laneSet = new HashSet<string>(Lanes, StringComparer.Ordinal);
+        var names = new List<string>();
+        foreach (var r in rows)
+        {
+            if (!laneSet.Contains(r.Lane) || r.IsContainer || InventoryStore.IsExaltation(r.Name)) continue;
+            if (r.Name.Equals("Empty", StringComparison.OrdinalIgnoreCase) || stats.Lookup(r.Name) is not null) continue;
+            string n = StripTier(r.Name);
+            if (!names.Contains(n, StringComparer.OrdinalIgnoreCase)) names.Add(n);
+        }
+        return names;
     }
 
     private static int Rank(string lane) => Array.IndexOf(Lanes, lane) is var i && i >= 0 ? i : Lanes.Length;
