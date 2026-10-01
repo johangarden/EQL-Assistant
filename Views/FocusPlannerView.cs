@@ -36,6 +36,7 @@ public sealed class FocusPlannerView : DockPanel
     private Dictionary<string, FocusPlanner.Want> _wants = new(StringComparer.OrdinalIgnoreCase);
     private readonly StackPanel _top = new();
     private readonly StackPanel _body = new();
+    private readonly ContentControl _headRight = new() { VerticalAlignment = VerticalAlignment.Top }; // the verdict, beside the picker
 
     public FocusPlannerView()
     {
@@ -87,14 +88,20 @@ public sealed class FocusPlannerView : DockPanel
         _pick.Set(_combo);
         _pick.Hint = _who.Length > 0 ? $"Prefilled from /who ({_who}) — change it for a what-if; each combo keeps its own marks." : _combo.Count > 0 ? "No /who yet — your last pick; type /who in game to prefill." : "No /who yet — pick your classes, or type /who in game.";
         if (_pick.Parent is Panel pp) pp.Children.Remove(_pick);
-        var bar = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
+        if (_headRight.Parent is Panel hp) hp.Children.Remove(_headRight);
+        // The picker on the left, the verdict beside it (owner, 1 Oct: the free space next to the picker).
+        var bar = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         bar.Children.Add(_pick);
+        Grid.SetColumn(_headRight, 1);
+        bar.Children.Add(_headRight);
         _top.Children.Add(bar);
     }
 
     private void BuildBody()
     {
-        _body.Children.Clear(); MoveLinesForTest.Clear();
+        _body.Children.Clear(); MoveLinesForTest.Clear(); _headRight.Content = null;
         if (_rows is null || _focus is null || _stats is null) return;
         if (Combo.Count == 0)
         {
@@ -117,7 +124,7 @@ public sealed class FocusPlannerView : DockPanel
         else if (_level > 0) line += " Every focus in the plan runs at full strength at your level.";
         if (!plan.Exact) line += " (Too many ways to lay this out to try them all — this is the greedy plan.)";
         v.Children.Add(new TextBlock { Text = line, Foreground = Dim, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
-        _body.Children.Add(new Border { Background = Surface, BorderBrush = GoldEdge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 8, 12, 10), Margin = new Thickness(0, 0, 0, 10), Child = v });
+        _headRight.Content = new Border { Background = Surface, BorderBrush = GoldEdge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 8, 12, 10), Margin = new Thickness(0, 0, 0, 8), Child = v };
 
         _body.Children.Add(Panel("WHAT YOU WANT", "Need beats any number of nice-to-haves · the best tier you own · a tier past its level cap counts at part strength", Families(plan)));
         _body.Children.Add(Panel("THE PLAN · SOCKET BY SOCKET", $"{plan.Sockets.Count(s => !s.Socket.Fixed)} open sockets · {plan.Moves} move{(plan.Moves == 1 ? "" : "s")}", PlanTable(plan)));
