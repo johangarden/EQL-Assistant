@@ -237,6 +237,8 @@ public sealed class SlotFinderView : DockPanel
     private static UIElement WhereCell(SlotFinder.Item it)
     {
         var sp = new StackPanel();
+        // Which copy is which only matters when the copies differ in tier (owner, 1 Oct: "the +3?").
+        bool tiersDiffer = it.Copies.Select(c => c.Tier).Distinct().Count() > 1;
         foreach (var c in it.Copies)
         {
             var tb = new TextBlock { FontSize = 11.5, Margin = new Thickness(0, 0, 0, 1) };
@@ -244,7 +246,7 @@ public sealed class SlotFinderView : DockPanel
             var lane = new Border { BorderBrush = laneFg, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3), Padding = new Thickness(4, 0, 4, 0), Child = new TextBlock { Text = SlotFinder.LaneLabel(c.Lane).ToUpperInvariant(), FontSize = 8.5, FontWeight = FontWeights.Bold, Foreground = laneFg } };
             tb.Inlines.Add(new InlineUIContainer(lane) { BaselineAlignment = BaselineAlignment.Center });
             tb.Inlines.Add(new Run("  " + SlotFinder.PrettyLocation(c.Location, c.Lane)) { Foreground = Dim, FontWeight = FontWeights.SemiBold });
-            tb.Inlines.Add(new Run($"  +{c.Tier}") { Foreground = Faint });
+            if (tiersDiffer) tb.Inlines.Add(new Run($"  — the +{c.Tier}") { Foreground = Faint });
             if (c.Count > 1) tb.Inlines.Add(new Run($"  ×{c.Count}") { Foreground = Faint });
             sp.Children.Add(tb);
         }

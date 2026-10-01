@@ -72,7 +72,9 @@ public static class SlotFinder
     /// "Bank 3 · slot 1", "Shared bank 1 · slot 2", "Bag 8 · slot 6", "Depot 1", "Storage".</summary>
     public static string PrettyLocation(string location, string lane)
     {
-        if (lane == "storage") return "Storage";
+        // The key ring's Storage has no slots in the dump — "#12" is the item's place in
+        // that list, which is the order the in-game Storage window shows (as far as we know).
+        if (lane == "storage") return location.StartsWith("#", StringComparison.Ordinal) ? $"Storage · {location}" : "Storage";
         if (lane == "worn") return InventoryStore.SplitBase(location);
         string b = InventoryStore.SplitBase(location);
         string slot = location.Length > b.Length ? Regex.Replace(location[b.Length..], @"-Slot(\d+)", " · slot $1").TrimStart(' ', '·') : "";
@@ -92,8 +94,10 @@ public static class SlotFinder
     {
         var laneSet = new HashSet<string>(Lanes, StringComparer.Ordinal);
         var bySlot = BisFinder.Slots.ToDictionary(s => s.Key, _ => new Dictionary<string, Item>(StringComparer.Ordinal));
-        foreach (var r in rows)
+        int storageIdx = 0;
+        foreach (var r in rows.OrderBy(r => r.Line))
         {
+            if (r.Lane == "storage") storageIdx++;
             if (!laneSet.Contains(r.Lane) || r.IsContainer || InventoryStore.IsExaltation(r.Name)) continue;
             if (r.Name.Equals("Empty", StringComparison.OrdinalIgnoreCase)) continue;
             var rec = stats.Lookup(r.Name);
@@ -108,7 +112,7 @@ public static class SlotFinder
                 // A worn item is worn only in the slot it is IN (a 1H in Secondary is not
                 // worn under Primary); an Any Slot item is worn, but in no listed slot.
                 string wk = wornKey.Length == 0 ? "" : wornKey == "ANY" ? "ANY" : wornKey == key || keys.Count == 1 ? key : "";
-                var copy = new Copy(r.Location, r.Lane, tier, Math.Max(1, r.Count), wk);
+                var copy = new Copy(r.Lane == "storage" ? $"#{storageIdx}" : r.Location, r.Lane, tier, Math.Max(1, r.Count), wk);
                 var dict = bySlot[key];
                 if (dict.TryGetValue(itemKey, out var have)) have.Copies.Add(copy);
                 else dict[itemKey] = new Item(rec.Name.Length > 0 ? rec.Name : StripTier(r.Name), itemKey, rec, new List<Copy> { copy });

@@ -309,8 +309,10 @@ public static class BisFinder
         // (slot key) → candidates; a physical copy per row, folded by name+tier.
         var bySlot = Slots.ToDictionary(s => s.Key, _ => new Dictionary<string, Candidate>(StringComparer.Ordinal));
 
-        foreach (var r in rows)
+        int storageIdx = 0; // the key ring's Storage list has no slots — its place in the list stands in
+        foreach (var r in rows.OrderBy(r => r.Line))
         {
+            if (r.Lane == "storage") storageIdx++;
             if (!laneSet.Contains(r.Lane)) continue;
             if (r.IsContainer || r.Name.EndsWith("(Exaltation)", StringComparison.Ordinal)) continue;
             if (r.Name.Equals("Empty", StringComparison.OrdinalIgnoreCase)) continue;
@@ -347,7 +349,7 @@ public static class BisFinder
                     dict[fold] = have with { Copies = have.Copies + Math.Max(1, r.Count) };
                     continue;
                 }
-                dict[fold] = new Candidate(r.Name, tier, r.Location, r.Lane, wornHere, allowed,
+                dict[fold] = new Candidate(r.Name, tier, r.Lane == "storage" ? $"#{storageIdx}" : r.Location, r.Lane, wornHere, allowed,
                     string.IsNullOrWhiteSpace(rec.Classes), twoHanded, Math.Max(1, r.Count),
                     score, scaled, rec);
             }
