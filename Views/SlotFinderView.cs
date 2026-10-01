@@ -101,14 +101,16 @@ public sealed class SlotFinderView : DockPanel
             int yours = s.Items.Count(i => SlotFinder.FitOf(i, _you, Array.Empty<string>()) == SlotFinder.Fit.You);
             bool on = s.Key == current.Key;
             var tb = new TextBlock { FontSize = 12, FontWeight = FontWeights.SemiBold };
+            // "11/27": yours in gold over everything that fits, dimmed (owner, 1 Oct).
             tb.Inlines.Add(new Run(s.Label) { Foreground = on ? Gold : Hint });
-            tb.Inlines.Add(new Run($"  {s.Items.Count}") { Foreground = on ? GoldDim : Faint, FontSize = 10.5 });
-            if (yours > 0) tb.Inlines.Add(new Run($"  {yours}✓") { Foreground = Gold, FontSize = 10.5 });
+            tb.Inlines.Add(new Run("  "));
+            if (_you.Count > 0) tb.Inlines.Add(new Run(yours.ToString()) { Foreground = Gold, FontSize = 10.5 });
+            tb.Inlines.Add(new Run((_you.Count > 0 ? "/" : "") + s.Items.Count) { Foreground = Faint, FontSize = 10.5 });
             var b = new Border
             {
                 Child = tb, CornerRadius = new CornerRadius(5), BorderThickness = new Thickness(1), Padding = new Thickness(9, 4, 9, 5), Margin = new Thickness(0, 0, 5, 5), Cursor = Cursors.Hand,
                 Background = on ? GoldBg : Surface, BorderBrush = on ? GoldEdge : Line,
-                ToolTip = $"{s.Items.Count} item{(s.Items.Count == 1 ? "" : "s")} fit {s.Label} · {yours} your combo can wear",
+                ToolTip = $"{yours} of the {s.Items.Count} item{(s.Items.Count == 1 ? "" : "s")} that fit {s.Label} are wearable by {(_you.Count > 0 ? string.Join("/", _you) : "your combo")}",
             };
             string key = s.Key;
             b.MouseLeftButtonDown += (_, e) => { e.Handled = true; _slot = key; Save(); BuildTop(); BuildBody(); };
