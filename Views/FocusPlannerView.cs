@@ -214,10 +214,12 @@ public sealed class FocusPlannerView : DockPanel
             bool change = p.Plan is not null && (p.Now is null || p.Now.Line != p.Plan.Line);
             g.RowDefinitions.Add(new RowDefinition());
             if (change) { var band = new Border { Background = ChangeBg, BorderBrush = Green, BorderThickness = new Thickness(3, 0, 0, 0) }; Grid.SetRow(band, row); Grid.SetColumnSpan(band, 4); g.Children.Add(band); }
-            var sock = new TextBlock();
-            sock.Inlines.Add(new Run(p.Socket.Label) { Foreground = Text, FontSize = 12, FontWeight = FontWeights.SemiBold });
-            sock.Inlines.Add(new LineBreak());
-            sock.Inlines.Add(new Run(p.Socket.Item) { Foreground = Faint, FontSize = 10.5 });
+            var sock = new StackPanel();
+            sock.Children.Add(new TextBlock { Text = p.Socket.Label, Foreground = Text, FontSize = 12, FontWeight = FontWeights.SemiBold });
+            var itemLine = ItemChips.FromDumpName(p.Socket.Item, _stats!, Hint);
+            itemLine.Margin = new Thickness(0, 2, 0, 0);
+            foreach (var ch in itemLine.Children) if (ch is TextBlock t && t.FontSize > 11) t.FontSize = 11;
+            sock.Children.Add(itemLine);
             Cell(g, sock, row, 0);
             bool shadow = p.Now is not null && p.Plan is null && byFam.TryGetValue(p.Now.Family, out var elsewhere) && elsewhere.Socket.Label != p.Socket.Label;
             Cell(g, Fx(p.Now, shadow), row, 1);

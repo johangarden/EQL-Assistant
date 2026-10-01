@@ -215,22 +215,10 @@ public sealed class SlotFinderView : DockPanel
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
         sp.Children.Add(new Border { Width = 3, Background = edge, Margin = new Thickness(0, 0, 7, 0), CornerRadius = new CornerRadius(1) });
-        var img = ItemIcons.Get(it.Rec.Icon);
-        sp.Children.Add(img is not null
-            ? new Image { Source = img, Width = 22, Height = 22, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center }
-            : new Border { Width = 22, Height = 22, Background = Card, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Margin = new Thickness(0, 0, 8, 0) });
-        var tb = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
-        tb.Inlines.Add(new Run(it.Name) { Foreground = nameFg, FontSize = 12, FontWeight = FontWeights.SemiBold });
-        sp.Children.Add(tb);
-        sp.Children.Add(new Border
-        {
-            Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(4, 0, 4, 1), CornerRadius = new CornerRadius(3), BorderThickness = new Thickness(1), BorderBrush = GreenEdge, Background = GreenBg, VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock { Text = $"+{it.BestTier}", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = Green },
-        });
+        var line = ItemChips.Name(it.Name, it.BestTier, it.Rec.Icon, nameFg, 1, it.WornIn(slotKey) || it.WornIn("ANY") ? new[] { ItemChips.Tag.Worn } : Array.Empty<ItemChips.Tag>());
         if (it.Copies.Count > 1)
-            sp.Children.Add(new TextBlock { Text = $"{it.Copies.Count} copies ({string.Join(", ", it.Copies.Select(c => "+" + c.Tier))})", Foreground = Faint, FontSize = 10.5, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-        if (it.WornIn(slotKey) || it.WornIn("ANY"))
-            sp.Children.Add(new Border { Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(4, 1, 4, 1), CornerRadius = new CornerRadius(3), Background = Gold, VerticalAlignment = VerticalAlignment.Center, Child = new TextBlock { Text = "WORN", FontSize = 9, FontWeight = FontWeights.ExtraBold, Foreground = F("#10151E") } });
+            line.Children.Insert(3, new TextBlock { Text = $"{it.Copies.Count} copies ({string.Join(", ", it.Copies.Select(c => "+" + c.Tier))})", Foreground = Faint, FontSize = 10.5, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        sp.Children.Add(line);
         return sp;
     }
 

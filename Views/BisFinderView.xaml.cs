@@ -415,10 +415,14 @@ public partial class BisFinderView : UserControl
         Board.RowDefinitions.Clear();
         Board.ColumnDefinitions.Clear();
 
-        // ITEM · SCORE · p1 · p2 · p3 · OTHER · WHERE · CLASSES
-        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        for (int i = 0; i < 7; i++)
+        // ITEM · SCORE · p1 · p2 · p3 · OTHER · WHERE · CLASSES — the item line keeps
+        // room for its pills; OTHER and CLASSES wrap instead of squeezing it.
+        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star), MinWidth = 320 });
+        for (int i = 0; i < 4; i++)
             Board.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 160 });
+        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MaxWidth = 200 });
 
         int row = 0;
         Board.RowDefinitions.Add(new RowDefinition());
@@ -478,13 +482,12 @@ public partial class BisFinderView : UserControl
         void RenderRow(BisFinder.Candidate c, bool pick, bool upgrade)
         {
             Board.RowDefinitions.Add(new RowDefinition());
-            var name = new TextBlock { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis };
-            name.Inlines.Add(new Run(c.BaseName) { Foreground = pick ? NameFg : DimFg, FontWeight = FontWeights.SemiBold });
-            if (c.Tier > 0) name.Inlines.Add(new Run($" +{c.Tier}") { Foreground = TierFg });
-            if (c.Copies > 1) name.Inlines.Add(new Run($" ×{c.Copies}") { Foreground = DimmerFg });
-            if (c.Worn) Badge(name, "WORN", WornFg);
-            if (upgrade) Badge(name, "UPGRADE", UpFg);
-            if (c.ClassesUnknown) Badge(name, "CLASSES UNKNOWN", DimmerFg);
+            // The slot finder's item line (owner, 1 Oct): icon · name · +N pill · tags.
+            var tags = new List<ItemChips.Tag>();
+            if (c.Worn) tags.Add(ItemChips.Tag.Worn);
+            if (upgrade) tags.Add(ItemChips.Tag.Upgrade);
+            if (c.ClassesUnknown) tags.Add(ItemChips.Tag.Unknown);
+            var name = ItemChips.Name(c.BaseName, c.Tier, c.Rec.Icon, pick ? NameFg : DimFg, c.Copies, tags.ToArray());
             CellHost(name, row, 0);
             Cell($"{c.Score:0}", row, 1, pick ? ScoreFg : DimFg, right: true, size: 13, bold: pick);
             for (int i = 0; i < 3; i++)
@@ -493,9 +496,9 @@ public partial class BisFinderView : UserControl
                 Cell(v != 0 ? StatText(_prio[i], v) : "—", row, 2 + i,
                     v != 0 ? (i == 0 ? Stat1Fg : NameFg) : DimmerFg, right: true);
             }
-            Cell(OtherText(c), row, 5, DimFg, right: false, size: 11);
+            CellHost(new TextBlock { Text = OtherText(c), FontSize = 11, Foreground = DimFg, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center }, row, 5);
             CellHost(WhereCell(c), row, 6);
-            Cell(c.Rec.Classes.Length > 0 ? c.Rec.Classes : "—", row, 7, DimmerFg, right: false, size: 10.5);
+            CellHost(new TextBlock { Text = c.Rec.Classes.Length > 0 ? c.Rec.Classes : "—", FontSize = 10.5, Foreground = DimmerFg, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center }, row, 7);
             row++;
         }
 
