@@ -43,6 +43,8 @@ public sealed class ToolsWindow : Window
         public Func<string> CharKey { get; init; } = () => "";
         /// <summary>tools-prefs.json — the slot finder's and focus planner's remembered picks.</summary>
         public string? ToolPrefsPath { get; init; }
+        public Statistics? Stats { get; init; }
+        public RaidKills? Raids { get; init; }
     }
 
     private static Brush F(string hex) { var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); b.Freeze(); return b; }
@@ -58,6 +60,7 @@ public sealed class ToolsWindow : Window
         ("bis", "BiS finder", "M12 3 L19 6 L19 12 C19 16 16 19 12 21 C8 19 5 16 5 12 L5 6 Z"),
         ("slots", "Slot finder", "M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M16 14 H18 V16.5 H20.5 V18.5 H18 V21 H16 V18.5 H13.5 V16.5 H16 Z"),
         ("focus", "Focus planner", "M12 2.5 L14.7 8.4 L21 9.2 L16.4 13.6 L17.6 20 L12 16.9 L6.4 20 L7.6 13.6 L3 9.2 L9.3 8.4 Z"),
+        ("stats", "Statistics", "M3 21 L3 19 L21 19 L21 21 Z M5 17 L5 11 L8 11 L8 17 Z M10.5 17 L10.5 4 L13.5 4 L13.5 17 Z M16 17 L16 8 L19 8 L19 17 Z"),
         ("races", "Race unlocks", "M9 5 A3.5 3.5 0 1 0 9.01 5 Z M3 20 C3 15 6 13 9 13 C12 13 15 15 15 20 Z M16.5 7 A2.8 2.8 0 1 0 16.51 7 Z M16 20 C16 16 17 14.5 18.5 14.5 C20 14.5 21.5 16 21.5 20 Z"),
         ("res", "Resists", "M12 3 C15 7 18 9 18 13 A6 6 0 0 1 6 13 C6 9 9 7 12 3 Z"),
         ("ts", "Tradeskills", "M5 21 L4 20 L13 11 L14 12 Z M11.5 6.5 L14.5 3.5 L20.5 9.5 L17.5 12.5 Z"),
@@ -73,6 +76,7 @@ public sealed class ToolsWindow : Window
     private ResistsView? _resists;
     private SlotFinderView? _slots;
     private FocusPlannerView? _focus;
+    private StatisticsView? _statsView;
     // One wiki item table for the BiS finder, the slot finder and the focus planner.
     private readonly Lazy<ItemStats> _stats = new(() => new ItemStats());
     private readonly Lazy<FocusEffects> _focusData = new(() => new FocusEffects());
@@ -122,6 +126,7 @@ public sealed class ToolsWindow : Window
             "bis" => BisPage(),
             "slots" => SlotPage(),
             "focus" => FocusPage(),
+            "stats" => StatsPage(),
             "races" => RacesPage(),
             "res" => ResistsPage(),
             "ts" => TradeskillPage(),
@@ -230,6 +235,14 @@ public sealed class ToolsWindow : Window
                         plan.Sockets.Count == 0 ? "No open focus sockets yet — they open at +1."
                         : plan.Moves == 0 ? $"Your sockets hold the best you own · needs {plan.NeedsPlaced} of {plan.Needs}"
                         : $"{plan.Moves} move{(plan.Moves == 1 ? "" : "s")} would socket {plan.NeedsPlaced} of {plan.Needs} needs and {plan.NicesPlaced} of {plan.Nices} nice-to-haves");
+                }
+                case "stats":
+                {
+                    if (_c.Stats is null) return ("Your log, counted — kills, casts, loot, zones, deaths, records.", "");
+                    var sm = _c.Stats.Summarize(null, 1);
+                    return ("Your log, counted — kills, casts, loot, zones, deaths, records.",
+                        sm.First is null ? "Nothing counted yet — Data → Reparse fills it from your whole log."
+                        : $"{sm.Kills:N0} kills · {sm.Casts:N0} casts · {sm.Hours:0} h played" + (sm.TopKills.Count > 0 ? $" · most killed: {sm.TopKills[0].Name}" : ""));
                 }
                 case "races":
                 {
@@ -474,6 +487,18 @@ public sealed class ToolsWindow : Window
 
     /// <summary>Selftest: the focus planner once built.</summary>
     internal FocusPlannerView? FocusForTest => _focus;
+
+    private UIElement StatsPage()
+    {
+        if (_c.Stats is null)
+            return Framed("Statistics", "Your log, counted.", new TextBlock { Text = "Statistics aren't wired up in this build.", Foreground = Hint, FontSize = 12 });
+        if (_statsView is null) { _statsView = new StatisticsView(); _statsView.Init(_c.Stats, _c.Raids, _c.Library); }
+        else _statsView.Build();
+        return Framed("Statistics", "Your log, counted: what you killed, cast, looted, where you were and when. Built from the whole log at Data → Reparse, kept live after that; a merged log from another PC counts too.", _statsView);
+    }
+
+    /// <summary>Selftest: the statistics page once built.</summary>
+    internal StatisticsView? StatsForTest => _statsView;
 
     private UIElement RacesPage()
     {

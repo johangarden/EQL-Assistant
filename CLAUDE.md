@@ -34,7 +34,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` / `quests:sky` / `quests:sky:all` / `quests:house` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges) / the same with every card shown (reward links) / quest item housekeeping unfolded (item icons), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `faction` / `faction:maxed` / `faction:bad` / `faction:standing` the faction helper card (a hit · the cap · the wrong way · between hits), `character:races` the Races tab on demo dumps (the Character window no longer lists it — see Tools), `tools` / `tools:<page>` the Tools window on demo data (home · eff · inv · bis · slots · focus · races · res · ts; a real inventory dump in env EQL_TOOLS_DUMP replaces the demo one), `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `library:<search>` the spell library window searched as typed (EFFECT column), `library:eff` / `library:eff:heal` / `library:eff:fire` its Efficiency tab on a demo yield (damage · healing · a Wizard's fire nukes), `library:inv` its Invocations tab on a synthetic stretch (`library:invfile` on the log in env EQL_INV_LOG, 60 min to EQL_INV_END "yyyy-MM-dd HH:mm", regen EQL_INV_REGEN, max mana EQL_INV_POOL, combo EQL_INV_CLASSES), `levelup` / `levelup:15` the level-up card (SHD/SHM/ENC at 44 / DRU/BRD/WIZ at 15), `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` / `quests:sky` / `quests:sky:all` / `quests:house` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges) / the same with every card shown (reward links) / quest item housekeeping unfolded (item icons), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `faction` / `faction:maxed` / `faction:bad` / `faction:standing` the faction helper card (a hit · the cap · the wrong way · between hits), `character:races` the Races tab on demo dumps (the Character window no longer lists it — see Tools), `tools` / `tools:<page>` the Tools window on demo data (home · eff · inv · bis · slots · focus · stats · races · res · ts; a real inventory dump in env EQL_TOOLS_DUMP replaces the demo one, a real log in EQL_STATS_LOG feeds the statistics), `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `library:<search>` the spell library window searched as typed (EFFECT column), `library:eff` / `library:eff:heal` / `library:eff:fire` its Efficiency tab on a demo yield (damage · healing · a Wizard's fire nukes), `library:inv` its Invocations tab on a synthetic stretch (`library:invfile` on the log in env EQL_INV_LOG, 60 min to EQL_INV_END "yyyy-MM-dd HH:mm", regen EQL_INV_REGEN, max mana EQL_INV_POOL, combo EQL_INV_CLASSES), `levelup` / `levelup:15` the level-up card (SHD/SHM/ENC at 44 / DRU/BRD/WIZ at 15), `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous
@@ -154,7 +154,7 @@ the affected suites (with `-Wait`) before committing.
   imply the steps before them; kill/loot steps vouch for nothing and are
   marked only once the line is started (their evidence waits); coins-only
   trades likewise. Old chains implied by a kill are withdrawn on load),
-  `SpellLibrary` (embedded `data/spell-library.json`, 1438
+  `BisFinder` + `SlotFinder` browse the SAME lanes — worn, bags, bank (+ shared), depot, hoard and the key ring's Storage (owner, 1 Oct); `SpellLibrary` (embedded `data/spell-library.json`, 1438
   spells; each carries an `effect` — Direct damage / Damage over time /
   Heal / Mez / Snare / Haste… — derived from its eqlwiki page's effect
   slots + target type + duration by the scratch `classify-spells.py`,
@@ -214,7 +214,9 @@ FINDER (30 Sep, `SlotFinder` + `SlotFinderView`: every wearable dump item
 indexed by the slot it fits — a 1H under Primary AND Secondary — copies folded
 by name with every location (no place filter — the place on each row is
 enough), your combo's items gold, the rest folded with a per-class tally; a
-16-class strip per row), the FOCUS
+16-class strip per row; items the wiki table doesn't know are NAMED under
+the table, never hidden — and `ItemStats.Lookup` reads a hyphen as a space,
+the game's "Cazic-Thule" being the wiki's "Cazic Thule", 1 Oct), the FOCUS
 PLANNER (30 Sep, `FocusPlanner` + `FocusPlannerView`: eqlwiki's Exaltations
 rules — a worn item's Focus socket (Slot7) opens at +1, an exaltation keeps
 its source item's SLOT (and, assumed, its classes), the same focus never
@@ -228,12 +230,25 @@ instrument foci only with BRD, summoned families only when owned; conflicts
 = a socket several wanted foci fit where one went without; hunts = the next
 tier up per wanted family with its carriers and an open socket; marks per
 combo in `tools-prefs.json` via `ToolPrefs`, a what-if combo has its own),
+STATISTICS (1 Oct, `Statistics` + `StatisticsView`: the log counted into
+PER-DAY buckets — kills (+ "slain by" credits, raid bosses read from both),
+casts (ranks folded), loot, zone visits + time (instances FOLD into their
+zone), deaths + killers, skill-ups, hits/crits/damage/healed, dings,
+sessions (30 quiet min end one), hour-of-day lines — fed by the live
+pipeline, the catch-up and Data → Reparse (merged logs too), reset on
+Reset & rebuild; DEDUPE = a per-day BITMAP OF MINUTES already counted (a
+closed minute is never counted from another pass; `Save` closes the one in
+progress); `stats.json`; the page: All · 30 · 7 · Today, six tiles, ten
+cards, every number from `Summarize(since)`),
 race unlocks, resists (`ResistsView`, also in Fight history — LIGHT ON OPEN,
 30 Sep: a head per mob, tables only for open heads (the newest 5 open by
 themselves, a search opens its hits), 30 heads a page, search and live lines
 debounced; THIS ZONE by default, every zone until the log names one) and the
 tradeskill helper (its card is shown/hidden from Tools; the ladder is a page).
 One `ItemStats` and one `FocusEffects` are shared lazily across the pages.
+ONE ITEM LINE (`ItemChips`, 1 Oct): icon · name · green +N pill · tags (WORN
+gold-filled, UPGRADE amber-filled, BiS / CLASSES UNKNOWN outlined) — the BiS
+board, the slot finder and the focus planner's sockets all draw it.
 ONE CLASS PICKER (`ClassPicker`, 30 Sep — owner: "only a class picker like
 the BiS finder's, prepicked by /who, else the user picks"): the 16 chips,
 ≤3 lit, gold for you / teal for a compare combo; /who prefills when the game

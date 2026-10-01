@@ -44,8 +44,10 @@ public static class BisFinder
 
     public static readonly int[] Weights = { 3, 2, 1 };
 
-    /// <summary>Lanes the finder searches — what you carry and what you stash.</summary>
-    public static readonly string[] SearchLanes = { "worn", "bags", "bank", "depot", "hoard" };
+    /// <summary>Lanes the finder searches — what you carry, what you stash, and the
+    /// key ring's Storage (owner, 1 Oct: "anywhere we browse items, include all
+    /// storage sources" — the same lanes as the slot finder).</summary>
+    public static readonly string[] SearchLanes = { "worn", "bags", "bank", "depot", "hoard", "storage" };
 
     private static readonly Regex TierRx = new(@" \+(\d+)$", RegexOptions.Compiled);
 
@@ -307,8 +309,10 @@ public static class BisFinder
         // (slot key) → candidates; a physical copy per row, folded by name+tier.
         var bySlot = Slots.ToDictionary(s => s.Key, _ => new Dictionary<string, Candidate>(StringComparer.Ordinal));
 
-        foreach (var r in rows)
+        int storageIdx = 0; // the key ring's Storage list has no slots — its place in the list stands in
+        foreach (var r in rows.OrderBy(r => r.Line))
         {
+            if (r.Lane == "storage") storageIdx++;
             if (!laneSet.Contains(r.Lane)) continue;
             if (r.IsContainer || r.Name.EndsWith("(Exaltation)", StringComparison.Ordinal)) continue;
             if (r.Name.Equals("Empty", StringComparison.OrdinalIgnoreCase)) continue;
@@ -345,7 +349,7 @@ public static class BisFinder
                     dict[fold] = have with { Copies = have.Copies + Math.Max(1, r.Count) };
                     continue;
                 }
-                dict[fold] = new Candidate(r.Name, tier, r.Location, r.Lane, wornHere, allowed,
+                dict[fold] = new Candidate(r.Name, tier, r.Lane == "storage" ? $"#{storageIdx}" : r.Location, r.Lane, wornHere, allowed,
                     string.IsNullOrWhiteSpace(rec.Classes), twoHanded, Math.Max(1, r.Count),
                     score, scaled, rec);
             }

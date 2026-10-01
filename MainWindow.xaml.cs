@@ -45,6 +45,7 @@ public partial class MainWindow : Window
     private bool _yieldBusy;
     private FactionHelperWindow? _factionWin;
     private ToolsWindow? _toolsWin;
+    private Statistics _stats = null!; // built with the other books, not in the constructor
     private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows, InventoryStore.Dump Dump)? _dumpCache;
     // Toolbar news badges (21 Sep): live drops / raid kills since their window was last opened.
     private int _lootNew, _raidNew;
@@ -138,6 +139,7 @@ public partial class MainWindow : Window
         _skyQuests = new SkyQuests(_configService, _loot);
         _questLines = new QuestLines(_configService, _loot);
         _resists = new ResistBook(_configService, _combat);
+        _stats = new Statistics(Path.Combine(_configService.ConfigDirectory, "stats.json"));
         _resists.Conned += (mob, lvl) =>
         {
             if (_suppressSct || _hidden || !_config.Overlay.ConCardVisible) return; // replays, hidden overlay, switched off
@@ -263,7 +265,8 @@ public partial class MainWindow : Window
         _combat.SctEvent += OnSctEvent;
         _combat.PlayerDied += OnPlayerDied;
         _combat.FightArchived += OnFightArchived;
-        _combat.KnownEnemy = _raids.IsTarget; // one-word raid bosses (Dread) are mobs
+        _combat.KnownEnemy = _raids.IsTarget;
+        Closed += (_, _) => _stats.Save(); // one-word raid bosses (Dread) are mobs
         _engine = new TriggerEngine(_config, _alerts);
         _engine.LearnedDuration = name => _durations.LearnedMaxSeconds(name);
         _engine.LearnedFresh = name => _durations.ConsumeFresh(name);
@@ -498,6 +501,7 @@ public partial class MainWindow : Window
                 _skyQuests.ProcessLine(line);
                 _questLines.ProcessLine(line);
                 _resists.ProcessLine(line);
+                _stats.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _session.ProcessLine(line);
@@ -585,6 +589,7 @@ public partial class MainWindow : Window
                 _skyQuests.ProcessLine(line);
                 _questLines.ProcessLine(line);
                 _resists.ProcessLine(line);
+                _stats.ProcessLine(line);
                 _spellLib.MarkSeenFromLine(line);
                 _durations.ProcessLine(line);
                 _tradeskills.ProcessLine(line, live: false); // skill values + vendors from history
@@ -727,6 +732,7 @@ public partial class MainWindow : Window
         _skyQuests.ResetProgress();
         _questLines.ResetProgress();
         _resists.ResetAll();
+        _stats.Reset();
         _spellLib.ResetSeen();
         _durations.ResetAll();
 
@@ -1212,6 +1218,8 @@ public partial class MainWindow : Window
                 LogPath = () => _watcher?.CurrentPath,
                 ViewStatePath = Path.Combine(_configService.ConfigDirectory, "tools-view.json"),
                 ToolPrefsPath = Path.Combine(_configService.ConfigDirectory, "tools-prefs.json"),
+                Stats = _stats,
+                Raids = _raids,
                 Races = _races,
                 Resists = _resists,
                 Zone = () => _combat.CurrentZone,
@@ -1589,6 +1597,7 @@ public partial class MainWindow : Window
         _skyQuests.ProcessLine(line);
         _questLines.ProcessLine(line);
         _resists.ProcessLine(line);
+        _stats.ProcessLine(line);
         _spellLib.MarkSeenFromLine(line);
         _durations.ProcessLine(line);
         _conditions.ProcessLine(line); // live CC state — not fed on catch-up
@@ -1639,6 +1648,7 @@ public partial class MainWindow : Window
     /// <summary>An explicit Character name in Settings wins; otherwise the log filename's.</summary>
     private void ApplySelfName()
     {
+        _stats.SelfName = _detectedName is { Length: > 0 } dn ? dn : "You";
         string name = !string.IsNullOrWhiteSpace(_config.CharacterName)
             ? _config.CharacterName
             : _detectedName;

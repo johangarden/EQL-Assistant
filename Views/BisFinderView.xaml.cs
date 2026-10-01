@@ -377,7 +377,7 @@ public partial class BisFinderView : UserControl
                 })
                 .OrderByDescending(x => x.Gain).First();
             var wornItem = best.Slot.Ranked.Where(c => c.Worn).OrderBy(c => c.Score).FirstOrDefault();
-            Verdict($"Biggest jump: {best.Pick.Name} ({best.Pick.Location}) "
+            Verdict($"Biggest jump: {best.Pick.Name} ({SlotFinder.LaneLabel(best.Pick.Lane)} · {SlotFinder.PrettyLocation(best.Pick.Location, best.Pick.Lane)}) "
                     + (wornItem is null
                         ? $"fills your empty {best.Slot.Label} slot — score {best.Pick.Score:0}."
                         : $"beats your worn {wornItem.Name} by {best.Gain:0} points in {best.Slot.Label}."),
@@ -415,10 +415,14 @@ public partial class BisFinderView : UserControl
         Board.RowDefinitions.Clear();
         Board.ColumnDefinitions.Clear();
 
-        // ITEM · SCORE · p1 · p2 · p3 · OTHER · WHERE · CLASSES
-        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        for (int i = 0; i < 7; i++)
+        // ITEM · SCORE · p1 · p2 · p3 · OTHER · WHERE · CLASSES — the item line keeps
+        // room for its pills; OTHER and CLASSES wrap instead of squeezing it.
+        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.5, GridUnitType.Star), MinWidth = 320 });
+        for (int i = 0; i < 4; i++)
             Board.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 160 });
+        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Board.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MaxWidth = 200 });
 
         int row = 0;
         Board.RowDefinitions.Add(new RowDefinition());
@@ -478,13 +482,12 @@ public partial class BisFinderView : UserControl
         void RenderRow(BisFinder.Candidate c, bool pick, bool upgrade)
         {
             Board.RowDefinitions.Add(new RowDefinition());
-            var name = new TextBlock { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis };
-            name.Inlines.Add(new Run(c.BaseName) { Foreground = pick ? NameFg : DimFg, FontWeight = FontWeights.SemiBold });
-            if (c.Tier > 0) name.Inlines.Add(new Run($" +{c.Tier}") { Foreground = TierFg });
-            if (c.Copies > 1) name.Inlines.Add(new Run($" ×{c.Copies}") { Foreground = DimmerFg });
-            if (c.Worn) Badge(name, "WORN", WornFg);
-            if (upgrade) Badge(name, "UPGRADE", UpFg);
-            if (c.ClassesUnknown) Badge(name, "CLASSES UNKNOWN", DimmerFg);
+            // The slot finder's item line (owner, 1 Oct): icon · name · +N pill · tags.
+            var tags = new List<ItemChips.Tag>();
+            if (c.Worn) tags.Add(ItemChips.Tag.Worn);
+            if (upgrade) tags.Add(ItemChips.Tag.Upgrade);
+            if (c.ClassesUnknown) tags.Add(ItemChips.Tag.Unknown);
+            var name = ItemChips.Name(c.BaseName, c.Tier, c.Rec.Icon, pick ? NameFg : DimFg, c.Copies, tags.ToArray());
             CellHost(name, row, 0);
             Cell($"{c.Score:0}", row, 1, pick ? ScoreFg : DimFg, right: true, size: 13, bold: pick);
             for (int i = 0; i < 3; i++)
@@ -493,9 +496,9 @@ public partial class BisFinderView : UserControl
                 Cell(v != 0 ? StatText(_prio[i], v) : "—", row, 2 + i,
                     v != 0 ? (i == 0 ? Stat1Fg : NameFg) : DimmerFg, right: true);
             }
-            Cell(OtherText(c), row, 5, DimFg, right: false, size: 11);
-            Cell(c.Location, row, 6, DimFg, right: false, size: 11);
-            Cell(c.Rec.Classes.Length > 0 ? c.Rec.Classes : "—", row, 7, DimmerFg, right: false, size: 10.5);
+            CellHost(new TextBlock { Text = OtherText(c), FontSize = 11, Foreground = DimFg, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center }, row, 5);
+            CellHost(WhereCell(c), row, 6);
+            CellHost(new TextBlock { Text = c.Rec.Classes.Length > 0 ? c.Rec.Classes : "—", FontSize = 10.5, Foreground = DimmerFg, TextWrapping = TextWrapping.Wrap, MaxWidth = 180, VerticalAlignment = VerticalAlignment.Center }, row, 7);
             row++;
         }
 
@@ -624,6 +627,22 @@ public partial class BisFinderView : UserControl
         Grid.SetRow(border, row);
         Grid.SetColumn(border, col);
         Board.Children.Add(border);
+    }
+
+    /// <summary>The place, the slot finder's way: a lane badge and the dump's words
+    /// made readable ("BANK  Bank 2 · slot 2", "STORAGE  Storage").</summary>
+    private static TextBlock WhereCell(BisFinder.Candidate c)
+    {
+        var tb = new TextBlock { FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+        Brush laneFg = c.Lane == "worn" ? LaneOnFg : c.Lane == "bank" ? TierFg : DimFg;
+        var badge = new Border
+        {
+            BorderBrush = laneFg, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3), Padding = new Thickness(4, 0, 4, 0),
+            Child = new TextBlock { Text = SlotFinder.LaneLabel(c.Lane).ToUpperInvariant(), FontSize = 8.5, FontWeight = FontWeights.Bold, Foreground = laneFg },
+        };
+        tb.Inlines.Add(new System.Windows.Documents.InlineUIContainer(badge) { BaselineAlignment = System.Windows.BaselineAlignment.Center });
+        tb.Inlines.Add(new System.Windows.Documents.Run("  " + SlotFinder.PrettyLocation(c.Location, c.Lane)) { Foreground = NameFg });
+        return tb;
     }
 
     private void Cell(string text, int row, int col, Brush fg, bool right,

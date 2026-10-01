@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -87,23 +87,30 @@ public sealed class SlotFinderView : DockPanel
         _pick.Set(_you);
         _pick.Hint = _who.Length > 0 ? $"Prefilled from /who ({_who}) — change it here for a what-if." : _you.Count > 0 ? "No /who yet — your last pick; type /who in game to prefill." : "No /who yet — pick your classes, or type /who in game.";
         if (_pick.Parent is Panel pp) pp.Children.Remove(_pick);
-        _top.Children.Add(_pick);
+        // The picker on the left, the slots beside it (owner, 1 Oct: "a lot of free space next to the picker").
+        var head = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        head.Children.Add(_pick);
+        _top.Children.Add(head);
 
         // ---- the slots ----
-        var slots = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var slots = new WrapPanel { Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
         foreach (var s in _index)
         {
             int yours = s.Items.Count(i => SlotFinder.FitOf(i, _you, Array.Empty<string>()) == SlotFinder.Fit.You);
             bool on = s.Key == current.Key;
             var tb = new TextBlock { FontSize = 12, FontWeight = FontWeights.SemiBold };
+            // "11/27": yours in gold over everything that fits, dimmed (owner, 1 Oct).
             tb.Inlines.Add(new Run(s.Label) { Foreground = on ? Gold : Hint });
-            tb.Inlines.Add(new Run($"  {s.Items.Count}") { Foreground = on ? GoldDim : Faint, FontSize = 10.5 });
-            if (yours > 0) tb.Inlines.Add(new Run($"  {yours}✓") { Foreground = Gold, FontSize = 10.5 });
+            tb.Inlines.Add(new Run("  "));
+            if (_you.Count > 0) tb.Inlines.Add(new Run(yours.ToString()) { Foreground = Gold, FontSize = 10.5 });
+            tb.Inlines.Add(new Run((_you.Count > 0 ? "/" : "") + s.Items.Count) { Foreground = Faint, FontSize = 10.5 });
             var b = new Border
             {
                 Child = tb, CornerRadius = new CornerRadius(5), BorderThickness = new Thickness(1), Padding = new Thickness(9, 4, 9, 5), Margin = new Thickness(0, 0, 5, 5), Cursor = Cursors.Hand,
                 Background = on ? GoldBg : Surface, BorderBrush = on ? GoldEdge : Line,
-                ToolTip = $"{s.Items.Count} item{(s.Items.Count == 1 ? "" : "s")} fit {s.Label} · {yours} your combo can wear",
+                ToolTip = $"{yours} of the {s.Items.Count} item{(s.Items.Count == 1 ? "" : "s")} that fit {s.Label} are wearable by {(_you.Count > 0 ? string.Join("/", _you) : "your combo")}",
             };
             string key = s.Key;
             b.MouseLeftButtonDown += (_, e) => { e.Handled = true; _slot = key; Save(); BuildTop(); BuildBody(); };
@@ -111,7 +118,8 @@ public sealed class SlotFinderView : DockPanel
             b.MouseLeave += (_, _) => { if (key != current.Key) b.BorderBrush = Line; };
             slots.Children.Add(b);
         }
-        _top.Children.Add(slots);
+        Grid.SetColumn(slots, 1);
+        head.Children.Add(slots);
     }
 
     private void BuildBody()
@@ -196,6 +204,13 @@ public sealed class SlotFinderView : DockPanel
                 });
             _body.Children.Add(wp);
         }
+        var unknown = SlotFinder.Unknown(_rows, _stats);
+        if (unknown.Count > 0)
+            _body.Children.Add(new TextBlock
+            {
+                Foreground = Hint, FontSize = 11.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0),
+                Text = $"{unknown.Count} item{(unknown.Count == 1 ? "" : "s")} the wiki table doesn't know, so {(unknown.Count == 1 ? "it isn't" : "they aren't")} under any slot: {string.Join(", ", unknown.Take(8))}{(unknown.Count > 8 ? ", …" : "")}. Bags, food, quest pieces and brand-new items land here.",
+            });
         _body.Children.Add(new TextBlock
         {
             Foreground = Faint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0),
@@ -208,28 +223,18 @@ public sealed class SlotFinderView : DockPanel
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
         sp.Children.Add(new Border { Width = 3, Background = edge, Margin = new Thickness(0, 0, 7, 0), CornerRadius = new CornerRadius(1) });
-        var img = ItemIcons.Get(it.Rec.Icon);
-        sp.Children.Add(img is not null
-            ? new Image { Source = img, Width = 22, Height = 22, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center }
-            : new Border { Width = 22, Height = 22, Background = Card, BorderBrush = Edge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Margin = new Thickness(0, 0, 8, 0) });
-        var tb = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
-        tb.Inlines.Add(new Run(it.Name) { Foreground = nameFg, FontSize = 12, FontWeight = FontWeights.SemiBold });
-        sp.Children.Add(tb);
-        sp.Children.Add(new Border
-        {
-            Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(4, 0, 4, 1), CornerRadius = new CornerRadius(3), BorderThickness = new Thickness(1), BorderBrush = GreenEdge, Background = GreenBg, VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock { Text = $"+{it.BestTier}", FontSize = 10, FontWeight = FontWeights.Bold, Foreground = Green },
-        });
+        var line = ItemChips.Name(it.Name, it.BestTier, it.Rec.Icon, nameFg, 1, it.WornIn(slotKey) || it.WornIn("ANY") ? new[] { ItemChips.Tag.Worn } : Array.Empty<ItemChips.Tag>());
         if (it.Copies.Count > 1)
-            sp.Children.Add(new TextBlock { Text = $"{it.Copies.Count} copies ({string.Join(", ", it.Copies.Select(c => "+" + c.Tier))})", Foreground = Faint, FontSize = 10.5, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-        if (it.WornIn(slotKey) || it.WornIn("ANY"))
-            sp.Children.Add(new Border { Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(4, 1, 4, 1), CornerRadius = new CornerRadius(3), Background = Gold, VerticalAlignment = VerticalAlignment.Center, Child = new TextBlock { Text = "WORN", FontSize = 9, FontWeight = FontWeights.ExtraBold, Foreground = F("#10151E") } });
+            line.Children.Insert(3, new TextBlock { Text = $"{it.Copies.Count} copies ({string.Join(", ", it.Copies.Select(c => "+" + c.Tier))})", Foreground = Faint, FontSize = 10.5, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        sp.Children.Add(line);
         return sp;
     }
 
     private static UIElement WhereCell(SlotFinder.Item it)
     {
         var sp = new StackPanel();
+        // Which copy is which only matters when the copies differ in tier (owner, 1 Oct: "the +3?").
+        bool tiersDiffer = it.Copies.Select(c => c.Tier).Distinct().Count() > 1;
         foreach (var c in it.Copies)
         {
             var tb = new TextBlock { FontSize = 11.5, Margin = new Thickness(0, 0, 0, 1) };
@@ -237,7 +242,7 @@ public sealed class SlotFinderView : DockPanel
             var lane = new Border { BorderBrush = laneFg, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3), Padding = new Thickness(4, 0, 4, 0), Child = new TextBlock { Text = SlotFinder.LaneLabel(c.Lane).ToUpperInvariant(), FontSize = 8.5, FontWeight = FontWeights.Bold, Foreground = laneFg } };
             tb.Inlines.Add(new InlineUIContainer(lane) { BaselineAlignment = BaselineAlignment.Center });
             tb.Inlines.Add(new Run("  " + SlotFinder.PrettyLocation(c.Location, c.Lane)) { Foreground = Dim, FontWeight = FontWeights.SemiBold });
-            tb.Inlines.Add(new Run($"  +{c.Tier}") { Foreground = Faint });
+            if (tiersDiffer) tb.Inlines.Add(new Run($"  — the +{c.Tier}") { Foreground = Faint });
             if (c.Count > 1) tb.Inlines.Add(new Run($"  ×{c.Count}") { Foreground = Faint });
             sp.Children.Add(tb);
         }
