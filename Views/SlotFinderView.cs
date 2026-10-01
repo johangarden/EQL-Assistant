@@ -87,10 +87,15 @@ public sealed class SlotFinderView : DockPanel
         _pick.Set(_you);
         _pick.Hint = _who.Length > 0 ? $"Prefilled from /who ({_who}) — change it here for a what-if." : _you.Count > 0 ? "No /who yet — your last pick; type /who in game to prefill." : "No /who yet — pick your classes, or type /who in game.";
         if (_pick.Parent is Panel pp) pp.Children.Remove(_pick);
-        _top.Children.Add(_pick);
+        // The picker on the left, the slots beside it (owner, 1 Oct: "a lot of free space next to the picker").
+        var head = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        head.Children.Add(_pick);
+        _top.Children.Add(head);
 
         // ---- the slots ----
-        var slots = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var slots = new WrapPanel { Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
         foreach (var s in _index)
         {
             int yours = s.Items.Count(i => SlotFinder.FitOf(i, _you, Array.Empty<string>()) == SlotFinder.Fit.You);
@@ -111,7 +116,8 @@ public sealed class SlotFinderView : DockPanel
             b.MouseLeave += (_, _) => { if (key != current.Key) b.BorderBrush = Line; };
             slots.Children.Add(b);
         }
-        _top.Children.Add(slots);
+        Grid.SetColumn(slots, 1);
+        head.Children.Add(slots);
     }
 
     private void BuildBody()
