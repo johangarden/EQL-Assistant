@@ -3628,8 +3628,18 @@ public partial class App : Application
         try { File.Delete(prefsPath); } catch { /* fresh */ }
         var prefs = new ToolPrefs(prefsPath);
         prefs.Set("slot:demo_paineel", "WRIST");
+        // Statistics on a synthetic fortnight (or a real log in env EQL_STATS_LOG).
+        string statsPath = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_stats.json");
+        try { File.Delete(statsPath); } catch { /* fresh */ }
+        var stats = new Statistics(statsPath) { SelfName = "Thorrak" };
+        if (Environment.GetEnvironmentVariable("EQL_STATS_LOG") is { Length: > 0 } statsLog && File.Exists(statsLog))
+            foreach (var l in File.ReadLines(statsLog)) stats.ProcessLine(l);
+        else foreach (var l in StatsDemoLines()) stats.ProcessLine(l);
+        var raidsDemo = new RaidKills(new ConfigService(), Path.Combine(Path.GetTempPath(), "eql_selftest_tools_raidkills.json"));
         return new Views.ToolsWindow(new Views.ToolsWindow.Context
         {
+            Stats = stats,
+            Raids = raidsDemo,
             Dump = () => (dumpRows, new DateTime(2026, 8, 17, 21, 36, 0), demoDump),
             CharKey = () => "demo_paineel",
             ToolPrefsPath = prefsPath,
@@ -3647,6 +3657,38 @@ public partial class App : Application
             ToggleTs = () => shown[0] = !shown[0],
             PickTs = sk => skill = sk,
         });
+    }
+
+    /// <summary>A fortnight of play for the Statistics demo: two zones, kills, casts,
+    /// loot, a death, a ding, a raid boss, a 5-day-old day and a 20-day-old day.</summary>
+    internal static List<string> StatsDemoLines()
+    {
+        var lines = new List<string>();
+        string L(DateTime t, string body) => $"[{t.ToString("ddd MMM d HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+        foreach (int back in new[] { 20, 5, 0 })
+        {
+            var t0 = DateTime.Today.AddDays(-back).AddHours(20);
+            lines.Add(L(t0, "You have entered The Ruins of Old Guk 1 (Awakened)."));
+            for (int i = 0; i < 30; i++)
+            {
+                var t = t0.AddSeconds(i * 40);
+                lines.Add(L(t, "You begin casting Envenomed Bolt X."));
+                lines.Add(L(t.AddSeconds(3), $"You hit a zol ghoul knight for {400 + i * 7} points of poison damage by Envenomed Bolt X.{(i % 9 == 0 ? " (Critical)" : "")}"));
+                lines.Add(L(t.AddSeconds(5), "You slash a zol ghoul knight for 60 points of damage."));
+                if (i % 3 == 0) lines.Add(L(t.AddSeconds(8), "You have slain a zol ghoul knight!"));
+                if (i % 5 == 0) lines.Add(L(t.AddSeconds(9), i % 15 == 0 ? "You looted a Mote of Minor Potential from a zol ghoul knight's corpse and stored it in your currency" : "--You have looted a Undead Froglok Tongue from a zol ghoul knight's corpse.--"));
+                if (i % 10 == 1) lines.Add(L(t.AddSeconds(10), "A zol ghoul knight resisted your Envenomed Bolt!"));
+            }
+            lines.Add(L(t0.AddMinutes(21), "You have been slain by a zol ghoul knight!"));
+            lines.Add(L(t0.AddMinutes(25), "You have entered The Plane of Fear."));
+            lines.Add(L(t0.AddMinutes(26), "You begin casting Lifedraw III."));
+            lines.Add(L(t0.AddMinutes(26).AddSeconds(2), "You hit Dread for 900 points of magic damage by Lifedraw III."));
+            lines.Add(L(t0.AddMinutes(27), "Dread has been slain by Genantik!"));
+            lines.Add(L(t0.AddMinutes(28), "You have gained a level! Welcome to level 45!"));
+            lines.Add(L(t0.AddMinutes(29), "You say, 'Hail, Genantik'"));
+            lines.Add(L(t0.AddMinutes(30), "You have become better at Specialize Alteration! (120)"));
+        }
+        return lines;
     }
 
     /// <summary>The tab-separated inventory dump behind the Tools demo (real item names, so the wiki table knows them).</summary>
@@ -3700,13 +3742,43 @@ public partial class App : Application
         var tw = ToolsDemo(out var shown);
         tw.Left = -9000; tw.Top = -9000; tw.ShowActivated = false; tw.ShowInTaskbar = false;
         tw.Show();
-        Check("tools: home opens first, with a live line for each of the seven tools",
-            tw.PageShown == "home" && tw.HomeLines.Count == 7 && tw.HomeLines.All(l => l.Length > 0)
+        Check("tools: home opens first, with a live line for each of the eight tools",
+            tw.PageShown == "home" && tw.HomeLines.Count == 8 && tw.HomeLines.All(l => l.Length > 0)
             && tw.HomeLines[0].StartsWith("Best per mana at 41–50", StringComparison.Ordinal)
             && tw.HomeLines[3].StartsWith("Wrist is the fullest: 5 items, 3 your combo can wear", StringComparison.Ordinal)
             && tw.HomeLines[4].StartsWith("3 moves would socket 3 of 4 needs", StringComparison.Ordinal)
-            && tw.HomeLines[5].Contains("★ High Elf", StringComparison.Ordinal)
-            && tw.HomeLines[6].Contains("sphinx", StringComparison.Ordinal));
+            && tw.HomeLines[5].StartsWith("30 kills · 93 casts", StringComparison.Ordinal) && tw.HomeLines[5].Contains("most killed: a zol ghoul knight", StringComparison.Ordinal)
+            && tw.HomeLines[6].Contains("★ High Elf", StringComparison.Ordinal)
+            && tw.HomeLines[7].Contains("sphinx", StringComparison.Ordinal));
+
+        // Statistics (1 Oct): counted per day, deduped per minute, folded zones, the ranges.
+        {
+            string sp2 = Path.Combine(Path.GetTempPath(), "eql_selftest_stats2.json");
+            try { File.Delete(sp2); } catch { /* fresh */ }
+            var st2 = new Statistics(sp2) { SelfName = "Thorrak" };
+            var demo = StatsDemoLines();
+            foreach (var l in demo) st2.ProcessLine(l);
+            var all = st2.Summarize(null);
+            Check("stats: three days of play — 30 kills, 93 casts, 18 loot (kept + currency), 3 deaths, 3 dings, the zone folded, Dread credited to a groupmate",
+                all.DaysWithPlay == 3 && all.Kills == 30 && all.Casts == 93 && all.Loot == 18 && all.Deaths == 3 && all.Dings == 3
+                && all.TopKills[0].Name == "a zol ghoul knight" && all.TopKills[0].Note == "The Ruins of Old Guk" && all.TopZones[0].Name == "The Ruins of Old Guk" && all.TopLoot[0].Name == "Undead Froglok Tongue" && all.TopLoot[0].N == 12
+                && all.AllKills.GetValueOrDefault("Dread") == 3 && all.Resisted == 9 && all.Hails == 3 && all.TopSkills[0].Name == "Specialize Alteration"
+                && all.BigHit is { Value: 900, What: "Lifedraw III", Target: "Dread" } && all.Crits == 12 && all.Hits == 183);
+            foreach (var l in demo) st2.ProcessLine(l); // the same lines again: a reparse, a merged copy
+            var again = st2.Summarize(null);
+            Check("stats: the same lines fed again count nothing twice (the minute bitmap)", again.Kills == 30 && again.Casts == 93 && again.Deaths == 3);
+            st2.Save();
+            var reloaded = new Statistics(sp2) { SelfName = "Thorrak" };
+            foreach (var l in demo) reloaded.ProcessLine(l);
+            Check("stats: after a reload the bitmap still holds — a catch-up of known minutes adds nothing", reloaded.Summarize(null).Kills == 30 && reloaded.Days.Count == 3);
+            Check("stats: the ranges — 7 days holds two of the three days, today one, 30 days all",
+                st2.Summarize(DateTime.Today.AddDays(-6)).DaysWithPlay == 2 && st2.Summarize(DateTime.Today).DaysWithPlay == 1 && st2.Summarize(DateTime.Today.AddDays(-29)).DaysWithPlay == 3
+                && Statistics.FoldZone("The Ruins of Old Guk 1 (Awakened)") == "The Ruins of Old Guk" && Statistics.FoldZone("Befallen 3 (Fused)") == "Befallen" && Statistics.FoldZone("The Plane of Fear") == "The Plane of Fear");
+            tw.ShowPage("stats");
+            var sv = tw.StatsForTest!;
+            Check("stats: the page paints six tiles and ten cards, with Dread under raid targets",
+                sv.TileLines.Count == 6 && sv.CardCountForTest == 10 && sv.TileLines[1].StartsWith("KILLS: 30", StringComparison.Ordinal) && sv.SummaryForTest!.AllKills.ContainsKey("Dread"));
+        }
 
         // The slot finder (30 Sep): Wrist, worn + bank, three combos' worth of bracers.
         tw.ShowPage("slots");
