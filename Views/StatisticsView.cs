@@ -269,7 +269,7 @@ public sealed class StatisticsView : DockPanel
     private static string N(long n) => n.ToString("N0", CultureInfo.InvariantCulture);
     private static string N1(double n) => n.ToString("0.#", CultureInfo.InvariantCulture);
     private static string Big(long n) => n >= 1_000_000 ? (n / 1e6).ToString("0.#", CultureInfo.InvariantCulture) + " M" : n >= 10_000 ? (n / 1e3).ToString("0.#", CultureInfo.InvariantCulture) + " k" : N(n);
-    private static string Hm(TimeSpan t) => t.TotalHours >= 1 ? $"{t.TotalHours:0.#} h" : $"{(int)t.TotalMinutes} min";
+    private static string Hm(TimeSpan t) => t.TotalHours >= 1 ? t.TotalHours.ToString("0.#", CultureInfo.InvariantCulture) + " h" : $"{(int)t.TotalMinutes} min";
 }
 
 internal static class FluentExt
