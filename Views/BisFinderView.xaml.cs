@@ -498,7 +498,7 @@ public partial class BisFinderView : UserControl
             }
             CellHost(new TextBlock { Text = OtherText(c), FontSize = 11, Foreground = DimFg, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center }, row, 5);
             CellHost(WhereCell(c), row, 6);
-            CellHost(new TextBlock { Text = c.Rec.Classes.Length > 0 ? c.Rec.Classes : "—", FontSize = 10.5, Foreground = DimmerFg, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center }, row, 7);
+            CellHost(new TextBlock { Text = c.Rec.Classes.Length > 0 ? c.Rec.Classes : "—", FontSize = 10.5, Foreground = DimmerFg, TextWrapping = TextWrapping.Wrap, MaxWidth = 180, VerticalAlignment = VerticalAlignment.Center }, row, 7);
             row++;
         }
 
