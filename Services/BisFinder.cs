@@ -44,8 +44,10 @@ public static class BisFinder
 
     public static readonly int[] Weights = { 3, 2, 1 };
 
-    /// <summary>Lanes the finder searches — what you carry and what you stash.</summary>
-    public static readonly string[] SearchLanes = { "worn", "bags", "bank", "depot", "hoard" };
+    /// <summary>Lanes the finder searches — what you carry, what you stash, and the
+    /// key ring's Storage (owner, 1 Oct: "anywhere we browse items, include all
+    /// storage sources" — the same lanes as the slot finder).</summary>
+    public static readonly string[] SearchLanes = { "worn", "bags", "bank", "depot", "hoard", "storage" };
 
     private static readonly Regex TierRx = new(@" \+(\d+)$", RegexOptions.Compiled);
 

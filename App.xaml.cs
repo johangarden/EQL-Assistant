@@ -3718,6 +3718,10 @@ public partial class App : Application
         Check("slot finder: a pick in the picker redraws the board and is remembered for the days /who hasn't said",
             sf.YouPickerForTest.Combo.SequenceEqual(new[] { "SHM", "ENC", "DRU" }) && sf.GroupCountsForTest[SlotFinder.Fit.You] == 4
             && new ToolPrefs(Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json")).Get("you:demo_paineel") == "SHM/ENC/DRU");
+        // Storage (1 Oct): the key ring's Equipment rows are items you hold — the BiS finder searches them like the slot finder does.
+        var bisAll = BisFinder.Build(InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows, new ItemStats(), new[] { "SHD", "SHM", "ENC" }, new[] { "AC", "STA", "INT" });
+        Check("bis: an item in the key ring's Storage is a candidate (Boots of the Long Road +1 under Feet, lane storage)",
+            bisAll.Slots.First(s => s.Key == "FEET").Ranked.Concat(bisAll.Slots.First(s => s.Key == "FEET").Foreign).Any(c => c.Name.StartsWith("Boots of the Long Road") && c.Lane == "storage"));
         // The hyphen (1 Oct): the game's "Cazic-Thule" finds the wiki's "Cazic Thule" page, and the Fear gauntlets stand under Hands.
         var allSlots = SlotFinder.Build(InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows, new ItemStats());
         Check("slot finder: a hyphen in the dump's name finds the wiki's hyphen-less page — Slime Blood of Cazic-Thule stands worn under Hands",

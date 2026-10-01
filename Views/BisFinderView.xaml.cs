@@ -377,7 +377,7 @@ public partial class BisFinderView : UserControl
                 })
                 .OrderByDescending(x => x.Gain).First();
             var wornItem = best.Slot.Ranked.Where(c => c.Worn).OrderBy(c => c.Score).FirstOrDefault();
-            Verdict($"Biggest jump: {best.Pick.Name} ({best.Pick.Location}) "
+            Verdict($"Biggest jump: {best.Pick.Name} ({SlotFinder.LaneLabel(best.Pick.Lane)} · {SlotFinder.PrettyLocation(best.Pick.Location, best.Pick.Lane)}) "
                     + (wornItem is null
                         ? $"fills your empty {best.Slot.Label} slot — score {best.Pick.Score:0}."
                         : $"beats your worn {wornItem.Name} by {best.Gain:0} points in {best.Slot.Label}."),
@@ -494,7 +494,7 @@ public partial class BisFinderView : UserControl
                     v != 0 ? (i == 0 ? Stat1Fg : NameFg) : DimmerFg, right: true);
             }
             Cell(OtherText(c), row, 5, DimFg, right: false, size: 11);
-            Cell(c.Location, row, 6, DimFg, right: false, size: 11);
+            CellHost(WhereCell(c), row, 6);
             Cell(c.Rec.Classes.Length > 0 ? c.Rec.Classes : "—", row, 7, DimmerFg, right: false, size: 10.5);
             row++;
         }
@@ -624,6 +624,22 @@ public partial class BisFinderView : UserControl
         Grid.SetRow(border, row);
         Grid.SetColumn(border, col);
         Board.Children.Add(border);
+    }
+
+    /// <summary>The place, the slot finder's way: a lane badge and the dump's words
+    /// made readable ("BANK  Bank 2 · slot 2", "STORAGE  Storage").</summary>
+    private static TextBlock WhereCell(BisFinder.Candidate c)
+    {
+        var tb = new TextBlock { FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+        Brush laneFg = c.Lane == "worn" ? LaneOnFg : c.Lane == "bank" ? TierFg : DimFg;
+        var badge = new Border
+        {
+            BorderBrush = laneFg, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3), Padding = new Thickness(4, 0, 4, 0),
+            Child = new TextBlock { Text = SlotFinder.LaneLabel(c.Lane).ToUpperInvariant(), FontSize = 8.5, FontWeight = FontWeights.Bold, Foreground = laneFg },
+        };
+        tb.Inlines.Add(new System.Windows.Documents.InlineUIContainer(badge) { BaselineAlignment = System.Windows.BaselineAlignment.Center });
+        tb.Inlines.Add(new System.Windows.Documents.Run("  " + SlotFinder.PrettyLocation(c.Location, c.Lane)) { Foreground = NameFg });
+        return tb;
     }
 
     private void Cell(string text, int row, int col, Brush fg, bool right,
