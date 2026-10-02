@@ -3792,8 +3792,8 @@ public partial class App : Application
             && new ToolPrefs(Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json")).Get("you:demo_paineel") == "SHM/ENC/DRU");
         // Two +0 copies (2 Oct): no +N pill, and the "2 copies" note still has a place to sit.
         {
-            string twoDump = string.Join("
-", new[] { "Location	Name	ID	Count	Slots", "Bank1	Serpentine Bracer	6	1	10", "Bank2	Serpentine Bracer	6	1	10", "Held	Empty	0	0	0" });
+            string T = ((char)9).ToString(), NL = ((char)13).ToString() + (char)10; // no escapes: the heredoc ate them once
+            string twoDump = string.Join(NL, new[] { "Location" + T + "Name" + T + "ID" + T + "Count" + T + "Slots", "Bank1" + T + "Serpentine Bracer" + T + "6" + T + "1" + T + "10", "Bank2" + T + "Serpentine Bracer" + T + "6" + T + "1" + T + "10", "Held" + T + "Empty" + T + "0" + T + "0" + T + "0" });
             var sv2 = new Views.SlotFinderView();
             sv2.Init(new ItemStats(), null, "two");
             string err = "";
