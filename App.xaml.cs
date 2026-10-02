@@ -3790,6 +3790,17 @@ public partial class App : Application
         Check("slot finder: a pick in the picker redraws the board and is remembered for the days /who hasn't said",
             sf.YouPickerForTest.Combo.SequenceEqual(new[] { "SHM", "ENC", "DRU" }) && sf.GroupCountsForTest[SlotFinder.Fit.You] == 4
             && new ToolPrefs(Path.Combine(Path.GetTempPath(), "eql_selftest_tools_prefs.json")).Get("you:demo_paineel") == "SHM/ENC/DRU");
+        // Two +0 copies (2 Oct): no +N pill, and the "2 copies" note still has a place to sit.
+        {
+            string T = ((char)9).ToString(), NL = ((char)13).ToString() + (char)10; // no escapes: the heredoc ate them once
+            string twoDump = string.Join(NL, new[] { "Location" + T + "Name" + T + "ID" + T + "Count" + T + "Slots", "Bank1" + T + "Serpentine Bracer" + T + "6" + T + "1" + T + "10", "Bank2" + T + "Serpentine Bracer" + T + "6" + T + "1" + T + "10", "Held" + T + "Empty" + T + "0" + T + "0" + T + "0" });
+            var sv2 = new Views.SlotFinderView();
+            sv2.Init(new ItemStats(), null, "two");
+            string err = "";
+            try { sv2.Update(InventoryStore.CarryAll(InventoryStore.Parse(twoDump)).Rows, "SHD/SHM/ENC", "now"); } catch (Exception ex) { err = ex.Message; }
+            Check("slot finder: two +0 copies of one item draw as one row with a copies note, no pill, no crash",
+                err.Length == 0 && sv2.RowNamesForTest.Count == 1 && sv2.GroupCountsForTest[SlotFinder.Fit.You] == 2);
+        }
         // Storage (1 Oct): the key ring's Equipment rows are items you hold — the BiS finder searches them like the slot finder does.
         var bisAll = BisFinder.Build(InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows, new ItemStats(), new[] { "SHD", "SHM", "ENC" }, new[] { "AC", "STA", "INT" });
         Check("bis: an item in the key ring's Storage is a candidate (Boots of the Long Road +1 under Feet, lane storage), placed by its spot in the list",
