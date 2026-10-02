@@ -3717,6 +3717,8 @@ public partial class App : Application
         "Primary-Slot7\tEmpty\t0\t0\t0",
         "Hands\tSlime Blood of Cazic-Thule +7\t19\t1\t10",
         "Hands-Slot7\tEmpty\t0\t0\t0",
+        "Any Slot\tTalisman of Kejaar Kerrath +5\t2\t1\t10",
+        "Any Slot-Slot7\tEmpty\t0\t0\t0",
         "General 1\tBackpack\t13\t1\t8",
         "General 1-Slot1\tRing of Pureblood +2\t14\t1\t10",
         "Bank1\tInsidious Manacle +2\t15\t1\t10",
@@ -3733,6 +3735,7 @@ public partial class App : Application
         "Augmentation\tGolden Efreeti Boots (Exaltation)\t4407",
         "Augmentation\tDamask Robe (Exaltation)\t1334",
         "Augmentation\tEmissary Mask (Exaltation)\t177834",
+        "Augmentation\tElven Charm Necklace (Exaltation)\t10701",
         "Equipment\tBoots of the Long Road +1\t177708",
     });
 
@@ -3821,10 +3824,11 @@ public partial class App : Application
         // The focus planner (30 Sep): the exact plan on the demo dump.
         tw.ShowPage("focus");
         var fp = tw.FocusForTest!;
+        fp.OpenWantsForTest(); // the marks fold to a line by default; the checks below read the open rows too
         var plan = fp.PlanForTest!;
         string PlanIn(string sock) => plan.Sockets.First(p => p.Socket.Label == sock).Plan?.Name ?? "";
-        Check("focus: 11 open sockets; Face keeps Improved Damage II over Emissary Mask's decayed Healing I; Secondary keeps Mana Preservation II; Shoulders, Chest and Feet get filled — 3 moves",
-            plan.Exact && plan.Sockets.Count(p => !p.Socket.Fixed) == 11 && plan.Moves == 3
+        Check("focus: 12 open sockets; Face keeps Improved Damage II over Emissary Mask's decayed Healing I; Secondary keeps Mana Preservation II; Shoulders, Chest and Feet get filled — 3 moves",
+            plan.Exact && plan.Sockets.Count(p => !p.Socket.Fixed) == 12 && plan.Moves == 3
             && PlanIn("Face").StartsWith("Polished Mithril Mask") && PlanIn("Secondary").StartsWith("Nisch Mas Ilkvel")
             && PlanIn("Shoulders").StartsWith("Gilded Cloth") && PlanIn("Chest").StartsWith("Green Silken Drape") && PlanIn("Feet").StartsWith("Golden Efreeti Boots")
             && PlanIn("Primary") == "");
@@ -3836,6 +3840,15 @@ public partial class App : Application
             && plan.NeedsPlaced == 3 && plan.Needs == 4 && plan.Conflicts.Any(c => c.Socket.Label == "Face" && c.Wanting.Any(e => e.Family.Name == "Improved Healing"))
             && plan.Hunts.Any(h => h.Tier.Effect == "Spell Haste II") && plan.Hunts.Any(h => h.Tier.Effect == "Improved Damage III" && h.OpenSocket.Length == 0)
             && !plan.Families.First(f => f.Family.Name == "String Resonance").Shown);
+        // An Any Slot item takes only its OWN slot's exaltations (2 Oct, the game's refusal): the
+        // Talisman (Neck) in Any slot takes the Elven Charm Necklace, never the Face-only Emissary Mask.
+        fp.SetWantForTest("Extended Range", FocusPlanner.Want.Need);
+        var anyPlan = fp.PlanForTest!;
+        var anySock = anyPlan.Sockets.First(p => p.Socket.Label == "Any slot");
+        Check("focus: a Neck item worn in Any Slot takes a Neck exaltation and nothing else",
+            anySock.Socket.Accepts.SequenceEqual(new[] { "NECK" }) && anySock.Plan is { } ap && ap.Name.StartsWith("Elven Charm Necklace")
+            && !anyPlan.Sockets.Any(p => p.Socket.Label == "Any slot" && p.Plan?.Name.StartsWith("Emissary") == true));
+        fp.SetWantForTest("Extended Range", FocusPlanner.Want.Off);
         fp.SetComboForTest("DRU", "BRD", "WIZ");
         var wi = fp.PlanForTest!;
         Check("focus: with a bard, String Resonance shows (Nice by default) and Mana Preservation II still holds Secondary",
@@ -3843,13 +3856,13 @@ public partial class App : Application
             && wi.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Nisch"));
         fp.SetWantForTest("String Resonance", FocusPlanner.Want.Need);
         var wi2 = fp.PlanForTest!;
-        Check("focus: two Needs on Secondary tie — the one already socketed stays, and the conflict note names the loser",
+        Check("focus: two Needs that both fit Secondary — Mana Preservation stays, and the lute finds the other Secondary-capable item, the 1H in Primary",
             wi2.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Nisch")
-            && wi2.Conflicts.Any(c => c.Socket.Label == "Secondary" && c.Wanting.Any(e => e.Family.Name == "String Resonance")));
+            && wi2.Sockets.First(p => p.Socket.Label == "Primary").Plan!.Name.StartsWith("Kelin") && wi2.Moves == 4);
         fp.SetWantForTest("Mana Preservation", FocusPlanner.Want.Nice);
         var wi3 = fp.PlanForTest!;
-        Check("focus: Mana Preservation marked Nice hands Secondary to the lute; the SHD-only sallet's tier I can't stand in for DRU/BRD/WIZ — 4 moves",
-            wi3.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Kelin") && wi3.Sockets.First(p => p.Socket.Label == "Head").Plan is null
+        Check("focus: Mana Preservation marked Nice still keeps Secondary (nothing else wants it); the SHD-only sallet is foreign to DRU/BRD/WIZ, so the head stays empty",
+            wi3.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Nisch") && wi3.Sockets.First(p => p.Socket.Label == "Head").Plan is null
             && wi3.Foreign.Any(e => e.Name.StartsWith("Wicked Sallet")) && wi3.Moves == 4);
         tw.ShowPage("eff");
         var libA = tw.LibraryForTest;
@@ -5928,6 +5941,7 @@ public partial class App : Application
             tw.Left = -10000; tw.Top = -10000; tw.ShowInTaskbar = false; tw.ShowActivated = false;
             tw.Show();
             if (page.Contains(':')) tw.ShowPage(page[(page.IndexOf(':') + 1)..]);
+            if (Environment.GetEnvironmentVariable("EQL_FOCUS_OPEN") is { Length: > 0 }) tw.FocusForTest?.OpenWantsForTest(); // the marks unfolded
             mgr = tw;
         }
         else if (page.Equals("library:inv", StringComparison.OrdinalIgnoreCase) || page.Equals("library:invfile", StringComparison.OrdinalIgnoreCase))
