@@ -59,6 +59,25 @@ public static class BisFinder
     /// "NONE", "ALL except NEC WIZ MAG ENC" or an explicit list. Owner's
     /// default rule: ANY class in the combo being allowed is enough. An
     /// empty field (the wiki didn't say) is allowed but flagged by caller.</summary>
+    /// <summary>The wiki's class field as a set of the 16 codes: "" / ALL = everyone,
+    /// NONE = nobody, "ALL except X Y" = everyone but those, else the codes listed.</summary>
+    public static HashSet<string> ClassSet(string classesField)
+    {
+        string f = (classesField ?? "").Trim();
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (f.Equals("NONE", StringComparison.OrdinalIgnoreCase)) return set;
+        if (f.Length == 0 || f.Equals("ALL", StringComparison.OrdinalIgnoreCase)) { set.UnionWith(AllClasses); return set; }
+        const string except = "ALL except ";
+        if (f.StartsWith(except, StringComparison.OrdinalIgnoreCase))
+        {
+            var banned = f[except.Length..].Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            set.UnionWith(AllClasses.Where(c => !banned.Contains(c)));
+            return set;
+        }
+        set.UnionWith(f.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return set;
+    }
+
     public static bool ClassAllowed(string classesField, IReadOnlyCollection<string> combo)
     {
         string f = (classesField ?? "").Trim();

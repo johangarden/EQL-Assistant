@@ -219,7 +219,10 @@ the table, never hidden — and `ItemStats.Lookup` reads a hyphen as a space,
 the game's "Cazic-Thule" being the wiki's "Cazic Thule", 1 Oct), the FOCUS
 PLANNER (30 Sep, `FocusPlanner` + `FocusPlannerView`: eqlwiki's Exaltations
 rules — a worn item's Focus socket (Slot7) opens at +1, an exaltation keeps
-its source item's SLOT (and, assumed, its classes), the same focus never
+its source item's SLOT and its CLASSES — the socketed item keeps only the
+classes both lists share, so a pair the combo can't wear is never planned
+(`Plan.ClassBlocked`, shown as WOULD LOCK YOU OUT; the game's ruling, 2 Oct:
+Rokyl's Crystal in a Bladestopper left it BRD-only), the same focus never
 stacks; the pool = "(Exaltation)" rows in worn/stored sockets + the key
 ring's Augmentation rows + a worn +0 item's own fixed focus; each family
 marked Need (100) / Nice (10) / Off × strength (1 at or under the tier's
