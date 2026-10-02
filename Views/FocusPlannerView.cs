@@ -37,6 +37,7 @@ public sealed class FocusPlannerView : DockPanel
     private readonly StackPanel _top = new();
     private readonly StackPanel _body = new();
     private readonly ContentControl _headRight = new() { VerticalAlignment = VerticalAlignment.Top }; // the verdict, beside the picker
+    private bool _wantsOpen; // the marks fold to one line until you change them (owner, 2 Oct: "takes up too much space")
 
     public FocusPlannerView()
     {
@@ -72,6 +73,7 @@ public sealed class FocusPlannerView : DockPanel
     internal FocusPlanner.Plan? PlanForTest { get; private set; }
     internal List<string> MoveLinesForTest { get; } = new();
     internal void SetWantForTest(string family, FocusPlanner.Want w) { _wants[family] = w; Build(); }
+    internal void OpenWantsForTest() { _wantsOpen = true; BuildBody(); }
     internal void SetComboForTest(params string[] combo) { _combo.Clear(); _combo.AddRange(combo); LoadWants(); Build(); }
     internal ClassPicker PickerForTest => _pick;
 
@@ -126,7 +128,7 @@ public sealed class FocusPlannerView : DockPanel
         v.Children.Add(new TextBlock { Text = line, Foreground = Dim, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
         _headRight.Content = new Border { Background = Surface, BorderBrush = GoldEdge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 8, 12, 10), Margin = new Thickness(0, 0, 0, 8), Child = v };
 
-        _body.Children.Add(Panel("WHAT YOU WANT", "Need beats any number of nice-to-haves · the best tier you own · a tier past its level cap counts at part strength", Families(plan)));
+        _body.Children.Add(Panel("WHAT YOU WANT", _wantsOpen ? "Need beats any number of nice-to-haves · a tier past its level cap counts at part strength" : "click a mark to change it", Families(plan)));
         _body.Children.Add(Panel("THE PLAN · SOCKET BY SOCKET", $"{plan.Sockets.Count(s => !s.Socket.Fixed)} open sockets · {plan.Moves} move{(plan.Moves == 1 ? "" : "s")}", PlanTable(plan)));
         foreach (var n in Notes(plan)) _body.Children.Add(n);
         _body.Children.Add(new TextBlock
@@ -140,68 +142,105 @@ public sealed class FocusPlannerView : DockPanel
         });
     }
 
+    private static readonly (string Title, string[] Fams)[] Groups =
+    {
+        ("DAMAGE", new[] { "Improved Damage", "Burning Affliction" }),
+        ("HEALING", new[] { "Improved Healing" }),
+        ("MANA", new[] { "Mana Preservation", "Affliction Efficiency" }),
+        ("CAST SPEED", new[] { "Spell Haste", "Affliction Haste", "Enhancement Haste" }),
+        ("UTILITY", new[] { "Extended Enhancement", "Reagent Conservation", "Extended Range" }),
+        ("PETS", new[] { "Summoning Efficiency", "Summoning Haste", "Reanimation Efficiency", "Reanimation Haste" }),
+        ("BARD INSTRUMENTS", new[] { "String Resonance", "Percussion Resonance", "Brass Resonance", "Wind Resonance" }),
+    };
+
+    /// <summary>Folded: one line of chips — the Needs gold, the Nices dim, the Offs counted — and
+    /// "change ▾". Open: a compact row per family in group blocks, three abreast.</summary>
     private UIElement Families(FocusPlanner.Plan plan)
     {
-        var wrap = new WrapPanel();
-        var groups = new (string Kind, string Title, string[] Fams)[]
-        {
-            ("dmg", "DAMAGE", new[] { "Improved Damage", "Burning Affliction" }),
-            ("heal", "HEALING", new[] { "Improved Healing" }),
-            ("mana", "MANA", new[] { "Mana Preservation", "Affliction Efficiency" }),
-            ("speed", "CAST SPEED", new[] { "Spell Haste", "Affliction Haste", "Enhancement Haste" }),
-            ("util", "UTILITY", new[] { "Extended Enhancement", "Reagent Conservation", "Extended Range" }),
-            ("pet", "PETS", new[] { "Summoning Efficiency", "Summoning Haste", "Reanimation Efficiency", "Reanimation Haste" }),
-            ("song", "BARD INSTRUMENTS · ONLY WITH BRD", new[] { "String Resonance", "Percussion Resonance", "Brass Resonance", "Wind Resonance" }),
-        };
-        var placed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (_, title, fams) in groups)
-        {
-            var rows = fams.Select(n => plan.Families.FirstOrDefault(f => f.Family.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).Where(f => f is not null && f.Shown).ToList();
-            foreach (var f in rows) placed.Add(f!.Family.Name);
-            if (rows.Count == 0) continue;
-            wrap.Children.Add(FamilyBlock(title, rows!));
-        }
-        var rest = plan.Families.Where(f => f.Shown && !placed.Contains(f.Family.Name)).ToList();
-        if (rest.Count > 0) wrap.Children.Add(FamilyBlock("OTHER", rest));
+        var shown = plan.Families.Where(f => f.Shown).ToList();
         var sp = new StackPanel();
-        sp.Children.Add(wrap);
+        if (!_wantsOpen)
+        {
+            var wp = new WrapPanel();
+            foreach (var f in shown.Where(f => f.Want == FocusPlanner.Want.Need)) wp.Children.Add(MarkChip(f, Gold, GoldBg, GoldEdge));
+            foreach (var f in shown.Where(f => f.Want == FocusPlanner.Want.Nice)) wp.Children.Add(MarkChip(f, Dim, Card, Edge));
+            int off = shown.Count(f => f.Want == FocusPlanner.Want.Off);
+            if (off > 0) wp.Children.Add(new TextBlock { Text = $"{off} off", Foreground = Faint, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 10, 4) });
+            var change = new Border
+            {
+                CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), BorderBrush = GoldEdge, Background = Brushes.Transparent, Padding = new Thickness(9, 1, 9, 2), Margin = new Thickness(0, 0, 0, 4), Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock { Text = "change ▾", Foreground = Gold, FontSize = 11, FontWeight = FontWeights.SemiBold },
+            };
+            change.MouseLeftButtonDown += (_, e) => { e.Handled = true; _wantsOpen = true; BuildBody(); };
+            wp.Children.Add(change);
+            sp.Children.Add(wp);
+            return sp;
+        }
+        var blocks = new WrapPanel();
+        var placed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (title, fams) in Groups)
+        {
+            var rows = fams.Select(n => shown.FirstOrDefault(f => f.Family.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).Where(f => f is not null).ToList();
+            foreach (var f in rows) placed.Add(f!.Family.Name);
+            if (rows.Count > 0) blocks.Children.Add(FamilyBlock(title, rows!));
+        }
+        var rest = shown.Where(f => !placed.Contains(f.Family.Name)).ToList();
+        if (rest.Count > 0) blocks.Children.Add(FamilyBlock("OTHER", rest));
+        sp.Children.Add(blocks);
+        var foot = new WrapPanel { Margin = new Thickness(0, 2, 0, 0) };
+        var done = new Border
+        {
+            CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), BorderBrush = GoldEdge, Background = GoldBg, Padding = new Thickness(9, 1, 9, 2), Margin = new Thickness(0, 0, 10, 0), Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Center,
+            Child = new TextBlock { Text = "done ▴", Foreground = Gold, FontSize = 11, FontWeight = FontWeights.SemiBold },
+        };
+        done.MouseLeftButtonDown += (_, e) => { e.Handled = true; _wantsOpen = false; BuildBody(); };
+        foot.Children.Add(done);
         if (!Combo.Contains("BRD", StringComparer.OrdinalIgnoreCase))
-            sp.Children.Add(new TextBlock { Text = "The four bard instrument foci stay hidden: this combo has no BRD.", Foreground = Faint, FontSize = 10.5, Margin = new Thickness(0, 6, 0, 0) });
+            foot.Children.Add(new TextBlock { Text = "The four bard instrument foci stay hidden: this combo has no BRD.", Foreground = Faint, FontSize = 10.5, VerticalAlignment = VerticalAlignment.Center });
+        sp.Children.Add(foot);
         return sp;
     }
 
+    private Border MarkChip(FocusPlanner.FamilyRow f, Brush fg, Brush bg, Brush edge)
+    {
+        var tb = new TextBlock { FontSize = 11, FontWeight = FontWeights.SemiBold };
+        tb.Inlines.Add(new Run(f.Family.Name) { Foreground = fg });
+        if (f.Best is not null) tb.Inlines.Add(new Run(" " + f.Best.TierLabel) { Foreground = fg, FontWeight = FontWeights.Normal, FontSize = 10 });
+        else tb.Inlines.Add(new Run(" —") { Foreground = Faint, FontWeight = FontWeights.Normal });
+        if (f.Want != FocusPlanner.Want.Off && f.Best is not null && f.Placed is null) tb.Inlines.Add(new Run(" · no socket") { Foreground = Warn, FontWeight = FontWeights.Normal, FontSize = 10 });
+        var b = new Border { CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), BorderBrush = edge, Background = bg, Padding = new Thickness(8, 1, 8, 2), Margin = new Thickness(0, 0, 5, 4), Cursor = Cursors.Hand, Child = tb,
+            ToolTip = $"{f.Family.Name} — {f.Family.Kind}" + (f.Best is not null ? $" · best you own: {f.Best.Effect} ({f.Best.Short})" : " · you own none") + " · click to change the marks" };
+        b.MouseLeftButtonDown += (_, e) => { e.Handled = true; _wantsOpen = true; BuildBody(); };
+        return b;
+    }
+
+    /// <summary>One line per family: name · tier pill · carrier and slot · decay / no-socket flags · Need | Nice | Off.</summary>
     private Border FamilyBlock(string title, List<FocusPlanner.FamilyRow> rows)
     {
-        var sp = new StackPanel { Width = 300, Margin = new Thickness(0, 0, 18, 6) };
-        sp.Children.Add(new TextBlock { Text = title, Foreground = Faint, FontSize = 9, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 6, 0, 2) });
+        var sp = new StackPanel { Width = 420, Margin = new Thickness(0, 0, 14, 4) };
+        sp.Children.Add(new TextBlock { Text = title, Foreground = Faint, FontSize = 9, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 4, 0, 1) });
         foreach (var f in rows)
         {
-            var g = new Grid { Margin = new Thickness(0, 0, 0, 0) };
+            var g = new Grid();
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var left = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            var name = new TextBlock { TextWrapping = TextWrapping.Wrap };
-            name.Inlines.Add(new Run(f.Family.Name) { Foreground = Text, FontSize = 12, FontWeight = FontWeights.SemiBold });
-            name.Inlines.Add(new Run("  " + f.Family.Kind) { Foreground = Faint, FontSize = 10.5 });
-            left.Children.Add(name);
-            var own = new TextBlock { FontSize = 10.5, TextWrapping = TextWrapping.Wrap };
-            if (f.Best is null) own.Inlines.Add(new Run("you own none") { Foreground = Faint });
+            var line = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, ToolTip = $"{f.Family.Name} — {f.Family.Kind}" + (f.Best is not null ? $"\n{f.Best.Effect} · {f.Best.Short} · {f.Best.Place}\n{f.Best.Tier.Description}" : "\nyou own none") };
+            line.Inlines.Add(new Run(f.Family.Name) { Foreground = Text, FontSize = 12, FontWeight = FontWeights.SemiBold });
+            if (f.Best is null) line.Inlines.Add(new Run("  none owned") { Foreground = Faint, FontSize = 10.5 });
             else
             {
-                own.Inlines.Add(new Run("best: ") { Foreground = Hint });
-                own.Inlines.Add(new Run(f.Best.TierLabel) { Foreground = Dim, FontWeight = FontWeights.SemiBold });
-                own.Inlines.Add(new Run($" ({f.Best.Name.Replace(" (Exaltation)", "")}) · {(f.Best.Slots.Count > 0 ? string.Join("/", f.Best.Slots.Select(s => s.ToLowerInvariant())) : "slot unknown")}") { Foreground = Hint });
-                if (FocusPlanner.Strength(f.Best.Tier, _level) < 1) own.Inlines.Add(new Run($" · decays past L{f.Best.Tier.LevelCap}") { Foreground = Warn });
-                if (f.Want != FocusPlanner.Want.Off && f.Placed is null) own.Inlines.Add(new Run(" · no socket left") { Foreground = Warn });
+                line.Inlines.Add(new Run("  " + f.Best.TierLabel) { Foreground = Green, FontSize = 10.5, FontWeight = FontWeights.Bold });
+                line.Inlines.Add(new Run($"  {f.Best.Short} · {(f.Best.Slots.Count > 0 ? string.Join("/", f.Best.Slots.Select(x => x.ToLowerInvariant())) : "slot ?")}") { Foreground = Hint, FontSize = 10.5 });
+                if (FocusPlanner.Strength(f.Best.Tier, _level) < 1) line.Inlines.Add(new Run($"  ⚠ L{f.Best.Tier.LevelCap}") { Foreground = Warn, FontSize = 10.5 });
+                if (f.Want != FocusPlanner.Want.Off && f.Placed is null) line.Inlines.Add(new Run("  no socket") { Foreground = Warn, FontSize = 10.5 });
             }
-            left.Children.Add(own);
-            g.Children.Add(left);
+            g.Children.Add(line);
             var seg = new Segmented(new[] { new Segmented.Option("need", "Need", "Must be socketed — outweighs any number of nice-to-haves"), new Segmented.Option("nice", "Nice", "Fills a socket left over"), new Segmented.Option("off", "Off", "Not wanted for this combo") },
                 f.Want.ToString().ToLowerInvariant(), "#E8C15A") { Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             string fam = f.Family.Name;
             seg.Changed += id => { _wants[fam] = id == "need" ? FocusPlanner.Want.Need : id == "nice" ? FocusPlanner.Want.Nice : FocusPlanner.Want.Off; _prefs?.Set(WantsKey, FocusPlanner.Pack(_wants)); BuildBody(); };
             Grid.SetColumn(seg, 1); g.Children.Add(seg);
-            sp.Children.Add(new Border { Child = g, Padding = new Thickness(0, 5, 0, 5), BorderBrush = Row, BorderThickness = new Thickness(0, 0, 0, 1) });
+            sp.Children.Add(new Border { Child = g, Padding = new Thickness(0, 2, 0, 2), BorderBrush = Row, BorderThickness = new Thickness(0, 0, 0, 1) });
         }
         return new Border { Child = sp };
     }

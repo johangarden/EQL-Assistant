@@ -3824,6 +3824,7 @@ public partial class App : Application
         // The focus planner (30 Sep): the exact plan on the demo dump.
         tw.ShowPage("focus");
         var fp = tw.FocusForTest!;
+        fp.OpenWantsForTest(); // the marks fold to a line by default; the checks below read the open rows too
         var plan = fp.PlanForTest!;
         string PlanIn(string sock) => plan.Sockets.First(p => p.Socket.Label == sock).Plan?.Name ?? "";
         Check("focus: 12 open sockets; Face keeps Improved Damage II over Emissary Mask's decayed Healing I; Secondary keeps Mana Preservation II; Shoulders, Chest and Feet get filled — 3 moves",
@@ -5940,6 +5941,7 @@ public partial class App : Application
             tw.Left = -10000; tw.Top = -10000; tw.ShowInTaskbar = false; tw.ShowActivated = false;
             tw.Show();
             if (page.Contains(':')) tw.ShowPage(page[(page.IndexOf(':') + 1)..]);
+            if (Environment.GetEnvironmentVariable("EQL_FOCUS_OPEN") is { Length: > 0 }) tw.FocusForTest?.OpenWantsForTest(); // the marks unfolded
             mgr = tw;
         }
         else if (page.Equals("library:inv", StringComparison.OrdinalIgnoreCase) || page.Equals("library:invfile", StringComparison.OrdinalIgnoreCase))
