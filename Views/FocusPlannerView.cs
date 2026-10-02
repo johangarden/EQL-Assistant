@@ -21,7 +21,7 @@ public sealed class FocusPlannerView : DockPanel
     private static Brush F(string hex) { var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); b.Freeze(); return b; }
     private static readonly Brush Surface = F("#1B2130"), Card = F("#232B3D"), Line = F("#2A3347"), Edge = F("#3A4560"), Row = F("#1F2637"), ChangeBg = F("#182418"),
         Text = F("#E6ECF5"), Dim = F("#C9D4E3"), Hint = F("#7F93AD"), Faint = F("#5C6B82"),
-        Gold = F("#E8C15A"), GoldBg = F("#2A2210"), GoldEdge = F("#7A5B22"), Green = F("#81C784"), Warn = F("#FFB074"), Red = F("#FF7A7A"), Blue = F("#4FC3F7"),
+        Gold = F("#E8C15A"), GoldBg = F("#2A2210"), GoldEdge = F("#7A5B22"), Green = F("#81C784"), Warn = F("#FFB074"), Red = F("#FF7A7A"), Blue = F("#4FC3F7"), NiceBg = F("#16283E"), NiceEdge = F("#2A5570"),
         ChipOn = F("#26304A"), ChipOnEdge = F("#4A5A7A"), NiceDot = F("#7F93AD"), OffDot = F("#3A4560");
 
     private FocusEffects? _focus;
@@ -128,7 +128,7 @@ public sealed class FocusPlannerView : DockPanel
         v.Children.Add(new TextBlock { Text = line, Foreground = Dim, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
         _headRight.Content = new Border { Background = Surface, BorderBrush = GoldEdge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 8, 12, 10), Margin = new Thickness(0, 0, 0, 8), Child = v };
 
-        _body.Children.Add(Panel("WHAT YOU WANT", _wantsOpen ? "Need beats any number of nice-to-haves · a tier past its level cap counts at part strength" : "click a mark to change it", Families(plan)));
+        _body.Children.Add(Panel("WHAT YOU WANT", _wantsOpen ? "Need beats any number of nice-to-haves · a tier past its level cap counts at part strength" : "gold = need · blue = nice · grey = off · click one to change", Families(plan)));
         _body.Children.Add(Panel("THE PLAN · SOCKET BY SOCKET", $"{plan.Sockets.Count(s => !s.Socket.Fixed)} open sockets · {plan.Moves} move{(plan.Moves == 1 ? "" : "s")}", PlanTable(plan)));
         foreach (var n in Notes(plan)) _body.Children.Add(n);
         _body.Children.Add(new TextBlock
@@ -162,10 +162,10 @@ public sealed class FocusPlannerView : DockPanel
         if (!_wantsOpen)
         {
             var wp = new WrapPanel();
+            // Coloured by mark (owner, 2 Oct): Need gold, Nice blue, Off grey — all of them shown.
             foreach (var f in shown.Where(f => f.Want == FocusPlanner.Want.Need)) wp.Children.Add(MarkChip(f, Gold, GoldBg, GoldEdge));
-            foreach (var f in shown.Where(f => f.Want == FocusPlanner.Want.Nice)) wp.Children.Add(MarkChip(f, Dim, Card, Edge));
-            int off = shown.Count(f => f.Want == FocusPlanner.Want.Off);
-            if (off > 0) wp.Children.Add(new TextBlock { Text = $"{off} off", Foreground = Faint, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 10, 4) });
+            foreach (var f in shown.Where(f => f.Want == FocusPlanner.Want.Nice)) wp.Children.Add(MarkChip(f, Blue, NiceBg, NiceEdge));
+            foreach (var f in shown.Where(f => f.Want == FocusPlanner.Want.Off)) wp.Children.Add(MarkChip(f, Faint, Brushes.Transparent, Line));
             var change = new Border
             {
                 CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), BorderBrush = GoldEdge, Background = Brushes.Transparent, Padding = new Thickness(9, 1, 9, 2), Margin = new Thickness(0, 0, 0, 4), Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Center,
