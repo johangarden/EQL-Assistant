@@ -254,11 +254,22 @@ public sealed class FocusPlannerView : DockPanel
         for (int c = 0; c < heads.Length; c++) Cell(g, new TextBlock { Text = heads[c], Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold }, 0, c);
         int row = 1;
         var byFam = plan.Sockets.Where(p => p.Plan is not null).ToDictionary(p => p.Plan!.Family, p => p);
-        var idle = new List<string>();
-        foreach (var p in plan.Sockets)
+        var idle = plan.Sockets.Where(p => p.Now is null && p.Plan is null).Select(p => p.Socket.Label).ToList();
+        // The moves first, then the sockets with something to say, then what stays (owner, 2 Oct: "the moves up top").
+        static int Rank(FocusPlanner.Placement p) => p.Plan is not null && (p.Now is null || p.Now.Line != p.Plan.Line) ? 0 : p.Now is not null && p.Plan is null ? 1 : 2;
+        int lastRank = -1;
+        foreach (var p in plan.Sockets.Where(p => p.Now is not null || p.Plan is not null).OrderBy(Rank))
         {
-            if (p.Now is null && p.Plan is null) { idle.Add(p.Socket.Label); continue; }
-            bool change = p.Plan is not null && (p.Now is null || p.Now.Line != p.Plan.Line);
+            int rank = Rank(p);
+            if (rank != lastRank)
+            {
+                lastRank = rank;
+                g.RowDefinitions.Add(new RowDefinition());
+                var gh = new Border { Background = F("#171D2A"), Padding = new Thickness(6, 3, 6, 3), Child = new TextBlock { Text = rank == 0 ? "MOVES" : rank == 1 ? "WORTH A LOOK" : "STAYS AS IT IS", Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold } };
+                Grid.SetRow(gh, row); Grid.SetColumnSpan(gh, 4); g.Children.Add(gh);
+                row++;
+            }
+            bool change = rank == 0;
             g.RowDefinitions.Add(new RowDefinition());
             if (change) { var band = new Border { Background = ChangeBg, BorderBrush = Green, BorderThickness = new Thickness(3, 0, 0, 0) }; Grid.SetRow(band, row); Grid.SetColumnSpan(band, 4); g.Children.Add(band); }
             var sock = new StackPanel();
