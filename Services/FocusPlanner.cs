@@ -12,7 +12,10 @@
 /// the same focus never stacks, so only its best tier counts. Assumed, not
 /// stated: an exaltation keeps its source item's CLASS restrictions too, and
 /// a tier past its level cap runs at part strength (the wiki's "decays on
-/// spells over level N"). The plan is the EXACT best assignment — one
+/// spells over level N"). An exaltation fits an ITEM whose own slot matches
+/// its source item's — a Neck item worn in Any Slot takes a Neck exaltation,
+/// never a Secondary one (owner, 2 Oct, the game's own refusal). The plan
+/// is the EXACT best assignment — one
 /// exaltation per family, one per socket, a Need outweighing any number of
 /// nice-to-haves — so a Need never loses its socket to a stack of Nices.
 /// </summary>
@@ -20,9 +23,16 @@ public static class FocusPlanner
 {
     public enum Want { Off, Nice, Need }
 
-    /// <summary>A worn item's open focus socket. Fixed = a +0 item's own,
-    /// unmovable focus (no socket yet — the effect still sits on the item).</summary>
-    public sealed record Socket(string Label, string SlotKey, string Item, string Location, int Line, bool AnySlot, bool Fixed = false);
+    /// <summary>A worn item's open focus socket. Slots = the ITEM's own wiki slots
+    /// (what an exaltation must match — a Neck item in Any Slot is still Neck);
+    /// SlotKey = where it is worn. Fixed = a +0 item's own, unmovable focus (no
+    /// socket yet — the effect still sits on the item).</summary>
+    public sealed record Socket(string Label, string SlotKey, string Item, string Location, int Line, bool AnySlot, bool Fixed = false, IReadOnlyList<string>? Slots = null)
+    {
+        /// <summary>The slots an exaltation must share: the item's own, else the worn slot.</summary>
+        public IReadOnlyList<string> Accepts => Slots is { Count: > 0 } ? Slots : new[] { SlotKey };
+        public string AcceptsText => string.Join("/", Accepts.Select(a => a.ToLowerInvariant()));
+    }
 
     /// <summary>One focus exaltation you own, and where it sits now.</summary>
     /// <summary>Host = the item it sits inside (worn or stored), Where = that item's place in plain words.</summary>
@@ -97,8 +107,9 @@ public static class FocusPlanner
     public static double Strength(FocusEffects.Tier tier, int level) =>
         tier.LevelCap is not { } cap || level <= 0 || level <= cap ? 1 : Math.Max(0.3, 1 - (level - cap) / 30.0);
 
-    /// <summary>"Wrist 1", "Fingers 2", "Any slot 1" — the sockets in dump order.</summary>
-    public static List<Socket> Sockets(IEnumerable<InventoryStore.CarryRow> rows, FocusEffects focus)
+    /// <summary>"Wrist 1", "Fingers 2", "Any slot 1" — the sockets in dump order, each
+    /// with its item's own slots from the wiki table.</summary>
+    public static List<Socket> Sockets(IEnumerable<InventoryStore.CarryRow> rows, FocusEffects focus, ItemStats? stats = null)
     {
         var list = new List<(string Base, string Key, string Item, string Loc, int Line, bool Fixed)>();
         foreach (var r in rows.OrderBy(r => r.Line))
@@ -119,7 +130,9 @@ public static class FocusPlanner
             int n = seen[s.Base] = seen.GetValueOrDefault(s.Base) + 1;
             string label = s.Base == "Any Slot" ? "Any slot" : s.Base;
             if (counts[s.Base] > 1) label += " " + n;
-            result.Add(new Socket(label, s.Key, s.Item, s.Loc, s.Line, s.Key == "ANY", s.Fixed));
+            var rec = stats?.Lookup(s.Item);
+            var own = rec is not null ? SlotFinder.SlotKeys(rec) : new List<string>();
+            result.Add(new Socket(label, s.Key, s.Item, s.Loc, s.Line, s.Key == "ANY", s.Fixed, own.Count > 0 ? own : null));
         }
         return result;
     }
@@ -188,14 +201,14 @@ public static class FocusPlanner
         return cut >= 0 ? chain[..cut] : chain;
     }
 
-    private const double NeedWeight = 100, NiceWeight = 10, StayBonus = 0.5, AnySlotPenalty = 0.2;
+    private const double NeedWeight = 100, NiceWeight = 10, StayBonus = 0.5;
     private const int SearchBudget = 400_000;
 
     public static Plan Build(IEnumerable<InventoryStore.CarryRow> rows, FocusEffects focus, ItemStats stats,
         IReadOnlyCollection<string> combo, int level, IReadOnlyDictionary<string, Want> wants)
     {
         var all = rows.ToList();
-        var sockets = Sockets(all, focus);
+        var sockets = Sockets(all, focus, stats);
         var pool = PoolOf(all, focus, stats, sockets);
         Want WantOf(FocusEffects.Family f) => wants.TryGetValue(f.Name, out var w) ? w : Want.Off;
         var ownedFams = pool.Select(e => e.Family).ToHashSet();
@@ -211,10 +224,11 @@ public static class FocusPlanner
         foreach (var e in usable)
             foreach (var s in sockets)
             {
-                bool fits = e.Fixed ? s.Fixed && s.Label == e.InSocket : !s.Fixed && (s.AnySlot || e.Slots.Contains(s.SlotKey));
+                // The exaltation's source slots must meet the ITEM's own slots.
+                bool fits = e.Fixed ? s.Fixed && s.Label == e.InSocket : !s.Fixed && e.Slots.Any(x => s.Accepts.Contains(x));
                 if (!fits) continue;
                 double w = (WantOf(e.Family) == Want.Need ? NeedWeight : NiceWeight) * Strength(e.Tier, level)
-                           + (e.InSocket == s.Label ? StayBonus : 0) - (s.AnySlot ? AnySlotPenalty : 0);
+                           + (e.InSocket == s.Label ? StayBonus : 0);
                 edges.Add((e, s, w));
             }
         var famList = edges.Select(x => x.E.Family).Distinct()
@@ -277,7 +291,7 @@ public static class FocusPlanner
         var conflicts = new List<Conflict>();
         foreach (var s in sockets.Where(s => !s.Fixed))
         {
-            var wanting = usable.Where(e => !e.Fixed && (s.AnySlot || e.Slots.Contains(s.SlotKey))).GroupBy(e => e.Family).Select(g => g.OrderByDescending(e => e.Tier.TierNum).First()).ToList();
+            var wanting = usable.Where(e => !e.Fixed && e.Slots.Any(x => s.Accepts.Contains(x))).GroupBy(e => e.Family).Select(g => g.OrderByDescending(e => e.Tier.TierNum).First()).ToList();
             if (wanting.Select(e => e.Family).Distinct().Count() < 2) continue;
             if (!wanting.Any(e => !planByFam.ContainsKey(e.Family))) continue;
             planBySocket.TryGetValue(s.Label, out var winner);
@@ -300,7 +314,7 @@ public static class FocusPlanner
                 var slots = rec is not null ? SlotFinder.SlotKeys(rec) : SlotFinder.SlotKeys(new ItemStats.Record { Slot = item.Slot });
                 string classes = rec?.Classes ?? item.Classes;
                 if (classes.Length > 0 && !BisFinder.ClassAllowed(classes, combo)) continue;
-                var open = placements.FirstOrDefault(p => !p.Socket.Fixed && p.Plan is null && slots.Contains(p.Socket.SlotKey));
+                var open = placements.FirstOrDefault(p => !p.Socket.Fixed && p.Plan is null && slots.Any(x => p.Socket.Accepts.Contains(x)));
                 hunts.Add(new Hunt(fr.Family, next, item.Name, string.Join("/", slots.Select(Pretty)).ToLowerInvariant(), open?.Socket.Label ?? "", why));
             }
         }

@@ -134,7 +134,8 @@ public sealed class FocusPlannerView : DockPanel
             Foreground = Faint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0),
             Text = "Rules (eqlwiki, Exaltations): a worn item's Focus socket opens at +1, one per item; an exaltation keeps its source item's slot — a Face item's focus fits a Face socket; the same focus never stacks, so only its best tier counts. "
                  + "The pool is every focus exaltation you own: in your worn items' sockets, loose on the key ring, and in stored items' sockets. "
-                 + "Assumed, not stated: an exaltation keeps its source item's class restrictions; an Any Slot item's socket takes any exaltation (they're used last); a tier past its level cap fades toward 30% over 30 levels. "
+                 + "An exaltation fits an item whose own slot matches its source item's — a Neck item worn in Any Slot takes a Neck exaltation, never a Secondary one. "
+                 + "Assumed, not stated: an exaltation keeps its source item's class restrictions; a tier past its level cap fades toward 30% over 30 levels. "
                  + "Reciting the moves is on you — the plan doesn't know about copper.",
         });
     }
@@ -252,13 +253,13 @@ public sealed class FocusPlannerView : DockPanel
             else if (shadow)
             {
                 var e = byFam[p.Now!.Family];
-                moveText = $"shadowed by {e.Plan!.Family.Name} {e.Plan.TierLabel} in {e.Socket.Label} — nothing else you want fits {p.Socket.SlotKey.ToLowerInvariant()}";
+                moveText = $"shadowed by {e.Plan!.Family.Name} {e.Plan.TierLabel} in {e.Socket.Label} — nothing else you want fits {p.Socket.AcceptsText}";
                 mv.Inlines.Add(new Run(moveText) { Foreground = Warn });
             }
             else
             {
                 var want = plan.Families.FirstOrDefault(f => f.Family == p.Now!.Family)?.Want ?? FocusPlanner.Want.Off;
-                moveText = want == FocusPlanner.Want.Off ? $"keep — {p.Now!.Family.Name} is Off; nothing wanted fits {p.Socket.SlotKey.ToLowerInvariant()}" : "keep";
+                moveText = want == FocusPlanner.Want.Off ? $"keep — {p.Now!.Family.Name} is Off; nothing wanted fits {p.Socket.AcceptsText}" : "keep";
                 mv.Inlines.Add(new Run(moveText) { Foreground = Faint, FontStyle = want == FocusPlanner.Want.Off ? FontStyles.Italic : FontStyles.Normal });
             }
             MoveLinesForTest.Add($"{p.Socket.Label}: {moveText}");
@@ -304,7 +305,7 @@ public sealed class FocusPlannerView : DockPanel
             {
                 if (tb.Inlines.Count > 0) tb.Inlines.Add(new LineBreak());
                 tb.Inlines.Add(new Run(c.Socket.Label + ": ") { Foreground = Text, FontWeight = FontWeights.SemiBold });
-                tb.Inlines.Add(new Run(string.Join(", ", c.Wanting.Select(e => $"{e.Family.Name} {e.TierLabel} ({Want(e)})")) + $" all fit {c.Socket.SlotKey.ToLowerInvariant()}. "));
+                tb.Inlines.Add(new Run(string.Join(", ", c.Wanting.Select(e => $"{e.Family.Name} {e.TierLabel} ({Want(e)})")) + $" all fit {c.Socket.AcceptsText}. "));
                 tb.Inlines.Add(new Run(c.Winner is null ? "The socket went to nothing — every one of them fits somewhere better." : $"{c.Winner.Family.Name} {c.Winner.TierLabel} takes it") { Foreground = c.Winner is null ? Hint : Green });
                 var losers = c.Wanting.Where(e => c.Winner is null || e.Family != c.Winner.Family).Where(e => plan.Families.FirstOrDefault(f => f.Family == e.Family)?.Placed is null).ToList();
                 if (losers.Count > 0) tb.Inlines.Add(new Run($"; {string.Join(" and ", losers.Select(e => e.Family.Name))} go{(losers.Count == 1 ? "es" : "")} without. Mark {c.Winner?.Family.Name ?? "the winner"} Nice to see the other way round.") { Foreground = Hint });

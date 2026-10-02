@@ -225,7 +225,9 @@ ring's Augmentation rows + a worn +0 item's own fixed focus; each family
 marked Need (100) / Nice (10) / Off × strength (1 at or under the tier's
 level cap, fading to 0.3 over 30 levels past it); the plan is the EXACT
 best assignment — one exaltation per family, one per socket, DFS with a
-bound, greedy past 400k nodes; Any Slot sockets take anything, used last;
+bound, greedy past 400k nodes; an exaltation fits an ITEM whose own wiki
+slots meet its source slots (`Socket.Accepts` — a Neck item in Any Slot is
+still Neck; the game refused a Secondary exaltation there, 2 Oct);
 instrument foci only with BRD, summoned families only when owned; conflicts
 = a socket several wanted foci fit where one went without; hunts = the next
 tier up per wanted family with its carriers and an open socket; marks per
