@@ -27,7 +27,8 @@ public static class FocusPlanner
     /// (what an exaltation must match — a Neck item in Any Slot is still Neck);
     /// SlotKey = where it is worn. Fixed = a +0 item's own, unmovable focus (no
     /// socket yet — the effect still sits on the item).</summary>
-    public sealed record Socket(string Label, string SlotKey, string Item, string Location, int Line, bool AnySlot, bool Fixed = false, IReadOnlyList<string>? Slots = null)
+    /// <summary>Classes = the item's own class list (what an exaltation's list is overlapped with).</summary>
+    public sealed record Socket(string Label, string SlotKey, string Item, string Location, int Line, bool AnySlot, bool Fixed = false, IReadOnlyList<string>? Slots = null, string Classes = "")
     {
         /// <summary>The slots an exaltation must share: the item's own, else the worn slot.</summary>
         public IReadOnlyList<string> Accepts => Slots is { Count: > 0 } ? Slots : new[] { SlotKey };
@@ -53,8 +54,14 @@ public static class FocusPlanner
 
     public sealed record Conflict(Socket Socket, List<Exalt> Wanting, Exalt? Winner);
 
+    /// <summary>An exaltation that fits a socket's slot but not its classes: socketed
+    /// there the item would keep only Left (the two lists' overlap), which your combo
+    /// can't wear — so the planner never puts it there (owner, 2 Oct: Rokyl's
+    /// Channelling Crystal in a Bladestopper left the shield BRD-only).</summary>
+    public sealed record Blocked(Exalt E, Socket S, string Left);
+
     public sealed record Plan(List<Placement> Sockets, List<FamilyRow> Families, List<Hunt> Hunts, List<Conflict> Conflicts,
-        List<Exalt> Foreign, List<Exalt> Unplaceable, List<Exalt> Pool, int Moves, bool Exact)
+        List<Exalt> Foreign, List<Exalt> Unplaceable, List<Exalt> Pool, int Moves, bool Exact, List<Blocked> ClassBlocked)
     {
         public int Needs => Families.Count(f => f.Shown && f.Want == Want.Need && f.Best is not null);
         public int NeedsPlaced => Families.Count(f => f.Shown && f.Want == Want.Need && f.Placed is not null);
@@ -132,7 +139,7 @@ public static class FocusPlanner
             if (counts[s.Base] > 1) label += " " + n;
             var rec = stats?.Lookup(s.Item);
             var own = rec is not null ? SlotFinder.SlotKeys(rec) : new List<string>();
-            result.Add(new Socket(label, s.Key, s.Item, s.Loc, s.Line, s.Key == "ANY", s.Fixed, own.Count > 0 ? own : null));
+            result.Add(new Socket(label, s.Key, s.Item, s.Loc, s.Line, s.Key == "ANY", s.Fixed, own.Count > 0 ? own : null, rec?.Classes ?? ""));
         }
         return result;
     }
@@ -201,6 +208,26 @@ public static class FocusPlanner
         return cut >= 0 ? chain[..cut] : chain;
     }
 
+    /// <summary>The classes an item keeps once an exaltation sits in it: the overlap of
+    /// the two class lists (the game's rule, 2 Oct). An unknown list reads as ALL.</summary>
+    public static List<string> ClassesWith(string hostClasses, string exaltClasses)
+    {
+        var h = BisFinder.ClassSet(hostClasses); var e = BisFinder.ClassSet(exaltClasses);
+        return BisFinder.AllClasses.Where(c => h.Contains(c) && e.Contains(c)).ToList();
+    }
+
+    /// <summary>Could your combo still wear the item with that exaltation in it?</summary>
+    public static bool Wearable(string hostClasses, string exaltClasses, IReadOnlyCollection<string> combo) =>
+        combo.Count == 0 || ClassesWith(hostClasses, exaltClasses).Any(c => combo.Contains(c, StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>The slot rule alone: the exaltation's source slots meet the ITEM's own slots.</summary>
+    private static bool SlotFits(Exalt e, Socket s) =>
+        e.Fixed ? s.Fixed && s.Label == e.InSocket : !s.Fixed && e.Slots.Any(x => s.Accepts.Contains(x));
+
+    /// <summary>Slot AND class: what the planner may actually do.</summary>
+    private static bool Fits(Exalt e, Socket s, IReadOnlyCollection<string> combo) =>
+        SlotFits(e, s) && (e.Fixed || Wearable(s.Classes, e.Classes, combo));
+
     private const double NeedWeight = 100, NiceWeight = 10, StayBonus = 0.5;
     private const int SearchBudget = 400_000;
 
@@ -221,12 +248,18 @@ public static class FocusPlanner
 
         // Edges: (exaltation, socket) pairs that fit, weighted by want × strength.
         var edges = new List<(Exalt E, Socket S, double W)>();
+        var blocked = new List<Blocked>(); var blockedSeen = new HashSet<(int, string)>();
         foreach (var e in usable)
             foreach (var s in sockets)
             {
-                // The exaltation's source slots must meet the ITEM's own slots.
-                bool fits = e.Fixed ? s.Fixed && s.Label == e.InSocket : !s.Fixed && e.Slots.Any(x => s.Accepts.Contains(x));
-                if (!fits) continue;
+                // The exaltation's source slots must meet the ITEM's own slots — and the
+                // item keeps only the classes both lists share, which must include yours.
+                if (!SlotFits(e, s)) continue;
+                if (!e.Fixed && !Wearable(s.Classes, e.Classes, combo))
+                {
+                    if (blockedSeen.Add((e.Line, s.Label))) blocked.Add(new Blocked(e, s, string.Join("/", ClassesWith(s.Classes, e.Classes))));
+                    continue;
+                }
                 double w = (WantOf(e.Family) == Want.Need ? NeedWeight : NiceWeight) * Strength(e.Tier, level)
                            + (e.InSocket == s.Label ? StayBonus : 0);
                 edges.Add((e, s, w));
@@ -291,7 +324,7 @@ public static class FocusPlanner
         var conflicts = new List<Conflict>();
         foreach (var s in sockets.Where(s => !s.Fixed))
         {
-            var wanting = usable.Where(e => !e.Fixed && e.Slots.Any(x => s.Accepts.Contains(x))).GroupBy(e => e.Family).Select(g => g.OrderByDescending(e => e.Tier.TierNum).First()).ToList();
+            var wanting = usable.Where(e => !e.Fixed && Fits(e, s, combo)).GroupBy(e => e.Family).Select(g => g.OrderByDescending(e => e.Tier.TierNum).First()).ToList();
             if (wanting.Select(e => e.Family).Distinct().Count() < 2) continue;
             if (!wanting.Any(e => !planByFam.ContainsKey(e.Family))) continue;
             planBySocket.TryGetValue(s.Label, out var winner);
@@ -314,11 +347,11 @@ public static class FocusPlanner
                 var slots = rec is not null ? SlotFinder.SlotKeys(rec) : SlotFinder.SlotKeys(new ItemStats.Record { Slot = item.Slot });
                 string classes = rec?.Classes ?? item.Classes;
                 if (classes.Length > 0 && !BisFinder.ClassAllowed(classes, combo)) continue;
-                var open = placements.FirstOrDefault(p => !p.Socket.Fixed && p.Plan is null && slots.Any(x => p.Socket.Accepts.Contains(x)));
+                var open = placements.FirstOrDefault(p => !p.Socket.Fixed && p.Plan is null && slots.Any(x => p.Socket.Accepts.Contains(x)) && Wearable(p.Socket.Classes, classes, combo));
                 hunts.Add(new Hunt(fr.Family, next, item.Name, string.Join("/", slots.Select(Pretty)).ToLowerInvariant(), open?.Socket.Label ?? "", why));
             }
         }
-        return new Plan(placements, families, hunts, conflicts, foreign, unplaceable, pool, moves, exact);
+        return new Plan(placements, families, hunts, conflicts, foreign, unplaceable, pool, moves, exact, blocked);
     }
 
     /// <summary>The move in plain words (owner, 30 Sep: "make the move note more explanatory"):

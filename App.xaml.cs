@@ -3749,7 +3749,7 @@ public partial class App : Application
             tw.PageShown == "home" && tw.HomeLines.Count == 8 && tw.HomeLines.All(l => l.Length > 0)
             && tw.HomeLines[0].StartsWith("Best per mana at 41–50", StringComparison.Ordinal)
             && tw.HomeLines[3].StartsWith("Wrist is the fullest: 5 items, 3 your combo can wear", StringComparison.Ordinal)
-            && tw.HomeLines[4].StartsWith("3 moves would socket 3 of 4 needs", StringComparison.Ordinal)
+            && tw.HomeLines[4].StartsWith("2 moves would socket 3 of 4 needs", StringComparison.Ordinal)
             && tw.HomeLines[5].StartsWith("30 kills · 93 casts", StringComparison.Ordinal) && tw.HomeLines[5].Contains("most killed: a zol ghoul knight", StringComparison.Ordinal)
             && tw.HomeLines[6].Contains("★ High Elf", StringComparison.Ordinal)
             && tw.HomeLines[7].Contains("sphinx", StringComparison.Ordinal));
@@ -3827,11 +3827,16 @@ public partial class App : Application
         fp.OpenWantsForTest(); // the marks fold to a line by default; the checks below read the open rows too
         var plan = fp.PlanForTest!;
         string PlanIn(string sock) => plan.Sockets.First(p => p.Socket.Label == sock).Plan?.Name ?? "";
-        Check("focus: 12 open sockets; Face keeps Improved Damage II over Emissary Mask's decayed Healing I; Secondary keeps Mana Preservation II; Shoulders, Chest and Feet get filled — 3 moves",
-            plan.Exact && plan.Sockets.Count(p => !p.Socket.Fixed) == 12 && plan.Moves == 3
+        Check("focus: 12 open sockets; Face keeps Improved Damage II over Emissary Mask's decayed Healing I; Secondary keeps Mana Preservation II; Shoulders and Feet get filled — 2 moves",
+            plan.Exact && plan.Sockets.Count(p => !p.Socket.Fixed) == 12 && plan.Moves == 2
             && PlanIn("Face").StartsWith("Polished Mithril Mask") && PlanIn("Secondary").StartsWith("Nisch Mas Ilkvel")
-            && PlanIn("Shoulders").StartsWith("Gilded Cloth") && PlanIn("Chest").StartsWith("Green Silken Drape") && PlanIn("Feet").StartsWith("Golden Efreeti Boots")
+            && PlanIn("Shoulders").StartsWith("Gilded Cloth") && PlanIn("Feet").StartsWith("Golden Efreeti Boots")
             && PlanIn("Primary") == "");
+        // The class rule (2 Oct): the Green Silken Drape (NEC WIZ MAG ENC) fits the Chest slot, but inside the
+        // Pristine Studded Leather Tunic (no caster but SHM) the tunic would be for nobody — so Chest stays empty.
+        Check("focus: an exaltation whose classes don't overlap the item's for your combo is never planned — Chest stays empty, and the pair is named",
+            PlanIn("Chest") == "" && plan.ClassBlocked.Any(b => b.E.Name.StartsWith("Green Silken Drape") && b.S.Label == "Chest" && b.Left == "")
+            && !plan.ClassBlocked.Any(b => b.S.Label == "Shoulders"));
         Check("focus: the move reads as a sentence — what to take out, where it is, what it goes into",
             FocusPlanner.MoveText(plan.Sockets.First(p => p.Socket.Label == "Shoulders")) == "Pull the Gilded Cloth exaltation out of Gilded Cloth +3 (Bank 4) and socket it into Pauldrons of Power +1 (Shoulders)."
             && FocusPlanner.MoveText(plan.Sockets.First(p => p.Socket.Label == "Feet")) == "Take the Golden Efreeti Boots exaltation from the key ring and socket it into Lustrous Russet Boots +1 (Feet).");
@@ -3858,12 +3863,33 @@ public partial class App : Application
         var wi2 = fp.PlanForTest!;
         Check("focus: two Needs that both fit Secondary — Mana Preservation stays, and the lute finds the other Secondary-capable item, the 1H in Primary",
             wi2.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Nisch")
-            && wi2.Sockets.First(p => p.Socket.Label == "Primary").Plan!.Name.StartsWith("Kelin") && wi2.Moves == 4);
+            && wi2.Sockets.First(p => p.Socket.Label == "Primary").Plan!.Name.StartsWith("Kelin") && wi2.Moves == 3);
         fp.SetWantForTest("Mana Preservation", FocusPlanner.Want.Nice);
         var wi3 = fp.PlanForTest!;
         Check("focus: Mana Preservation marked Nice still keeps Secondary (nothing else wants it); the SHD-only sallet is foreign to DRU/BRD/WIZ, so the head stays empty",
             wi3.Sockets.First(p => p.Socket.Label == "Secondary").Plan!.Name.StartsWith("Nisch") && wi3.Sockets.First(p => p.Socket.Label == "Head").Plan is null
-            && wi3.Foreign.Any(e => e.Name.StartsWith("Wicked Sallet")) && wi3.Moves == 4);
+            && wi3.Foreign.Any(e => e.Name.StartsWith("Wicked Sallet")) && wi3.Moves == 3);
+        // Johan's own case (2 Oct): Rokyl's Channelling Crystal (BRD NEC WIZ MAG ENC) in a Bladestopper
+        // (WAR CLR PAL RNG SHD BRD ROG SHM) leaves the shield BRD-only — fine for a bard, useless for SHD/SHM/ENC.
+        {
+            string tb = ((char)9).ToString(), nl = ((char)13).ToString() + (char)10;
+            var rokDump = InventoryStore.Parse("Location" + tb + "Name" + tb + "ID" + tb + "Count" + tb + "Slots" + nl
+                + "Secondary" + tb + "Bladestopper +6" + tb + "1" + tb + "1" + tb + "10" + nl
+                + "Secondary-Slot7" + tb + "Empty" + tb + "0" + tb + "0" + tb + "0" + nl + nl
+                + "KeyRing" + tb + "Name" + tb + "ID" + tb + nl
+                + "Augmentation" + tb + "Rokyls Channelling Crystal (Exaltation)" + tb + "2" + nl);
+            var rokRows = InventoryStore.CarryAll(rokDump).Rows;
+            var fx = new FocusEffects(); var ist = new ItemStats();
+            var shd = new[] { "SHD", "SHM", "ENC" }; var brd = new[] { "DRU", "BRD", "WIZ" };
+            var rokShd = FocusPlanner.Build(rokRows, fx, ist, shd, 50, FocusPlanner.DefaultWants(shd));
+            var rokBrd = FocusPlanner.Build(rokRows, fx, ist, brd, 50, FocusPlanner.DefaultWants(brd));
+            Check("focus: Rokyl's Crystal fits the Bladestopper's slot but not its classes for SHD/SHM/ENC — left out and named as BRD-only; with a bard it goes in",
+                FocusPlanner.ClassesWith("WAR CLR PAL RNG SHD BRD ROG SHM", "BRD NEC WIZ MAG ENC") is ["BRD"]
+                && !FocusPlanner.Wearable("WAR CLR PAL RNG SHD BRD ROG SHM", "BRD NEC WIZ MAG ENC", shd) && FocusPlanner.Wearable("WAR CLR PAL RNG SHD BRD ROG SHM", "BRD NEC WIZ MAG ENC", brd)
+                && FocusPlanner.Wearable("ALL", "", shd) && !FocusPlanner.Wearable("NONE", "ALL", shd) && FocusPlanner.Wearable("ALL except WAR", "ALL except SHM", shd)
+                && rokShd.Sockets.Single().Plan is null && rokShd.ClassBlocked is [{ Left: "BRD" } rb] && rb.E.Name.StartsWith("Rokyls") && rb.S.Item == "Bladestopper +6"
+                && rokBrd.Sockets.Single().Plan is { } rp && rp.Name.StartsWith("Rokyls") && rokBrd.ClassBlocked.Count == 0 && rokBrd.Moves == 1);
+        }
         tw.ShowPage("eff");
         var libA = tw.LibraryForTest;
         tw.ShowPage("inv");

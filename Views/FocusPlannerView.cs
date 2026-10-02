@@ -137,7 +137,8 @@ public sealed class FocusPlannerView : DockPanel
             Text = "Rules (eqlwiki, Exaltations): a worn item's Focus socket opens at +1, one per item; an exaltation keeps its source item's slot — a Face item's focus fits a Face socket; the same focus never stacks, so only its best tier counts. "
                  + "The pool is every focus exaltation you own: in your worn items' sockets, loose on the key ring, and in stored items' sockets. "
                  + "An exaltation fits an item whose own slot matches its source item's — a Neck item worn in Any Slot takes a Neck exaltation, never a Secondary one. "
-                 + "Assumed, not stated: an exaltation keeps its source item's class restrictions; a tier past its level cap fades toward 30% over 30 levels. "
+                 + "A socketed item keeps only the classes it and the exaltation share — Rokyl's Crystal in a Bladestopper left the shield BRD-only (the game, 2 Oct) — so a pair your combo couldn't wear is never planned. "
+                 + "Assumed, not stated: a tier past its level cap fades toward 30% over 30 levels. "
                  + "Reciting the moves is on you — the plan doesn't know about copper.",
         });
     }
@@ -376,6 +377,20 @@ public sealed class FocusPlannerView : DockPanel
                 if (open is not null) tb.Inlines.Add(new Run($" Your {open.OpenSocket} socket is open for it.") { Foreground = Green });
             }
             list.Add(Note("WORTH HUNTING", tb, Blue));
+        }
+        if (plan.ClassBlocked.Count > 0)
+        {
+            var tb = new TextBlock { FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = Dim };
+            string combo = string.Join("/", _combo);
+            foreach (var b in plan.ClassBlocked.OrderBy(b => b.S.Label, StringComparer.Ordinal))
+            {
+                if (tb.Inlines.Count > 0) tb.Inlines.Add(new LineBreak());
+                tb.Inlines.Add(new Run($"{b.E.Short} ({b.E.Family.Name} {b.E.TierLabel})") { Foreground = Text, FontWeight = FontWeights.SemiBold });
+                tb.Inlines.Add(new Run($" fits {b.S.Item}'s slot ({b.S.Label}), but socketed there the item is for "));
+                tb.Inlines.Add(new Run(b.Left.Length > 0 ? b.Left + " only" : "no class at all") { Foreground = Warn });
+                tb.Inlines.Add(new Run($" — not {combo}. The planner leaves it out.") { Foreground = Hint });
+            }
+            list.Add(Note("WOULD LOCK YOU OUT", tb, Warn));
         }
         if (plan.Foreign.Count > 0)
             list.Add(Note("NOT FOR THIS COMBO", new TextBlock { Text = string.Join(" · ", plan.Foreign.Select(e => $"{e.Name.Replace(" (Exaltation)", "")} ({e.Family.Name} {e.TierLabel}, {e.Classes})")), FontSize = 12, Foreground = Hint, TextWrapping = TextWrapping.Wrap }, Faint));
