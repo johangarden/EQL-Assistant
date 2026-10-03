@@ -223,7 +223,7 @@ public sealed class SlotFinderView : DockPanel
     {
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
         sp.Children.Add(new Border { Width = 3, Background = edge, Margin = new Thickness(0, 0, 7, 0), CornerRadius = new CornerRadius(1) });
-        var line = ItemChips.Name(it.Name, it.BestTier, it.Rec.Icon, nameFg, 1, it.WornIn(slotKey) || it.WornIn("ANY") ? new[] { ItemChips.Tag.Worn } : Array.Empty<ItemChips.Tag>());
+        var line = ItemChips.Linkify(ItemChips.Name(it.Name, it.BestTier, it.Rec.Icon, nameFg, 1, it.WornIn(slotKey) || it.WornIn("ANY") ? new[] { ItemChips.Tag.Worn } : Array.Empty<ItemChips.Tag>()), it.Rec.Name);
         // After the +N pill when there is one — a +0 item has none (owner, 2 Oct: "index 3 must be ≤ 2").
         if (it.Copies.Count > 1)
             line.Children.Insert(it.BestTier > 0 ? 3 : 2, new TextBlock { Text = $"{it.Copies.Count} copies ({string.Join(", ", it.Copies.Select(c => "+" + c.Tier))})", Foreground = Faint, FontSize = 10.5, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });

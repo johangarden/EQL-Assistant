@@ -1230,6 +1230,14 @@ public partial class MainWindow : Window
                 ToggleTs = ToggleTradeskill,
                 PickTs = PickTradeskill,
                 Dump = () => { var rows = DumpRows(out var st); return (rows, st, rows is null ? null : _dumpCache?.Dump); },
+                Charms = _charms,
+                Session = _session,
+                Character = () =>
+                {
+                    string lp = _watcher?.CurrentPath ?? "";
+                    var (n, sv) = InventoryStore.ParseLogName(lp);
+                    return (InventoryStore.EqRootOf(lp), n, sv);
+                },
                 Config = _configService,
                 CharKey = () =>
                 {
@@ -2599,6 +2607,7 @@ public partial class MainWindow : Window
             _inventoryWindow = new Views.InventoryWindow(
                 InventoryStore.EqRootOf(logPath), name, server, _session, _charms, _races);
             _inventoryWindow.Closed += (_, _) => _inventoryWindow = null;
+            _inventoryWindow.FocusBoardRequested = () => OpenTools("fx"); // the board lives in Tools now (3 Oct)
             _inventoryWindow.Show();
         }
         _inventoryWindow.ShowTab(tab);

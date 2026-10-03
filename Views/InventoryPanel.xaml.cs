@@ -74,6 +74,10 @@ public partial class InventoryPanel : UserControl
     /// <summary>The charm ledger behind the Charmed pets tab (Character window only).</summary>
     public CharmBook? Charms { get; set; }
     public int CharmRowsForTest => CharmsTab.RowCount;
+    /// <summary>Where the sheet's focus-board link goes when this host has no focus tab (Tools, 3 Oct).</summary>
+    public Action? FocusBoardRequested { get; set; }
+    /// <summary>Rows on the focus board — selftest.</summary>
+    public int FocusRowsForTest => FocusList.Items.Count;
     /// <summary>The race unlocks behind the Races tab (22 Sep).</summary>
     public RaceBook? Races { get; set; }
     public int RaceRowsForTest => RacesTab.RowCount;
@@ -141,7 +145,7 @@ public partial class InventoryPanel : UserControl
         InitializeComponent();
         UpdateDupChip();
         SheetView.Init(_focus, _itemStats);
-        SheetView.FocusBoardRequested = () => ShowTab("focus");
+        SheetView.FocusBoardRequested = () => { if (FocusBoardRequested is not null) FocusBoardRequested(); else ShowTab("focus"); };
         SheetView.DrawerExtendRequested = extend => DrawerExtendRequested?.Invoke(extend);
 
         // The game rewrites the file in place; wait for the write to settle.
