@@ -169,7 +169,9 @@ the affected suites (with `-Wait`) before committing.
   own line; the chip's tooltip shows the sum. STATIONS (4 Oct): a recipe
   whose container is stationary (`Stations.KindOf`: forge · oven · brew
   barrel · pottery wheel · kiln · loom; kits/boxes/bowls/bags are carried)
-  gets a line with the ones in your current zone and their /loc —
+  gets a line with the ones in your current zone as "/way X Y Z" chips
+  (click = copied to the clipboard; the game's /loc prints Y X Z, `Stations.Way`
+  swaps, Z only when known) —
   `data/stations.json` from the Project 1999 wiki's container pages
   (scratch `build-stations.py`; classic zones match, Kunark/Velious rows
   tagged), and FIRST where YOU combined: a "Your Location is Y, X, Z" line

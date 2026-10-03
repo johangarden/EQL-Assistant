@@ -4300,14 +4300,15 @@ public partial class App : Application
         w.ProcessLine(L(80, "Your Location is 100.50, -200.25, 3.10"));
         w.ProcessLine(L(85, "You have fashioned the items together to create something new: Metal Bits."));
         Check("ts: a /loc before a forge combine teaches where the forge is, per kind and zone",
-            w.StationFor("Forge", "Paineel") is { Y: 100.5, X: -200.25 } && w.StationFor("Oven", "Paineel") is null && w.StationFor("Forge", "Erudin") is null
+            w.StationFor("Forge", "Paineel") is { Y: 100.5, X: -200.25, Z: 3.1 } st0 && st0.Way == "/way -200 101 3" && w.StationFor("Oven", "Paineel") is null && w.StationFor("Forge", "Erudin") is null
             && w.Zone == "Paineel");
         Check("ts: the stations data — a recipe's container wording maps to a station kind or to nothing you carry; Erudin's forge at /loc -1223, -249; Paineel's kiln named without a /loc",
             Stations.KindOf("Brewing Barrel") == "Brew Barrel" && Stations.KindOf("Oven or Spit") == "Oven" && Stations.KindOf("Feir`Dal Forge") == "Forge" && Stations.KindOf("Loom or Large Sewing Kit") == "Loom"
             && Stations.KindOf("Jeweler's Kit") is null && Stations.KindOf("Fletching Table") is null && Stations.KindOf("") is null
             && Stations.In("Forge", "Erudin").Any(st => st is { Y: -1223, X: -249, Note: "53" }) && Stations.In("Kiln", "Paineel").Any(st => st is { Y: null, Note: "False Idols" })
             && Stations.In("Forge", "Nowhere").Count == 0 && Stations.FoldZone("The Ruins of Old Guk 1 (Awakened)") == "The Ruins of Old Guk"
-            && Stations.Loc(-1223, -249) == "-1223, -249" && Stations.AllStations.Count > 150);
+            && Stations.Way(-1223, -249) == "/way -249 -1223" && Stations.Way(-960, 36, 5) == "/way 36 -960 5"
+            && Stations.In("Kiln", "East Freeport").Any(st => st is { Y: -960, X: 36, Z: 5 }) && Stations.AllStations.Count > 150);
         {
             string tsPath2 = Path.Combine(Path.GetTempPath(), "eql_selftest_ts_ledger.json");
             try { File.Delete(tsPath2); } catch { /* fresh */ }

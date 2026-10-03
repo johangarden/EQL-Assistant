@@ -336,50 +336,73 @@ public partial class TradeskillWindow : Window
     // ---- pieces ---------------------------------------------------------------------------
 
     /// <summary>Where to combine (owner, 4 Oct): for a recipe that needs a stationary
-    /// container, the ones in your current zone with their /loc — where YOU last combined
+    /// container, the ones in your current zone as "/way X Y Z" chips — click one and the
+    /// command is on the clipboard, ready to paste in game. Where YOU last combined comes
     /// first (a /loc before a combine teaches it), then the wiki's list. Null for a
     /// container you carry.</summary>
     private UIElement? StationLine(TradeskillData.Recipe recipe)
     {
         if (Stations.KindOf(recipe.Container) is not { } kind) return null;
         string zone = _watch.Zone;
-        var tb = new TextBlock { FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0), Foreground = Hint };
-        string text;
+        var wrap = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
+        var texts = new List<string>();
+        void Word(string t, Brush fg, FontWeight? w = null) => wrap.Children.Add(Text(t, fg, 10.5, w, margin: new Thickness(0, 1, 5, 2)));
         if (zone.Length == 0)
         {
-            text = $"{kind}: zone unknown yet — the helper hears it when you zone.";
-            tb.Inlines.Add(new Run(text));
+            Word($"{kind}: zone unknown yet — the helper hears it when you zone.", Hint);
+            texts.Add(wrap.Children.OfType<TextBlock>().First().Text);
         }
         else
         {
             var learned = _watch.StationFor(kind, zone);
             var listed = Stations.In(kind, zone);
-            tb.Inlines.Add(new Run($"{kind} in {zone}: ") { Foreground = Dim, FontWeight = FontWeights.SemiBold });
-            var parts = new List<string>();
+            Word($"{kind} in {zone}:", Dim, FontWeights.SemiBold);
+            texts.Add($"{kind} in {zone}:");
+            int chips = 0;
             if (learned is not null)
             {
-                string you = $"you combined at /loc {Stations.Loc(learned.Y, learned.X)}";
-                tb.Inlines.Add(new Run(you) { Foreground = Blue });
-                parts.Add(you);
+                wrap.Children.Add(WayChip(learned.Way, "where you combined", Blue));
+                texts.Add(learned.Way); chips++;
             }
             foreach (var st in listed)
             {
                 if (learned is not null && st.Y is { } sy && st.X is { } sx && Math.Abs(sy - learned.Y) < 40 && Math.Abs(sx - learned.X) < 40) continue; // the same spot
-                string one = (st.Loc.Length > 0 ? $"/loc {st.Loc}" : "") + (st.Note.Length > 0 ? (st.Loc.Length > 0 ? $" ({st.Note})" : st.Note) : "") + (st.Era.Length > 0 ? $" [{st.Era}]" : "");
-                if (parts.Count > 0) tb.Inlines.Add(new Run(" · "));
-                tb.Inlines.Add(new Run(one));
-                parts.Add(one);
+                string note = st.Note + (st.Era.Length > 0 ? (st.Note.Length > 0 ? " · " : "") + st.Era : "");
+                if (st.Way.Length > 0) { wrap.Children.Add(WayChip(st.Way, note, Dim)); texts.Add(st.Way); chips++; }
+                else if (note.Length > 0) { Word(note + " (no /loc on the wiki)", Hint); texts.Add(note); chips++; }
             }
-            if (parts.Count == 0)
+            if (chips == 0)
             {
-                string none = $"none listed for {zone} — type /loc at one and combine; the helper remembers it.";
-                tb.Inlines.Add(new Run(none) { Foreground = Faint });
-                parts.Add(none);
+                Word($"none listed for {zone} — type /loc at one and combine; the helper remembers it.", Faint);
+                texts.Add("none listed");
             }
-            text = $"{kind} in {zone}: " + string.Join(" · ", parts);
         }
-        _texts.Add(text);
-        return tb;
+        _texts.Add(string.Join(" ", texts));
+        return wrap;
+    }
+
+    /// <summary>A "/way X Y Z" pill: click copies the command; the pill says "copied" for a moment.</summary>
+    private Border WayChip(string way, string note, Brush fg)
+    {
+        var label = Text(way, fg, 10.5, FontWeights.SemiBold); label.FontFamily = Mono;
+        var chip = new Border
+        {
+            Background = Panel2, BorderBrush = Hair, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(0, 0, 5, 3), Cursor = Cursors.Hand, Child = label,
+            ToolTip = (note.Length > 0 ? note + "\n" : "") + "Click to copy — paste it in game.",
+        };
+        chip.MouseEnter += (_, _) => chip.BorderBrush = fg;
+        chip.MouseLeave += (_, _) => chip.BorderBrush = Hair;
+        chip.MouseLeftButtonDown += (_, e) =>
+        {
+            e.Handled = true;
+            try { Clipboard.SetText(way); } catch { /* clipboard busy — nothing to do */ }
+            label.Text = "copied ✓";
+            var back = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.4) };
+            back.Tick += (_, _) => { back.Stop(); label.Text = way; };
+            back.Start();
+        };
+        return chip;
     }
 
     /// <summary>The line under a step: where the farmed / foraged ingredient

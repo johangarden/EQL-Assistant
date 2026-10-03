@@ -36,7 +36,10 @@ public sealed class TradeskillWatch
     public sealed record Bought(DateTime At, string Item, int Count, string Npc);
     public sealed record Used(DateTime At, string Product, bool Ok);
     /// <summary>Where you last combined in a stationary container: your /loc shortly before, per kind and zone.</summary>
-    public sealed record LearnedStation(string Kind, string Zone, double Y, double X, DateTime At);
+    public sealed record LearnedStation(string Kind, string Zone, double Y, double X, DateTime At, double? Z = null)
+    {
+        public string Way => Stations.Way(Y, X, Z);
+    }
 
     private sealed class Doc
     {
@@ -57,7 +60,7 @@ public sealed class TradeskillWatch
     private readonly List<Bought> _bought = new();
     private readonly List<Used> _used = new();
     private readonly Dictionary<string, LearnedStation> _stations = new(StringComparer.OrdinalIgnoreCase);
-    private (DateTime At, double Y, double X)? _lastLoc;
+    private (DateTime At, double Y, double X, double Z)? _lastLoc;
     private string _zone = "";
 
     // ---- the session on the opened skill ----
@@ -174,8 +177,9 @@ public sealed class TradeskillWatch
         {
             var lm = LocRx.Match(body);
             if (lm.Success && double.TryParse(lm.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double ly)
-                && double.TryParse(lm.Groups[2].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double lx))
-                _lastLoc = (time, ly, lx);
+                && double.TryParse(lm.Groups[2].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double lx)
+                && double.TryParse(lm.Groups[3].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double lz))
+                _lastLoc = (time, ly, lx, lz);
             return;
         }
 
@@ -251,7 +255,7 @@ public sealed class TradeskillWatch
             && Stations.KindOf(_data.RecipeFor(product)?.Container ?? "") is { } kind)
         {
             string zone = Stations.FoldZone(_zone);
-            _stations[kind + "|" + zone] = new LearnedStation(kind, zone, loc.Y, loc.X, time);
+            _stations[kind + "|" + zone] = new LearnedStation(kind, zone, loc.Y, loc.X, time, loc.Z);
             if (live) { Save(); saved = true; }
         }
         if (live && !saved) Save();

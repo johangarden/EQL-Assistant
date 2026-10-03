@@ -14,10 +14,11 @@ namespace EQLOverlay.Services;
 /// </summary>
 public static class Stations
 {
-    /// <summary>Y, X = the first two numbers of /loc; null when the wiki names the spot without a /loc.</summary>
-    public sealed record Station(string Kind, string Zone, double? Y, double? X, string Note, string Era)
+    /// <summary>Y, X (, Z) in the game's /loc order; null when the wiki names the spot without a /loc.</summary>
+    public sealed record Station(string Kind, string Zone, double? Y, double? X, string Note, string Era, double? Z = null)
     {
-        public string Loc => Y is { } y && X is { } x ? Stations.Loc(y, x) : "";
+        /// <summary>The waypoint command to paste in game, or "" without coordinates.</summary>
+        public string Way => Y is { } y && X is { } x ? Stations.Way(y, x, Z) : "";
     }
 
     private sealed class Doc { public string Source { get; set; } = ""; public string Fetched { get; set; } = ""; public List<Station> Stations { get; set; } = new(); }
@@ -59,7 +60,12 @@ public static class Stations
             .OrderBy(s => s.Era.Length > 0 ? 1 : 0).ToList();
     }
 
-    public static string Loc(double y, double x) => $"{y.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}, {x.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}";
+    /// <summary>"/way X Y Z" from a /loc's Y, X, Z (owner, 4 Oct: the game's waypoint takes X first). Z left off when unknown.</summary>
+    public static string Way(double y, double x, double? z = null)
+    {
+        static string N(double v) => v.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        return $"/way {N(x)} {N(y)}" + (z is { } zz ? " " + N(zz) : "");
+    }
 
     private static List<Station> Load()
     {
