@@ -1,6 +1,7 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using EQLOverlay.Services;
 
@@ -36,6 +37,24 @@ public static class ItemChips
         return sp;
     }
 
+    /// <summary>The name in an item line opens the item's eqlwiki page: hand cursor,
+    /// underline on hover, a tooltip saying so. The click never reaches the row behind.</summary>
+    public static StackPanel Linkify(StackPanel line, string? wikiName)
+    {
+        if (string.IsNullOrWhiteSpace(wikiName) || line.Children.Count < 2 || line.Children[1] is not TextBlock name) return line;
+        string url = ItemStats.WikiUrl(wikiName);
+        name.Cursor = Cursors.Hand;
+        name.ToolTip = "Open on eqlwiki ↗  " + url;
+        name.MouseEnter += (_, _) => name.TextDecorations = TextDecorations.Underline;
+        name.MouseLeave += (_, _) => name.TextDecorations = null;
+        name.MouseLeftButtonDown += (_, e) =>
+        {
+            e.Handled = true;
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); } catch { /* no browser */ }
+        };
+        return line;
+    }
+
     public static Border TierPill(int tier) => new()
     {
         Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(4, 0, 4, 1), CornerRadius = new CornerRadius(3), BorderThickness = new Thickness(1),
@@ -69,6 +88,6 @@ public static class ItemChips
     {
         var rec = stats.Lookup(dumpName);
         string baseName = System.Text.RegularExpressions.Regex.Replace(dumpName.Trim(), @" \+\d+$", "");
-        return Name(rec?.Name is { Length: > 0 } n ? n : baseName, BisFinder.TierOf(dumpName), rec?.Icon, nameFg, 1, tags);
+        return Linkify(Name(rec?.Name is { Length: > 0 } n ? n : baseName, BisFinder.TierOf(dumpName), rec?.Icon, nameFg, 1, tags), rec?.Name);
     }
 }

@@ -295,7 +295,9 @@ tradeskill helper (its card is shown/hidden from Tools; the ladder is a page).
 One `ItemStats` and one `FocusEffects` are shared lazily across the pages.
 ONE ITEM LINE (`ItemChips`, 1 Oct): icon · name · green +N pill · tags (WORN
 gold-filled, UPGRADE amber-filled, BiS / CLASSES UNKNOWN outlined) — the BiS
-board, the slot finder and the focus planner's sockets all draw it.
+board, the slot finder and the focus planner's sockets all draw it; the NAME
+opens the item's eqlwiki page (`ItemChips.Linkify` + `ItemStats.WikiUrl`:
+the table's name, spaces as underscores — owner, 3 Oct).
 ONE CLASS PICKER (`ClassPicker`, 30 Sep — owner: "only a class picker like
 the BiS finder's, prepicked by /who, else the user picks"): the 16 chips,
 ≤3 lit, gold for you / teal for a compare combo; /who prefills when the game

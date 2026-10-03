@@ -537,7 +537,7 @@ public partial class BisFinderView : UserControl
             if (c.Worn) tags.Add(ItemChips.Tag.Worn);
             if (upgrade) tags.Add(ItemChips.Tag.Upgrade);
             if (c.ClassesUnknown) tags.Add(ItemChips.Tag.Unknown);
-            var name = ItemChips.Name(c.BaseName, c.Tier, c.Rec.Icon, pick ? NameFg : DimFg, c.Copies, tags.ToArray());
+            var name = ItemChips.Linkify(ItemChips.Name(c.BaseName, c.Tier, c.Rec.Icon, pick ? NameFg : DimFg, c.Copies, tags.ToArray()), c.Rec.Name);
             CellHost(name, row, 0);
             Cell($"{c.Score:0}", row, 1, pick ? ScoreFg : DimFg, right: true, size: 13, bold: pick);
             for (int i = 0; i < 3; i++)

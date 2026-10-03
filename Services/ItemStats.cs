@@ -14,6 +14,10 @@ namespace EQLOverlay.Services;
 /// </summary>
 public sealed class ItemStats
 {
+    /// <summary>The item's eqlwiki page: the table's own name with spaces as underscores
+    /// (owner, 3 Oct: "item link to wiki plz" on the BiS and slot finder lists).</summary>
+    public static string WikiUrl(string wikiName) => "https://eqlwiki.com/" + Uri.EscapeDataString(wikiName.Trim().Replace(' ', '_'));
+
     public sealed class Record
     {
         [JsonPropertyName("name")] public string Name { get; set; } = "";

@@ -3910,6 +3910,17 @@ public partial class App : Application
         tw.ShowPage("res");
         tw.ShowPage("bis");
         Check("tools: Resists and BiS pages build on the demo dump", tw.BisForTest is { HasBoard: true } && tw.PageShown == "bis" && shown[0] == before);
+        // Wiki links (3 Oct): the name in an item line opens its eqlwiki page; the +N and the tags don't.
+        {
+            var linked = ItemChips.Linkify(ItemChips.Name("Kelin`s Seven Stringed Lute", 2, null), "Kelin`s Seven Stringed Lute");
+            var plain = ItemChips.Linkify(ItemChips.Name("Coin Purse of Nowhere", 0, null), null);
+            Check("items: the name links to eqlwiki — spaces as underscores, the rest escaped; an item the wiki doesn't know stays plain",
+                ItemStats.WikiUrl("Woven Shadow Bracer") == "https://eqlwiki.com/Woven_Shadow_Bracer"
+                && ItemStats.WikiUrl("Kelin`s Seven Stringed Lute") == "https://eqlwiki.com/Kelin%60s_Seven_Stringed_Lute"
+                && linked.Children[1] is TextBlock lt && lt.Cursor == System.Windows.Input.Cursors.Hand && lt.ToolTip is string ltt && ltt.Contains("eqlwiki.com/Kelin")
+                && plain.Children[1] is TextBlock pt && pt.Cursor is null && pt.ToolTip is null
+                && tw.BisForTest!.BoardForTest.Children.OfType<Border>().Select(b => b.Child).OfType<StackPanel>().Any(sp => sp.Children.Count > 1 && sp.Children[1] is TextBlock t && t.Cursor == System.Windows.Input.Cursors.Hand));
+        }
         // Sticky column titles (3 Oct): the title row is its own grid above the scroller, eight cells over eight
         // columns, and the board's first row is a slot header, not the titles.
         {
