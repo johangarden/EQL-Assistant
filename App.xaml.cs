@@ -940,16 +940,22 @@ public partial class App : Application
             var head = bis.Slots.First(s => s.Key == "HEAD");
             var chest = bis.Slots.First(s => s.Key == "CHEST");
             var feet = bis.Slots.First(s => s.Key == "FEET");
-            // Wicked Sallet +5: AC 10→15, STA 3→8, INT 2→7 ⇒ 45 + 16 + 7.
-            Check("bis: stats scale by the item's +N tier and score 3·2·1",
+            // Wicked Sallet +5: AC 10→15, STA 3→8, INT 2→7 ⇒ 2·15 + 1.5·8 + 7 = 49 by default.
+            Check("bis: stats scale by the item's +N tier and score 2 · 1.5 · 1 by default",
                 head.Ranked.Count > 0 && head.Ranked[0].BaseName == "Wicked Sallet"
-                && Math.Abs(head.Ranked[0].Score - 68) < 0.01 && head.Ranked[0].Worn);
+                && Math.Abs(head.Ranked[0].Score - 49) < 0.01 && head.Ranked[0].Worn);
+            // The weights are the player's (3 Oct): the old 3 · 2 · 1 gives 45 + 16 + 7; the pills cycle 1 → 1.5 → 2 → 3.
+            var steep = BisFinder.Build(bisRows, bisStats, new[] { "SHD" }, new[] { "AC", "STA", "INT" }, weights: new double[] { 3, 2, 1 });
+            Check("bis: the three weights are the player's — 3 · 2 · 1 scores the sallet 68; a pill cycles 1 → 1.5 → 2 → 3 → 1",
+                Math.Abs(steep.Slots.First(s => s.Key == "HEAD").Ranked[0].Score - 68) < 0.01
+                && BisFinder.NextWeight(2) == 3 && BisFinder.NextWeight(3) == 1 && BisFinder.NextWeight(1) == 1.5 && BisFinder.NextWeight(1.5) == 2
+                && BisFinder.WeightText(1.5) == "1.5" && BisFinder.WeightText(2) == "2");
             // The tail: Wicked Sallet +5 also carries STR 3→8 — at ×0.5 the score
             // grows by exactly 4; the three picks never count twice.
             var tailed = BisFinder.Build(bisRows, bisStats, new[] { "SHD" }, new[] { "AC", "STA", "INT" },
                 tailWeight: 0.5);
             Check("bis: the other-stats tail rewards the well-rounded piece without double-counting",
-                Math.Abs(tailed.Slots.First(s => s.Key == "HEAD").Ranked[0].Score - 72) < 0.01);
+                Math.Abs(tailed.Slots.First(s => s.Key == "HEAD").Ranked[0].Score - 53) < 0.01);
             Check("bis: the worn winner is no upgrade; a foreign-class robe stays visible but unranked",
                 !head.Upgrades.Any()
                 && chest.Ranked.Count == 0 && chest.Foreign.Count == 1
@@ -3904,6 +3910,18 @@ public partial class App : Application
         tw.ShowPage("res");
         tw.ShowPage("bis");
         Check("tools: Resists and BiS pages build on the demo dump", tw.BisForTest is { HasBoard: true } && tw.PageShown == "bis" && shown[0] == before);
+        // The ×N pills (3 Oct): a click cycles the pick's weight, the title and the score line follow, four clicks come round.
+        {
+            var bv = tw.BisForTest!;
+            bool start = bv.WeightsForTest.SequenceEqual(new double[] { 2, 1.5, 1 }) && bv.PrioTitleForTest == "PRIORITIES · WEIGHTED 2 · 1.5 · 1";
+            bv.CycleWeightForTest(0);
+            bool one = bv.WeightsForTest[0] == 3 && bv.ScoreNoteForTest.StartsWith("Score = 3·p1 + 1.5·p2 + 1·p3", StringComparison.Ordinal) && bv.PrioTitleForTest == "PRIORITIES · WEIGHTED 3 · 1.5 · 1";
+            bv.CycleWeightForTest(0);
+            bool two = bv.WeightsForTest[0] == 1;
+            bv.CycleWeightForTest(0); bv.CycleWeightForTest(0);
+            Check("bis: the ×N pill beside a pick cycles its weight 2 → 3 → 1 → 1.5 → 2, and the title and score line say so",
+                start && one && two && bv.WeightsForTest[0] == 2 && bv.ScoreNoteForTest.StartsWith("Score = 2·p1", StringComparison.Ordinal));
+        }
 
         // Resists, light on open (30 Sep): 60 mobs → one page of 30 heads, the newest 5 with their tables.
         {
@@ -3949,7 +3967,7 @@ public partial class App : Application
         var prio = new[] { "HP", "STA", "INT" };
         double hp = BisFinder.Score(hpItem, prio, 0, sk), sta = BisFinder.Score(staItem, prio, 0, sk);
         Check("bis: +50 HP is ~13 STA points for a SHD at 50, not 50 — it no longer buries +10 STA five to one",
-            Math.Abs(hp - 3 * 50 / 3.8) < 0.01 && sta == 20 && BisFinder.Score(hpItem, prio) == 150);
+            Math.Abs(hp - 2 * 50 / 3.8) < 0.01 && sta == 15 && BisFinder.Score(hpItem, prio) == 100);
         Check("bis: the other-stats tail uses the same rates",
             Math.Abs(BisFinder.Score(new Dictionary<string, int> { ["MP"] = 94 }, new[] { "AC", "", "" }, 1, sk) - 94 / 9.42) < 0.01);
     }
