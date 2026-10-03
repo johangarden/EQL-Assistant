@@ -1,4 +1,4 @@
-# EQL Assistant
+﻿# EQL Assistant
 
 A local, log-file-based **overlay suite** for EQ Legends — in the spirit of
 GINA + GamParse for classic EverQuest, in one lightweight native app. It reads
@@ -499,6 +499,6 @@ the item icons (`data\item-icons\` — the wikis' 40×40 game art) are converted
 from
 [jmoyers/everquest-companion](https://github.com/jmoyers/everquest-companion)
 (MIT License, Copyright 2026 Josh Moyers), whose data was in turn sourced from
-eqlwiki.com and wiki.project1999.com; spell effect categories come from eqlwiki.com spell pages; the tradeskill helper's leveling ladders, recipes, vendors and drop tables are eqlwiki.com's Skill and item pages. The character sheet's +N tier math is
+eqlwiki.com and wiki.project1999.com; spell effect categories come from eqlwiki.com spell pages; the tradeskill helper's leveling ladders, recipes, vendors and drop tables are eqlwiki.com's Skill and item pages; the crafting-station locations it shows (forge, oven, brew barrel, pottery wheel, kiln, loom, per zone with /loc) come from wiki.project1999.com's container pages. The character sheet's +N tier math is
 the wiki's own item-level slider algorithm, via Companion's verified port.
 Thanks!

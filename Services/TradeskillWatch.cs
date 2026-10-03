@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -23,6 +23,8 @@ public sealed class TradeskillWatch
     private static readonly Regex PurchaseRx = new(@"^You purchased (?:(\d+) )?(.+?) from (.+?) for\s+(.+?)\.?$", RegexOptions.Compiled);
     private static readonly Regex CoinRx = new(@"(\d+) (platinum|gold|silver|copper)", RegexOptions.Compiled);
     private static readonly Regex ZoneRx = new(@"^You have entered (.+)\.$", RegexOptions.Compiled);
+    private static readonly Regex LocRx = new(@"^Your Location is (-?[\d.]+), (-?[\d.]+), (-?[\d.]+)$", RegexOptions.Compiled);
+    private const double StationLocSec = 180; // a /loc this close before a combine places the station
     private const string TrivialLine = "You can no longer advance your skill from making this item.";
     private const string MissingLine = "Sorry, but you don't have everything you need for this recipe";
     private const double TrivialPairSec = 3; // the trivial line precedes its success line, same second
@@ -30,12 +32,24 @@ public sealed class TradeskillWatch
     public sealed record SkillValue(int Value, DateTime At);
     public sealed record VendorMemory(string Npc, string Zone, DateTime At);
     public sealed record Purchase(DateTime At, string Item, int Count, string Npc, long Copper);
+    /// <summary>Bought and used since — what the inventory dump can't know (owner, 4 Oct: "bought 100 frosting, helper says 0").</summary>
+    public sealed record Bought(DateTime At, string Item, int Count, string Npc);
+    public sealed record Used(DateTime At, string Product, bool Ok);
+    /// <summary>Where you last combined in a stationary container: your /loc shortly before, per kind and zone.</summary>
+    public sealed record LearnedStation(string Kind, string Zone, double Y, double X, DateTime At, double? Z = null)
+    {
+        public string Way => Stations.Way(Y, X, Z);
+    }
 
     private sealed class Doc
     {
         public Dictionary<string, SkillValue> Skills { get; set; } = new();
         public Dictionary<string, VendorMemory> Vendors { get; set; } = new();
+        public List<Bought> Bought { get; set; } = new();
+        public List<Used> Used { get; set; } = new();
+        public List<LearnedStation> Stations { get; set; } = new();
     }
+    private const int KeepLedger = 4000; // bought / used entries kept, newest
 
     private readonly TradeskillData _data;
     private readonly string? _path;
@@ -43,6 +57,10 @@ public sealed class TradeskillWatch
 
     private readonly Dictionary<string, SkillValue> _skills = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, VendorMemory> _vendors = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<Bought> _bought = new();
+    private readonly List<Used> _used = new();
+    private readonly Dictionary<string, LearnedStation> _stations = new(StringComparer.OrdinalIgnoreCase);
+    private (DateTime At, double Y, double X, double Z)? _lastLoc;
     private string _zone = "";
 
     // ---- the session on the opened skill ----
@@ -91,6 +109,33 @@ public sealed class TradeskillWatch
         Changed?.Invoke();
     }
 
+    /// <summary>The zone the log last named (instance tail folded).</summary>
+    public string Zone => Stations.FoldZone(_zone);
+
+    /// <summary>Units of an item bought from vendors after <paramref name="since"/> (live or replayed lines).</summary>
+    public int BoughtSince(string item, DateTime since) =>
+        _bought.Where(b => b.At > since && b.Item.Equals(item, StringComparison.OrdinalIgnoreCase)).Sum(b => b.Count);
+
+    /// <summary>Units of an ingredient consumed by your combines after <paramref name="since"/> — every
+    /// combine, success or fail, eats its ingredients except the returned tools.</summary>
+    public int UsedSince(string ingredient, DateTime since)
+    {
+        int n = 0;
+        foreach (var u in _used)
+        {
+            if (u.At <= since) continue;
+            var r = _data.RecipeFor(u.Product);
+            if (r is null) continue;
+            foreach (var ing in r.Ingredients)
+                if (!ing.Returned && ing.Item.Equals(ingredient, StringComparison.OrdinalIgnoreCase)) n += Math.Max(1, ing.Count);
+        }
+        return n;
+    }
+
+    /// <summary>Where you last combined at a station of this kind in this zone, if a /loc preceded it.</summary>
+    public LearnedStation? StationFor(string kind, string zone) =>
+        _stations.TryGetValue(kind + "|" + Stations.FoldZone(zone), out var st) ? st : null;
+
     /// <summary>Where you last bought an item (npc, zone) — null when never.</summary>
     public VendorMemory? VendorFor(string item) => _vendors.TryGetValue(item, out var v) ? v : null;
 
@@ -128,6 +173,16 @@ public sealed class TradeskillWatch
             return;
         }
 
+        if (body.StartsWith("Your Location is ", StringComparison.Ordinal))
+        {
+            var lm = LocRx.Match(body);
+            if (lm.Success && double.TryParse(lm.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double ly)
+                && double.TryParse(lm.Groups[2].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double lx)
+                && double.TryParse(lm.Groups[3].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double lz))
+                _lastLoc = (time, ly, lx, lz);
+            return;
+        }
+
         var su = SkillUpRx.Match(body);
         if (su.Success)
         {
@@ -157,6 +212,12 @@ public sealed class TradeskillWatch
             int count = pu.Groups[1].Success ? int.Parse(pu.Groups[1].Value) : 1;
             long copper = ParseCoins(pu.Groups[4].Value);
             _vendors[item] = new VendorMemory(npc, _zone, time);
+            // The bought ledger learns live and on replays alike, deduped by the log's own line.
+            if (!_bought.Any(b => b.At == time && b.Count == count && b.Item.Equals(item, StringComparison.OrdinalIgnoreCase) && b.Npc.Equals(npc, StringComparison.OrdinalIgnoreCase)))
+            {
+                _bought.Add(new Bought(time, item, count, npc));
+                if (_bought.Count > KeepLedger) _bought.RemoveRange(0, _bought.Count - KeepLedger);
+            }
             if (live)
             {
                 Save();
@@ -165,15 +226,39 @@ public sealed class TradeskillWatch
             return;
         }
 
+        // A combine, live or replayed: the used ledger and the station it was made at (a /loc just before).
+        var ok = SuccessRx.Match(body);
+        var bad = ok.Success ? null : FailRx.Match(body);
+        if (ok.Success || bad!.Success)
+        {
+            string product = (ok.Success ? ok : bad!).Groups[1].Value.Trim();
+            LearnCombine(product, ok.Success, time, live);
+            if (live) NoteCombine(product, ok.Success, time);
+            return;
+        }
+
         if (!live) return; // the rest is session state
 
         if (body == TrivialLine) { _trivialPending = time; return; }
         if (body.StartsWith(MissingLine, StringComparison.Ordinal)) { _missingAt = time; Changed?.Invoke(); return; }
+    }
 
-        var ok = SuccessRx.Match(body);
-        if (ok.Success) { NoteCombine(ok.Groups[1].Value.Trim(), true, time); return; }
-        var bad = FailRx.Match(body);
-        if (bad.Success) { NoteCombine(bad.Groups[1].Value.Trim(), false, time); return; }
+    private void LearnCombine(string product, bool success, DateTime time, bool live)
+    {
+        if (!_used.Any(u => u.At == time && u.Ok == success && u.Product.Equals(product, StringComparison.OrdinalIgnoreCase)))
+        {
+            _used.Add(new Used(time, product, success));
+            if (_used.Count > KeepLedger) _used.RemoveRange(0, _used.Count - KeepLedger);
+        }
+        bool saved = false;
+        if (_lastLoc is { } loc && (time - loc.At).TotalSeconds is >= 0 and <= StationLocSec && _zone.Length > 0
+            && Stations.KindOf(_data.RecipeFor(product)?.Container ?? "") is { } kind)
+        {
+            string zone = Stations.FoldZone(_zone);
+            _stations[kind + "|" + zone] = new LearnedStation(kind, zone, loc.Y, loc.X, time, loc.Z);
+            if (live) { Save(); saved = true; }
+        }
+        if (live && !saved) Save();
     }
 
     private void NoteCombine(string product, bool success, DateTime time)
@@ -310,6 +395,9 @@ public sealed class TradeskillWatch
             if (doc is null) return;
             foreach (var (k, v) in doc.Skills) _skills[k] = v;
             foreach (var (k, v) in doc.Vendors) _vendors[k] = v;
+            _bought.AddRange(doc.Bought);
+            _used.AddRange(doc.Used);
+            foreach (var st in doc.Stations) _stations[st.Kind + "|" + st.Zone] = st;
         }
         catch (Exception ex) { Log.Warn("tradeskill-log.json unreadable: " + ex.Message); }
     }
@@ -323,6 +411,9 @@ public sealed class TradeskillWatch
             {
                 Skills = new Dictionary<string, SkillValue>(_skills),
                 Vendors = new Dictionary<string, VendorMemory>(_vendors),
+                Bought = _bought.ToList(),
+                Used = _used.ToList(),
+                Stations = _stations.Values.ToList(),
             }, JsonOpts));
         }
         catch (Exception ex) { Log.Warn("tradeskill-log.json not saved: " + ex.Message); }

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -50,6 +50,8 @@ public partial class TradeskillWindow : Window
 
     /// <summary>Copies of an item in the last inventory dump (−1 = no dump).</summary>
     public Func<string, int>? BagCount { get; set; }
+    /// <summary>The words behind a count: what the dump held, bought and used since (the chip's tooltip).</summary>
+    public Func<string, string>? BagNote { get; set; }
     /// <summary>The header dropdown picked another skill.</summary>
     public Action<string>? SkillPicked { get; set; }
     /// <summary>The ✕ — the host hides the card; the skill stays remembered.</summary>
@@ -187,6 +189,7 @@ public partial class TradeskillWindow : Window
         else Body.Children.Add(Text("Ingredients not on the wiki page — see the recipe in game.", Faint, 10.5, wrap: true));
         if (recipe is { Container.Length: > 0 })
             Body.Children.Add(Text($"in a {Lower(recipe.Container)}" + (recipe.Yield > 1 ? $" · makes {recipe.Yield}" : ""), Faint, 10.5, margin: new Thickness(0, 4, 0, 0)));
+        if (recipe is not null && StationLine(recipe) is { } st) Body.Children.Add(st);
         if (step.Notes is { Count: > 0 })
             Body.Children.Add(Text(step.Notes[0], Hint, 10.5, wrap: true, margin: new Thickness(0, 4, 0, 0)));
     }
@@ -247,6 +250,7 @@ public partial class TradeskillWindow : Window
                 _texts.Add($"Next: {s.Next.Title}");
                 string where = WhereFor(nr);
                 if (where.Length > 0) sp.Children.Add(Text(where, Hint, 10.5, wrap: true, margin: new Thickness(0, 3, 0, 0)));
+                if (nr is not null && StationLine(nr) is { } nst) sp.Children.Add(nst);
             }
             Body.Children.Add(Box(sp, amber: true));
             return;
@@ -331,6 +335,76 @@ public partial class TradeskillWindow : Window
 
     // ---- pieces ---------------------------------------------------------------------------
 
+    /// <summary>Where to combine (owner, 4 Oct): for a recipe that needs a stationary
+    /// container, the ones in your current zone as "/way X Y Z" chips — click one and the
+    /// command is on the clipboard, ready to paste in game. Where YOU last combined comes
+    /// first (a /loc before a combine teaches it), then the wiki's list. Null for a
+    /// container you carry.</summary>
+    private UIElement? StationLine(TradeskillData.Recipe recipe)
+    {
+        if (Stations.KindOf(recipe.Container) is not { } kind) return null;
+        string zone = _watch.Zone;
+        var wrap = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
+        var texts = new List<string>();
+        void Word(string t, Brush fg, FontWeight? w = null) => wrap.Children.Add(Text(t, fg, 10.5, w, margin: new Thickness(0, 1, 5, 2)));
+        if (zone.Length == 0)
+        {
+            Word($"{kind}: zone unknown yet — the helper hears it when you zone.", Hint);
+            texts.Add(wrap.Children.OfType<TextBlock>().First().Text);
+        }
+        else
+        {
+            var learned = _watch.StationFor(kind, zone);
+            var listed = Stations.In(kind, zone);
+            Word($"{kind} in {zone}:", Dim, FontWeights.SemiBold);
+            texts.Add($"{kind} in {zone}:");
+            int chips = 0;
+            if (learned is not null)
+            {
+                wrap.Children.Add(WayChip(learned.Way, "where you combined", Blue));
+                texts.Add(learned.Way); chips++;
+            }
+            foreach (var st in listed)
+            {
+                if (learned is not null && st.Y is { } sy && st.X is { } sx && Math.Abs(sy - learned.Y) < 40 && Math.Abs(sx - learned.X) < 40) continue; // the same spot
+                string note = st.Note + (st.Era.Length > 0 ? (st.Note.Length > 0 ? " · " : "") + st.Era : "");
+                if (st.Way.Length > 0) { wrap.Children.Add(WayChip(st.Way, note, Dim)); texts.Add(st.Way); chips++; }
+                else if (note.Length > 0) { Word(note + " (no /loc on the wiki)", Hint); texts.Add(note); chips++; }
+            }
+            if (chips == 0)
+            {
+                Word($"none listed for {zone} — type /loc at one and combine; the helper remembers it.", Faint);
+                texts.Add("none listed");
+            }
+        }
+        _texts.Add(string.Join(" ", texts));
+        return wrap;
+    }
+
+    /// <summary>A "/way X Y Z" pill: click copies the command; the pill says "copied" for a moment.</summary>
+    private Border WayChip(string way, string note, Brush fg)
+    {
+        var label = Text(way, fg, 10.5, FontWeights.SemiBold); label.FontFamily = Mono;
+        var chip = new Border
+        {
+            Background = Panel2, BorderBrush = Hair, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(0, 0, 5, 3), Cursor = Cursors.Hand, Child = label,
+            ToolTip = (note.Length > 0 ? note + "\n" : "") + "Click to copy — paste it in game.",
+        };
+        chip.MouseEnter += (_, _) => chip.BorderBrush = fg;
+        chip.MouseLeave += (_, _) => chip.BorderBrush = Hair;
+        chip.MouseLeftButtonDown += (_, e) =>
+        {
+            e.Handled = true;
+            try { Clipboard.SetText(way); } catch { /* clipboard busy — nothing to do */ }
+            label.Text = "copied ✓";
+            var back = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.4) };
+            back.Tick += (_, _) => { back.Stop(); label.Text = way; };
+            back.Start();
+        };
+        return chip;
+    }
+
     /// <summary>The line under a step: where the farmed / foraged ingredient
     /// comes from first (that is the trip), else the vendor who sold you one.</summary>
     private string WhereFor(TradeskillData.Recipe? recipe)
@@ -367,6 +441,7 @@ public partial class TradeskillWindow : Window
             sp.Children.Add(Text(nm, low ? Red : Dim, 11, margin: new Thickness(4, 0, 0, 0)));
             string extra = ing.Returned ? "↩" : have >= 0 ? $"×{have}" : ing.Count > 1 ? $"×{ing.Count}" : "";
             if (extra.Length > 0) sp.Children.Add(Text(extra, low ? Red : Faint, 10.5, margin: new Thickness(4, 0, 0, 0)));
+            if (have >= 0 && BagNote?.Invoke(ing.Item) is { Length: > 0 } note) chip.ToolTip = note;
             chip.Child = sp;
             wrap.Children.Add(chip);
         }

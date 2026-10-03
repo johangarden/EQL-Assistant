@@ -162,6 +162,20 @@ the affected suites (with `-Wait`) before committing.
   (`live: false`); the session (combines, skill-ups, pace, spend) is live
   only. Fletching's arrows share one product name over several steps —
   recipes are keyed by step label, `StepFor` picks by skill range.
+  INGREDIENT COUNTS (4 Oct): the dump's count + bought since its stamp −
+  used by combines since (every combine, ok or fail, eats its non-returned
+  ingredients) — the watch keeps `Bought` / `Used` ledgers in
+  `tradeskill-log.json`, learned live AND on replays, deduped by the log's
+  own line; the chip's tooltip shows the sum. STATIONS (4 Oct): a recipe
+  whose container is stationary (`Stations.KindOf`: forge · oven · brew
+  barrel · pottery wheel · kiln · loom; kits/boxes/bowls/bags are carried)
+  gets a line with the ones in your current zone as "/way X Y Z" chips
+  (click = copied to the clipboard; the game's /loc prints Y X Z, `Stations.Way`
+  swaps, Z only when known) —
+  `data/stations.json` from the Project 1999 wiki's container pages
+  (scratch `build-stations.py`; classic zones match, Kunark/Velious rows
+  tagged), and FIRST where YOU combined: a "Your Location is Y, X, Z" line
+  within 180 s before a combine teaches (kind, zone) → /loc, persisted.
 - `RaceBook` + `FactionDumps` — race unlocks (22 Sep). `/outputfile
   achievements` → `<char>_<server>-Achievements.txt` ("Untapped Potential:
   Races": C/I + one tab = a race, two tabs = its conditions — three "Get

@@ -4288,6 +4288,42 @@ public partial class App : Application
         Check("ts: a different recipe moves the step and ends the amber state", s3.Current is { Recipe: "Sheet Metal" } && !s3.Trivial && s3.Ok == 7);
         w.ProcessLine(L(70, "Sorry, but you don't have everything you need for this recipe in your general inventory."));
         Check("ts: the missing-ingredient line flags for 30 s", w.Take(t0.AddSeconds(71))!.Missing && !w.Take(t0.AddSeconds(120))!.Missing);
+        // Bought and used since (4 Oct): the ledgers behind the ingredient counts, live and replayed alike.
+        var mbRecipe = data.RecipeFor("Metal Bits")!;
+        var oreIng = mbRecipe.Ingredients.FirstOrDefault(i => !i.Returned && i.Item.Contains("Ore", StringComparison.OrdinalIgnoreCase));
+        Check("ts: bought-since counts the vendor lines after a moment — the replayed ore and the live flasks",
+            w.BoughtSince("Small Piece of Ore", t0.AddSeconds(-1)) == 40 && w.BoughtSince("Small Piece of Ore", t0.AddSeconds(5)) == 0
+            && w.BoughtSince("Water Flask", t0) == 10 && w.BoughtSince("water flask", t0.AddSeconds(45)) == 0);
+        Check("ts: used-since charges every combine, ok or fail, by the recipe's ingredient counts — 7 Metal Bits so far",
+            oreIng is null || w.UsedSince(oreIng.Item, t0) == 7 * Math.Max(1, oreIng.Count));
+        // The station: a /loc within three minutes before a combine in a stationary container places it.
+        w.ProcessLine(L(80, "Your Location is 100.50, -200.25, 3.10"));
+        w.ProcessLine(L(85, "You have fashioned the items together to create something new: Metal Bits."));
+        Check("ts: a /loc before a forge combine teaches where the forge is, per kind and zone",
+            w.StationFor("Forge", "Paineel") is { Y: 100.5, X: -200.25, Z: 3.1 } st0 && st0.Way == "/way -200 101 3" && w.StationFor("Oven", "Paineel") is null && w.StationFor("Forge", "Erudin") is null
+            && w.Zone == "Paineel");
+        Check("ts: the stations data — a recipe's container wording maps to a station kind or to nothing you carry; Erudin's forge at /loc -1223, -249; Paineel's kiln named without a /loc",
+            Stations.KindOf("Brewing Barrel") == "Brew Barrel" && Stations.KindOf("Oven or Spit") == "Oven" && Stations.KindOf("Feir`Dal Forge") == "Forge" && Stations.KindOf("Loom or Large Sewing Kit") == "Loom"
+            && Stations.KindOf("Jeweler's Kit") is null && Stations.KindOf("Fletching Table") is null && Stations.KindOf("") is null
+            && Stations.In("Forge", "Erudin").Any(st => st is { Y: -1223, X: -249, Note: "53" }) && Stations.In("Kiln", "Paineel").Any(st => st is { Y: null, Note: "False Idols" })
+            && Stations.In("Forge", "Nowhere").Count == 0 && Stations.FoldZone("The Ruins of Old Guk 1 (Awakened)") == "The Ruins of Old Guk"
+            && Stations.Way(-1223, -249) == "/way -249 -1223" && Stations.Way(-960, 36, 5) == "/way 36 -960 5"
+            && Stations.In("Kiln", "East Freeport").Any(st => st is { Y: -960, X: 36, Z: 5 }) && Stations.AllStations.Count > 150);
+        {
+            string tsPath2 = Path.Combine(Path.GetTempPath(), "eql_selftest_ts_ledger.json");
+            try { File.Delete(tsPath2); } catch { /* fresh */ }
+            var w5 = new TradeskillWatch(data, null, tsPath2);
+            w5.ProcessLine(L(0, "You have entered Erudin."), live: false);
+            w5.ProcessLine(L(1, "You purchased 100 Frosting from Innkeep Seke for  5 platinum."), live: false);
+            w5.ProcessLine(L(1, "You purchased 100 Frosting from Innkeep Seke for  5 platinum."), live: false); // the same line twice (a merged log)
+            w5.ProcessLine(L(2, "Your Location is -1223.4, -249.1, 53.0"), live: false);
+            w5.ProcessLine(L(4, "You lacked the skills to fashion Metal Bits."), live: false);
+            w5.SaveLearned();
+            var w6 = new TradeskillWatch(data, null, tsPath2);
+            Check("ts: the bought / used / station ledgers persist and a replayed line counts once",
+                w6.BoughtSince("Frosting", t0.AddSeconds(-5)) == 100 && w6.StationFor("Forge", "Erudin") is { Y: -1223.4 } && w6.UsedSince(oreIng?.Item ?? "Small Piece of Ore", t0.AddSeconds(-5)) == (oreIng is null ? 0 : Math.Max(1, oreIng.Count)));
+            try { File.Delete(tsPath2); } catch { /* temp */ }
+        }
 
         var w2 = new TradeskillWatch(data, null);
         w2.SetValue("Brewing", 160);
@@ -5889,6 +5925,7 @@ public partial class App : Application
                 tsw.SetValue("Brewing", 68);
                 tsw.StartSession("Brewing");
                 tsw.ProcessLine(L(1, "You purchased 20 Vinegar from Innkeep Seke for  12 platinum 4 gold."));
+                tsw.ProcessLine(L(2, "Your Location is 955.20, 788.70, -65.00")); // at Paineel's brew barrel — the card says so
                 int sk = 68;
                 for (int i = 0; i < 42; i++)
                 {

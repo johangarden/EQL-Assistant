@@ -1,0 +1,1681 @@
+{
+ "source": "wiki.project1999.com — the Forge, Oven, Brew Barrel, Pottery Wheel, Kiln and Loom pages",
+ "fetched": "2026-10-04",
+ "note": "y, x, z = the game's /loc order (/way wants X Y Z, so swap the first two); z only where the wiki gave one. era '' = classic; Kunark / Velious entries kept for later. Null coordinates = the wiki names the spot but gives no /loc.",
+ "stations": [
+  {
+   "kind": "Brew Barrel",
+   "zone": "Ak'Anon",
+   "y": 1258.0,
+   "x": -901.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "City of Mist",
+   "y": -125.0,
+   "x": -640.0,
+   "z": 75.0,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Cobalt Scar",
+   "y": 235.0,
+   "x": -1481.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "East Cabilis",
+   "y": 678.0,
+   "x": -14.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "East Cabilis",
+   "y": 915.0,
+   "x": -66.0,
+   "z": null,
+   "note": "Cabilis East",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "East Freeport",
+   "y": -1116.0,
+   "x": -1163.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "East Freeport",
+   "y": 147.0,
+   "x": -316.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "East Freeport",
+   "y": 163.0,
+   "x": -813.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Erudin",
+   "y": -1213.0,
+   "x": -311.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Erudin",
+   "y": -999.0,
+   "x": -86.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Firiona Vie",
+   "y": -2940.0,
+   "x": 2980.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Greater Faydark",
+   "y": -520.0,
+   "x": 210.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Halas",
+   "y": 117.0,
+   "x": -260.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Halas",
+   "y": 225.0,
+   "x": -142.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "High Keep",
+   "y": 50.0,
+   "x": -220.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Highpass Hold",
+   "y": -214.0,
+   "x": 37.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Highpass Hold",
+   "y": -187.0,
+   "x": 14.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Highpass Hold",
+   "y": -78.0,
+   "x": 425.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Highpass Hold",
+   "y": 61.0,
+   "x": 303.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Neriak Commons",
+   "y": 23.0,
+   "x": -830.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Neriak Foreign Quarter",
+   "y": 225.0,
+   "x": -175.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Neriak Third Gate",
+   "y": 900.0,
+   "x": -1410.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "North Freeport",
+   "y": 60.0,
+   "x": 0.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "North Kaladim",
+   "y": 670.0,
+   "x": -160.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "North Qeynos",
+   "y": 65.0,
+   "x": 310.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Northern Felwithe",
+   "y": 65.0,
+   "x": -375.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Oggok",
+   "y": 264.0,
+   "x": -259.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Overthere",
+   "y": 2683.0,
+   "x": 2383.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Paineel",
+   "y": 955.0,
+   "x": 788.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Rathe Mountains",
+   "y": -1255.0,
+   "x": 7.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Rivervale",
+   "y": -61.0,
+   "x": -161.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Rivervale",
+   "y": -33.0,
+   "x": -255.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Skyshrine",
+   "y": 515.0,
+   "x": -705.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "South Kaladim",
+   "y": 105.0,
+   "x": 248.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "South Qeynos",
+   "y": -265.0,
+   "x": -300.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "South Qeynos",
+   "y": 275.0,
+   "x": -155.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "Thurgadin",
+   "y": 96.0,
+   "x": -386.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Brew Barrel",
+   "zone": "West Freeport",
+   "y": -167.0,
+   "x": -482.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Ak'Anon",
+   "y": 1225.0,
+   "x": -730.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": "Velious"
+  },
+  {
+   "kind": "Forge",
+   "zone": "Ak'Anon",
+   "y": 1254.0,
+   "x": -705.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "East Cabilis",
+   "y": -530.0,
+   "x": -15.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "East Cabilis",
+   "y": -371.0,
+   "x": -44.0,
+   "z": null,
+   "note": "(near warrior guild)",
+   "era": "Kunark"
+  },
+  {
+   "kind": "Forge",
+   "zone": "East Cabilis",
+   "y": 220.0,
+   "x": -314.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "East Cabilis",
+   "y": 224.0,
+   "x": -301.0,
+   "z": null,
+   "note": "",
+   "era": "Kunark"
+  },
+  {
+   "kind": "Forge",
+   "zone": "East Freeport",
+   "y": -1575.0,
+   "x": 466.0,
+   "z": null,
+   "note": "outside Gord's Smithy",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "East Freeport",
+   "y": -1095.0,
+   "x": 550.0,
+   "z": null,
+   "note": "inside the Freeport Militia House",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "East Freeport",
+   "y": -23.0,
+   "x": 212.0,
+   "z": null,
+   "note": "outside Armor by Ikthar",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "East Freeport",
+   "y": 703.0,
+   "x": -723.0,
+   "z": null,
+   "note": "21, inside the Arena area, down first hall to the right",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Erudin",
+   "y": -1223.0,
+   "x": -249.0,
+   "z": null,
+   "note": "53",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Erudin",
+   "y": -1128.0,
+   "x": -470.0,
+   "z": null,
+   "note": "51, behind Deepwater Knights",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Erudin",
+   "y": -740.0,
+   "x": -260.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": "Velious"
+  },
+  {
+   "kind": "Forge",
+   "zone": "Firiona Vie",
+   "y": -2865.0,
+   "x": 2659.0,
+   "z": null,
+   "note": "",
+   "era": "Kunark"
+  },
+  {
+   "kind": "Forge",
+   "zone": "Greater Faydark",
+   "y": -480.0,
+   "x": 80.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Greater Faydark",
+   "y": -250.0,
+   "x": 65.0,
+   "z": null,
+   "note": "Greater Faydark platform #17 on map",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Grobb",
+   "y": 535.0,
+   "x": -215.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": "Velious"
+  },
+  {
+   "kind": "Forge",
+   "zone": "Halas",
+   "y": 182.0,
+   "x": -255.0,
+   "z": null,
+   "note": "outside McPherson's Bloody Blades",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Halas",
+   "y": 230.0,
+   "x": -315.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Halas",
+   "y": 238.0,
+   "x": -291.0,
+   "z": null,
+   "note": "outside McPherson's Bloody Blades",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Highpass Hold",
+   "y": -317.0,
+   "x": -142.0,
+   "z": null,
+   "note": "outside Greenbane's Weapons",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Highpass Hold",
+   "y": -234.0,
+   "x": 115.0,
+   "z": null,
+   "note": "in Serpent Supply",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Icewell Keep",
+   "y": 13.0,
+   "x": 887.0,
+   "z": -20.0,
+   "note": "",
+   "era": "Velious"
+  },
+  {
+   "kind": "Forge",
+   "zone": "Neriak Commons",
+   "y": 20.0,
+   "x": -880.0,
+   "z": null,
+   "note": "Outside Adamant Armor",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Neriak Foreign Quarter",
+   "y": -295.0,
+   "x": -395.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Neriak Foreign Quarter",
+   "y": -273.0,
+   "x": -405.0,
+   "z": null,
+   "note": "Outside Pig Stickers",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Neriak Third Gate",
+   "y": 835.0,
+   "x": -1575.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "North Freeport",
+   "y": -60.0,
+   "x": 530.0,
+   "z": null,
+   "note": "outside Groflah's Forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "North Freeport",
+   "y": 8.8,
+   "x": -163.0,
+   "z": null,
+   "note": "outside the Emporium",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "North Kaladim",
+   "y": 409.0,
+   "x": -150.0,
+   "z": null,
+   "note": "outside Everhot Forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "North Qeynos",
+   "y": 75.0,
+   "x": 60.0,
+   "z": null,
+   "note": "Behind Ironforge's",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Northern Felwithe",
+   "y": -90.0,
+   "x": -385.0,
+   "z": null,
+   "note": "inside Emerald Armor",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Northern Felwithe",
+   "y": -55.0,
+   "x": -380.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Oggok",
+   "y": 140.0,
+   "x": 935.0,
+   "z": null,
+   "note": "cultural forge · in the first room inside the left-hand mid-level tunnel of Komarr's Caves",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Oggok",
+   "y": 269.0,
+   "x": -202.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Overthere",
+   "y": 2500.0,
+   "x": 3250.0,
+   "z": null,
+   "note": "In shipyard loading area",
+   "era": "Kunark"
+  },
+  {
+   "kind": "Forge",
+   "zone": "Paineel",
+   "y": 925.0,
+   "x": 425.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": "Velious"
+  },
+  {
+   "kind": "Forge",
+   "zone": "Paineel",
+   "y": 933.0,
+   "x": 425.0,
+   "z": null,
+   "note": "Shadowknight guild",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Rivervale",
+   "y": -80.0,
+   "x": -362.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Rivervale",
+   "y": 180.0,
+   "x": -175.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "South Kaladim",
+   "y": 115.0,
+   "x": 385.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "South Kaladim",
+   "y": 115.0,
+   "x": 394.0,
+   "z": null,
+   "note": "outside Redfists Metal",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "South Qeynos",
+   "y": 177.0,
+   "x": -300.0,
+   "z": null,
+   "note": "Outside Fireprides",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "South Qeynos",
+   "y": 375.0,
+   "x": -370.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "South Qeynos",
+   "y": 480.0,
+   "x": -30.0,
+   "z": null,
+   "note": "Outside Tin Soldier",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Stonebrunt Mountains",
+   "y": 1355.0,
+   "x": -595.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "Thurgadin",
+   "y": -435.0,
+   "x": -110.0,
+   "z": null,
+   "note": "Inside Underbelly's Arms",
+   "era": "Velious"
+  },
+  {
+   "kind": "Forge",
+   "zone": "West Freeport",
+   "y": -345.0,
+   "x": 38.0,
+   "z": null,
+   "note": "cultural forge",
+   "era": ""
+  },
+  {
+   "kind": "Forge",
+   "zone": "West Freeport",
+   "y": -102.0,
+   "x": -88.0,
+   "z": null,
+   "note": "Freeport Militia House back porch, near Captain Hazran",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Ak'Anon",
+   "y": 725.0,
+   "x": -148.0,
+   "z": null,
+   "note": "inside the \"castle\"",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "East Cabilis",
+   "y": 256.0,
+   "x": -224.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "East Freeport",
+   "y": -1493.0,
+   "x": -662.0,
+   "z": null,
+   "note": "in the Theater of the Tranquil",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "East Freeport",
+   "y": -1339.0,
+   "x": -807.0,
+   "z": null,
+   "note": "in the Theater of the Tranquil",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "East Freeport",
+   "y": -960.0,
+   "x": 36.0,
+   "z": 5.0,
+   "note": "outside Hallard's Resales",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Erudin",
+   "y": -921.0,
+   "x": -135.0,
+   "z": null,
+   "note": "Outside Erudin Surplus, second building on left coming from Toxxulia Forest zoneline",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Greater Faydark",
+   "y": -180.0,
+   "x": -555.0,
+   "z": null,
+   "note": "platform #20 on the map",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Halas",
+   "y": null,
+   "x": null,
+   "z": null,
+   "note": "behind Golden Torc",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Highpass Hold",
+   "y": -278.0,
+   "x": 192.0,
+   "z": null,
+   "note": "outside Serpent Supply",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Highpass Hold",
+   "y": 57.0,
+   "x": 126.0,
+   "z": null,
+   "note": "in hidden smugglers' area",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Highpass Hold",
+   "y": 209.0,
+   "x": 515.0,
+   "z": null,
+   "note": "outside Top O' the World",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Neriak Foreign Quarter",
+   "y": 205.0,
+   "x": -80.0,
+   "z": null,
+   "note": "Outside The Smugglers Inn",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "North Kaladim",
+   "y": 513.0,
+   "x": 317.0,
+   "z": null,
+   "note": "near mine",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Northern Felwithe",
+   "y": -93.0,
+   "x": -370.0,
+   "z": null,
+   "note": "behind Faydark's Bane",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Oggok",
+   "y": 296.0,
+   "x": 685.0,
+   "z": null,
+   "note": "first room inside leftmost lower tunnel of Komarr's Caves",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Overthere",
+   "y": 2865.0,
+   "x": 2385.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Paineel",
+   "y": null,
+   "x": null,
+   "z": null,
+   "note": "False Idols",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Rivervale",
+   "y": 320.0,
+   "x": -485.0,
+   "z": null,
+   "note": "Skyshrine",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "Rivervale",
+   "y": 395.0,
+   "x": -467.0,
+   "z": null,
+   "note": "Across the bridge from the dock & bag merchants, past Vale Forge",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "South Kaladim",
+   "y": 167.0,
+   "x": -200.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "South Qeynos",
+   "y": -260.0,
+   "x": 168.0,
+   "z": -1.0,
+   "note": "Thurgadin, Inside Thurgadin's Exchange",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "South Qeynos",
+   "y": 535.0,
+   "x": -305.0,
+   "z": null,
+   "note": "Backyard of Bag n Barrel",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "South Qeynos",
+   "y": 1355.0,
+   "x": -530.0,
+   "z": null,
+   "note": "Stonebrunt Mountains",
+   "era": ""
+  },
+  {
+   "kind": "Kiln",
+   "zone": "West Freeport",
+   "y": 156.0,
+   "x": -462.0,
+   "z": -86.0,
+   "note": "near the smithy",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Ak'Anon",
+   "y": 772.0,
+   "x": 159.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "East Cabilis",
+   "y": 59.0,
+   "x": -83.0,
+   "z": null,
+   "note": "between 19 and 20 on the map",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "East Freeport",
+   "y": 75.0,
+   "x": -449.0,
+   "z": null,
+   "note": "second floor of Velithe & Bardo's Imported Goods",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Erudin",
+   "y": -870.0,
+   "x": -60.0,
+   "z": null,
+   "note": "outside Erudin Surplus",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Firiona Vie",
+   "y": -3648.0,
+   "x": 2043.0,
+   "z": null,
+   "note": "On the dock left of the main dock and right of the druid dock",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Greater Faydark",
+   "y": 910.0,
+   "x": 565.0,
+   "z": null,
+   "note": "EQAtlas platform #1",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Grobb",
+   "y": 465.0,
+   "x": -405.0,
+   "z": null,
+   "note": "to the north of Mac's Kilts",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Halas",
+   "y": 386.0,
+   "x": -159.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Kaesora",
+   "y": 202.0,
+   "x": -168.0,
+   "z": -126.0,
+   "note": "lower floor in \"the passageway from the Reaver of Xalgoz Room to the back yard area of the Library\"",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Neriak Foreign Quarter",
+   "y": 130.0,
+   "x": -190.0,
+   "z": null,
+   "note": "inside Silk Underground",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Oggok",
+   "y": 687.0,
+   "x": 702.0,
+   "z": null,
+   "note": "first room in rightmost lower tunnel of Komarr's Caves",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Overthere",
+   "y": 2848.0,
+   "x": 23710.0,
+   "z": null,
+   "note": "Just south of caster vendors",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Paineel",
+   "y": 960.0,
+   "x": 695.0,
+   "z": -65.0,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Rivervale",
+   "y": 0.0,
+   "x": -234.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Skyshrine",
+   "y": 385.0,
+   "x": -485.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "South Kaladim",
+   "y": 30.0,
+   "x": 183.0,
+   "z": null,
+   "note": "Behind Pub Kal (#6 on map)",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "South Qeynos",
+   "y": 135.0,
+   "x": -45.0,
+   "z": null,
+   "note": "Near Lion's Mane Inn",
+   "era": ""
+  },
+  {
+   "kind": "Loom",
+   "zone": "Southern Felwithe",
+   "y": 445.0,
+   "x": -790.0,
+   "z": null,
+   "note": "inside merchant building",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Ak'Anon",
+   "y": 723.0,
+   "x": -116.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Cobalt Scar",
+   "y": 151.0,
+   "x": -1522.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Droga",
+   "y": 740.0,
+   "x": 1960.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "East Cabilis",
+   "y": 529.0,
+   "x": 154.0,
+   "z": null,
+   "note": "Cabilis East",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "East Freeport",
+   "y": -1216.0,
+   "x": 346.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "East Freeport",
+   "y": 97.0,
+   "x": -253.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "East Freeport",
+   "y": 200.0,
+   "x": -793.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Erudin",
+   "y": -1158.0,
+   "x": -296.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Erudin",
+   "y": -892.0,
+   "x": -123.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Firiona Vie",
+   "y": -2865.0,
+   "x": 2659.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Greater Faydark",
+   "y": 400.0,
+   "x": 340.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Grobb",
+   "y": 220.0,
+   "x": 180.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Grobb",
+   "y": 534.0,
+   "x": -400.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "High Keep",
+   "y": 30.0,
+   "x": -240.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Highpass Hold",
+   "y": -245.0,
+   "x": 49.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Highpass Hold",
+   "y": -123.0,
+   "x": 483.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Highpass Hold",
+   "y": 35.0,
+   "x": 154.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Highpass Hold",
+   "y": 55.0,
+   "x": 330.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Neriak Commons",
+   "y": 65.0,
+   "x": -865.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Neriak Foreign Quarter",
+   "y": -362.0,
+   "x": -160.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Neriak Foreign Quarter",
+   "y": 145.0,
+   "x": -275.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Neriak Third Gate",
+   "y": 740.0,
+   "x": -1475.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "North Freeport",
+   "y": -65.0,
+   "x": -40.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "North Kaladim",
+   "y": 660.0,
+   "x": -202.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Northern Felwithe",
+   "y": 240.0,
+   "x": -600.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Oggok",
+   "y": 509.0,
+   "x": -196.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Overthere",
+   "y": 2693.0,
+   "x": 2360.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Rivervale",
+   "y": -188.0,
+   "x": -157.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Rivervale",
+   "y": -75.0,
+   "x": -420.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Skyshrine",
+   "y": 180.0,
+   "x": -410.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "South Kaladim",
+   "y": 239.0,
+   "x": -234.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "South Qeynos",
+   "y": -150.0,
+   "x": -285.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Stonebrunt Mountains",
+   "y": 1345.0,
+   "x": -500.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "Thurgadin",
+   "y": -225.0,
+   "x": -205.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Oven",
+   "zone": "West Freeport",
+   "y": -49.0,
+   "x": -1019.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Ak'Anon",
+   "y": 723.0,
+   "x": -142.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "East Cabilis",
+   "y": 237.0,
+   "x": -197.0,
+   "z": null,
+   "note": "Cabilis East",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "East Freeport",
+   "y": -123.0,
+   "x": -217.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Erudin",
+   "y": -922.0,
+   "x": -151.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Greater Faydark",
+   "y": -195.0,
+   "x": -545.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Highpass Hold",
+   "y": -289.0,
+   "x": 187.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Highpass Hold",
+   "y": 68.0,
+   "x": 131.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Highpass Hold",
+   "y": 220.0,
+   "x": 494.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Neriak Foreign Quarter",
+   "y": 200.0,
+   "x": -65.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "North Freeport",
+   "y": -150.0,
+   "x": 40.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "North Kaladim",
+   "y": 534.0,
+   "x": 313.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Northern Felwithe",
+   "y": -75.0,
+   "x": -373.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Oggok",
+   "y": 281.0,
+   "x": 678.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Overthere",
+   "y": 2860.0,
+   "x": 2400.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Rivervale",
+   "y": -159.08,
+   "x": -77.75,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Rivervale",
+   "y": 386.0,
+   "x": -471.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "South Kaladim",
+   "y": 168.0,
+   "x": -210.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "South Qeynos",
+   "y": 550.0,
+   "x": -290.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Stonebrunt Mountains",
+   "y": 1390.0,
+   "x": -560.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "Thurgadin",
+   "y": -264.0,
+   "x": 194.0,
+   "z": 1.0,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "West Freeport",
+   "y": -227.0,
+   "x": -336.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  },
+  {
+   "kind": "Pottery Wheel",
+   "zone": "West Freeport",
+   "y": -224.0,
+   "x": -669.0,
+   "z": null,
+   "note": "",
+   "era": ""
+  }
+ ]
+}
