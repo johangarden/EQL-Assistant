@@ -74,6 +74,7 @@ public partial class BisFinderView : UserControl
     {
         InitializeComponent();
         _prio = _prioArmor;
+        Board.LayoutUpdated += (_, _) => SyncHeadWidths();
         BuildClassChips();
         BuildViewPills();
         SyncPrioBoxes();
@@ -450,6 +451,9 @@ public partial class BisFinderView : UserControl
         Board.Children.Clear();
         Board.RowDefinitions.Clear();
         Board.ColumnDefinitions.Clear();
+        BoardHead.Children.Clear();
+        BoardHead.RowDefinitions.Clear();
+        BoardHead.ColumnDefinitions.Clear();
 
         // ITEM · SCORE · p1 · p2 · p3 · OTHER · WHERE · CLASSES — the item line keeps
         // room for its pills; OTHER and CLASSES wrap instead of squeezing it.
@@ -459,17 +463,27 @@ public partial class BisFinderView : UserControl
         Board.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 160 });
         Board.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         Board.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MaxWidth = 200 });
+        // The sticky title row mirrors the columns; SyncHeadWidths pins each to the board's measured width.
+        foreach (var cd in Board.ColumnDefinitions)
+            BoardHead.ColumnDefinitions.Add(new ColumnDefinition { Width = cd.Width, MinWidth = cd.MinWidth, MaxWidth = cd.MaxWidth });
+        BoardHead.RowDefinitions.Add(new RowDefinition());
+        Cell("ITEM", 0, 0, HeadFg, right: false, size: 9.5, bold: true, host: BoardHead);
+        Cell("SCORE", 0, 1, HeadFg, right: true, size: 9.5, bold: true, host: BoardHead);
+        for (int i = 0; i < 3; i++)
+            Cell(Label(_prio[i]).ToUpperInvariant(), 0, 2 + i, HeadFg, right: true, size: 9.5, bold: true, host: BoardHead);
+        Cell("OTHER", 0, 5, HeadFg, right: false, size: 9.5, bold: true, host: BoardHead);
+        Cell("WHERE", 0, 6, HeadFg, right: false, size: 9.5, bold: true, host: BoardHead);
+        Cell("CLASSES", 0, 7, HeadFg, right: false, size: 9.5, bold: true, host: BoardHead);
+        // The titles no longer share the board's measure, so a number column must be at
+        // least as wide as its title — else "SCORE" over a "17" reads "S…".
+        foreach (var hb in BoardHead.Children.OfType<Border>())
+        {
+            hb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var cd = Board.ColumnDefinitions[Grid.GetColumn(hb)];
+            cd.MinWidth = Math.Max(cd.MinWidth, hb.DesiredSize.Width);
+        }
 
         int row = 0;
-        Board.RowDefinitions.Add(new RowDefinition());
-        Cell("ITEM", row, 0, HeadFg, right: false, size: 9.5, bold: true);
-        Cell("SCORE", row, 1, HeadFg, right: true, size: 9.5, bold: true);
-        for (int i = 0; i < 3; i++)
-            Cell(Label(_prio[i]).ToUpperInvariant(), row, 2 + i, HeadFg, right: true, size: 9.5, bold: true);
-        Cell("OTHER", row, 5, HeadFg, right: false, size: 9.5, bold: true);
-        Cell("WHERE", row, 6, HeadFg, right: false, size: 9.5, bold: true);
-        Cell("CLASSES", row, 7, HeadFg, right: false, size: 9.5, bold: true);
-        row++;
 
         // Owner rulings (2 Sep): only what the combo can wear; two-slot
         // slots split into SLOT 1 / SLOT 2, each its pick + ONE alternative;
@@ -653,7 +667,7 @@ public partial class BisFinderView : UserControl
         }) { BaselineAlignment = BaselineAlignment.Center });
     }
 
-    private void CellHost(UIElement child, int row, int col)
+    private void CellHost(UIElement child, int row, int col, Grid? host = null)
     {
         var border = new Border
         {
@@ -662,8 +676,25 @@ public partial class BisFinderView : UserControl
         };
         Grid.SetRow(border, row);
         Grid.SetColumn(border, col);
-        Board.Children.Add(border);
+        (host ?? Board).Children.Add(border);
     }
+
+    /// <summary>The title row is a separate grid above the scroller: after every board
+    /// layout, pin its columns to the board's measured widths so they line up.</summary>
+    private void SyncHeadWidths()
+    {
+        if (Board.ActualWidth < 1 || BoardHead.ColumnDefinitions.Count != Board.ColumnDefinitions.Count) return;
+        for (int i = 0; i < Board.ColumnDefinitions.Count; i++)
+        {
+            double w = Board.ColumnDefinitions[i].ActualWidth;
+            var cd = BoardHead.ColumnDefinitions[i];
+            if (!cd.Width.IsAbsolute || Math.Abs(cd.Width.Value - w) > 0.5) { cd.MinWidth = 0; cd.Width = new GridLength(w); }
+        }
+        if (Math.Abs(BoardHead.Width - Board.ActualWidth) > 0.5) BoardHead.Width = Board.ActualWidth;
+    }
+
+    internal Grid BoardHeadForTest => BoardHead;
+    internal Grid BoardForTest => Board;
 
     /// <summary>The place, the slot finder's way: a lane badge and the dump's words
     /// made readable ("BANK  Bank 2 · slot 2", "STORAGE  Storage").</summary>
@@ -682,7 +713,7 @@ public partial class BisFinderView : UserControl
     }
 
     private void Cell(string text, int row, int col, Brush fg, bool right,
-        double size = 12, bool bold = false)
+        double size = 12, bool bold = false, Grid? host = null)
     {
         CellHost(new TextBlock
         {
@@ -693,7 +724,7 @@ public partial class BisFinderView : UserControl
             Margin = new Thickness(col == 0 ? 0 : 8, 0, 0, 0),
             TextTrimming = TextTrimming.CharacterEllipsis,
             MaxWidth = col == 5 ? 260 : 400,
-        }, row, col);
+        }, row, col, host);
     }
 
     private static Brush Freeze(string hex)
