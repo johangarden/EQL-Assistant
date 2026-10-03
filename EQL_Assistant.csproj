@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -79,6 +79,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="data\tradeskills.json" />
+    <!-- Stationary tradeskill containers per zone with /loc (Project 1999 wiki container pages). -->
+    <None Update="data\stations.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <EmbeddedResource Include="data\stations.json" />
     <!-- The wiki's 40×40 item icons (eqlwiki/p99 art shipped by Companion),
          keyed item-<iconId>.png — WPF resources, looked up via pack URI. -->
     <Resource Include="data\item-icons\*.png" />

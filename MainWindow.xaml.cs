@@ -1191,6 +1191,7 @@ public partial class MainWindow : Window
                 _config.Overlay.TradeskillLadder, _config.Overlay.TradeskillBagCounts)
             {
                 BagCount = TradeskillBagCount,
+                BagNote = TradeskillBagNote,
                 SkillPicked = OpenTradeskill,
                 CloseRequested = () => ToggleTradeskill(),
                 LadderToggled = on => { _config.Overlay.TradeskillLadder = on; _configService.SaveSettings(_config); },
@@ -1313,10 +1314,25 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Copies of an ingredient in the last inventory dump; −1 = no dump.</summary>
+    /// <summary>What you have of an ingredient: the inventory dump's count, plus what you bought
+    /// since it was taken, minus what your combines used since (owner, 4 Oct: a 46-day-old dump
+    /// said 0 Frosting right after buying 100). No dump at all: bought minus used, or unknown.</summary>
     private int TradeskillBagCount(string item)
     {
-        var rows = DumpRows(out _);
-        return rows is null ? -1 : SkyWindow.CountInDump(rows, item);
+        var rows = DumpRows(out var stamp);
+        DateTime since = rows is null ? DateTime.MinValue : stamp;
+        int bought = _tradeskills.BoughtSince(item, since), used = _tradeskills.UsedSince(item, since);
+        if (rows is null) return bought == 0 ? -1 : Math.Max(0, bought - used);
+        return Math.Max(0, SkyWindow.CountInDump(rows, item) + bought - used);
+    }
+
+    private string TradeskillBagNote(string item)
+    {
+        var rows = DumpRows(out var stamp);
+        DateTime since = rows is null ? DateTime.MinValue : stamp;
+        int bought = _tradeskills.BoughtSince(item, since), used = _tradeskills.UsedSince(item, since);
+        if (rows is null) return $"No inventory dump — {bought} bought, {used} used in combines (type /outputfile inventory in game for a count).";
+        return $"{SkyWindow.CountInDump(rows, item)} in your inventory dump ({stamp:dd MMM HH:mm}) + {bought} bought since − {used} used in combines since.";
     }
 
     /// <summary>Hand the Sky tracker the same inventory cap the Quests window
