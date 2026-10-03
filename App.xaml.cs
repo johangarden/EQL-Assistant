@@ -3910,6 +3910,18 @@ public partial class App : Application
         tw.ShowPage("res");
         tw.ShowPage("bis");
         Check("tools: Resists and BiS pages build on the demo dump", tw.BisForTest is { HasBoard: true } && tw.PageShown == "bis" && shown[0] == before);
+        // Sticky column titles (3 Oct): the title row is its own grid above the scroller, eight cells over eight
+        // columns, and the board's first row is a slot header, not the titles.
+        {
+            var bv = tw.BisForTest!;
+            bv.UpdateLayout();
+            Check("bis: the column titles sit above the scroller — eight titles over eight mirrored columns, pinned to the board's widths",
+                bv.BoardHeadForTest.Children.Count == 8 && bv.BoardHeadForTest.ColumnDefinitions.Count == 8
+                && bv.BoardHeadForTest.Children.OfType<Border>().Select(b => (b.Child as TextBlock)?.Text).SequenceEqual(new[] { "ITEM", "SCORE", "AC", "STA", "INT", "OTHER", "WHERE", "CLASSES" })
+                && !bv.BoardForTest.Children.OfType<Border>().Any(b => Grid.GetRow(b) == 0 && (b.Child as TextBlock)?.Text == "ITEM")
+                && (bv.BoardForTest.ActualWidth < 1 || bv.BoardHeadForTest.ColumnDefinitions.All(c => c.Width.IsAbsolute))
+                && bv.BoardForTest.ColumnDefinitions[1].MinWidth > 30 && bv.BoardForTest.ColumnDefinitions[0].MinWidth == 320);
+        }
         // The ×N pills (3 Oct): a click cycles the pick's weight, the title and the score line follow, four clicks come round.
         {
             var bv = tw.BisForTest!;

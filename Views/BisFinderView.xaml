@@ -64,6 +64,9 @@
             <StackPanel x:Name="Verdicts" Margin="2,0,0,8"/>
         </StackPanel>
 
+        <!-- The column titles sit OUTSIDE the scroller so they stay put (owner, 3 Oct);
+             their widths are copied from the board's columns after every layout. -->
+        <Grid x:Name="BoardHead" DockPanel.Dock="Top" HorizontalAlignment="Left"/>
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid x:Name="Board" VerticalAlignment="Top"/>
         </ScrollViewer>
