@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Documents;
 using System.Windows.Media;
 using EQLOverlay.Services;
@@ -43,6 +44,7 @@ public partial class BisFinderView : UserControl
     private BisFinder.WeaponStyle _style = BisFinder.WeaponStyle.DualWield;
     private BisFinder.RangeMode _range = BisFinder.RangeMode.Dps;
     private double _tail; // armor only: weight for every stat outside the three picks
+    private readonly double[] _weights = (double[])BisFinder.DefaultWeights.Clone(); // the ×N pills (owner, 3 Oct: 3·2·1 was too steep)
     private bool _backstab; // weapons: only main-hand weapons with a backstab number
     private readonly Dictionary<string, bool> _fold = new(StringComparer.Ordinal); // explicit toggles
 
@@ -222,9 +224,42 @@ public partial class BisFinderView : UserControl
         if (parts.Length > 4 && double.TryParse(parts[4], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out double tail)) _tail = tail;
         if (parts.Length > 5) _backstab = parts[5] == "bs";
+        if (parts.Length > 6 && parts[6].Split('/') is { Length: 3 } wtxt)
+            for (int i = 0; i < 3; i++)
+                if (double.TryParse(wtxt[i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double wv)
+                    && BisFinder.WeightSteps.Any(x => Math.Abs(x - wv) < 0.001)) _weights[i] = wv;
         _prio = _weapons ? _prioWeapon : _prioArmor;
         SyncPrioBoxes();
+        SyncWeightPills();
     }
+
+    /// <summary>The ×N pills and the panel title say what the picks weigh right now.</summary>
+    private void SyncWeightPills()
+    {
+        var pills = new[] { W1, W2, W3 };
+        for (int i = 0; i < 3; i++)
+            if (pills[i]?.Child is TextBlock t) t.Text = "×" + BisFinder.WeightText(_weights[i]);
+        if (PrioTitle is not null) PrioTitle.Text = "PRIORITIES · WEIGHTED " + string.Join(" · ", _weights.Select(BisFinder.WeightText));
+    }
+
+    private void Weight_Click(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is FrameworkElement fe && fe.Tag is string tag && int.TryParse(tag, out int i)) CycleWeight(i);
+    }
+
+    private void CycleWeight(int i)
+    {
+        _weights[i] = BisFinder.NextWeight(_weights[i]);
+        SyncWeightPills();
+        SavePrefs();
+        Refresh();
+    }
+
+    internal IReadOnlyList<double> WeightsForTest => _weights;
+    internal void CycleWeightForTest(int i) => CycleWeight(i);
+    internal string ScoreNoteForTest => ScoreNote.Text;
+    internal string PrioTitleForTest => PrioTitle.Text;
 
     /// <summary>Entering the tab starts from who you ARE (owner ruling,
     /// 3 Sep): the combo snaps back to the character's /who classes; the
@@ -322,7 +357,8 @@ public partial class BisFinderView : UserControl
         _config?.SaveBisPrefs(_charKey, string.Join("/", _combo),
             string.Join("/", _prioArmor) + ";" + string.Join("/", _prioWeapon) + ";" + _style + ";" + _range
             + ";" + _tail.ToString(System.Globalization.CultureInfo.InvariantCulture)
-            + ";" + (_backstab ? "bs" : ""));
+            + ";" + (_backstab ? "bs" : "")
+            + ";" + string.Join("/", _weights.Select(BisFinder.WeightText)));
 
     // ---- the board -----------------------------------------------------------------
 
@@ -342,11 +378,11 @@ public partial class BisFinderView : UserControl
         // Pools as stat points at your combo and level (owner, 28 Sep: HP counted 1:1 with STA).
         var rates = BisFinder.RatesFor(_combo, LevelProvider?.Invoke() ?? 0);
         RatesForTest = rates;
-        ScoreNote.Text = "Score = 3·p1 + 2·p2 + 1·p3 on tier-scaled values. HP and mana count as the stat points they equal: "
+        ScoreNote.Text = $"Score = {BisFinder.WeightText(_weights[0])}·p1 + {BisFinder.WeightText(_weights[1])}·p2 + {BisFinder.WeightText(_weights[2])}·p3 on tier-scaled values — click a ×N to change it. HP and mana count as the stat points they equal: "
             + $"1 STA ≈ {rates.HpPerSta:0.#} HP{(rates.HpClass.Length > 0 ? $" ({rates.HpClass})" : "")}"
             + (rates.ManaStats.Length > 0 ? $" · 1 {rates.ManaStats} ≈ {rates.ManaPerPoint:0.#} mana" : " · mana counts nothing — no mana class")
             + $" at level {rates.Level}{(LevelProvider?.Invoke() is > 0 ? "" : " (assumed — type /who)")}. Rates from eqlwiki's Game Mechanics and Statistics pages.";
-        var all = BisFinder.Build(_rows, _stats, _combo, _prio, tailWeight: _weapons ? 0 : _tail, rates: rates);
+        var all = BisFinder.Build(_rows, _stats, _combo, _prio, tailWeight: _weapons ? 0 : _tail, rates: rates, weights: _weights);
         var result = _weapons ? BisFinder.WeaponView(all, _style, _range, _backstab) : BisFinder.ArmorView(all);
         BuildVerdicts(result);
         BuildBoard(result);

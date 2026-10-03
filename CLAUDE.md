@@ -196,7 +196,7 @@ the affected suites (with `-Wait`) before committing.
   imply the steps before them; kill/loot steps vouch for nothing and are
   marked only once the line is started (their evidence waits); coins-only
   trades likewise. Old chains implied by a kill are withdrawn on load),
-  `BisFinder` + `SlotFinder` browse the SAME lanes — worn, bags, bank (+ shared), depot, hoard and the key ring's Storage (owner, 1 Oct); `SpellLibrary` (embedded `data/spell-library.json`, 1438
+  `BisFinder` + `SlotFinder` browse the SAME lanes — worn, bags, bank (+ shared), depot, hoard and the key ring's Storage (owner, 1 Oct); the BiS board's three picks weigh 2 · 1.5 · 1 by default and the ×N pill beside each cycles 1 → 1.5 → 2 → 3, remembered per character in the BiS prefs (owner, 3 Oct: 3 · 2 · 1 buried the third pick); `SpellLibrary` (embedded `data/spell-library.json`, 1438
   spells; each carries an `effect` — Direct damage / Damage over time /
   Heal / Mez / Snare / Haste… — derived from its eqlwiki page's effect
   slots + target type + duration by the scratch `classify-spells.py`,

@@ -42,7 +42,19 @@ public static class BisFinder
     /// <summary>Priorities that only mean something on a weapon.</summary>
     public static readonly string[] WeaponOnlyPriorities = { "DMG_DLY", "BACKSTAB" };
 
-    public static readonly int[] Weights = { 3, 2, 1 };
+    /// <summary>What the three picks weigh unless the player says otherwise — 2 · 1.5 · 1
+    /// (owner, 3 Oct: 3 · 2 · 1 buried the third pick). Each pick's ×N pill cycles WeightSteps.</summary>
+    public static readonly double[] DefaultWeights = { 2, 1.5, 1 };
+    public static readonly double[] WeightSteps = { 1, 1.5, 2, 3 };
+
+    /// <summary>The next step round: 1 → 1.5 → 2 → 3 → 1.</summary>
+    public static double NextWeight(double w)
+    {
+        int i = Array.FindIndex(WeightSteps, x => Math.Abs(x - w) < 0.001);
+        return WeightSteps[(i + 1) % WeightSteps.Length];
+    }
+
+    public static string WeightText(double w) => w.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>Lanes the finder searches — what you carry, what you stash, and the
     /// key ring's Storage (owner, 1 Oct: "anywhere we browse items, include all
@@ -187,12 +199,13 @@ public static class BisFinder
     /// never ride the tail (they'd double-count).</summary>
     /// <param name="rates">Pools as stat points (28 Sep); null = the old raw scoring.</param>
     public static double Score(IReadOnlyDictionary<string, int> stats, IReadOnlyList<string> prio,
-        double tailWeight = 0, PoolRates? rates = null)
+        double tailWeight = 0, PoolRates? rates = null, IReadOnlyList<double>? weights = null)
     {
+        var ws = weights ?? DefaultWeights;
         double s = 0;
-        for (int i = 0; i < prio.Count && i < Weights.Length; i++)
+        for (int i = 0; i < prio.Count && i < ws.Count; i++)
             if (prio[i].Length > 0)
-                s += Weights[i] * (rates is null ? stats.GetValueOrDefault(prio[i]) : rates.Points(prio[i], stats.GetValueOrDefault(prio[i])));
+                s += ws[i] * (rates is null ? stats.GetValueOrDefault(prio[i]) : rates.Points(prio[i], stats.GetValueOrDefault(prio[i])));
         if (tailWeight <= 0) return s;
         bool resistsPicked = prio.Contains("RESISTS");
         foreach (var (key, v) in stats)
@@ -320,7 +333,7 @@ public static class BisFinder
     /// <summary>The board for one combo + priority set over the dump's rows.</summary>
     public static Result Build(IEnumerable<InventoryStore.CarryRow> rows, ItemStats stats,
         IReadOnlyCollection<string> combo, IReadOnlyList<string> prio,
-        IReadOnlyCollection<string>? lanes = null, double tailWeight = 0, PoolRates? rates = null)
+        IReadOnlyCollection<string>? lanes = null, double tailWeight = 0, PoolRates? rates = null, IReadOnlyList<double>? weights = null)
     {
         var laneSet = new HashSet<string>(lanes ?? SearchLanes, StringComparer.Ordinal);
         var unknown = new List<string>();
@@ -353,7 +366,7 @@ public static class BisFinder
             bool worn = r.Lane == "worn";
             string wornKey = worn ? WornSlotKey(r.Location) : "";
             bool twoHanded = rec.Skill.StartsWith("2H", StringComparison.OrdinalIgnoreCase);
-            double score = Score(scaled, prio, tailWeight, rates);
+            double score = Score(scaled, prio, tailWeight, rates, weights);
 
             foreach (var key in slotKeys)
             {
