@@ -11,6 +11,44 @@ quest tracker, spell library, learned buff durations, self-updater.
 Code namespaces are `EQLOverlay` (historical, internal only); the product,
 exe and repo say **EQL Assistant**.
 
+## Working with Johan (the owner)
+
+Johan is Danish, plays EQ Legends as **Thorrak** (Ogre; combos seen SHD/SHM/ENC
+and DRU/BRD/WIZ, levels 44–50). Two machines: the **dev PC** (this repo) and
+the **gamer rig** (the game runs there; its logs come over as
+`eqlog_Thorrak_paineel*.txt`, dumps as `Thorrak_paineel-Inventory_*.txt`).
+Push when you stop on one machine, pull when you start on the other.
+
+- **Questions are not orders.** "does it…?", "is it possible…?", "how
+  would…?", "what about…?" get an assessment of how it works today and what
+  that means for the choice he's weighing — then stop, offering the change
+  in one line. Build only on go-words: "build it", "fix it", "go", "mock
+  plz", "cut plz", "rebuild". A bug report with a screenshot still gets
+  fixed. (29 Sep: an Invocations refactor pre-empted a design question —
+  "it was a question not an order".)
+- **New UI gets an HTML mock first** (`mock plz`), rendered as a screenshot
+  for him to react to, before any WPF is written. Build the whole thing
+  once agreed, then iterate on his screenshots.
+- **No stock controls, ever.** Every control dark-themed from day one;
+  overlay panels need window-local styles (dialogs merge
+  `Themes/Controls.xaml`, panels don't). Prefer the app's pill/segment look.
+  A control that never got styled is a bug ("ugly dropdown §!", twice).
+- **Commit each logical change on dev** (standing authorization, present-
+  tense story-telling subjects). **Cut only on "cut"**; the ritual is under
+  Branch & release. **"rebuild"** = rebuild the Debug exe he runs (fails
+  with MSB3027 while the app is up — he closes it first).
+- **Edit files with a Python patch script** written with the Write tool
+  (`rw`/`wr`/`rep` with asserts), then run it. **Never pipe Python through
+  a shell heredoc** — it eats `\t`, `\r\n`, `\b` and once committed a broken
+  test string. C# test strings that need tabs use `((char)9).ToString()`.
+- **Verify before committing**: build to a scratch folder (`-o <tmp>`), run
+  the affected suites with `Start-Process -Wait`, and for UI render the page
+  (`--render-manager …`) and look at the PNG. The Tools/focus/slot/stats
+  checks live in the ENGINE suite (`ToolsChecks`), not the main one.
+- **Report facts, short.** After a cut: the release link, the ritual steps
+  that went green with suite counts, and what the notes say.
+- **Credits stay** in README and release notes: Josh Moyers (MIT) and eqlwiki.
+
 ## Build, test, run
 
 ```
@@ -53,7 +91,11 @@ the affected suites (with `-Wait`) before committing.
   `dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o dist`
   → smoke-test ALL selftest suites on `dist\EQL_Assistant.exe` (with `-Wait`)
   → push main+dev+tag →
-  `gh release create vX.Y.Z dist\EQL_Assistant.exe --title "EQL Assistant vX.Y" --notes-file <notes>`.
+  `gh release create vX.Y.Z dist\EQL_Assistant.exe --title "EQL Assistant vX.Y" --notes-file <notes> -R johangarden/EQL-Assistant`
+  (run it from PowerShell after refreshing `$env:PATH` from the Machine +
+  User registry values — a fresh agent shell may not see `gh`). The publish
+  plus five suites takes over two minutes: run them as ONE background
+  command and read its output file.
   The release asset is the **PLAIN-NAMED exe** — the self-updater overwrites
   in place, so versioned filenames go stale on user machines. Notes lead with
   a download-first intro (SmartScreen hint), then New/Fixed, then data credits.
