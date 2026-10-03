@@ -72,7 +72,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` / `quests:sky` / `quests:sky:all` / `quests:house` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges) / the same with every card shown (reward links) / quest item housekeeping unfolded (item icons), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `faction` / `faction:maxed` / `faction:bad` / `faction:standing` the faction helper card (a hit · the cap · the wrong way · between hits), `character:races` the Races tab on demo dumps (the Character window no longer lists it — see Tools), `tools` / `tools:<page>` the Tools window on demo data (home · eff · inv · bis · slots · focus · stats · races · res · ts; a real inventory dump in env EQL_TOOLS_DUMP replaces the demo one, a real log in EQL_STATS_LOG feeds the statistics, EQL_FOCUS_OPEN=1 unfolds the focus marks), `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `library:<search>` the spell library window searched as typed (EFFECT column), `library:eff` / `library:eff:heal` / `library:eff:fire` its Efficiency tab on a demo yield (damage · healing · a Wizard's fire nukes), `library:inv` its Invocations tab on a synthetic stretch (`library:invfile` on the log in env EQL_INV_LOG, 60 min to EQL_INV_END "yyyy-MM-dd HH:mm", regen EQL_INV_REGEN, max mana EQL_INV_POOL, combo EQL_INV_CLASSES), `levelup` / `levelup:15` the level-up card (SHD/SHM/ENC at 44 / DRU/BRD/WIZ at 15), `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys), `quests:lines` / `quests:sky` / `quests:sky:all` / `quests:house` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges) / the same with every card shown (reward links) / quest item housekeeping unfolded (item icons), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `faction` / `faction:maxed` / `faction:bad` / `faction:standing` the faction helper card (a hit · the cap · the wrong way · between hits), `character:races` the Races tab on demo dumps (the Character window no longer lists it — see Tools), `tools` / `tools:<page>` the Tools window on demo data (home · eff · inv · bis · slots · focus · stats · races · fx · charms · res · ts; a real inventory dump in env EQL_TOOLS_DUMP replaces the demo one — the fx board reads it from a temp copy, a real log in EQL_STATS_LOG feeds the statistics, EQL_FOCUS_OPEN=1 unfolds the focus marks), `meter:incoming` / `meter:incoming:quiet` the DPS meter with that chart docked as its cap (mid-fight / folded), `charm` / `charm:broke` the charm card, `mez` the mez panel, `library:<search>` the spell library window searched as typed (EFFECT column), `library:eff` / `library:eff:heal` / `library:eff:fire` its Efficiency tab on a demo yield (damage · healing · a Wizard's fire nukes), `library:inv` its Invocations tab on a synthetic stretch (`library:invfile` on the log in env EQL_INV_LOG, 60 min to EQL_INV_END "yyyy-MM-dd HH:mm", regen EQL_INV_REGEN, max mana EQL_INV_POOL, combo EQL_INV_CLASSES), `levelup` / `levelup:15` the level-up card (SHD/SHM/ENC at 44 / DRU/BRD/WIZ at 15), `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `Data:reparse` the Data page with the reparse progress card mid-run |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous
@@ -136,8 +136,8 @@ the affected suites (with `-Wait`) before committing.
   Every charm that ends (broke / died / zoned / replaced / you died) is a
   `CharmBook` episode (`charms.json`: pet, spell + cast rank, zone, hold,
   pet hits/dmg/max hit/taken, kills, mob /con level, your level; failed
-  attempts per mob too) → Character window "Charmed pets" tab
-  (`CharmsView`) + the card's "before:" line; the card counts DOWN a known
+  attempts per mob too) → Tools → Charmed pets (`CharmsView`; moved out of
+  the Character window 3 Oct) + the card's "before:" line; the card counts DOWN a known
   ceiling and overruns grey past it.
 - `TradeskillWatch` + `TradeskillData` — the tradeskill helper (21 Sep), a
   card you SHOW ON PURPOSE (toolbar anvil / ☰ → Panels toggle
@@ -307,10 +307,16 @@ Every dump-fed page (BiS, Slot finder, Focus planner) opens with the
 storage pills (a pill per storage: in this dump · its age, or amber with its
 last capture / "never") — amber = something to type in game. The
 toolbar's hammer (it replaced the anvil) opens it and wears a gold pip
-while the tradeskill card is up. Live panels stay under ☰ → Panels, records
-(loot, raids, fights, charmed pets) in their own windows; the Character
-window keeps the sheet, focus effects and charmed pets; the trigger
-editor's Library shows Durations only.
+while the tradeskill card is up. FOCUS EFFECTS (the audit board) and
+CHARMED PETS are Tools pages too (owner, 3 Oct): the board is the Character
+window's own `InventoryPanel` attached to its focus tab alone (header and
+tab row hidden — it reads and watches the dump itself; `Context.Character`
+names the dump), the ledger is `CharmsView` on `Context.Charms`; the
+sheet's "focus board" link opens the Tools page (`InventoryWindow.
+FocusBoardRequested`). Live panels stay under ☰ → Panels, records (loot,
+raids, fights) in their own windows; the Character window keeps the SHEET
+only (`HostedTabs = { "sheet" }`); the trigger editor's Library shows
+Durations only.
 
 `Views/` — each overlay panel is its own window with a `PanelPlacement`
 corner-anchor (`window-<key>.json`). `TriggerManagerWindow` is the Manager

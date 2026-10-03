@@ -5,13 +5,17 @@ namespace EQLOverlay.Views;
 
 /// <summary>
 /// The Character window: a thin host for <see cref="InventoryPanel"/>'s
-/// analysis tabs — Sheet, Focus board, Best in slot. Owns the one thing a
+/// Character sheet (its other tabs live in Tools now). Owns the one thing a
 /// panel can't: growing the WINDOW for the sheet's drill drawer.
 /// </summary>
 public partial class InventoryWindow : Window
 {
-    // BiS finder and Races moved to the Tools window (29 Sep).
-    public static readonly string[] HostedTabs = { "sheet", "focus", "charms" };
+    // BiS finder and Races moved to the Tools window (29 Sep); Focus effects and
+    // Charmed pets followed (owner, 3 Oct). The sheet is what's left.
+    public static readonly string[] HostedTabs = { "sheet" };
+
+    /// <summary>The sheet's "focus board" link — the host says where it goes now (Tools).</summary>
+    public Action? FocusBoardRequested { set => Panel.FocusBoardRequested = value; }
 
     public InventoryWindow(string eqRoot, string charName, string server,
         SessionStats? session = null, CharmBook? charms = null, RaceBook? races = null)

@@ -45,6 +45,11 @@ public sealed class ToolsWindow : Window
         public string? ToolPrefsPath { get; init; }
         public Statistics? Stats { get; init; }
         public RaidKills? Raids { get; init; }
+        /// <summary>The charm ledger behind Charmed pets (moved from the Character window, 3 Oct).</summary>
+        public CharmBook? Charms { get; init; }
+        /// <summary>The Focus effects page hosts the Character window's audit board on its own: it reads the dump itself.</summary>
+        public Func<(string EqRoot, string Name, string Server)> Character { get; init; } = () => ("", "", "");
+        public SessionStats? Session { get; init; }
     }
 
     private static Brush F(string hex) { var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); b.Freeze(); return b; }
@@ -62,6 +67,8 @@ public sealed class ToolsWindow : Window
         ("focus", "Focus planner", "M12 2.5 L14.7 8.4 L21 9.2 L16.4 13.6 L17.6 20 L12 16.9 L6.4 20 L7.6 13.6 L3 9.2 L9.3 8.4 Z"),
         ("stats", "Statistics", "M3 21 L3 19 L21 19 L21 21 Z M5 17 L5 11 L8 11 L8 17 Z M10.5 17 L10.5 4 L13.5 4 L13.5 17 Z M16 17 L16 8 L19 8 L19 17 Z"),
         ("races", "Race unlocks", "M9 5 A3.5 3.5 0 1 0 9.01 5 Z M3 20 C3 15 6 13 9 13 C12 13 15 15 15 20 Z M16.5 7 A2.8 2.8 0 1 0 16.51 7 Z M16 20 C16 16 17 14.5 18.5 14.5 C20 14.5 21.5 16 21.5 20 Z"),
+        ("fx", "Focus effects", "M12 3 L21 12 L12 21 L3 12 Z M12 8.2 L15.8 12 L12 15.8 L8.2 12 Z"),
+        ("charms", "Charmed pets", "M12 21 C7 16.5 3 13.5 3 9 A4.5 4.5 0 0 1 12 6.5 A4.5 4.5 0 0 1 21 9 C21 13.5 17 16.5 12 21 Z"),
         ("res", "Resists", "M12 3 C15 7 18 9 18 13 A6 6 0 0 1 6 13 C6 9 9 7 12 3 Z"),
         ("ts", "Tradeskills", "M5 21 L4 20 L13 11 L14 12 Z M11.5 6.5 L14.5 3.5 L20.5 9.5 L17.5 12.5 Z"),
     };
@@ -77,6 +84,9 @@ public sealed class ToolsWindow : Window
     private SlotFinderView? _slots;
     private FocusPlannerView? _focus;
     private StatisticsView? _statsView;
+    private InventoryPanel? _fx;          // the focus audit board — the Character window's panel on its focus tab alone
+    private (string, string, string) _fxFor;
+    private CharmsView? _charms;
     // One wiki item table for the BiS finder, the slot finder and the focus planner.
     private readonly Lazy<ItemStats> _stats = new(() => new ItemStats());
     private readonly Lazy<FocusEffects> _focusData = new(() => new FocusEffects());
@@ -128,6 +138,8 @@ public sealed class ToolsWindow : Window
             "focus" => FocusPage(),
             "stats" => StatsPage(),
             "races" => RacesPage(),
+            "fx" => FocusEffectsPage(),
+            "charms" => CharmsPage(),
             "res" => ResistsPage(),
             "ts" => TradeskillPage(),
             _ => HomePage(),
@@ -171,7 +183,7 @@ public sealed class ToolsWindow : Window
         sp.Children.Add(new TextBlock { Text = "Tools", Foreground = Brushes.White, FontSize = 17, FontWeight = FontWeights.Bold });
         sp.Children.Add(new TextBlock
         {
-            Text = "Everything you open on purpose to make a decision. Live panels stay under ☰ → Panels; records (loot, raid kills, fights, charmed pets) stay in their own windows.",
+            Text = "Everything you open on purpose to make a decision. Live panels stay under ☰ → Panels; records (loot, raid kills, fights) stay in their own windows.",
             Foreground = Hint, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 14), MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Left,
         });
         sp.Children.Add(TradeskillCard(compact: true));
@@ -252,6 +264,22 @@ public sealed class ToolsWindow : Window
                         views.Count == 0 ? "Type /outputfile achievements and /outputfile faction in game."
                         : tracked.Count > 0 ? string.Join(" · ", tracked.Select(t => $"★ {t.Name} {t.DoneCount}/{t.Factions.Count}"))
                         : $"{views.Count(v => v.Done)} of {views.Count} races unlocked — ★ one to follow it");
+                }
+                case "fx":
+                {
+                    var (rows, _, _) = _c.Dump();
+                    const string purpose = "Which focus effects your gear carries, family by family — and the gaps.";
+                    if (rows is null) return (purpose, "Type /outputfile inventory in game for your gear.");
+                    var audit = _focusData.Value.Audit(rows).Where(a => a.Family.Group != "summoned").ToList();
+                    return (purpose, $"{audit.Count(a => a.Status == 2)} of {audit.Count} focus families worn at their best · {audit.Count(a => a.BestTier == 0)} not owned");
+                }
+                case "charms":
+                {
+                    const string purpose = "Every charm that ended — the pet, the spell, how long it held, what it did.";
+                    var eps = _c.Charms?.Episodes ?? (IReadOnlyList<CharmBook.Episode>)Array.Empty<CharmBook.Episode>();
+                    if (eps.Count == 0) return (purpose, "No charms recorded yet — it fills as you charm.");
+                    var last = eps.OrderByDescending(e => e.End).First();
+                    return (purpose, $"{eps.Count} charm{(eps.Count == 1 ? "" : "s")} on {eps.Select(e => e.Mob).Distinct(StringComparer.OrdinalIgnoreCase).Count()} mobs · last: {last.Mob} ({last.Spell})");
                 }
                 case "res":
                 {
@@ -509,6 +537,33 @@ public sealed class ToolsWindow : Window
 
     /// <summary>Selftest: the races tab once built.</summary>
     internal RacesView? RacesForTest => _races;
+
+    /// <summary>The focus audit board (moved from the Character window, 3 Oct): the Character
+    /// window's own panel, attached to its focus tab alone, header and tab row hidden. It
+    /// reads and watches the dump itself; a new character gets a fresh panel.</summary>
+    private UIElement FocusEffectsPage()
+    {
+        var who = _c.Character();
+        if (_fx is null || _fxFor != who)
+        {
+            _fx = new InventoryPanel();
+            _fx.Attach(who.EqRoot, who.Name, who.Server, _c.Session, new[] { "focus" }, showHeader: false, showTabRow: false);
+            _fx.Reload(); // Loaded (which starts the panel) is asynchronous — fill the board now, the watcher follows
+            _fxFor = who;
+        }
+        return Framed("Focus effects", "Every focus family over your gear: the tier you carry and where it sits, what the next tier is and who drops it — moved here from the Character window. Read straight off your inventory dump; the Focus planner says where each exaltation should go.", _fx);
+    }
+
+    internal InventoryPanel? FocusEffectsForTest => _fx;
+
+    private UIElement CharmsPage()
+    {
+        _charms ??= new CharmsView();
+        _charms.Init(_c.Charms);
+        return Framed("Charmed pets", "Every charm that ended — the pet, the spell and rank, how long it held, what it did and how it ended; failed attempts per mob too — moved here from the Character window.", _charms);
+    }
+
+    internal CharmsView? CharmsForTest => _charms;
 
     private UIElement ResistsPage()
     {

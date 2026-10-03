@@ -258,11 +258,9 @@ public partial class App : Application
             hb.AddAttempt(new CharmBook.Attempt("a greater ice bones", "Beguile Undead", "resisted", DateTime.Now.AddMinutes(-12), "Permafrost Caverns"));
             var invWin = new Views.InventoryWindow(invDir, "Testchar", "paineel", null, hb);
             invWin.Show();
-            invWin.ShowFocusTab(); // instantiate the audit-board template
-            invWin.ShowTab("bis");  // and the best-in-slot board
-            invWin.ShowTab("charms"); // and the charm ledger (21 Sep)
+            invWin.ShowTab("sheet"); // the sheet is the Character window's only tab now (3 Oct) — the rest is in Tools
             invWin.UpdateLayout();
-            if (invWin.CharmRowsForTest != 1) throw new Exception("character: the Charmed pets tab should list the one charmed mob");
+            if (Views.InventoryWindow.HostedTabs is not ["sheet"]) throw new Exception("character: the Character window should host the sheet alone");
             invWin.Close();
             try { File.Delete(hbPath); } catch { /* temp */ }
 
@@ -3642,10 +3640,25 @@ public partial class App : Application
             foreach (var l in File.ReadLines(statsLog)) stats.ProcessLine(l);
         else foreach (var l in StatsDemoLines()) stats.ProcessLine(l);
         var raidsDemo = new RaidKills(new ConfigService(), Path.Combine(Path.GetTempPath(), "eql_selftest_tools_raidkills.json"));
+        // Charmed pets and Focus effects (moved from the Character window, 3 Oct): a small
+        // ledger, and the demo dump written where the audit board's panel looks for it.
+        var charmsDemo = new CharmBook(null, null);
+        {
+            var t = DateTime.Now;
+            charmsDemo.Add(new CharmBook.Episode("a wan ghoul knight", "Beguile", "The Plane of Hate", t.AddMinutes(-52), t.AddMinutes(-36), "broke", 9473, 41, 612, 4, 48, "Beguile", 3400, 50));
+            charmsDemo.Add(new CharmBook.Episode("a wan ghoul knight", "Beguile", "The Plane of Hate", t.AddMinutes(-30), t.AddMinutes(-24), "died", 2210, 12, 380, 1, 48, "Beguile", 5100, 50));
+            charmsDemo.Add(new CharmBook.Episode("a greater ice bones", "Beguile Undead", "Permafrost Caverns", t.AddDays(-3), t.AddDays(-3).AddSeconds(6), "broke", 40, 1, 40, 1, 44, "Beguile Undead", 0, 47));
+            charmsDemo.AddAttempt(new CharmBook.Attempt("a greater ice bones", "Beguile Undead", "resisted", t.AddDays(-3).AddMinutes(-1), "Permafrost Caverns"));
+        }
+        string invDir = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_inv");
+        Directory.CreateDirectory(invDir);
+        File.WriteAllText(Path.Combine(invDir, "Demo_paineel-Inventory.txt"), dumpText);
         return new Views.ToolsWindow(new Views.ToolsWindow.Context
         {
             Stats = stats,
             Raids = raidsDemo,
+            Charms = charmsDemo,
+            Character = () => (invDir, "Demo", "paineel"),
             Dump = () => (dumpRows, new DateTime(2026, 8, 17, 21, 36, 0), demoDump),
             CharKey = () => "demo_paineel",
             ToolPrefsPath = prefsPath,
@@ -3751,14 +3764,23 @@ public partial class App : Application
         var tw = ToolsDemo(out var shown);
         tw.Left = -9000; tw.Top = -9000; tw.ShowActivated = false; tw.ShowInTaskbar = false;
         tw.Show();
-        Check("tools: home opens first, with a live line for each of the eight tools",
-            tw.PageShown == "home" && tw.HomeLines.Count == 8 && tw.HomeLines.All(l => l.Length > 0)
+        Check("tools: home opens first, with a live line for each of the ten tools",
+            tw.PageShown == "home" && tw.HomeLines.Count == 10 && tw.HomeLines.All(l => l.Length > 0)
             && tw.HomeLines[0].StartsWith("Best per mana at 41–50", StringComparison.Ordinal)
             && tw.HomeLines[3].StartsWith("Wrist is the fullest: 5 items, 3 your combo can wear", StringComparison.Ordinal)
             && tw.HomeLines[4].StartsWith("2 moves would socket 3 of 4 needs", StringComparison.Ordinal)
             && tw.HomeLines[5].StartsWith("30 kills · 93 casts", StringComparison.Ordinal) && tw.HomeLines[5].Contains("most killed: a zol ghoul knight", StringComparison.Ordinal)
             && tw.HomeLines[6].Contains("★ High Elf", StringComparison.Ordinal)
-            && tw.HomeLines[7].Contains("sphinx", StringComparison.Ordinal));
+            && tw.HomeLines[7].Contains("focus families worn at their best", StringComparison.Ordinal)
+            && tw.HomeLines[8] == "3 charms on 2 mobs · last: a wan ghoul knight (Beguile)"
+            && tw.HomeLines[9].Contains("sphinx", StringComparison.Ordinal));
+        // Focus effects and Charmed pets (3 Oct): the Character window's audit board hosted on its own, the charm ledger as a page.
+        tw.ShowPage("charms");
+        Check("tools: Charmed pets lists the ledger's mobs (moved from the Character window)", tw.CharmsForTest is { RowCount: 2 } && tw.PageShown == "charms");
+        tw.ShowPage("fx");
+        tw.UpdateLayout();
+        Check("tools: Focus effects hosts the audit board on the demo dump — rows on the board, no header, no tab row",
+            tw.FocusEffectsForTest is { } fxp && fxp.FocusRowsForTest > 0 && fxp.HeaderRow.Visibility == Visibility.Collapsed && fxp.TabPanel.Visibility == Visibility.Collapsed);
 
         // Statistics (1 Oct): counted per day, deduped per minute, folded zones, the ranges.
         {
@@ -3968,7 +3990,7 @@ public partial class App : Application
         // Every page twice, in and out of order (owner, 29 Sep: the second Resists visit threw
         // "Specified element is already the logical child of another element").
         bool twice = true;
-        try { foreach (var pg in new[] { "res", "races", "res", "eff", "races", "inv", "eff", "home", "res", "ts", "races" }) tw.ShowPage(pg); }
+        try { foreach (var pg in new[] { "res", "races", "res", "eff", "races", "inv", "eff", "home", "res", "ts", "races", "fx", "charms", "fx", "home", "charms", "fx" }) tw.ShowPage(pg); }
         catch (Exception ex) { twice = false; Log.Warn("tools revisit: " + ex.Message); }
         Check("tools: every page opens again after another — the cached tools move between frames", twice && tw.RacesForTest is { RowCount: 6 });
         tw.Close();
@@ -6002,7 +6024,7 @@ public partial class App : Application
         }
         else if (page.Equals("tools", StringComparison.OrdinalIgnoreCase) || page.StartsWith("tools:", StringComparison.OrdinalIgnoreCase))
         {
-            // The Tools window on demo data: "tools" = home, "tools:<page>" = eff · inv · bis · races · res · ts.
+            // The Tools window on demo data: "tools" = home, "tools:<page>" = eff · inv · bis · slots · focus · stats · races · fx · charms · res · ts.
             var tw = ToolsDemo(out _);
             tw.WindowStartupLocation = WindowStartupLocation.Manual;
             tw.Left = -10000; tw.Top = -10000; tw.ShowInTaskbar = false; tw.ShowActivated = false;
