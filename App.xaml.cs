@@ -3769,11 +3769,13 @@ public partial class App : Application
             && tw.HomeLines[0].StartsWith("Best per mana at 41–50", StringComparison.Ordinal)
             && tw.HomeLines[3].StartsWith("Wrist is the fullest: 5 items, 3 your combo can wear", StringComparison.Ordinal)
             && tw.HomeLines[4].StartsWith("2 moves would socket 3 of 4 needs", StringComparison.Ordinal)
-            && tw.HomeLines[5].StartsWith("30 kills · 93 casts", StringComparison.Ordinal) && tw.HomeLines[5].Contains("most killed: a zol ghoul knight", StringComparison.Ordinal)
-            && tw.HomeLines[6].Contains("★ High Elf", StringComparison.Ordinal)
-            && tw.HomeLines[7].Contains("focus families worn at their best", StringComparison.Ordinal)
-            && tw.HomeLines[8] == "3 charms on 2 mobs · last: a wan ghoul knight (Beguile)"
-            && tw.HomeLines[9].Contains("sphinx", StringComparison.Ordinal));
+            && tw.HomeLines[5].Contains("★ High Elf", StringComparison.Ordinal)
+            && tw.HomeLines[6].Contains("focus families worn at their best", StringComparison.Ordinal)
+            && tw.HomeLines[7] == "3 charms on 2 mobs · last: a wan ghoul knight (Beguile)"
+            && tw.HomeLines[8].Contains("sphinx", StringComparison.Ordinal)
+            // Statistics sits last on the rail and the home grid (4 Oct).
+            && tw.HomeLines[9].StartsWith("30 kills · 93 casts", StringComparison.Ordinal) && tw.HomeLines[9].Contains("most killed: a zol ghoul knight", StringComparison.Ordinal)
+            && Views.ToolsWindow.Pages[^1].Id == "stats");
         // Focus effects and Charmed pets (3 Oct): the Character window's audit board hosted on its own, the charm ledger as a page.
         tw.ShowPage("charms");
         Check("tools: Charmed pets lists the ledger's mobs (moved from the Character window)", tw.CharmsForTest is { RowCount: 2 } && tw.PageShown == "charms");

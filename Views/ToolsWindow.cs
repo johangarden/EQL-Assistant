@@ -65,12 +65,13 @@ public sealed class ToolsWindow : Window
         ("bis", "BiS finder", "M12 3 L19 6 L19 12 C19 16 16 19 12 21 C8 19 5 16 5 12 L5 6 Z"),
         ("slots", "Slot finder", "M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M16 14 H18 V16.5 H20.5 V18.5 H18 V21 H16 V18.5 H13.5 V16.5 H16 Z"),
         ("focus", "Focus planner", "M12 2.5 L14.7 8.4 L21 9.2 L16.4 13.6 L17.6 20 L12 16.9 L6.4 20 L7.6 13.6 L3 9.2 L9.3 8.4 Z"),
-        ("stats", "Statistics", "M3 21 L3 19 L21 19 L21 21 Z M5 17 L5 11 L8 11 L8 17 Z M10.5 17 L10.5 4 L13.5 4 L13.5 17 Z M16 17 L16 8 L19 8 L19 17 Z"),
         ("races", "Race unlocks", "M9 5 A3.5 3.5 0 1 0 9.01 5 Z M3 20 C3 15 6 13 9 13 C12 13 15 15 15 20 Z M16.5 7 A2.8 2.8 0 1 0 16.51 7 Z M16 20 C16 16 17 14.5 18.5 14.5 C20 14.5 21.5 16 21.5 20 Z"),
         ("fx", "Focus effects", "M12 3 L21 12 L12 21 L3 12 Z M12 8.2 L15.8 12 L12 15.8 L8.2 12 Z"),
         ("charms", "Charmed pets", "M12 21 C7 16.5 3 13.5 3 9 A4.5 4.5 0 0 1 12 6.5 A4.5 4.5 0 0 1 21 9 C21 13.5 17 16.5 12 21 Z"),
         ("res", "Resists", "M12 3 C15 7 18 9 18 13 A6 6 0 0 1 6 13 C6 9 9 7 12 3 Z"),
         ("ts", "Tradeskills", "M5 21 L4 20 L13 11 L14 12 Z M11.5 6.5 L14.5 3.5 L20.5 9.5 L17.5 12.5 Z"),
+        // Statistics last on the rail (owner, 4 Oct: "move statistics down at the bottom").
+        ("stats", "Statistics", "M3 21 L3 19 L21 19 L21 21 Z M5 17 L5 11 L8 11 L8 17 Z M10.5 17 L10.5 4 L13.5 4 L13.5 17 Z M16 17 L16 8 L19 8 L19 17 Z"),
     };
 
     private readonly Context _c;
