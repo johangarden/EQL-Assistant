@@ -3775,7 +3775,7 @@ public partial class App : Application
             && tw.HomeLines[8].Contains("sphinx", StringComparison.Ordinal)
             // Statistics sits last on the rail and the home grid (4 Oct).
             && tw.HomeLines[9].StartsWith("30 kills · 93 casts", StringComparison.Ordinal) && tw.HomeLines[9].Contains("most killed: a zol ghoul knight", StringComparison.Ordinal)
-            && Views.ToolsWindow.Pages[^1].Id == "stats");
+            && Views.ToolsWindow.Pages[^1].Id == "stats" && tw.HasPinForTest);
         // Focus effects and Charmed pets (3 Oct): the Character window's audit board hosted on its own, the charm ledger as a page.
         tw.ShowPage("charms");
         Check("tools: Charmed pets lists the ledger's mobs (moved from the Character window)", tw.CharmsForTest is { RowCount: 2 } && tw.PageShown == "charms");

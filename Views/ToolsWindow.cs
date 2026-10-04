@@ -76,6 +76,7 @@ public sealed class ToolsWindow : Window
 
     private readonly Context _c;
     private readonly StackPanel _rail = new() { Margin = new Thickness(8, 12, 8, 12) };
+    private readonly PagePin _pin; // PIN ABOVE GAME, like every other window (owner, 4 Oct: "tool page missing the pin")
     private readonly ContentControl _host = new();
     private string _page = "home";
     private SpellLibraryPanel? _library;
@@ -101,6 +102,10 @@ public sealed class ToolsWindow : Window
         Width = Math.Min(1320, SystemParameters.WorkArea.Width - 40); Height = Math.Min(820, SystemParameters.WorkArea.Height - 40);
         MinWidth = 760; MinHeight = 480;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        DialogPlacement.Persist(this, "tools"); // remembered bounds + the pin's Topmost
+        _pin = DialogPlacement.Pin(this, "tools");
+        _pin.Margin = new Thickness(0);
+        _pin.VerticalAlignment = VerticalAlignment.Center;
         SetResourceReference(BackgroundProperty, "Brush.Window");
         Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/assets/eqloverlay.ico"));
         UseLayoutRounding = true;
@@ -125,6 +130,7 @@ public sealed class ToolsWindow : Window
 
     /// <summary>Selftest: the home cards' live lines, in order.</summary>
     internal List<string> HomeLines { get; } = new();
+    internal bool HasPinForTest => _pin.Parent is DockPanel dp && dp.Parent == _rail;
 
     public void ShowPage(string id)
     {
@@ -153,7 +159,12 @@ public sealed class ToolsWindow : Window
     private void BuildRail()
     {
         _rail.Children.Clear();
-        _rail.Children.Add(new TextBlock { Text = "Tools", Foreground = Text, FontSize = 15, FontWeight = FontWeights.Bold, Margin = new Thickness(8, 2, 0, 10) });
+        (_pin.Parent as Panel)?.Children.Remove(_pin); // the rail is rebuilt per page; the one pin moves along
+        var head = new DockPanel { Margin = new Thickness(8, 2, 0, 10), LastChildFill = true };
+        DockPanel.SetDock(_pin, Dock.Right);
+        head.Children.Add(_pin);
+        head.Children.Add(new TextBlock { Text = "Tools", Foreground = Text, FontSize = 15, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center });
+        _rail.Children.Add(head);
         foreach (var (id, label, icon) in Pages)
         {
             bool on = id == _page;
