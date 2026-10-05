@@ -24,6 +24,12 @@ public sealed class RaceBook
     // A pet's or a groupmate's kill moves your faction too (owner, 25 Sep:
     // Dreadguard Outer read "no hits in your log yet" after a night of kills).
     private static readonly Regex SlainByRx = new(@"^(?<m>.+?) has been slain by (?<k>.+?)!$", RegexOptions.Compiled);
+    // The game's own word (owner, 5 Oct — Dwarf unlocked, the panel still read 1/3): a faction achievement
+    // means that faction is maxed for you, whatever the dump's 2,000 says; "Race Unlock - X" means X is done.
+    private static readonly Regex AchievementRx = new(@"^You have completed achievement: (?<a>.+?)\s*$", RegexOptions.Compiled);
+    private const string RaceUnlockPrefix = "Race Unlock - ";
+    // A quest hand-in moves faction too: the NPC who just spoke is the source when no kill did.
+    private static readonly Regex SaysRx = new(@"^(?<npc>[A-Z][^,]{1,40}?) says, '", RegexOptions.Compiled);
     private const double KillPairSec = 3; // faction lines follow the kill line within the same second or the next
 
     public sealed record HitSource(string Mob, int Hit, int Count, DateTime Last);
@@ -55,6 +61,9 @@ public sealed class RaceBook
         public List<string> Tracked { get; set; } = new();
         public Dictionary<string, Dictionary<string, HitRec>> Hits { get; set; } = new();
         public Dictionary<string, int> Caps { get; set; } = new();
+        /// <summary>Factions the log said you completed the achievement for, and races it said you unlocked — the game's word, kept until the dumps catch up.</summary>
+        public List<string> Achieved { get; set; } = new();
+        public List<string> Unlocked { get; set; } = new();
     }
 
     private readonly string? _path;
@@ -70,7 +79,10 @@ public sealed class RaceBook
     private readonly HashSet<string> _tracked = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, int> _caps = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _loggedHit = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _achieved = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _unlocked = new(StringComparer.OrdinalIgnoreCase);
     private (string Mob, DateTime At)? _lastKill;
+    private (string Npc, DateTime At)? _lastSpeaker;
     private bool _dirty;
 
     private Func<(string? Factions, string? Achievements)>? _finder;
@@ -178,6 +190,36 @@ public sealed class RaceBook
             _lastKill = (victim, time);
             return;
         }
+        if (body.Contains(" says, '", StringComparison.Ordinal) && SaysRx.Match(body) is { Success: true } sp)
+        {
+            _lastSpeaker = (sp.Groups["npc"].Value.Trim(), time);
+            return;
+        }
+        if (body.StartsWith("You have completed achievement: ", StringComparison.Ordinal))
+        {
+            var am = AchievementRx.Match(body);
+            if (!am.Success) return;
+            string name = am.Groups["a"].Value;
+            if (name.StartsWith(RaceUnlockPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                string race = name[RaceUnlockPrefix.Length..].Trim();
+                if (_unlocked.Add(race))
+                {
+                    Log.Info($"races: {race} unlocked (the log's achievement line)");
+                    Save();
+                    if (live) Changed?.Invoke();
+                }
+                return;
+            }
+            if (RaceOf(name) is null) return; // Level 25, zone travellers… not a faction of any race
+            bool fresh = _achieved.Add(name);
+            _maxed.Add(name);
+            if (Known(name) && _caps.GetValueOrDefault(name, int.MinValue) != Standing(name)) _caps[name] = Standing(name); // your ceiling, as with the cap line
+            if (fresh) { Log.Info($"faction: {name} achieved — maxed for you at {Standing(name)}"); Save(); }
+            if (live && _maxedSaid.Add(name)) FactionMaxed?.Invoke(name);
+            if (live && fresh) Changed?.Invoke();
+            return;
+        }
         if (!body.StartsWith("Your faction standing with ", StringComparison.Ordinal)) return;
 
         var a = AdjustRx.Match(body);
@@ -185,7 +227,8 @@ public sealed class RaceBook
         {
             string faction = a.Groups["f"].Value;
             int n = int.Parse(a.Groups["n"].Value);
-            string? mob = _lastKill is { } lk && (time - lk.At).TotalSeconds is >= 0 and <= KillPairSec ? lk.Mob : null;
+            string? mob = _lastKill is { } lk && (time - lk.At).TotalSeconds is >= 0 and <= KillPairSec ? lk.Mob
+                : _lastSpeaker is { } spk && (time - spk.At).TotalSeconds is >= 0 and <= KillPairSec ? $"{spk.Npc} (hand-in)" : null;
             if (mob is not null)
             {
                 if (!_hits.TryGetValue(faction, out var byMob)) _hits[faction] = byMob = new Dictionary<string, HitRec>(StringComparer.OrdinalIgnoreCase);
@@ -248,7 +291,7 @@ public sealed class RaceBook
 
     public int MaxOf(string faction) => _standings.TryGetValue(faction, out var s) && s.Max > 0 ? s.Max : 2000;
     public bool Known(string faction) => _standings.ContainsKey(faction);
-    public bool IsMaxed(string faction) => _maxed.Contains(faction)
+    public bool IsMaxed(string faction) => _maxed.Contains(faction) || _achieved.Contains(faction)
         || (Known(faction) && (Standing(faction) >= MaxOf(faction) || _caps.TryGetValue(faction, out int cap) && Standing(faction) >= cap));
 
     /// <summary>Your learned ceiling for a faction (null until the game said "could not possibly get any better").</summary>
@@ -279,7 +322,7 @@ public sealed class RaceBook
         foreach (var r in _races)
         {
             var factions = r.Factions.Select(f => ViewOf(f.Faction, f.Done)).ToList();
-            bool done = r.Done || (factions.Count > 0 && factions.All(f => f.Done)) || (r.Task is not null && r.TaskDone);
+            bool done = r.Done || _unlocked.Contains(r.Name) || (factions.Count > 0 && factions.All(f => f.Done)) || (r.Task is not null && r.TaskDone);
             string note = r.BornAs ? "YOU" : r.DependsOn is not null ? (done ? "AUTO" : "") : "";
             list.Add(new RaceView(r.Name, done, note, factions, r.Task, r.DependsOn, _tracked.Contains(r.Name)));
         }
@@ -301,6 +344,8 @@ public sealed class RaceBook
             .FirstOrDefault(r => r.Factions.Any(f => f.Faction.Equals(faction, StringComparison.OrdinalIgnoreCase)))?.Name;
 
     public bool IsTracked(string race) => _tracked.Contains(race);
+    /// <summary>The log said "Race Unlock - X" (the achievements dump may still be older).</summary>
+    public bool IsUnlocked(string race) => _unlocked.Contains(race);
     public IReadOnlyCollection<string> Tracked => _tracked;
 
     public void SetTracked(string race, bool on)
@@ -342,6 +387,8 @@ public sealed class RaceBook
             foreach (var (f, byMob) in doc.Hits)
                 _hits[f] = new Dictionary<string, HitRec>(byMob, StringComparer.OrdinalIgnoreCase);
             foreach (var (f, c) in doc.Caps) _caps[f] = c;
+            foreach (var a in doc.Achieved) _achieved.Add(a);
+            foreach (var u in doc.Unlocked) _unlocked.Add(u);
         }
         catch (Exception ex) { Log.Warn("races.json unreadable: " + ex.Message); }
     }
@@ -357,6 +404,8 @@ public sealed class RaceBook
                 Tracked = _tracked.OrderBy(x => x).ToList(),
                 Hits = _hits.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase),
                 Caps = new Dictionary<string, int>(_caps, StringComparer.OrdinalIgnoreCase),
+                Achieved = _achieved.OrderBy(x => x).ToList(),
+                Unlocked = _unlocked.OrderBy(x => x).ToList(),
             }, JsonOpts));
         }
         catch (Exception ex) { Log.Warn("races.json not saved: " + ex.Message); }

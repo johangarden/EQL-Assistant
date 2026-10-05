@@ -4228,6 +4228,33 @@ public partial class App : Application
         Check("races: …once", maxed == "Guards of Qeynos;");
         book.SetTracked("Human (Qeynos)", false);
         Check("races: untracking silences the gate", book.TrackedRaceOf("Guards of Qeynos") is null && book.RaceOf("Guards of Qeynos") == "Human (Qeynos)");
+        // Johan's Dwarf night (5 Oct): hand-ins to an NPC moved three factions by +5 a time, then the game printed
+        // "You have completed achievement: <faction>" ×3 and "… Race Unlock - Dwarf" — the panel still read 1/3.
+        {
+            string said = ""; book.FactionMaxed += f => said += f + ";";
+            book.ProcessLine(L(300, "Trantor Everhot says, 'Great! I did not have the time to get down to Irontoe's today. Here. Like I said.'"));
+            book.ProcessLine(L(300, "Your faction standing with Corrupt Qeynos Guard has been adjusted by 5."));
+            Check("races: a hand-in's faction hit names the NPC who spoke as its source",
+                book.SourcesOf("Corrupt Qeynos Guard") is [{ Mob: "Trantor Everhot (hand-in)", Hit: 5, Count: 1 }] && book.Standing("Corrupt Qeynos Guard") == 5);
+            book.ProcessLine(L(301, "You have completed achievement: Corrupt Qeynos Guard"));
+            book.ProcessLine(L(301, "You have completed achievement: Level 25"));
+            Check("races: the faction achievement line maxes the faction — whatever the dump's 2,000 said — and says so once",
+                book.IsMaxed("Corrupt Qeynos Guard") && book.ViewOf("Corrupt Qeynos Guard") is { Done: true, CappedBelowMax: true } && said == "Corrupt Qeynos Guard;" && !book.IsMaxed("Level 25"));
+            book.ProcessLine(L(301, "You have completed achievement: Corrupt Qeynos Guard"));
+            Check("races: …once", said == "Corrupt Qeynos Guard;");
+            // (Its third faction just got achieved, so the race reads DONE by its factions already — the unlock line is the game's own word for it.)
+            book.ProcessLine(L(302, "You have completed achievement: Race Unlock - Human (Qeynos)"));
+            Check("races: the Race Unlock line marks the race DONE ahead of the next achievements dump, and it persists",
+                book.View("Human (Qeynos)")!.Done && book.IsUnlocked("Human (Qeynos)") && !book.IsUnlocked("High Elf") && book.View("Human (Qeynos)")!.CountText == "DONE");
+            string rbPath = Path.Combine(Path.GetTempPath(), "eql_selftest_races_ach.json");
+            try { File.Delete(rbPath); } catch { /* fresh */ }
+            var b2 = new RaceBook(null, rbPath);
+            b2.ProcessLine(L(400, "You have completed achievement: Race Unlock - Dwarf"), live: false);
+            b2.ProcessLine(L(400, "You have completed achievement: Kazon Stormhammer"), live: false); // no dump loaded: not a known race's faction yet — ignored, honestly
+            var b3 = new RaceBook(null, rbPath);
+            Check("races: an unlock learned on a replay survives a restart", b3.IsUnlocked("Dwarf") && !b3.IsMaxed("Kazon Stormhammer"));
+            try { File.Delete(rbPath); } catch { /* temp */ }
+        }
         var parsed = FactionDumps.ParseClasses("Untapped Potential: Classes\nI\tClass Unlock - Bard\nI\t\tGet maximum faction with League of Antonican Bards.\n");
         Check("races: the classes section parses with the same reader", parsed is [{ Name: "Bard", Factions: [{ Faction: "League of Antonican Bards" }] }]);
         Check("races: config default — the helper card on", new Models.AppConfig().Overlay.FactionHelperVisible);

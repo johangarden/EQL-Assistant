@@ -191,7 +191,11 @@ the affected suites (with `-Wait`) before committing.
   the dump's 2,000; MAXED bars draw full, "your cap −220"), and "You have
   slain X!" / "X has been slain by <pet/group>!" within 3 s before teaches
   mob → faction → hit (persisted in `races.json` with the
-  ★-tracked races). Character window "Races" tab (`RacesView`, badges like
+  ★-tracked races); an NPC's "X says, '…'" within 3 s is the source of a
+  hand-in's hit ("X (hand-in)"); "You have completed achievement: <faction>"
+  MAXES that faction for you whatever the dump said, and "… Race Unlock - X"
+  marks the race DONE — both persisted (`Achieved` / `Unlocked`) until the
+  dumps catch up (owner, 5 Oct: Dwarf unlocked, the panel read 1/3). Character window "Races" tab (`RacesView`, badges like
   the Sky classes: done first, DONE/YOU/AUTO/TASK) + the faction helper
   card (`FactionHelperWindow`, tracked races only: between hits it stays
   open with the tracked races' unfinished factions as bars — owner, 22 Sep
