@@ -19,7 +19,7 @@ public static class ItemChips
     private static readonly Brush Card = F("#232B3D"), Edge = F("#3A4560"), Text = F("#E6ECF5"), Faint = F("#5C6B82"), Ink = F("#10151E"),
         Gold = F("#E8C15A"), Green = F("#81C784"), GreenEdge = F("#2E5A36"), GreenBg = F("#15261A"), Amber = F("#FFA85C"), Dim = F("#7F93AD");
 
-    public enum Tag { Worn, Upgrade, Bis, Unknown }
+    public enum Tag { Worn, Upgrade, Bis, Unknown, WouldBe }
 
     /// <summary>Icon · name · +N · tags. <paramref name="tier"/> ≤ 0 draws no pill; a null
     /// icon id draws an empty frame so names still line up.</summary>
@@ -63,15 +63,17 @@ public static class ItemChips
     };
 
     /// <summary>One tag: WORN and UPGRADE filled (they're states you act on), BiS and CLASSES UNKNOWN outlined.</summary>
-    public static Border Chip(Tag tag)
+    public static Border Chip(Tag tag, string? words = null)
     {
         var (text, fg, bg, line) = tag switch
         {
             Tag.Worn => ("WORN", Ink, Gold, Gold),
             Tag.Upgrade => ("UPGRADE", Ink, Amber, Amber),
             Tag.Bis => ("BiS", Green, Brushes.Transparent, GreenEdge),
+            Tag.WouldBe => ("BiS IF UPGRADED", Amber, Brushes.Transparent, Amber), // "BiS AT +4" with words
             _ => ("CLASSES UNKNOWN", Dim, Brushes.Transparent, Edge),
         };
+        if (words is { Length: > 0 }) text = words;
         return new Border
         {
             Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(4, 1, 4, 1), CornerRadius = new CornerRadius(3), BorderThickness = new Thickness(1),

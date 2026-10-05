@@ -29,6 +29,8 @@ public partial class BisFinderView : UserControl
     public int UpgradeCount { get; private set; }
     /// <summary>A board was built from dump rows.</summary>
     public bool HasBoard { get; private set; }
+    /// <summary>Owned items that would be BiS at a higher tier — selftest.</summary>
+    public int WouldBeCount { get; private set; }
 
     /// <summary>Your level (the character window's /who or ding) — pool points scale with it.</summary>
     public Func<int>? LevelProvider { get; set; }
@@ -428,6 +430,16 @@ public partial class BisFinderView : UserControl
         {
             Verdict("No wearable items in the searched storages (or no dump yet).", caveat: true);
         }
+        // What would be BiS with motes (owner, 5 Oct): the cheapest climbs first, three named.
+        var wouldBe = result.Slots.SelectMany(sl => sl.Projected.Select(pj => (Slot: sl, Pj: pj))).OrderBy(x => x.Pj.Tier - x.Pj.Item.Tier).ThenByDescending(x => x.Pj.Score).ToList();
+        if (wouldBe.Count > 0)
+        {
+            WouldBeCount = wouldBe.Count;
+            Verdict($"{wouldBe.Count} item(s) you own would be BiS if upgraded: "
+                    + string.Join(", ", wouldBe.Take(3).Select(x => $"{x.Pj.Item.BaseName} +{x.Pj.Item.Tier} → +{x.Pj.Tier} ({x.Slot.Label}, {x.Pj.Item.Score:0} → {x.Pj.Score:0})"))
+                    + (wouldBe.Count > 3 ? ", …" : "") + ". Mote cost is yours to weigh.", caveat: false);
+        }
+        else WouldBeCount = 0;
 
         if (result.Unknown.Count > 0)
             Verdict($"{result.Unknown.Count} item(s) skipped — no wiki entry yet, stats unknown, not ranked: "
@@ -493,7 +505,7 @@ public partial class BisFinderView : UserControl
         // Slot headers fold (Johan, 2 Sep): a slot you already wear the best
         // of collapses to "HEAD  BiS"; a slot with an upgrade in storage opens
         // with "1 UPGRADE". Any header toggles on click.
-        void SlotHeader(string key, string label, bool open, bool upgrade)
+        void SlotHeader(string key, string label, bool open, bool upgrade, BisFinder.Projection? wouldBe = null)
         {
             Board.RowDefinitions.Add(new RowDefinition());
             var head = new TextBlock
@@ -505,6 +517,7 @@ public partial class BisFinderView : UserControl
             head.Inlines.Add(new Run(open ? "▾ " : "▸ ") { Foreground = SlotFg, FontSize = 9.5 });
             head.Inlines.Add(new Run(label.ToUpperInvariant()) { Foreground = open ? SlotFg : DimFg });
             Badge(head, upgrade ? "UPGRADE" : "BiS", upgrade ? UpFg : WornFg);
+            if (wouldBe is not null) Badge(head, $"{wouldBe.Item.BaseName.ToUpperInvariant()} WOULD BEAT IT AT +{wouldBe.Tier}", UpFg); // folded slots still tell (owner, 5 Oct)
             head.MouseLeftButtonDown += (_, _) =>
             {
                 _fold[key] = !open;
@@ -529,7 +542,7 @@ public partial class BisFinderView : UserControl
             row++;
         }
 
-        void RenderRow(BisFinder.Candidate c, bool pick, bool upgrade)
+        void RenderRow(BisFinder.Candidate c, bool pick, bool upgrade, BisFinder.Projection? at = null)
         {
             Board.RowDefinitions.Add(new RowDefinition());
             // The slot finder's item line (owner, 1 Oct): icon · name · +N pill · tags.
@@ -538,13 +551,25 @@ public partial class BisFinderView : UserControl
             if (upgrade) tags.Add(ItemChips.Tag.Upgrade);
             if (c.ClassesUnknown) tags.Add(ItemChips.Tag.Unknown);
             var name = ItemChips.Linkify(ItemChips.Name(c.BaseName, c.Tier, c.Rec.Icon, pick ? NameFg : DimFg, c.Copies, tags.ToArray()), c.Rec.Name);
+            if (at is not null) name.Children.Add(ItemChips.Chip(ItemChips.Tag.WouldBe, $"BiS AT +{at.Tier}"));
             CellHost(name, row, 0);
-            Cell($"{c.Score:0}", row, 1, pick ? ScoreFg : DimFg, right: true, size: 13, bold: pick);
+            if (at is null) Cell($"{c.Score:0}", row, 1, pick ? ScoreFg : DimFg, right: true, size: 13, bold: pick);
+            else
+            {
+                // "17 → 31": what it scores now, what it would at the tier that beats the pick.
+                var sc = new TextBlock { FontSize = 13, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+                sc.Inlines.Add(new Run($"{c.Score:0}") { Foreground = DimFg });
+                sc.Inlines.Add(new Run(" → ") { Foreground = DimmerFg, FontSize = 11 });
+                sc.Inlines.Add(new Run($"{at.Score:0}") { Foreground = UpFg, FontWeight = FontWeights.SemiBold });
+                CellHost(sc, row, 1);
+            }
+            // At a projected tier the stat columns show the item AS IT WOULD BE, so the score adds up.
+            var statsShown = at is null ? c.Stats : BisFinder.ScaledStats(c.Rec, at.Tier);
             for (int i = 0; i < 3; i++)
             {
-                int v = c.Stats.GetValueOrDefault(_prio[i]);
+                int v = statsShown.GetValueOrDefault(_prio[i]);
                 Cell(v != 0 ? StatText(_prio[i], v) : "—", row, 2 + i,
-                    v != 0 ? (i == 0 ? Stat1Fg : NameFg) : DimmerFg, right: true);
+                    v != 0 ? (at is not null ? UpFg : i == 0 ? Stat1Fg : NameFg) : DimmerFg, right: true);
             }
             CellHost(new TextBlock { Text = OtherText(c), FontSize = 11, Foreground = DimFg, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center }, row, 5);
             CellHost(WhereCell(c), row, 6);
@@ -555,21 +580,34 @@ public partial class BisFinderView : UserControl
         // Every slot becomes one foldable entry — paired slots become TWO
         // (EAR 1, EAR 2 …), each with its own verdict. Upgrades list first,
         // then a divider, then the slots you already wear the best of.
-        var entries = new List<(string Key, string Label, bool Upgrade, Action Render)>();
+        var entries = new List<(string Key, string Label, bool Upgrade, BisFinder.Projection? WouldBe, Action Render)>();
+        // Under a slot's rows: the owned items that would be BiS at a higher tier (owner, 5 Oct), best first.
+        void ProjectedRows(List<BisFinder.Projection> projected)
+        {
+            if (projected.Count == 0) return;
+            Board.RowDefinitions.Add(new RowDefinition());
+            var sub = new TextBlock { Text = "WOULD BE BiS IF UPGRADED — stats and score at the tier that beats the pick", Foreground = HeadFg, FontSize = 9, FontWeight = FontWeights.Bold, Margin = new Thickness(2, 6, 0, 1) };
+            Grid.SetRow(sub, row); Grid.SetColumnSpan(sub, 8); Board.Children.Add(sub);
+            row++;
+            foreach (var pj in projected.Take(3)) RenderRow(pj.Item, false, false, pj);
+        }
         foreach (var slot in result.Slots)
         {
             if (slot.Ranked.Count == 0) continue;
             var upgrades = slot.Upgrades.ToHashSet();
             var picks = slot.Picks.ToList();
+            var projected = slot.Projected.OrderBy(pj => pj.Tier - pj.Item.Tier).ThenByDescending(pj => pj.Score).ToList();
+            var headline = projected.FirstOrDefault();
 
             if (slot.Count == 1)
             {
-                entries.Add((slot.Key, slot.Label, upgrades.Count > 0, () =>
+                entries.Add((slot.Key, slot.Label, upgrades.Count > 0, headline, () =>
                 {
                     var shown = slot.Ranked.Take(3)
                         .Concat(slot.Ranked.Skip(3).Where(c => c.Worn));
                     foreach (var c in shown)
                         RenderRow(c, picks.Contains(c), upgrades.Contains(c));
+                    ProjectedRows(projected);
                 }));
                 continue;
             }
@@ -596,20 +634,22 @@ public partial class BisFinderView : UserControl
                 var (pick, replaces) = subSlots[s];
                 var alt = s < alts.Count ? alts[s] : null;
                 bool upgrade = pick is not null && upgrades.Contains(pick);
-                entries.Add(($"{slot.Key}{s + 1}", $"{slot.Label} {s + 1}", upgrade, () =>
+                bool last = s == subSlots.Count - 1; // the pair's projections hang under its last sub-slot
+                entries.Add(($"{slot.Key}{s + 1}", $"{slot.Label} {s + 1}", upgrade, last ? headline : null, () =>
                 {
                     if (pick is not null) RenderRow(pick, true, upgrade);
                     if (replaces is not null) RenderRow(replaces, false, false);
                     if (alt is not null) RenderRow(alt, false, false);
+                    if (last) ProjectedRows(projected);
                 }));
             }
         }
 
-        void Emit((string Key, string Label, bool Upgrade, Action Render) e)
+        void Emit((string Key, string Label, bool Upgrade, BisFinder.Projection? WouldBe, Action Render) e)
         {
             // Weapons: three slots, room for all — open even when BiS (owner ruling).
             bool open = _fold.TryGetValue(e.Key, out bool o) ? o : (e.Upgrade || _weapons);
-            SlotHeader(e.Key, e.Label, open, e.Upgrade);
+            SlotHeader(e.Key, e.Label, open, e.Upgrade, e.WouldBe);
             if (open) e.Render();
         }
 
@@ -694,6 +734,8 @@ public partial class BisFinderView : UserControl
     }
 
     internal Grid BoardHeadForTest => BoardHead;
+    /// <summary>Unfold one slot entry ("WRIST2", "HEAD") — selftest and the render's EQL_BIS_OPEN.</summary>
+    internal void OpenForTest(string key) { _fold[key] = true; Refresh(); }
     internal Grid BoardForTest => Board;
 
     /// <summary>The place, the slot finder's way: a lane badge and the dump's words

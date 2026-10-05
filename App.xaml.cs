@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -930,6 +931,7 @@ public partial class App : Application
                 new("Wicked Sallet +5", "wicked sallet +5", "Head", 1, "worn", 1),
                 new("Woven Skull Cap", "woven skull cap", "General 3-Slot2", 1, "bags", 2),
                 new("Golden Efreeti Boots +3", "golden efreeti boots +3", "Bank5-Slot8", 1, "bank", 3),
+                new("Lustrous Russet Boots", "lustrous russet boots", "Bank5-Slot9", 1, "bank", 6), // +0 — the "would it be BiS upgraded?" case
                 new("Grimy Black Silk Robe +5", "grimy black silk robe +5", "Bank5-Slot6", 1, "bank", 4),
                 new("Coin Purse of Nowhere", "coin purse of nowhere", "General 1-Slot1", 1, "bags", 5),
             };
@@ -959,7 +961,19 @@ public partial class App : Application
                 && chest.Ranked.Count == 0 && chest.Foreign.Count == 1
                 && chest.Foreign[0].BaseName == "Grimy Black Silk Robe");
             Check("bis: an ALL-class item in the bank is an upgrade for an empty slot",
-                feet.Upgrades.Any(u => u.BaseName == "Golden Efreeti Boots" && u.Lane == "bank"));
+                feet.Upgrades.Any(u => u.Lane == "bank") && feet.Ranked.Count == 2);
+            // Would be BiS if upgraded (5 Oct): the feet runner-up catches the pick at the LOWEST tier that beats it —
+            // one tier under, it still loses; the head has one allowed item, so nothing to project.
+            {
+                var pick = feet.Picks.First(); var other = feet.Ranked[1];
+                var pj = feet.Projected.ToList();
+                Check("bis: the runner-up is projected at the lowest tier that beats the pick, with the score it would have there",
+                    pj.Count == 1 && pj[0].Item.Name == other.Name && pj[0].Tier > other.Tier && pj[0].Tier <= ItemUpgrade.MaxTier
+                    && pj[0].Score > pick.Score && other.ScoreByTier![pj[0].Tier - 1] <= pick.Score
+                    && Math.Abs(pj[0].Score - BisFinder.Score(BisFinder.ScaledStats(other.Rec, pj[0].Tier), new[] { "AC", "STA", "INT" })) < 0.01
+                    && Math.Abs(other.ScoreByTier[other.Tier] - other.Score) < 0.01
+                    && !head.Projected.Any());
+            }
             Check("bis: items the wiki doesn't know are named, never silently dropped",
                 bis.Unknown.Contains("Coin Purse of Nowhere"));
             // Weapons by fighting style: a 1H stick, a 2H reaver, a shield.
@@ -997,7 +1011,7 @@ public partial class App : Application
                 new[] { "bank" });
             Check("bis: the search-in lanes narrow the field",
                 bisBank.Slots.First(s => s.Key == "HEAD").Ranked.Count == 0
-                && bisBank.Slots.First(s => s.Key == "FEET").Ranked.Count == 1);
+                && bisBank.Slots.First(s => s.Key == "FEET").Ranked.Count == 2); // both pairs of boots sit in the bank
 
             var (msShown, msThin) = MoteFarm.SplitByFarmed(board, 45);
             Check("motes: the strictness dial splits farms from hints",
@@ -3957,6 +3971,17 @@ public partial class App : Application
                 && (bv.BoardForTest.ActualWidth < 1 || bv.BoardHeadForTest.ColumnDefinitions.All(c => c.Width.IsAbsolute))
                 && bv.BoardForTest.ColumnDefinitions[1].MinWidth > 30 && bv.BoardForTest.ColumnDefinitions[0].MinWidth == 320);
         }
+        // Would be BiS if upgraded (5 Oct): the demo's Insidious Manacle +2 in the bank would take Wrist at +8 —
+        // the folded header says so, the verdict counts it, and the unfolded slot draws the row with its chip.
+        {
+            var bv = tw.BisForTest!;
+            // The header's badges are Borders inside InlineUIContainers — a TextRange skips them, so look at the badge texts.
+            bool named = bv.WouldBeCount == 1 && bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text == "INSIDIOUS MANACLE WOULD BEAT IT AT +8"));
+            bv.OpenForTest("WRIST2");
+            bool chip = bv.BoardForTest.Children.OfType<Border>().Select(b => b.Child).OfType<StackPanel>().SelectMany(sp => sp.Children.OfType<Border>()).Any(b => (b.Child as TextBlock)?.Text == "BiS AT +8");
+            Check("bis: an owned item that would be BiS upgraded — the folded header names it with its tier, the verdict counts it, the open slot draws it with a BiS AT +N chip",
+                named && chip);
+        }
         // The ×N pills (3 Oct): a click cycles the pick's weight, the title and the score line follow, four clicks come round.
         {
             var bv = tw.BisForTest!;
@@ -6070,6 +6095,7 @@ public partial class App : Application
             tw.Show();
             if (page.Contains(':')) tw.ShowPage(page[(page.IndexOf(':') + 1)..]);
             if (Environment.GetEnvironmentVariable("EQL_FOCUS_OPEN") is { Length: > 0 }) tw.FocusForTest?.OpenWantsForTest(); // the marks unfolded
+            if (Environment.GetEnvironmentVariable("EQL_BIS_OPEN") is { Length: > 0 } bisOpen) tw.BisForTest?.OpenForTest(bisOpen); // a BiS slot unfolded ("WRIST2")
             mgr = tw;
         }
         else if (page.Equals("library:inv", StringComparison.OrdinalIgnoreCase) || page.Equals("library:invfile", StringComparison.OrdinalIgnoreCase))

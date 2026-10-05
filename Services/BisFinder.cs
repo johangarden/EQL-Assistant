@@ -218,12 +218,18 @@ public static class BisFinder
         return s;
     }
 
+    /// <summary>ScoreByTier[t] = what this item would score at +t (0..MaxTier) under the same
+    /// priorities — the "would be BiS if upgraded" question (owner, 5 Oct).</summary>
     public sealed record Candidate(string Name, int Tier, string Location, string Lane,
         bool Worn, bool Allowed, bool ClassesUnknown, bool TwoHanded, int Copies,
-        double Score, IReadOnlyDictionary<string, int> Stats, ItemStats.Record Rec)
+        double Score, IReadOnlyDictionary<string, int> Stats, ItemStats.Record Rec, IReadOnlyList<double>? ScoreByTier = null)
     {
         public string BaseName => TierRx.Replace(Name, "");
     }
+
+    /// <summary>An item that isn't a pick today but would be at <see cref="Tier"/> — the lowest
+    /// tier that beats the slot's weakest pick — scoring <see cref="Score"/> there.</summary>
+    public sealed record Projection(Candidate Item, int Tier, double Score);
 
     public sealed record SlotResult(string Key, string Label, int Count,
         List<Candidate> Ranked, List<Candidate> Foreign)
@@ -245,6 +251,24 @@ public static class BisFinder
                     if (p.Worn) continue;
                     // It displaces the weakest worn item, or fills a vacancy.
                     if (wornCount < Count || p.Score > wornScores[^1]) yield return p;
+                }
+            }
+        }
+
+        /// <summary>Owned items that would BEAT the weakest pick at a higher tier: a +0 Sky piece
+        /// that overtakes a +5 from a low zone at +4 (owner, 5 Oct). Nothing when the slot has a
+        /// vacancy (everything ranked is a pick already) or when even +10 wouldn't do it.</summary>
+        public IEnumerable<Projection> Projected
+        {
+            get
+            {
+                if (Ranked.Count <= Count) yield break;
+                double bar = Picks.Min(c => c.Score);
+                foreach (var c in Ranked.Skip(Count))
+                {
+                    if (c.ScoreByTier is null || c.Tier >= ItemUpgrade.MaxTier) continue;
+                    for (int t = c.Tier + 1; t <= ItemUpgrade.MaxTier && t < c.ScoreByTier.Count; t++)
+                        if (c.ScoreByTier[t] > bar) { yield return new Projection(c, t, c.ScoreByTier[t]); break; }
                 }
             }
         }
@@ -367,6 +391,8 @@ public static class BisFinder
             string wornKey = worn ? WornSlotKey(r.Location) : "";
             bool twoHanded = rec.Skill.StartsWith("2H", StringComparison.OrdinalIgnoreCase);
             double score = Score(scaled, prio, tailWeight, rates, weights);
+            var byTier = new double[ItemUpgrade.MaxTier + 1];
+            for (int t = 0; t <= ItemUpgrade.MaxTier; t++) byTier[t] = t == tier ? score : Score(ScaledStats(rec, t), prio, tailWeight, rates, weights);
 
             foreach (var key in slotKeys)
             {
@@ -383,7 +409,7 @@ public static class BisFinder
                 }
                 dict[fold] = new Candidate(r.Name, tier, r.Lane == "storage" ? $"#{storageIdx}" : r.Location, r.Lane, wornHere, allowed,
                     string.IsNullOrWhiteSpace(rec.Classes), twoHanded, Math.Max(1, r.Count),
-                    score, scaled, rec);
+                    score, scaled, rec, byTier);
             }
         }
 
