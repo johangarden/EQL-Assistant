@@ -229,7 +229,14 @@ public static class BisFinder
 
     /// <summary>An item that isn't a pick today but would be at <see cref="Tier"/> — the lowest
     /// tier that beats the slot's weakest pick — scoring <see cref="Score"/> there.</summary>
-    public sealed record Projection(Candidate Item, int Tier, double Score);
+    public sealed record Projection(Candidate Item, int Tier, double Score)
+    {
+        /// <summary>What the climb costs in item XP (eqlwiki: 2^to − 2^from) — the fair order for "cheapest first".</summary>
+        public int Xp => ItemUpgrade.XpBetween(Item.Tier, Tier);
+        public string Climb => ItemUpgrade.ClimbText(Item.Tier, Tier);
+        public string MoteRoute => ItemUpgrade.RouteMotes(Item.Tier, Tier);
+        public string CopyRoute => ItemUpgrade.RouteCopies(Item.Tier, Tier);
+    }
 
     public sealed record SlotResult(string Key, string Label, int Count,
         List<Candidate> Ranked, List<Candidate> Foreign)

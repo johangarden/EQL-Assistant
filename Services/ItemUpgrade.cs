@@ -1,4 +1,4 @@
-namespace EQLOverlay.Services;
+﻿namespace EQLOverlay.Services;
 
 /// <summary>
 /// What an item's stat block reads at a ` +N` upgrade tier. Ported verbatim
@@ -30,6 +30,80 @@ namespace EQLOverlay.Services;
 public static class ItemUpgrade
 {
     public const int MaxTier = 10;
+
+    // ---- the XP economy (eqlwiki Item Upgrade System + Mote Guide, read 5 Oct) ----
+    // Tier t → t+1 costs 2^t XP (1, 2, 4 … 512; 1023 in all). A merged duplicate of tier
+    // t adds 2^t. A mote adds a fixed item XP and works only on items up to its tier limit.
+
+    /// <summary>(name, item XP it adds, the highest item tier it may be used on), rank 1..10.</summary>
+    public static readonly (string Name, int Points, int Limit)[] Motes =
+    {
+        ("Infinitesimal", 1, 0), ("Minor", 1, 1), ("Lesser", 2, 2), ("Potential", 4, 3), ("Major", 5, 4),
+        ("Greater", 6, 5), ("Superior", 7, 6), ("Grand", 8, 7), ("Ascendant", 9, 8), ("Infinite", 10, 9),
+    };
+
+    /// <summary>XP from tier <paramref name="from"/> to tier <paramref name="to"/>: 2^to − 2^from.</summary>
+    public static int XpBetween(int from, int to) => from >= to ? 0 : (1 << Math.Clamp(to, 0, MaxTier)) - (1 << Math.Clamp(from, 0, MaxTier));
+
+    /// <summary>Duplicates of the item AT ITS CURRENT TIER that would carry it to <paramref name="to"/>: 2^(to−from) − 1.</summary>
+    public static int CopiesBetween(int from, int to) => from >= to ? 0 : (1 << (Math.Clamp(to, 0, MaxTier) - Math.Clamp(from, 0, MaxTier))) - 1;
+
+    /// <summary>The one mote kind that works for every step of the climb (the last step, from
+    /// to−1, needs a limit of to−1 or more) and how many of it the climb takes.</summary>
+    public static (string Name, int Count) MotesBetween(int from, int to)
+    {
+        if (from >= to) return ("", 0);
+        var mote = Motes.First(m => m.Limit >= Math.Clamp(to, 1, MaxTier) - 1);
+        return (mote.Name, (int)Math.Ceiling(XpBetween(from, to) / (double)mote.Points));
+    }
+
+    /// <summary>"+2 → +8 costs 252 XP".</summary>
+    public static string ClimbText(int from, int to) => $"+{from} → +{to} costs {XpBetween(from, to)} XP";
+
+    private const int MajorRank = 5; // the D4 drop (owner, 5 Oct): the common currency, good on items up to +4
+
+    /// <summary>The mote route, Majors first (owner, 5 Oct: "tier 5 motes are the most common"):
+    /// every step a Major may pay (the item at +0..+4) in Majors, then each higher step in the
+    /// lowest mote kind allowed there — "6 Major to +5, then 6 Greater, 10 Superior, 16 Grand".</summary>
+    public static string RouteMotes(int from, int to)
+    {
+        if (from >= to) return "";
+        var major = Motes[MajorRank - 1];
+        var parts = new List<string>();
+        int majorTo = Math.Min(to, major.Limit + 1);
+        if (majorTo > from)
+        {
+            int n = (int)Math.Ceiling(XpBetween(from, majorTo) / (double)major.Points);
+            parts.Add($"{n} {major.Name}" + (majorTo < to ? $" to +{majorTo}" : ""));
+        }
+        for (int t = Math.Max(from, majorTo); t < to; t++)
+        {
+            var m = Motes.First(x => x.Limit >= t);
+            parts.Add($"{(int)Math.Ceiling((1 << t) / (double)m.Points)} {m.Name}");
+        }
+        return parts.Count > 1 && majorTo > from ? parts[0] + ", then " + string.Join(", ", parts.Skip(1)) : string.Join(", ", parts);
+    }
+
+    /// <summary>The duplicate route: copies merged as they drop, and — the blog's trick — copies
+    /// FILLED to +4 with Majors first (3 each from +0) so the common mote pays a climb its ceiling
+    /// forbids: "63 more +2 copies, or 16 copies filled to +4 (3 Majors each)".</summary>
+    public static string RouteCopies(int from, int to)
+    {
+        if (from >= to) return "";
+        int copies = CopiesBetween(from, to);
+        string s = $"{copies} more +{from} cop{(copies == 1 ? "y" : "ies")}";
+        var major = Motes[MajorRank - 1];
+        int fillTier = major.Limit; // +4: the highest a Major may push a copy
+        int perCopy = 1 << fillTier; // a +4 copy merges for 16
+        int xp = XpBetween(from, to);
+        if (xp >= perCopy && from < fillTier)
+        {
+            int n = (int)Math.Ceiling(xp / (double)perCopy);
+            int majors = (int)Math.Ceiling(XpBetween(0, fillTier) / (double)major.Points);
+            s += $", or {n} cop{(n == 1 ? "y" : "ies")} filled to +{fillTier} ({majors} Majors each from +0)";
+        }
+        return s;
+    }
 
     /// <summary>full + fraction / 2^full — the multiplier every stat reads.</summary>
     public static double EffectiveLevel(int full, int fraction = 0)
