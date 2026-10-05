@@ -3979,8 +3979,15 @@ public partial class App : Application
             bool named = bv.WouldBeCount == 1 && bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text == "INSIDIOUS MANACLE WOULD BEAT IT AT +8"));
             bv.OpenForTest("WRIST2");
             bool chip = bv.BoardForTest.Children.OfType<Border>().Select(b => b.Child).OfType<StackPanel>().SelectMany(sp => sp.Children.OfType<Border>()).Any(b => (b.Child as TextBlock)?.Text == "BiS AT +8");
-            Check("bis: an owned item that would be BiS upgraded — the folded header names it with its tier, the verdict counts it, the open slot draws it with a BiS AT +N chip",
-                named && chip);
+            bool bill = bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Text == "+2 → +8 costs 252 XP: 63 more +2 copies, or ≈32 Grand motes.");
+            Check("bis: an owned item that would be BiS upgraded — the folded header names it with its tier, the verdict counts it, the open slot draws it with a BiS AT +N chip and the bill",
+                named && chip && bill);
+            // The XP economy (eqlwiki Item Upgrade System + Mote Guide, 5 Oct): tier t → t+1 costs 2^t; a mote works up to its limit.
+            Check("upgrade: the climb's bill — 2^to − 2^from XP, duplicates at the current tier, the one mote kind good for every step",
+                ItemUpgrade.XpBetween(0, 10) == 1023 && ItemUpgrade.XpBetween(2, 8) == 252 && ItemUpgrade.XpBetween(6, 7) == 64 && ItemUpgrade.XpBetween(0, 4) == 15 && ItemUpgrade.XpBetween(5, 5) == 0
+                && ItemUpgrade.CopiesBetween(2, 8) == 63 && ItemUpgrade.CopiesBetween(0, 4) == 15 && ItemUpgrade.CopiesBetween(9, 10) == 1
+                && ItemUpgrade.MotesBetween(2, 8) == ("Grand", 32) && ItemUpgrade.MotesBetween(0, 4) == ("Potential", 4) && ItemUpgrade.MotesBetween(5, 6) == ("Greater", 6) && ItemUpgrade.MotesBetween(9, 10) == ("Infinite", 52)
+                && ItemUpgrade.ClimbText(9, 10) == "+9 → +10 costs 512 XP: 1 more +9 copy, or ≈52 Infinite motes");
         }
         // The ×N pills (3 Oct): a click cycles the pick's weight, the title and the score line follow, four clicks come round.
         {

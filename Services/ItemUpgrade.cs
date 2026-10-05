@@ -1,4 +1,4 @@
-namespace EQLOverlay.Services;
+﻿namespace EQLOverlay.Services;
 
 /// <summary>
 /// What an item's stat block reads at a ` +N` upgrade tier. Ported verbatim
@@ -30,6 +30,41 @@ namespace EQLOverlay.Services;
 public static class ItemUpgrade
 {
     public const int MaxTier = 10;
+
+    // ---- the XP economy (eqlwiki Item Upgrade System + Mote Guide, read 5 Oct) ----
+    // Tier t → t+1 costs 2^t XP (1, 2, 4 … 512; 1023 in all). A merged duplicate of tier
+    // t adds 2^t. A mote adds a fixed item XP and works only on items up to its tier limit.
+
+    /// <summary>(name, item XP it adds, the highest item tier it may be used on), rank 1..10.</summary>
+    public static readonly (string Name, int Points, int Limit)[] Motes =
+    {
+        ("Infinitesimal", 1, 0), ("Minor", 1, 1), ("Lesser", 2, 2), ("Potential", 4, 3), ("Major", 5, 4),
+        ("Greater", 6, 5), ("Superior", 7, 6), ("Grand", 8, 7), ("Ascendant", 9, 8), ("Infinite", 10, 9),
+    };
+
+    /// <summary>XP from tier <paramref name="from"/> to tier <paramref name="to"/>: 2^to − 2^from.</summary>
+    public static int XpBetween(int from, int to) => from >= to ? 0 : (1 << Math.Clamp(to, 0, MaxTier)) - (1 << Math.Clamp(from, 0, MaxTier));
+
+    /// <summary>Duplicates of the item AT ITS CURRENT TIER that would carry it to <paramref name="to"/>: 2^(to−from) − 1.</summary>
+    public static int CopiesBetween(int from, int to) => from >= to ? 0 : (1 << (Math.Clamp(to, 0, MaxTier) - Math.Clamp(from, 0, MaxTier))) - 1;
+
+    /// <summary>The one mote kind that works for every step of the climb (the last step, from
+    /// to−1, needs a limit of to−1 or more) and how many of it the climb takes.</summary>
+    public static (string Name, int Count) MotesBetween(int from, int to)
+    {
+        if (from >= to) return ("", 0);
+        var mote = Motes.First(m => m.Limit >= Math.Clamp(to, 1, MaxTier) - 1);
+        return (mote.Name, (int)Math.Ceiling(XpBetween(from, to) / (double)mote.Points));
+    }
+
+    /// <summary>"+2 → +8 costs 252 XP: 63 more +2 copies, or ≈32 Grand motes".</summary>
+    public static string ClimbText(int from, int to)
+    {
+        int xp = XpBetween(from, to);
+        var (mote, n) = MotesBetween(from, to);
+        int copies = CopiesBetween(from, to);
+        return $"+{from} → +{to} costs {xp} XP: {copies} more +{from} cop{(copies == 1 ? "y" : "ies")}, or ≈{n} {mote} mote{(n == 1 ? "" : "s")}";
+    }
 
     /// <summary>full + fraction / 2^full — the multiplier every stat reads.</summary>
     public static double EffectiveLevel(int full, int fraction = 0)

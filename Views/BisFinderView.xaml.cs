@@ -431,13 +431,13 @@ public partial class BisFinderView : UserControl
             Verdict("No wearable items in the searched storages (or no dump yet).", caveat: true);
         }
         // What would be BiS with motes (owner, 5 Oct): the cheapest climbs first, three named.
-        var wouldBe = result.Slots.SelectMany(sl => sl.Projected.Select(pj => (Slot: sl, Pj: pj))).OrderBy(x => x.Pj.Tier - x.Pj.Item.Tier).ThenByDescending(x => x.Pj.Score).ToList();
+        var wouldBe = result.Slots.SelectMany(sl => sl.Projected.Select(pj => (Slot: sl, Pj: pj))).OrderBy(x => x.Pj.Xp).ThenByDescending(x => x.Pj.Score).ToList();
         if (wouldBe.Count > 0)
         {
             WouldBeCount = wouldBe.Count;
             Verdict($"{wouldBe.Count} item(s) you own would be BiS if upgraded: "
-                    + string.Join(", ", wouldBe.Take(3).Select(x => $"{x.Pj.Item.BaseName} +{x.Pj.Item.Tier} → +{x.Pj.Tier} ({x.Slot.Label}, {x.Pj.Item.Score:0} → {x.Pj.Score:0})"))
-                    + (wouldBe.Count > 3 ? ", …" : "") + ". Mote cost is yours to weigh.", caveat: false);
+                    + string.Join(", ", wouldBe.Take(3).Select(x => $"{x.Pj.Item.BaseName} +{x.Pj.Item.Tier} → +{x.Pj.Tier} ({x.Slot.Label}, {x.Pj.Item.Score:0} → {x.Pj.Score:0}, {x.Pj.Xp} XP)"))
+                    + (wouldBe.Count > 3 ? ", …" : "") + ". Cheapest climb first; each row says what it takes.", caveat: false);
         }
         else WouldBeCount = 0;
 
@@ -586,17 +586,25 @@ public partial class BisFinderView : UserControl
         {
             if (projected.Count == 0) return;
             Board.RowDefinitions.Add(new RowDefinition());
-            var sub = new TextBlock { Text = "WOULD BE BiS IF UPGRADED — stats and score at the tier that beats the pick", Foreground = HeadFg, FontSize = 9, FontWeight = FontWeights.Bold, Margin = new Thickness(2, 6, 0, 1) };
+            var sub = new TextBlock { Text = "WOULD BE BiS IF UPGRADED — stats and score at the tier that beats the pick · cheapest climb first", Foreground = HeadFg, FontSize = 9, FontWeight = FontWeights.Bold, Margin = new Thickness(2, 6, 0, 1) };
             Grid.SetRow(sub, row); Grid.SetColumnSpan(sub, 8); Board.Children.Add(sub);
             row++;
-            foreach (var pj in projected.Take(3)) RenderRow(pj.Item, false, false, pj);
+            foreach (var pj in projected.Take(3))
+            {
+                RenderRow(pj.Item, false, false, pj);
+                // The bill (eqlwiki's doubling XP): duplicates at its tier, or the one mote kind that does every step.
+                Board.RowDefinitions.Add(new RowDefinition());
+                var cost = new TextBlock { Text = pj.Climb + ".", Foreground = DimFg, FontSize = 10.5, Margin = new Thickness(32, -2, 0, 4), TextWrapping = TextWrapping.Wrap };
+                Grid.SetRow(cost, row); Grid.SetColumnSpan(cost, 8); Board.Children.Add(cost);
+                row++;
+            }
         }
         foreach (var slot in result.Slots)
         {
             if (slot.Ranked.Count == 0) continue;
             var upgrades = slot.Upgrades.ToHashSet();
             var picks = slot.Picks.ToList();
-            var projected = slot.Projected.OrderBy(pj => pj.Tier - pj.Item.Tier).ThenByDescending(pj => pj.Score).ToList();
+            var projected = slot.Projected.OrderBy(pj => pj.Xp).ThenByDescending(pj => pj.Score).ToList(); // cheapest climb first — XP, not steps
             var headline = projected.FirstOrDefault();
 
             if (slot.Count == 1)
