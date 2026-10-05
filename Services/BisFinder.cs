@@ -234,6 +234,8 @@ public static class BisFinder
         /// <summary>What the climb costs in item XP (eqlwiki: 2^to − 2^from) — the fair order for "cheapest first".</summary>
         public int Xp => ItemUpgrade.XpBetween(Item.Tier, Tier);
         public string Climb => ItemUpgrade.ClimbText(Item.Tier, Tier);
+        public string MoteRoute => ItemUpgrade.RouteMotes(Item.Tier, Tier);
+        public string CopyRoute => ItemUpgrade.RouteCopies(Item.Tier, Tier);
     }
 
     public sealed record SlotResult(string Key, string Label, int Count,

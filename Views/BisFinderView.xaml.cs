@@ -592,9 +592,15 @@ public partial class BisFinderView : UserControl
             foreach (var pj in projected.Take(3))
             {
                 RenderRow(pj.Item, false, false, pj);
-                // The bill (eqlwiki's doubling XP): duplicates at its tier, or the one mote kind that does every step.
+                // The bill (eqlwiki's doubling XP) and the two ways to pay it: motes Majors-first by step,
+                // or duplicates — merged as they drop, or filled to +4 with Majors and merged (the ceiling trick).
                 Board.RowDefinitions.Add(new RowDefinition());
-                var cost = new TextBlock { Text = pj.Climb + ".", Foreground = DimFg, FontSize = 10.5, Margin = new Thickness(32, -2, 0, 4), TextWrapping = TextWrapping.Wrap };
+                var cost = new TextBlock { FontSize = 10.5, Margin = new Thickness(32, -2, 0, 5), TextWrapping = TextWrapping.Wrap };
+                cost.Inlines.Add(new Run(pj.Climb + ".  ") { Foreground = NameFg });
+                cost.Inlines.Add(new Run("Motes: ") { Foreground = DimFg, FontWeight = FontWeights.SemiBold });
+                cost.Inlines.Add(new Run(pj.MoteRoute + ".  ") { Foreground = DimFg });
+                cost.Inlines.Add(new Run("Duplicates: ") { Foreground = DimFg, FontWeight = FontWeights.SemiBold });
+                cost.Inlines.Add(new Run(pj.CopyRoute + ".") { Foreground = DimFg });
                 Grid.SetRow(cost, row); Grid.SetColumnSpan(cost, 8); Board.Children.Add(cost);
                 row++;
             }

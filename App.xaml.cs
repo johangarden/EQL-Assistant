@@ -3979,7 +3979,7 @@ public partial class App : Application
             bool named = bv.WouldBeCount == 1 && bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text == "INSIDIOUS MANACLE WOULD BEAT IT AT +8"));
             bv.OpenForTest("WRIST2");
             bool chip = bv.BoardForTest.Children.OfType<Border>().Select(b => b.Child).OfType<StackPanel>().SelectMany(sp => sp.Children.OfType<Border>()).Any(b => (b.Child as TextBlock)?.Text == "BiS AT +8");
-            bool bill = bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Text == "+2 → +8 costs 252 XP: 63 more +2 copies, or ≈32 Grand motes.");
+            bool bill = bv.BoardForTest.Children.OfType<TextBlock>().Any(t => string.Concat(t.Inlines.OfType<Run>().Select(r => r.Text)) == "+2 → +8 costs 252 XP.  Motes: 6 Major to +5, then 6 Greater, 10 Superior, 16 Grand.  Duplicates: 63 more +2 copies, or 16 copies filled to +4 (3 Majors each from +0).");
             Check("bis: an owned item that would be BiS upgraded — the folded header names it with its tier, the verdict counts it, the open slot draws it with a BiS AT +N chip and the bill",
                 named && chip && bill);
             // The XP economy (eqlwiki Item Upgrade System + Mote Guide, 5 Oct): tier t → t+1 costs 2^t; a mote works up to its limit.
@@ -3987,7 +3987,14 @@ public partial class App : Application
                 ItemUpgrade.XpBetween(0, 10) == 1023 && ItemUpgrade.XpBetween(2, 8) == 252 && ItemUpgrade.XpBetween(6, 7) == 64 && ItemUpgrade.XpBetween(0, 4) == 15 && ItemUpgrade.XpBetween(5, 5) == 0
                 && ItemUpgrade.CopiesBetween(2, 8) == 63 && ItemUpgrade.CopiesBetween(0, 4) == 15 && ItemUpgrade.CopiesBetween(9, 10) == 1
                 && ItemUpgrade.MotesBetween(2, 8) == ("Grand", 32) && ItemUpgrade.MotesBetween(0, 4) == ("Potential", 4) && ItemUpgrade.MotesBetween(5, 6) == ("Greater", 6) && ItemUpgrade.MotesBetween(9, 10) == ("Infinite", 52)
-                && ItemUpgrade.ClimbText(9, 10) == "+9 → +10 costs 512 XP: 1 more +9 copy, or ≈52 Infinite motes");
+                && ItemUpgrade.ClimbText(9, 10) == "+9 → +10 costs 512 XP");
+            // The routes (owner, 5 Oct): Majors first — they pay every step up to +5 — then the lowest mote each higher
+            // step allows; duplicates as they drop, or filled to +4 with three Majors each so the common mote dodges its ceiling.
+            Check("upgrade: the mote route is Majors to +5 then step by step; the duplicate route names the +4 fill trick when the climb is worth a copy",
+                ItemUpgrade.RouteMotes(2, 8) == "6 Major to +5, then 6 Greater, 10 Superior, 16 Grand" && ItemUpgrade.RouteMotes(0, 4) == "3 Major"
+                && ItemUpgrade.RouteMotes(0, 5) == "7 Major" && ItemUpgrade.RouteMotes(6, 8) == "10 Superior, 16 Grand" && ItemUpgrade.RouteMotes(9, 10) == "52 Infinite"
+                && ItemUpgrade.RouteCopies(2, 8) == "63 more +2 copies, or 16 copies filled to +4 (3 Majors each from +0)"
+                && ItemUpgrade.RouteCopies(0, 3) == "7 more +0 copies" && ItemUpgrade.RouteCopies(6, 7) == "1 more +6 copy" && ItemUpgrade.RouteCopies(0, 10) == "1023 more +0 copies, or 64 copies filled to +4 (3 Majors each from +0)");
         }
         // The ×N pills (3 Oct): a click cycles the pick's weight, the title and the score line follow, four clicks come round.
         {
