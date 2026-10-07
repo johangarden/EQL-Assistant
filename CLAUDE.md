@@ -209,7 +209,10 @@ the affected suites (with `-Wait`) before committing.
   no fight. `RaidKills`, `LootTracker`,
   `SkyQuests`, `QuestLines` (embedded `data/quest-lines.json`: multi-step
   weapon quests tracked as proven-condition SETS — kills, loot, sealed
-  trades, said keywords; right-clicks are owner ticks. INTENT rule (17 Sep):
+  trades, said keywords; right-clicks are owner ticks — unless the step
+  carries `clickText`, the item's own line ("As you stare into the fading
+  embers within your palm, …" — the three souls do print one, 7 Oct), which
+  proves the click from the log. INTENT rule (17 Sep):
   only anchoring steps (hand-ins, said keywords) or ticks start a line and
   imply the steps before them; kill/loot steps vouch for nothing and are
   marked only once the line is started (their evidence waits); coins-only
