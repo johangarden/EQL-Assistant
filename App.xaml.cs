@@ -932,6 +932,7 @@ public partial class App : Application
                 new("Woven Skull Cap", "woven skull cap", "General 3-Slot2", 1, "bags", 2),
                 new("Golden Efreeti Boots +3", "golden efreeti boots +3", "Bank5-Slot8", 1, "bank", 3),
                 new("Lustrous Russet Boots", "lustrous russet boots", "Bank5-Slot9", 1, "bank", 6), // +0 — the "would it be BiS upgraded?" case
+                new("Serpentine Bracer +2", "serpentine bracer +2", "Any Slot", 1, "worn", 7), // worn in an Any slot (7 Oct)
                 new("Grimy Black Silk Robe +5", "grimy black silk robe +5", "Bank5-Slot6", 1, "bank", 4),
                 new("Coin Purse of Nowhere", "coin purse of nowhere", "General 1-Slot1", 1, "bags", 5),
             };
@@ -976,6 +977,17 @@ public partial class App : Application
             }
             Check("bis: items the wiki doesn't know are named, never silently dropped",
                 bis.Unknown.Contains("Coin Purse of Nowhere"));
+            // The Any slots (7 Oct): a bracer worn in Any Slot is NOT worn in Wrist — Wrist wants it (a move, WHERE says
+            // worn · Any Slot) — and Any lists the armor / jewelry the named slots left: the feet runner-up, never a weapon.
+            {
+                var wrist = bis.Slots.First(s => s.Key == "WRIST"); var any = bis.Slots.First(s => s.Key == BisFinder.AnyKey);
+                var wristPick = wrist.Picks.First();
+                Check("bis: the two Any slots take the leftovers — a bracer worn in Any moves to Wrist, the second pair of boots fills Any 1, nothing twice",
+                    any is { Label: "Any", Count: 2 } && wristPick.BaseName == "Serpentine Bracer" && !wristPick.Worn && wristPick.Location == "Any Slot" && wristPick.Lane == "worn"
+                    && wrist.Upgrades.Any(u => u.BaseName == "Serpentine Bracer")
+                    && !any.Ranked.Any(c => c.BaseName == "Serpentine Bracer") && any.Ranked.Count == 1 && any.Ranked[0].Name == feet.Ranked[1].Name
+                    && any.Picks.Count() == 1 && BisFinder.ArmorView(bis).Slots.Any(s => s.Key == BisFinder.AnyKey) && !BisFinder.WeaponView(bis, BisFinder.WeaponStyle.DualWield).Slots.Any(s => s.Key == BisFinder.AnyKey));
+            }
             // Weapons by fighting style: a 1H stick, a 2H reaver, a shield.
             var wRows = new List<InventoryStore.CarryRow>
             {
@@ -3933,6 +3945,13 @@ public partial class App : Application
         }
         // Storage (1 Oct): the key ring's Equipment rows are items you hold — the BiS finder searches them like the slot finder does.
         var bisAll = BisFinder.Build(InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows, new ItemStats(), new[] { "SHD", "SHM", "ENC" }, new[] { "AC", "STA", "INT" });
+        {
+            // The demo's Talisman worn in Any Slot scores nothing under AC/STA/INT (regen only): both Any picks are upgrades over it.
+            var anyDemo = bisAll.Slots.First(s => s.Key == BisFinder.AnyKey);
+            Check("bis: on the demo dump the Any board shows the Talisman worn there and two better leftovers as upgrades",
+                anyDemo.Ranked.Any(c => c.Worn && c.BaseName.StartsWith("Talisman")) && anyDemo.Picks.Count() == 2 && anyDemo.Upgrades.Count() == 2
+                && !anyDemo.Ranked.Any(c => c.Rec.Slot.Contains("PRIMARY") || c.Rec.Slot.Contains("SECONDARY")));
+        }
         Check("bis: an item in the key ring's Storage is a candidate (Boots of the Long Road +1 under Feet, lane storage), placed by its spot in the list",
             bisAll.Slots.First(s => s.Key == "FEET").Ranked.Concat(bisAll.Slots.First(s => s.Key == "FEET").Foreign).Any(c => c.Name.StartsWith("Boots of the Long Road") && c.Lane == "storage" && c.Location == "#1")
             && SlotFinder.PrettyLocation("#1", "storage") == "Storage · #1");
@@ -4059,7 +4078,7 @@ public partial class App : Application
         {
             var bv = tw.BisForTest!;
             // The header's badges are Borders inside InlineUIContainers — a TextRange skips them, so look at the badge texts.
-            bool named = bv.WouldBeCount == 1 && bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text == "INSIDIOUS MANACLE WOULD BEAT IT AT +8"));
+            bool named = bv.WouldBeCount >= 1 && bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text == "INSIDIOUS MANACLE WOULD BEAT IT AT +8"));
             bv.OpenForTest("WRIST2");
             bool chip = bv.BoardForTest.Children.OfType<Border>().Select(b => b.Child).OfType<StackPanel>().SelectMany(sp => sp.Children.OfType<Border>()).Any(b => (b.Child as TextBlock)?.Text == "BiS AT +8");
             bool bill = bv.BoardForTest.Children.OfType<TextBlock>().Any(t => string.Concat(t.Inlines.OfType<Run>().Select(r => r.Text)) == "+2 → +8 costs 252 XP.  Motes: 6 Major to +5, then 6 Greater, 10 Superior, 16 Grand.  Duplicates: 63 more +2 copies, or 16 copies filled to +4 (3 Majors each from +0).");
