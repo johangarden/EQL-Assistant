@@ -49,8 +49,12 @@ public sealed class QuestLines
         public List<Need> Bring { get; set; } = new();
         public string Coins { get; set; } = "";
         public List<string> Get { get; set; } = new();
-        /// <summary>An item to right-click — no log line; the owner ticks it.</summary>
+        /// <summary>An item to right-click. The owner's switch proves it — or <see cref="ClickText"/> does.</summary>
         public string Click { get; set; } = "";
+        /// <summary>The line the game prints on the right-click (its opening words) — the souls do print one
+        /// (owner, 7 Oct: "As you stare into the fading embers within your palm, you are haunted by the visage
+        /// of Brother Hayle…"); when set, the log proves the click and no switch is needed.</summary>
+        public string ClickText { get; set; } = "";
         public string Say { get; set; } = "";
         public string Reply { get; set; } = "";
         public string Faction { get; set; } = "";
@@ -152,6 +156,7 @@ public sealed class QuestLines
     private readonly HashSet<string> _destroySeen = new();
     private readonly Dictionary<string, List<PendingOffer>> _pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _handinKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _clickOpeners = new(); // the first words shared by the click lines — a cheap gate
     private readonly LootTracker? _loot;
 
     public IReadOnlyList<Quest> Quests => _quests;
@@ -190,8 +195,15 @@ public sealed class QuestLines
         LoadQuests();
         foreach (var q in _quests)
             foreach (var s in q.Steps)
+            {
                 foreach (var n in s.Handin)
                     _handinKeys.Add(Key(n.Name));
+                if (s.ClickText.Length > 0)
+                {
+                    string opener = s.ClickText.Length > 24 ? s.ClickText[..24] : s.ClickText;
+                    if (!_clickOpeners.Contains(opener)) _clickOpeners.Add(opener);
+                }
+            }
         LoadProgress();
         Sanitize();
     }
@@ -312,7 +324,7 @@ public sealed class QuestLines
     /// <summary>The line was begun on purpose: an owner tick anywhere, or the
     /// log proving an anchoring step.</summary>
     public bool Started(Quest q) => q.Steps.Any(s => _marks.TryGetValue(StepKey(q, s), out var m)
-        && (m.How == "you" || (m.How == "auto" && Anchors(s))));
+        && (m.How == "you" || (m.How == "auto" && (Anchors(s) || s.Click.Length > 0)))); // an auto mark on a click step came from the item's own line
 
     public bool IsTracked(Quest q) => _tracked.Contains(q.Key);
     public void SetTracked(Quest q, bool on)
@@ -380,6 +392,8 @@ public sealed class QuestLines
             if (StepWanting(item) is { } want) ItemLooted?.Invoke(want.Quest, want.Step, item);
             changed = Satisfy("loot:", Key(item), body, when, MatchLoot);
         }
+        else if (_clickOpeners.Any(o => body.StartsWith(o, StringComparison.Ordinal)))
+            changed = Satisfy("click", body, body, when, MatchClick);
         else if (body.StartsWith("You say, '", StringComparison.Ordinal) && SayRx.Match(body) is { Success: true } saym)
             changed = Satisfy("say", saym.Groups["t"].Value.Trim().TrimEnd('.', '!'), body, when, MatchSay);
         else if (body.StartsWith("You offered ", StringComparison.Ordinal) && OfferRx.Match(body) is { Success: true } om)
@@ -421,6 +435,8 @@ public sealed class QuestLines
         s.Kill.Any(k => Who(k) == Who(mob));
     private static bool MatchLoot(Step s, string itemKey) =>
         s.Loot.Any(l => Key(l) == itemKey);
+    private static bool MatchClick(Step s, string line) =>
+        s.ClickText.Length > 0 && line.StartsWith(s.ClickText, StringComparison.OrdinalIgnoreCase);
     private static bool MatchSay(Step s, string said) =>
         s.Say.Length > 0 && s.Say.Trim().TrimEnd('.', '!').Equals(said, StringComparison.OrdinalIgnoreCase);
 
@@ -501,14 +517,16 @@ public sealed class QuestLines
                 if (!set.Contains("offer:" + Key(h.Name))) return;
         }
         else if (s.Coins.Length > 0 && !set.Contains("trade")) return; // coins-only: the trade line itself
-        if (s.Click.Length > 0 && !set.Contains("click")) return; // the tick flips it
+        if (s.Click.Length > 0 && !set.Contains("click")) return; // the switch flips it — or the item's own line
         // A kill or a drop alone never starts a line — the evidence waits in
-        // the partial set until an anchoring step (or a tick) begins it.
-        if (!Anchors(s) && !Started(q)) return;
+        // the partial set until an anchoring step (or a tick) begins it. A
+        // right-click proven by the item's own line IS intent: you clicked the quest item.
+        bool intent = Anchors(s) || s.Click.Length > 0;
+        if (!intent && !Started(q)) return;
         _marks[key] = new Mark(when, "auto", string.Join(" · ", _evidence.GetValueOrDefault(key) ?? new List<string>()));
-        if (Anchors(s)) ImplyEarlier(q, s, when); // only intent vouches for the chain before it
+        if (intent) ImplyEarlier(q, s, when); // only intent vouches for the chain before it
         StepDone?.Invoke(q, s);
-        if (Anchors(s)) ReproveWaiting(q, when);
+        if (intent) ReproveWaiting(q, when);
     }
 
     /// <summary>The line just started: steps whose kills and drops were already
@@ -537,7 +555,7 @@ public sealed class QuestLines
                 if (!mm.Success || !int.TryParse(mm.Groups[1].Value, out int n) || n < 1 || n > q.Steps.Count) continue;
                 var src = q.Steps[n - 1];
                 bool byTick = _marks.GetValueOrDefault(StepKey(q, src)) is { How: "you" };
-                if (!Anchors(src) && !byTick) { _marks.Remove(key); removed++; }
+                if (!Anchors(src) && src.Click.Length == 0 && !byTick) { _marks.Remove(key); removed++; }
             }
             if (Started(q)) continue;
             foreach (var s in q.Steps)

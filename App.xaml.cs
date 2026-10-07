@@ -3082,6 +3082,22 @@ public partial class App : Application
                         qk.IsComplete(fa2) && qk.MarkOf(fa2, S(fa2, "blessings"))!.How == "auto" && qk.MarkOf(fa2, S(fa2, "avenger"))!.How == "auto"
                         && qk.LedgerHeld("SoulFire") == 0 && seenBefore.Count == 4);
                     try { File.Delete(qlPath4); } catch { /* temp */ }
+
+                    // The right-click prints a line after all (7 Oct, Johan's screenshot): the soul's own words prove the
+                    // click step without the switch — and only the soul whose words they are.
+                    string qlPath5 = Path.Combine(Path.GetTempPath(), "eql_test_questlines5.json");
+                    try { File.Delete(qlPath5); } catch { /* fresh */ }
+                    var qc = new QuestLines(new ConfigService(), null, qlPath5);
+                    var tc = qc.Quests.First(q => q.Key == "torrid-corruptor");
+                    qc.ProcessLine("[Wed Oct 07 19:41:20 2026] Brother Hayle has been slain by Kobekab!");
+                    qc.ProcessLine("[Wed Oct 07 19:41:34 2026] --You have looted a Burning Soul of the Pious from Brother Hayle's corpse.--");
+                    bool awaited = qc.AwaitsClick(tc, S(tc, "hayle")) && !qc.IsDone(tc, S(tc, "hayle"));
+                    qc.ProcessLine("[Wed Oct 07 19:41:50 2026] As you stare into the fading embers within your palm, you are haunted by the visage of Brother Hayle and your decision to slay him. What temptation drove you to this madness?");
+                    Check("lines: the soul's own right-click line checks the click step off — no switch — and leaves the other souls' steps alone",
+                        awaited && qc.IsDone(tc, S(tc, "hayle")) && qc.MarkOf(tc, S(tc, "hayle"))!.How == "auto"
+                        && !qc.PartialOf(tc, S(tc, "grimrot-kill")).Contains("click") && !qc.PartialOf(tc, S(tc, "inte")).Contains("click")
+                        && S(tc, "grimrot-kill").ClickText.StartsWith("As you stare into the fading embers within your palm, the feeling of redemption", StringComparison.Ordinal));
+                    try { File.Delete(qlPath5); } catch { /* temp */ }
                 }
 
                 // Destroyed copies leave the ledger (11 Sep); the snapshot caps it.

@@ -412,7 +412,9 @@ public partial class QuestLinesView : UserControl
     private string NextAdvice(QuestLines.Quest q, QuestLines.Step s)
     {
         var parts = new List<string>();
-        if (_lines!.AwaitsClick(q, s)) parts.Add($"The log saw the kill and the loot — right-click {s.Click}, then flip the switch on the step.");
+        if (_lines!.AwaitsClick(q, s)) parts.Add(s.ClickText.Length > 0
+            ? $"The log saw the kill and the loot — right-click {s.Click}; its own line checks the step off (or flip the switch)."
+            : $"The log saw the kill and the loot — right-click {s.Click}, then flip the switch on the step.");
         else
         {
             if (s.Kill.Count > 0) parts.Add("Kill " + string.Join(" / ", s.Kill) + ".");
@@ -539,7 +541,7 @@ public partial class QuestLinesView : UserControl
             Content = s.Click.Length > 0 ? "right-clicked" : "done",
             FontSize = 11, Foreground = Hint, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0),
             ToolTip = s.Click.Length > 0
-                ? $"The log can't see a right-click — flip this once you've clicked {s.Click}"
+                ? (s.ClickText.Length > 0 ? $"Right-clicking {s.Click} prints a line the log reads — flip this only if it didn't" : $"The log can't see a right-click — flip this once you've clicked {s.Click}")
                 : "Tick a step the log missed; a step the log proved itself stays ticked (Data → reset clears it)",
         };
         sw.Checked += (_, _) => { if (!done) _lines.Tick(q, s); };
@@ -557,7 +559,7 @@ public partial class QuestLinesView : UserControl
         {
             evText.Inlines.Add(EvTag("partly", Amber));
             evText.Inlines.Add(new System.Windows.Documents.Run(" " + string.Join(" · ", _lines.EvidenceOf(q, s))));
-            if (_lines.AwaitsClick(q, s)) evText.Inlines.Add(new System.Windows.Documents.Run($" — now right-click {s.Click} and flip the switch"));
+            if (_lines.AwaitsClick(q, s)) evText.Inlines.Add(new System.Windows.Documents.Run(s.ClickText.Length > 0 ? $" — now right-click {s.Click}; the log checks it off" : $" — now right-click {s.Click} and flip the switch"));
         }
         else
         {
