@@ -3068,6 +3068,20 @@ public partial class App : Application
                         qj.IsComplete(fa) && qj.MarkOf(fa, S(fa, "books"))!.How == "auto" && qj.MarkOf(fa, S(fa, "miragul"))!.How == "auto"
                         && qj.MarkOf(fa, S(fa, "blessings"))!.How == "auto" && qj.MarkOf(fa, S(fa, "avenger"))!.How == "auto");
                     try { File.Delete(qlPath3); } catch { /* temp */ }
+
+                    // The reparse after the fix (7 Oct): the old pass had already marked the offers to *Inte Akera
+                    // as seen while failing to match the NPC — the replay must still seal them, and count them once.
+                    string qlPath4 = Path.Combine(Path.GetTempPath(), "eql_test_questlines4.json");
+                    var seenBefore = night.Where(l => l.Contains(" to *Inte Akera.") && (l.Contains("SoulFire") || l.Contains("Ghoulbane") || l.Contains("Miragul's"))).ToList();
+                    File.WriteAllText(qlPath4, System.Text.Json.JsonSerializer.Serialize(new { offerSeen = seenBefore, offered = new Dictionary<string, int> { ["soulfire"] = 1, ["ghoulbane"] = 1, ["miragul's head"] = 1, ["miragul's robe"] = 1 } }));
+                    var qk = new QuestLines(new ConfigService(), null, qlPath4);
+                    var fa2 = qk.Quests.First(q => q.Key == "fiery-avenger");
+                    foreach (var ln in night) qk.ProcessLine(ln);
+                    foreach (var ln in night) qk.ProcessLine(ln); // and once more — the ledger must not grow
+                    Check("lines: a reparse seals offers the old pass had seen but could not match — the Fiery Avenger completes, and the ledger counts each offer once",
+                        qk.IsComplete(fa2) && qk.MarkOf(fa2, S(fa2, "blessings"))!.How == "auto" && qk.MarkOf(fa2, S(fa2, "avenger"))!.How == "auto"
+                        && qk.LedgerHeld("SoulFire") == 0 && seenBefore.Count == 4);
+                    try { File.Delete(qlPath4); } catch { /* temp */ }
                 }
 
                 // Destroyed copies leave the ledger (11 Sep); the snapshot caps it.

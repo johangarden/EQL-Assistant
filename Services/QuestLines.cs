@@ -385,7 +385,10 @@ public sealed class QuestLines
         else if (body.StartsWith("You offered ", StringComparison.Ordinal) && OfferRx.Match(body) is { Success: true } om)
         {
             string itemKey = Key(om.Groups["item"].Value);
-            if (!_handinKeys.Contains(itemKey) || _offerSeen.Contains(rawLine)) return;
+            // A seen offer still goes to the pending list: the ledger counts it once (CommitTrade),
+            // but a replay must be able to prove a step the first pass couldn't match (owner, 7 Oct:
+            // the offers to *Inte Akera were "seen" by the old matching and the reparse skipped them).
+            if (!_handinKeys.Contains(itemKey)) return;
             string npc = Who(om.Groups["npc"].Value);
             if (!_pending.TryGetValue(npc, out var list)) _pending[npc] = list = new List<PendingOffer>();
             list.RemoveAll(p => (when - p.At).TotalSeconds > TradeWindowSec);
@@ -445,16 +448,15 @@ public sealed class QuestLines
     {
         _pending.Remove(npc, out var list);
         var sealedKeys = new List<string>();
+        bool changed = false;
         if (list is not null)
             foreach (var p in list)
             {
                 if ((when - p.At).TotalSeconds > TradeWindowSec) continue;
-                if (!_offerSeen.Add(p.RawLine)) continue;
-                _offered[p.ItemKey] = _offered.GetValueOrDefault(p.ItemKey) + p.N;
+                // The ledger arithmetic counts each offer line once; the step proof below is a set and dedupes itself.
+                if (_offerSeen.Add(p.RawLine)) { _offered[p.ItemKey] = _offered.GetValueOrDefault(p.ItemKey) + p.N; changed = true; }
                 sealedKeys.Add(p.ItemKey);
             }
-
-        bool changed = sealedKeys.Count > 0;
         foreach (var q in _quests)
             foreach (var s in q.Steps)
             {
