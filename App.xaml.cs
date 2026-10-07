@@ -932,6 +932,7 @@ public partial class App : Application
                 new("Woven Skull Cap", "woven skull cap", "General 3-Slot2", 1, "bags", 2),
                 new("Golden Efreeti Boots +3", "golden efreeti boots +3", "Bank5-Slot8", 1, "bank", 3),
                 new("Lustrous Russet Boots", "lustrous russet boots", "Bank5-Slot9", 1, "bank", 6), // +0 — the "would it be BiS upgraded?" case
+                new("Serpentine Bracer +2", "serpentine bracer +2", "Any Slot", 1, "worn", 7), // worn in an Any slot (7 Oct)
                 new("Grimy Black Silk Robe +5", "grimy black silk robe +5", "Bank5-Slot6", 1, "bank", 4),
                 new("Coin Purse of Nowhere", "coin purse of nowhere", "General 1-Slot1", 1, "bags", 5),
             };
@@ -976,6 +977,17 @@ public partial class App : Application
             }
             Check("bis: items the wiki doesn't know are named, never silently dropped",
                 bis.Unknown.Contains("Coin Purse of Nowhere"));
+            // The Any slots (7 Oct): a bracer worn in Any Slot is NOT worn in Wrist — Wrist wants it (a move, WHERE says
+            // worn · Any Slot) — and Any lists the armor / jewelry the named slots left: the feet runner-up, never a weapon.
+            {
+                var wrist = bis.Slots.First(s => s.Key == "WRIST"); var any = bis.Slots.First(s => s.Key == BisFinder.AnyKey);
+                var wristPick = wrist.Picks.First();
+                Check("bis: the two Any slots take the leftovers — a bracer worn in Any moves to Wrist, the second pair of boots fills Any 1, nothing twice",
+                    any is { Label: "Any", Count: 2 } && wristPick.BaseName == "Serpentine Bracer" && !wristPick.Worn && wristPick.Location == "Any Slot" && wristPick.Lane == "worn"
+                    && wrist.Upgrades.Any(u => u.BaseName == "Serpentine Bracer")
+                    && !any.Ranked.Any(c => c.BaseName == "Serpentine Bracer") && any.Ranked.Count == 1 && any.Ranked[0].Name == feet.Ranked[1].Name
+                    && any.Picks.Count() == 1 && BisFinder.ArmorView(bis).Slots.Any(s => s.Key == BisFinder.AnyKey) && !BisFinder.WeaponView(bis, BisFinder.WeaponStyle.DualWield).Slots.Any(s => s.Key == BisFinder.AnyKey));
+            }
             // Weapons by fighting style: a 1H stick, a 2H reaver, a shield.
             var wRows = new List<InventoryStore.CarryRow>
             {
@@ -2973,6 +2985,89 @@ public partial class App : Application
                     Check("lines: on load, marks a kill-and-drop step implied are withdrawn, and so is that step on a never-started line",
                         qs.DoneCount(zimelS) == 0 && !qs.Started(zimelS));
                     try { File.Delete(qlPath2); File.Delete(bad); } catch { /* temp */ }
+
+                    // Johan's night (6 Oct 2026): a second SoulFire and the Fiery Avenger, every line as the
+                    // game printed it — starred quest NPCs, backtick apostrophes, no articles, "+4" tiers,
+                    // "1,000 Platinum" — the tracker lost most of it. Both lines must read complete.
+                    string qlPath3 = Path.Combine(Path.GetTempPath(), "eql_test_questlines3.json");
+                    try { File.Delete(qlPath3); } catch { /* fresh */ }
+                    var qj = new QuestLines(new ConfigService(), null, qlPath3);
+                    var zb = qj.Quests.First(q => q.Key == "zimels-blades"); var fa = qj.Quests.First(q => q.Key == "fiery-avenger");
+                    string[] night =
+                    {
+                        "[Tue Oct 06 15:42:42 2026] You have slain Xicotl!",
+                        "[Tue Oct 06 15:42:44 2026] --You have looted a Glowing Sword Hilt from Xicotl's corpse.--",
+                        "[Tue Oct 06 16:52:23 2026] You offered 4 Drom's Champagne to Tykar Renlin.",
+                        "[Tue Oct 06 16:52:25 2026] You complete the trade with Tykar Renlin.",
+                        "[Tue Oct 06 17:13:34 2026] You offered 1 Bunker Cell #1 to a prisoner.",
+                        "[Tue Oct 06 17:13:36 2026] You offered 1 Edible Goo to a prisoner.",
+                        "[Tue Oct 06 17:13:37 2026] You offered 1 Bog Juice to a prisoner.",
+                        "[Tue Oct 06 17:13:38 2026] You complete the trade with a prisoner.",
+                        "[Tue Oct 06 17:43:29 2026] You offered 1 Cloth Shirt to Altunic Jartin.",
+                        "[Tue Oct 06 17:43:31 2026] You complete the trade with Altunic Jartin.",
+                        "[Tue Oct 06 19:28:40 2026] --You have looted a Spider Venom Sac from a giant spider's corpse.--",
+                        "[Tue Oct 06 19:33:48 2026] You offered 1 H. K. 102 to Assistant Kiolna.",
+                        "[Tue Oct 06 19:33:50 2026] You complete the trade with Assistant Kiolna.",
+                        "[Tue Oct 06 19:40:26 2026] You offered 1 Spider Venom Sac to Merko Quetalis.",
+                        "[Tue Oct 06 19:40:28 2026] You complete the trade with Merko Quetalis.",
+                        "[Tue Oct 06 19:40:37 2026] You offered 1 Token of Generosity to Merko Quetalis.",
+                        "[Tue Oct 06 19:40:38 2026] You offered 1 Token of Bravery to Merko Quetalis.",
+                        "[Tue Oct 06 19:40:40 2026] You complete the trade with Merko Quetalis.",
+                        "[Tue Oct 06 19:40:52 2026] You have slain *Guard Willia!",
+                        "[Tue Oct 06 19:40:53 2026] --You have looted a Token of Truth from *Guard Willia's corpse.--",
+                        "[Tue Oct 06 19:42:13 2026] You offered 1 Token of Truth to Merko Quetalis.",
+                        "[Tue Oct 06 19:42:14 2026] You complete the trade with Merko Quetalis.",
+                        "[Tue Oct 06 19:49:13 2026] You have slain Sir Lucan D`Lere!",
+                        "[Tue Oct 06 19:49:22 2026] You have slain Sir Lucan D`Lere!",
+                        "[Tue Oct 06 19:49:25 2026] --You have looted a Testimony of Truth from Sir Lucan D`Lere's corpse.--",
+                        "[Tue Oct 06 19:55:50 2026] You offered 1 Testimony of Truth to Valeron Dushire.",
+                        "[Tue Oct 06 19:55:52 2026] You complete the trade with Valeron Dushire.",
+                        "[Tue Oct 06 20:04:46 2026] You offered 1 Sealed Note to Brother Hayle.",
+                        "[Tue Oct 06 20:04:49 2026] You complete the trade with Brother Hayle.",
+                        "[Tue Oct 06 20:04:53 2026] You offered 1 Note to Brother Hayle.",
+                        "[Tue Oct 06 20:04:55 2026] You offered 1 Testimony to Brother Hayle.",
+                        "[Tue Oct 06 20:04:58 2026] You offered 1 Glowing Sword Hilt to Brother Hayle.",
+                        "[Tue Oct 06 20:05:02 2026] You offered 1 Brilliant Sword of Faith to Brother Hayle.",
+                        "[Tue Oct 06 20:05:03 2026] You complete the trade with Brother Hayle.",
+                        "[Tue Oct 06 20:37:15 2026] --You have looted a Torn, Frost-Covered Book from Lady Vox's corpse.--",
+                        "[Tue Oct 06 22:15:56 2026] --You have looted a Ghoulbane +4 from the froglok shin lord's corpse.--",
+                        "[Tue Oct 06 22:21:29 2026] You offered 1 Torn, Frost-Covered Book to Rysva To`Biath.",
+                        "[Tue Oct 06 22:21:31 2026] You offered 1 Torn, Burnt Book to Rysva To`Biath.",
+                        "[Tue Oct 06 22:21:37 2026] You offered 1,000 Platinum to Rysva To`Biath.",
+                        "[Tue Oct 06 22:21:43 2026] You complete the trade with Rysva To`Biath.",
+                        "[Tue Oct 06 22:25:52 2026] You offered 1 Book of Scale to Oracle of K`Arnon.",
+                        "[Tue Oct 06 22:25:54 2026] You complete the trade with Oracle of K`Arnon.",
+                        "[Tue Oct 06 22:37:09 2026] You offered 1 Miragul's Phylactery to Lich of Miragul.",
+                        "[Tue Oct 06 22:37:10 2026] You complete the trade with Lich of Miragul.",
+                        "[Tue Oct 06 22:37:45 2026] You have slain Miragul pet!",
+                        "[Tue Oct 06 22:44:27 2026] You have slain *Miragul!",
+                        "[Tue Oct 06 22:44:33 2026] --You have looted a Miragul's Head from *Miragul's corpse.--",
+                        "[Tue Oct 06 22:44:34 2026] --You have looted a Miragul's Robe +1 from *Miragul's corpse.--",
+                        "[Tue Oct 06 23:07:17 2026] You offered 500 Platinum to Dason Goldblade.",
+                        "[Tue Oct 06 23:07:21 2026] You complete the trade with Dason Goldblade.",
+                        "[Tue Oct 06 23:08:28 2026] You offered 1 SoulFire to *Inte Akera.",
+                        "[Tue Oct 06 23:08:33 2026] You complete the trade with *Inte Akera.",
+                        "[Tue Oct 06 23:08:35 2026] You offered 1 Ghoulbane +4 to *Inte Akera.",
+                        "[Tue Oct 06 23:08:42 2026] You complete the trade with *Inte Akera.",
+                        "[Tue Oct 06 23:08:55 2026] You offered 1 Inte's First Blessing to *Inte Akera.",
+                        "[Tue Oct 06 23:08:56 2026] You offered 1 Inte's Second Blessing to *Inte Akera.",
+                        "[Tue Oct 06 23:08:58 2026] You offered 1 Miragul's Head to *Inte Akera.",
+                        "[Tue Oct 06 23:08:59 2026] You offered 1 Miragul's Robe +1 to *Inte Akera.",
+                        "[Tue Oct 06 23:09:01 2026] You complete the trade with *Inte Akera.",
+                    };
+                    foreach (var ln in night) qj.ProcessLine(ln);
+                    QuestLines.Step S(QuestLines.Quest q, string id) => q.Steps.First(x => x.Id == id);
+                    Check("lines: Johan's night — the names fold: no article, backtick as apostrophe, hyphen as space, the quest NPC's * and the +N tier",
+                        QuestLines.Key("A Spider Venom Sac") == "spider venom sac" && QuestLines.Key("Torn, Frost covered book") == QuestLines.Key("Torn, Frost-Covered Book")
+                        && QuestLines.Key("Ghoulbane +4") == "ghoulbane" && QuestLines.Key("Miragul's Robe +1") == QuestLines.Key("Miragul\u2019s Robe")
+                        && QuestLines.Who("*Inte Akera") == "inte akera" && QuestLines.Who("Sir Lucan D`Lere") == QuestLines.Who("Sir Lucan D'Lere") && QuestLines.Who("Rysva To`Biath") == QuestLines.Who("Rysva To'Biath"));
+                    Check("lines: Johan's night — the second SoulFire reads complete: the venom sac, the sealed note, *Guard Willia and Sir Lucan D`Lere all proven from the log",
+                        qj.IsComplete(zb) && qj.MarkOf(zb, S(zb, "venom"))!.How == "auto" && qj.MarkOf(zb, S(zb, "note"))!.How == "auto"
+                        && qj.MarkOf(zb, S(zb, "willia"))!.How == "auto" && qj.MarkOf(zb, S(zb, "lucan"))!.How == "auto" && qj.MarkOf(zb, S(zb, "xicotl"))!.How == "auto");
+                    Check("lines: Johan's night — the Fiery Avenger reads complete: the books and 1,000 platinum to Rysva To`Biath, *Miragul's head and robe, both blessings to *Inte Akera",
+                        qj.IsComplete(fa) && qj.MarkOf(fa, S(fa, "books"))!.How == "auto" && qj.MarkOf(fa, S(fa, "miragul"))!.How == "auto"
+                        && qj.MarkOf(fa, S(fa, "blessings"))!.How == "auto" && qj.MarkOf(fa, S(fa, "avenger"))!.How == "auto");
+                    try { File.Delete(qlPath3); } catch { /* temp */ }
                 }
 
                 // Destroyed copies leave the ledger (11 Sep); the snapshot caps it.
@@ -3850,6 +3945,13 @@ public partial class App : Application
         }
         // Storage (1 Oct): the key ring's Equipment rows are items you hold — the BiS finder searches them like the slot finder does.
         var bisAll = BisFinder.Build(InventoryStore.CarryAll(InventoryStore.Parse(ToolsDemoDump())).Rows, new ItemStats(), new[] { "SHD", "SHM", "ENC" }, new[] { "AC", "STA", "INT" });
+        {
+            // The demo's Talisman worn in Any Slot scores nothing under AC/STA/INT (regen only): both Any picks are upgrades over it.
+            var anyDemo = bisAll.Slots.First(s => s.Key == BisFinder.AnyKey);
+            Check("bis: on the demo dump the Any board shows the Talisman worn there and two better leftovers as upgrades",
+                anyDemo.Ranked.Any(c => c.Worn && c.BaseName.StartsWith("Talisman")) && anyDemo.Picks.Count() == 2 && anyDemo.Upgrades.Count() == 2
+                && !anyDemo.Ranked.Any(c => c.Rec.Slot.Contains("PRIMARY") || c.Rec.Slot.Contains("SECONDARY")));
+        }
         Check("bis: an item in the key ring's Storage is a candidate (Boots of the Long Road +1 under Feet, lane storage), placed by its spot in the list",
             bisAll.Slots.First(s => s.Key == "FEET").Ranked.Concat(bisAll.Slots.First(s => s.Key == "FEET").Foreign).Any(c => c.Name.StartsWith("Boots of the Long Road") && c.Lane == "storage" && c.Location == "#1")
             && SlotFinder.PrettyLocation("#1", "storage") == "Storage · #1");
@@ -3976,7 +4078,7 @@ public partial class App : Application
         {
             var bv = tw.BisForTest!;
             // The header's badges are Borders inside InlineUIContainers — a TextRange skips them, so look at the badge texts.
-            bool named = bv.WouldBeCount == 1 && bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text == "INSIDIOUS MANACLE WOULD BEAT IT AT +8"));
+            bool named = bv.WouldBeCount >= 1 && bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text == "INSIDIOUS MANACLE WOULD BEAT IT AT +8"));
             bv.OpenForTest("WRIST2");
             bool chip = bv.BoardForTest.Children.OfType<Border>().Select(b => b.Child).OfType<StackPanel>().SelectMany(sp => sp.Children.OfType<Border>()).Any(b => (b.Child as TextBlock)?.Text == "BiS AT +8");
             bool bill = bv.BoardForTest.Children.OfType<TextBlock>().Any(t => string.Concat(t.Inlines.OfType<Run>().Select(r => r.Text)) == "+2 → +8 costs 252 XP.  Motes: 6 Major to +5, then 6 Greater, 10 Superior, 16 Grand.  Duplicates: 63 more +2 copies, or 16 copies filled to +4 (3 Majors each from +0).");
@@ -4228,6 +4330,33 @@ public partial class App : Application
         Check("races: …once", maxed == "Guards of Qeynos;");
         book.SetTracked("Human (Qeynos)", false);
         Check("races: untracking silences the gate", book.TrackedRaceOf("Guards of Qeynos") is null && book.RaceOf("Guards of Qeynos") == "Human (Qeynos)");
+        // Johan's Dwarf night (5 Oct): hand-ins to an NPC moved three factions by +5 a time, then the game printed
+        // "You have completed achievement: <faction>" ×3 and "… Race Unlock - Dwarf" — the panel still read 1/3.
+        {
+            string said = ""; book.FactionMaxed += f => said += f + ";";
+            book.ProcessLine(L(300, "Trantor Everhot says, 'Great! I did not have the time to get down to Irontoe's today. Here. Like I said.'"));
+            book.ProcessLine(L(300, "Your faction standing with Corrupt Qeynos Guard has been adjusted by 5."));
+            Check("races: a hand-in's faction hit names the NPC who spoke as its source",
+                book.SourcesOf("Corrupt Qeynos Guard") is [{ Mob: "Trantor Everhot (hand-in)", Hit: 5, Count: 1 }] && book.Standing("Corrupt Qeynos Guard") == 5);
+            book.ProcessLine(L(301, "You have completed achievement: Corrupt Qeynos Guard"));
+            book.ProcessLine(L(301, "You have completed achievement: Level 25"));
+            Check("races: the faction achievement line maxes the faction — whatever the dump's 2,000 said — and says so once",
+                book.IsMaxed("Corrupt Qeynos Guard") && book.ViewOf("Corrupt Qeynos Guard") is { Done: true, CappedBelowMax: true } && said == "Corrupt Qeynos Guard;" && !book.IsMaxed("Level 25"));
+            book.ProcessLine(L(301, "You have completed achievement: Corrupt Qeynos Guard"));
+            Check("races: …once", said == "Corrupt Qeynos Guard;");
+            // (Its third faction just got achieved, so the race reads DONE by its factions already — the unlock line is the game's own word for it.)
+            book.ProcessLine(L(302, "You have completed achievement: Race Unlock - Human (Qeynos)"));
+            Check("races: the Race Unlock line marks the race DONE ahead of the next achievements dump, and it persists",
+                book.View("Human (Qeynos)")!.Done && book.IsUnlocked("Human (Qeynos)") && !book.IsUnlocked("High Elf") && book.View("Human (Qeynos)")!.CountText == "DONE");
+            string rbPath = Path.Combine(Path.GetTempPath(), "eql_selftest_races_ach.json");
+            try { File.Delete(rbPath); } catch { /* fresh */ }
+            var b2 = new RaceBook(null, rbPath);
+            b2.ProcessLine(L(400, "You have completed achievement: Race Unlock - Dwarf"), live: false);
+            b2.ProcessLine(L(400, "You have completed achievement: Kazon Stormhammer"), live: false); // no dump loaded: not a known race's faction yet — ignored, honestly
+            var b3 = new RaceBook(null, rbPath);
+            Check("races: an unlock learned on a replay survives a restart", b3.IsUnlocked("Dwarf") && !b3.IsMaxed("Kazon Stormhammer"));
+            try { File.Delete(rbPath); } catch { /* temp */ }
+        }
         var parsed = FactionDumps.ParseClasses("Untapped Potential: Classes\nI\tClass Unlock - Bard\nI\t\tGet maximum faction with League of Antonican Bards.\n");
         Check("races: the classes section parses with the same reader", parsed is [{ Name: "Bard", Factions: [{ Faction: "League of Antonican Bards" }] }]);
         Check("races: config default — the helper card on", new Models.AppConfig().Overlay.FactionHelperVisible);

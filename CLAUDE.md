@@ -191,7 +191,11 @@ the affected suites (with `-Wait`) before committing.
   the dump's 2,000; MAXED bars draw full, "your cap −220"), and "You have
   slain X!" / "X has been slain by <pet/group>!" within 3 s before teaches
   mob → faction → hit (persisted in `races.json` with the
-  ★-tracked races). Character window "Races" tab (`RacesView`, badges like
+  ★-tracked races); an NPC's "X says, '…'" within 3 s is the source of a
+  hand-in's hit ("X (hand-in)"); "You have completed achievement: <faction>"
+  MAXES that faction for you whatever the dump said, and "… Race Unlock - X"
+  marks the race DONE — both persisted (`Achieved` / `Unlocked`) until the
+  dumps catch up (owner, 5 Oct: Dwarf unlocked, the panel read 1/3). Character window "Races" tab (`RacesView`, badges like
   the Sky classes: done first, DONE/YOU/AUTO/TASK) + the faction helper
   card (`FactionHelperWindow`, tracked races only: between hits it stays
   open with the tracked races' unfinished factions as bars — owner, 22 Sep
@@ -209,8 +213,14 @@ the affected suites (with `-Wait`) before committing.
   only anchoring steps (hand-ins, said keywords) or ticks start a line and
   imply the steps before them; kill/loot steps vouch for nothing and are
   marked only once the line is started (their evidence waits); coins-only
-  trades likewise. Old chains implied by a kill are withdrawn on load),
-  `BisFinder` + `SlotFinder` browse the SAME lanes — worn, bags, bank (+ shared), depot, hoard and the key ring's Storage (owner, 1 Oct); the BiS board's three picks weigh 2 · 1.5 · 1 by default and the ×N pill beside each cycles 1 → 1.5 → 2 → 3, remembered per character in the BiS prefs (owner, 3 Oct: 3 · 2 · 1 buried the third pick); WOULD BE BiS IF UPGRADED (owner, 5 Oct): every candidate carries `ScoreByTier` (0..+10 under the same priorities); `SlotResult.Projected` names the owned items that would beat the slot's weakest pick at a higher tier, at the LOWEST such tier — rows under the slot show stats and score AT that tier with a "BiS AT +N" chip, a folded slot's header says "X WOULD BEAT IT AT +N", the verdicts count them; projections sort by XP (`Projection.Xp`), not steps, and each row carries the bill (`ItemUpgrade.ClimbText`: eqlwiki's Item Upgrade System + Mote Guide, 5 Oct — tier t → t+1 costs 2^t XP, a +t duplicate adds 2^t, motes add 1/1/2/4/5/6/7/8/9/10 and work only up to their tier limit; `RouteMotes` pays Majors-first — the D4 drop, good on items to +4 — then the lowest mote each higher step allows; `RouteCopies` = copies merged as they drop, or copies FILLED to +4 with 3 Majors each and merged, the way the common mote dodges its ceiling — XP is conserved, a +t copy merges for 2^t); the board's column titles are a separate grid ABOVE the scroller, pinned to the board's measured column widths on every layout, so they stay put while the list scrolls (owner, 3 Oct); `SpellLibrary` (embedded `data/spell-library.json`, 1438
+  trades likewise. Old chains implied by a kill are withdrawn on load; NAMES
+  are compared through `QuestLines.Key` / `Who` — a leading article, hyphens,
+  case, the +N tier, backtick-vs-apostrophe (Sir Lucan D`Lere) and the game's
+  leading * on quest NPCs (*Inte Akera, "You have slain *Guard Willia!") all
+  fold away, and `data/quest-lines.json` carries the game's own item names
+  (Inte's First / Second Blessing, Torn, Frost-Covered Book) — 6 Oct, two
+  SoulFires and a Fiery Avenger the tracker had lost),
+  `BisFinder` + `SlotFinder` browse the SAME lanes — worn, bags, bank (+ shared), depot, hoard and the key ring's Storage (owner, 1 Oct); the BiS board's three picks weigh 2 · 1.5 · 1 by default and the ×N pill beside each cycles 1 → 1.5 → 2 → 3, remembered per character in the BiS prefs (owner, 3 Oct: 3 · 2 · 1 buried the third pick); WOULD BE BiS IF UPGRADED (owner, 5 Oct): every candidate carries `ScoreByTier` (0..+10 under the same priorities); `SlotResult.Projected` names the owned items that would beat the slot's weakest pick at a higher tier, at the LOWEST such tier — rows under the slot show stats and score AT that tier with a "BiS AT +N" chip, a folded slot's header says "X WOULD BEAT IT AT +N", the verdicts count them; projections sort by XP (`Projection.Xp`), not steps, and each row carries the bill (`ItemUpgrade.ClimbText`: eqlwiki's Item Upgrade System + Mote Guide, 5 Oct — tier t → t+1 costs 2^t XP, a +t duplicate adds 2^t, motes add 1/1/2/4/5/6/7/8/9/10 and work only up to their tier limit; `RouteMotes` pays Majors-first — the D4 drop, good on items to +4 — then the lowest mote each higher step allows; `RouteCopies` = copies merged as they drop, or copies FILLED to +4 with 3 Majors each and merged, the way the common mote dodges its ceiling — XP is conserved, a +t copy merges for 2^t); the TWO ANY SLOTS (owner, 7 Oct: `Slots` ends with ("ANY", "Any", 2)) take the best allowed armor / jewelry the named slots' picks left over (one entry per physical row, a second copy stays available; weapons, shields, range and ammo assumed out) — an item worn in Any Slot is NOT worn in its own slot (`WornSlotKey` → ANY), so its own slot may want it back (a move, WHERE "worn · Any Slot"); the board's column titles are a separate grid ABOVE the scroller, pinned to the board's measured column widths on every layout, so they stay put while the list scrolls (owner, 3 Oct); `SpellLibrary` (embedded `data/spell-library.json`, 1438
   spells; each carries an `effect` — Direct damage / Damage over time /
   Heal / Mez / Snare / Haste… — derived from its eqlwiki page's effect
   slots + target type + duration by the scratch `classify-spells.py`,

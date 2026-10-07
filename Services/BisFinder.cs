@@ -26,7 +26,12 @@ public static class BisFinder
         ("LEGS", "Legs", 1), ("FEET", "Feet", 1), ("WAIST", "Waist", 1), ("FINGER", "Finger", 2),
         ("PRIMARY", "Primary", 1), ("SECONDARY", "Secondary", 1), ("RANGE", "Range", 1),
         ("AMMO", "Ammo", 1),
+        // The two Any slots (owner, 7 Oct): whatever armor or jewelry is left once the named slots have picked.
+        ("ANY", "Any", 2),
     };
+
+    /// <summary>The Any slots take armor and jewelry — not weapons, shields, range or ammo (assumed; widen if the game allows).</summary>
+    public const string AnyKey = "ANY";
 
     /// <summary>What a priority can be: normalized stat keys, plus two
     /// synthetics — RESISTS (every SV summed) and DMG_DLY (weapon ratio ×100).</summary>
@@ -357,6 +362,7 @@ public static class BisFinder
             "FINGERS" => "FINGER",
             "EARS" => "EAR",
             "WRISTS" => "WRIST",
+            "ANY SLOT" => AnyKey,
             var x => x,
         };
     }
@@ -370,7 +376,8 @@ public static class BisFinder
         var unknown = new List<string>();
         int considered = 0;
         // (slot key) → candidates; a physical copy per row, folded by name+tier.
-        var bySlot = Slots.ToDictionary(s => s.Key, _ => new Dictionary<string, Candidate>(StringComparer.Ordinal));
+        var bySlot = Slots.Where(s => s.Key != AnyKey).ToDictionary(s => s.Key, _ => new Dictionary<string, Candidate>(StringComparer.Ordinal));
+        var anyPool = new List<Candidate>(); // one entry per physical armor / jewelry row — the Any slots' field
 
         int storageIdx = 0; // the key ring's Storage list has no slots — its place in the list stands in
         foreach (var r in rows.OrderBy(r => r.Line))
@@ -400,6 +407,11 @@ public static class BisFinder
             double score = Score(scaled, prio, tailWeight, rates, weights);
             var byTier = new double[ItemUpgrade.MaxTier + 1];
             for (int t = 0; t <= ItemUpgrade.MaxTier; t++) byTier[t] = t == tier ? score : Score(ScaledStats(rec, t), prio, tailWeight, rates, weights);
+            string place = r.Lane == "storage" ? $"#{storageIdx}" : r.Location;
+            // Armor and jewelry may sit in an Any slot: every such row is a candidate there, worn when it IS there.
+            if (!slotKeys.Any(k => WeaponSlotKeys.Contains(k)))
+                anyPool.Add(new Candidate(r.Name, tier, place, r.Lane, wornKey == AnyKey, allowed,
+                    string.IsNullOrWhiteSpace(rec.Classes), twoHanded, Math.Max(1, r.Count), score, scaled, rec, byTier));
 
             foreach (var key in slotKeys)
             {
@@ -423,6 +435,7 @@ public static class BisFinder
         var slots = new List<SlotResult>();
         foreach (var (key, label, count) in Slots)
         {
+            if (key == AnyKey) continue; // built from the leftovers below
             var all = bySlot[key].Values.ToList();
             var ranked = all.Where(c => c.Allowed)
                 .OrderByDescending(c => c.Score)
@@ -433,6 +446,16 @@ public static class BisFinder
                 .OrderByDescending(c => c.Score).ToList();
             slots.Add(new SlotResult(key, label, count, ranked, foreign));
         }
+        // The Any slots: the best allowed armor / jewelry NOT taken by a named slot's picks (a second copy
+        // stays available). An item worn in Any that its own slot wants moves there; Any shows what's left.
+        var used = new HashSet<(string, string)>();
+        foreach (var sl in slots)
+            foreach (var pk in sl.Picks) used.Add((pk.Name, pk.Location));
+        var (anyKey, anyLabel, anyCount) = Slots.First(x => x.Key == AnyKey);
+        var anyRanked = anyPool.Where(c => c.Allowed && !used.Contains((c.Name, c.Location)))
+            .OrderByDescending(c => c.Score).ThenByDescending(c => c.Stats.GetValueOrDefault("AC")).ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        var anyForeign = anyPool.Where(c => !c.Allowed).OrderByDescending(c => c.Score).ToList();
+        slots.Add(new SlotResult(anyKey, anyLabel, anyCount, anyRanked, anyForeign));
         return new Result(slots, unknown, considered);
     }
 }
