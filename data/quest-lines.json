@@ -1,4 +1,4 @@
-{
+﻿{
   "credit": "Quest data transcribed from eqlwiki.com (The Torrid Corruptor, The Fiery Avenger, Zimel's Blades (SoulFire)); step-tracking design EQL Assistant.",
   "quests": [
     {
@@ -23,7 +23,7 @@
           "note": "Bog Juice is brewed (Bottle, Snake Scales, Water Flask); Edible Goo is cooked (Fire Beetle Eye, Rat Ears). Don't eat it." },
         { "id": "kiolna", "title": "Hand H. K. 102 to Assistant Kiolna", "kind": "handin",
           "npc": "Assistant Kiolna", "zone": "Highpass Keep, the bank",
-          "handin": [ { "name": "H. K. 102", "count": 1 } ], "get": ["A Sealed Note"],
+          "handin": [ { "name": "H. K. 102", "count": 1 } ], "get": ["Sealed Note"],
           "note": "Works at Indifferent." },
         { "id": "shirt", "title": "Hand Altunic Jartin a Cloth Shirt", "kind": "handin",
           "npc": "Altunic Jartin", "zone": "East Commons, hut across from the inn",
@@ -31,7 +31,7 @@
           "faction": "Knights of Truth ≥ Amiable" },
         { "id": "venom", "title": "Hand Merko Quetalis a Spider Venom Sac", "kind": "handin",
           "npc": "Merko Quetalis", "zone": "North Freeport, Hall of Truth courtyard",
-          "handin": [ { "name": "A Spider Venom Sac", "count": 1 } ], "get": ["Token of Bravery"],
+          "handin": [ { "name": "Spider Venom Sac", "count": 1 } ], "get": ["Token of Bravery"],
           "note": "Any giant spider drops the sac." },
         { "id": "willia", "title": "Hand Merko both tokens, then kill Guard Willia in the sewers", "kind": "kill",
           "npc": "Merko Quetalis", "zone": "North Freeport; Guard Willia spawns in the Freeport sewers (moat wall opening)",
@@ -53,7 +53,7 @@
           "faction": "Knights of Truth ≥ Warmly" },
         { "id": "note", "title": "Hand Brother Hayle the Sealed Note — alone", "kind": "handin",
           "npc": "Brother Hayle", "zone": "Splitpaw Lair, jail cells",
-          "handin": [ { "name": "A Sealed Note", "count": 1 } ], "get": ["Note"],
+          "handin": [ { "name": "Sealed Note", "count": 1 } ], "get": ["Note"],
           "faction": "Priests of Life ≥ Warmly" },
         { "id": "soulfire", "title": "Hand Brother Hayle the Note, Testimony, Glowing Sword Hilt and Brilliant Sword of Faith", "kind": "handin",
           "npc": "Brother Hayle", "zone": "Splitpaw Lair, jail cells",
@@ -121,7 +121,7 @@
         { "id": "books", "title": "Hand in both torn books and 1000 platinum for the Book of Scale", "kind": "handin",
           "npc": "Rysva To'Biath or Rineval Talyas", "zone": "Blind Fish Tavern, Neriak Commons · or the North Qeynos newbie yard",
           "npcs": ["Rysva To'Biath", "Rineval Talyas"],
-          "handin": [ { "name": "Torn, burnt book", "count": 1 }, { "name": "Torn, Frost covered book", "count": 1 } ],
+          "handin": [ { "name": "Torn, Burnt Book", "count": 1 }, { "name": "Torn, Frost-Covered Book", "count": 1 } ],
           "coins": "1000 platinum", "get": ["Book of Scale"],
           "note": "The burnt book drops from Nagafen, Talendor or Severilous; the frost-covered one from Vox, Gorenaire or Faydedar.",
           "reply": "Take this book quickly and tell no one about this." },
@@ -141,11 +141,11 @@
         { "id": "blessings", "title": "Hand Inte Akera SoulFire alone, then Ghoulbane alone", "kind": "handin",
           "npc": "Inte Akera", "zone": "Plane of Sky, Island 4 windmill",
           "handin": [ { "name": "SoulFire", "count": 1 }, { "name": "Ghoulbane", "count": 1 } ],
-          "get": ["Blessing of Nobility", "Blessing of Sacrifice"],
-          "note": "Two separate trades: SoulFire gives the Blessing of Nobility, Ghoulbane the Blessing of Sacrifice." },
+          "get": ["Inte's First Blessing", "Inte's Second Blessing"],
+          "note": "Two separate trades: SoulFire gives Inte's First Blessing, Ghoulbane Inte's Second Blessing (the game's names, 6 Oct). Quest NPCs print with a * in the log — *Inte Akera." },
         { "id": "avenger", "title": "Hand Inte Akera Miragul's Head, Miragul's Robe and both Blessings together", "kind": "handin",
           "npc": "Inte Akera", "zone": "Plane of Sky, Island 4 windmill",
-          "handin": [ { "name": "Miragul's Head", "count": 1 }, { "name": "Miragul's Robe", "count": 1 }, { "name": "Blessing of Nobility", "count": 1 }, { "name": "Blessing of Sacrifice", "count": 1 } ],
+          "handin": [ { "name": "Miragul's Head", "count": 1 }, { "name": "Miragul's Robe", "count": 1 }, { "name": "Inte's First Blessing", "count": 1 }, { "name": "Inte's Second Blessing", "count": 1 } ],
           "get": ["Fiery Avenger"] }
       ]
     }

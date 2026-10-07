@@ -2973,6 +2973,89 @@ public partial class App : Application
                     Check("lines: on load, marks a kill-and-drop step implied are withdrawn, and so is that step on a never-started line",
                         qs.DoneCount(zimelS) == 0 && !qs.Started(zimelS));
                     try { File.Delete(qlPath2); File.Delete(bad); } catch { /* temp */ }
+
+                    // Johan's night (6 Oct 2026): a second SoulFire and the Fiery Avenger, every line as the
+                    // game printed it — starred quest NPCs, backtick apostrophes, no articles, "+4" tiers,
+                    // "1,000 Platinum" — the tracker lost most of it. Both lines must read complete.
+                    string qlPath3 = Path.Combine(Path.GetTempPath(), "eql_test_questlines3.json");
+                    try { File.Delete(qlPath3); } catch { /* fresh */ }
+                    var qj = new QuestLines(new ConfigService(), null, qlPath3);
+                    var zb = qj.Quests.First(q => q.Key == "zimels-blades"); var fa = qj.Quests.First(q => q.Key == "fiery-avenger");
+                    string[] night =
+                    {
+                        "[Tue Oct 06 15:42:42 2026] You have slain Xicotl!",
+                        "[Tue Oct 06 15:42:44 2026] --You have looted a Glowing Sword Hilt from Xicotl's corpse.--",
+                        "[Tue Oct 06 16:52:23 2026] You offered 4 Drom's Champagne to Tykar Renlin.",
+                        "[Tue Oct 06 16:52:25 2026] You complete the trade with Tykar Renlin.",
+                        "[Tue Oct 06 17:13:34 2026] You offered 1 Bunker Cell #1 to a prisoner.",
+                        "[Tue Oct 06 17:13:36 2026] You offered 1 Edible Goo to a prisoner.",
+                        "[Tue Oct 06 17:13:37 2026] You offered 1 Bog Juice to a prisoner.",
+                        "[Tue Oct 06 17:13:38 2026] You complete the trade with a prisoner.",
+                        "[Tue Oct 06 17:43:29 2026] You offered 1 Cloth Shirt to Altunic Jartin.",
+                        "[Tue Oct 06 17:43:31 2026] You complete the trade with Altunic Jartin.",
+                        "[Tue Oct 06 19:28:40 2026] --You have looted a Spider Venom Sac from a giant spider's corpse.--",
+                        "[Tue Oct 06 19:33:48 2026] You offered 1 H. K. 102 to Assistant Kiolna.",
+                        "[Tue Oct 06 19:33:50 2026] You complete the trade with Assistant Kiolna.",
+                        "[Tue Oct 06 19:40:26 2026] You offered 1 Spider Venom Sac to Merko Quetalis.",
+                        "[Tue Oct 06 19:40:28 2026] You complete the trade with Merko Quetalis.",
+                        "[Tue Oct 06 19:40:37 2026] You offered 1 Token of Generosity to Merko Quetalis.",
+                        "[Tue Oct 06 19:40:38 2026] You offered 1 Token of Bravery to Merko Quetalis.",
+                        "[Tue Oct 06 19:40:40 2026] You complete the trade with Merko Quetalis.",
+                        "[Tue Oct 06 19:40:52 2026] You have slain *Guard Willia!",
+                        "[Tue Oct 06 19:40:53 2026] --You have looted a Token of Truth from *Guard Willia's corpse.--",
+                        "[Tue Oct 06 19:42:13 2026] You offered 1 Token of Truth to Merko Quetalis.",
+                        "[Tue Oct 06 19:42:14 2026] You complete the trade with Merko Quetalis.",
+                        "[Tue Oct 06 19:49:13 2026] You have slain Sir Lucan D`Lere!",
+                        "[Tue Oct 06 19:49:22 2026] You have slain Sir Lucan D`Lere!",
+                        "[Tue Oct 06 19:49:25 2026] --You have looted a Testimony of Truth from Sir Lucan D`Lere's corpse.--",
+                        "[Tue Oct 06 19:55:50 2026] You offered 1 Testimony of Truth to Valeron Dushire.",
+                        "[Tue Oct 06 19:55:52 2026] You complete the trade with Valeron Dushire.",
+                        "[Tue Oct 06 20:04:46 2026] You offered 1 Sealed Note to Brother Hayle.",
+                        "[Tue Oct 06 20:04:49 2026] You complete the trade with Brother Hayle.",
+                        "[Tue Oct 06 20:04:53 2026] You offered 1 Note to Brother Hayle.",
+                        "[Tue Oct 06 20:04:55 2026] You offered 1 Testimony to Brother Hayle.",
+                        "[Tue Oct 06 20:04:58 2026] You offered 1 Glowing Sword Hilt to Brother Hayle.",
+                        "[Tue Oct 06 20:05:02 2026] You offered 1 Brilliant Sword of Faith to Brother Hayle.",
+                        "[Tue Oct 06 20:05:03 2026] You complete the trade with Brother Hayle.",
+                        "[Tue Oct 06 20:37:15 2026] --You have looted a Torn, Frost-Covered Book from Lady Vox's corpse.--",
+                        "[Tue Oct 06 22:15:56 2026] --You have looted a Ghoulbane +4 from the froglok shin lord's corpse.--",
+                        "[Tue Oct 06 22:21:29 2026] You offered 1 Torn, Frost-Covered Book to Rysva To`Biath.",
+                        "[Tue Oct 06 22:21:31 2026] You offered 1 Torn, Burnt Book to Rysva To`Biath.",
+                        "[Tue Oct 06 22:21:37 2026] You offered 1,000 Platinum to Rysva To`Biath.",
+                        "[Tue Oct 06 22:21:43 2026] You complete the trade with Rysva To`Biath.",
+                        "[Tue Oct 06 22:25:52 2026] You offered 1 Book of Scale to Oracle of K`Arnon.",
+                        "[Tue Oct 06 22:25:54 2026] You complete the trade with Oracle of K`Arnon.",
+                        "[Tue Oct 06 22:37:09 2026] You offered 1 Miragul's Phylactery to Lich of Miragul.",
+                        "[Tue Oct 06 22:37:10 2026] You complete the trade with Lich of Miragul.",
+                        "[Tue Oct 06 22:37:45 2026] You have slain Miragul pet!",
+                        "[Tue Oct 06 22:44:27 2026] You have slain *Miragul!",
+                        "[Tue Oct 06 22:44:33 2026] --You have looted a Miragul's Head from *Miragul's corpse.--",
+                        "[Tue Oct 06 22:44:34 2026] --You have looted a Miragul's Robe +1 from *Miragul's corpse.--",
+                        "[Tue Oct 06 23:07:17 2026] You offered 500 Platinum to Dason Goldblade.",
+                        "[Tue Oct 06 23:07:21 2026] You complete the trade with Dason Goldblade.",
+                        "[Tue Oct 06 23:08:28 2026] You offered 1 SoulFire to *Inte Akera.",
+                        "[Tue Oct 06 23:08:33 2026] You complete the trade with *Inte Akera.",
+                        "[Tue Oct 06 23:08:35 2026] You offered 1 Ghoulbane +4 to *Inte Akera.",
+                        "[Tue Oct 06 23:08:42 2026] You complete the trade with *Inte Akera.",
+                        "[Tue Oct 06 23:08:55 2026] You offered 1 Inte's First Blessing to *Inte Akera.",
+                        "[Tue Oct 06 23:08:56 2026] You offered 1 Inte's Second Blessing to *Inte Akera.",
+                        "[Tue Oct 06 23:08:58 2026] You offered 1 Miragul's Head to *Inte Akera.",
+                        "[Tue Oct 06 23:08:59 2026] You offered 1 Miragul's Robe +1 to *Inte Akera.",
+                        "[Tue Oct 06 23:09:01 2026] You complete the trade with *Inte Akera.",
+                    };
+                    foreach (var ln in night) qj.ProcessLine(ln);
+                    QuestLines.Step S(QuestLines.Quest q, string id) => q.Steps.First(x => x.Id == id);
+                    Check("lines: Johan's night — the names fold: no article, backtick as apostrophe, hyphen as space, the quest NPC's * and the +N tier",
+                        QuestLines.Key("A Spider Venom Sac") == "spider venom sac" && QuestLines.Key("Torn, Frost covered book") == QuestLines.Key("Torn, Frost-Covered Book")
+                        && QuestLines.Key("Ghoulbane +4") == "ghoulbane" && QuestLines.Key("Miragul's Robe +1") == QuestLines.Key("Miragul\u2019s Robe")
+                        && QuestLines.Who("*Inte Akera") == "inte akera" && QuestLines.Who("Sir Lucan D`Lere") == QuestLines.Who("Sir Lucan D'Lere") && QuestLines.Who("Rysva To`Biath") == QuestLines.Who("Rysva To'Biath"));
+                    Check("lines: Johan's night — the second SoulFire reads complete: the venom sac, the sealed note, *Guard Willia and Sir Lucan D`Lere all proven from the log",
+                        qj.IsComplete(zb) && qj.MarkOf(zb, S(zb, "venom"))!.How == "auto" && qj.MarkOf(zb, S(zb, "note"))!.How == "auto"
+                        && qj.MarkOf(zb, S(zb, "willia"))!.How == "auto" && qj.MarkOf(zb, S(zb, "lucan"))!.How == "auto" && qj.MarkOf(zb, S(zb, "xicotl"))!.How == "auto");
+                    Check("lines: Johan's night — the Fiery Avenger reads complete: the books and 1,000 platinum to Rysva To`Biath, *Miragul's head and robe, both blessings to *Inte Akera",
+                        qj.IsComplete(fa) && qj.MarkOf(fa, S(fa, "books"))!.How == "auto" && qj.MarkOf(fa, S(fa, "miragul"))!.How == "auto"
+                        && qj.MarkOf(fa, S(fa, "blessings"))!.How == "auto" && qj.MarkOf(fa, S(fa, "avenger"))!.How == "auto");
+                    try { File.Delete(qlPath3); } catch { /* temp */ }
                 }
 
                 // Destroyed copies leave the ledger (11 Sep); the snapshot caps it.

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -112,11 +112,32 @@ public sealed class QuestLines
         @"^(?:--You have looted|You looted) (?:an? |the )?(?<item>.+?) from (?<mob>.+?)'s corpse",
         RegexOptions.Compiled);
     private static readonly Regex SayRx = new(@"^You say, '(?<t>.+)'$", RegexOptions.Compiled);
-    private static readonly Regex OfferRx = new(@"^You offered (?<n>\d+) (?<item>.+?) to (?<npc>.+?)\.$", RegexOptions.Compiled);
+    private static readonly Regex OfferRx = new(@"^You offered (?<n>[\d,]+) (?<item>.+?) to (?<npc>.+?)\.$", RegexOptions.Compiled); // "1,000 Platinum" too
     private static readonly Regex TradeDoneRx = new(@"^You complete the trade with (?<npc>.+?)\.$", RegexOptions.Compiled);
     private static readonly Regex DestroyRx = new(@"^You successfully destroyed (?<n>\d+) (?<item>.+?)\.$", RegexOptions.Compiled);
 
     private const double TradeWindowSec = 300;
+
+    /// <summary>An item name as the log and the wiki disagree on it (owner, 6 Oct — two SoulFires
+    /// and a Fiery Avenger the tracker lost): lower-case, the +N tier off, backtick and curly
+    /// apostrophes as ', hyphens as spaces, one space between words, and no leading article —
+    /// the wiki's "A Spider Venom Sac" is the game's "Spider Venom Sac", its "Torn, Frost covered
+    /// book" the game's "Torn, Frost-Covered Book".</summary>
+    public static string Key(string item)
+    {
+        string k = LootTracker.ItemKey(item).Replace('`', '\'').Replace('\u2019', '\'').Replace('-', ' ');
+        k = Regex.Replace(k, @"\s+", " ").Trim();
+        return Regex.Replace(k, @"^(?:a|an|the) ", "");
+    }
+
+    /// <summary>A mob or NPC name as the log prints it against the wiki's: the game marks quest
+    /// NPCs with a leading * ("*Inte Akera", "You have slain *Guard Willia!") and writes
+    /// apostrophes as backticks ("Sir Lucan D`Lere", "Rysva To`Biath").</summary>
+    public static string Who(string name)
+    {
+        string w = name.Trim().TrimStart('*').Trim().Replace('`', '\'').Replace('\u2019', '\'');
+        return Regex.Replace(w, @"\s+", " ").ToLowerInvariant();
+    }
     private sealed record PendingOffer(DateTime At, string ItemKey, int N, string RawLine);
 
     private readonly string _progressPath;
@@ -150,13 +171,13 @@ public sealed class QuestLines
     /// <summary>The first unfinished step wanting this item as loot or hand-in.</summary>
     public (Quest Quest, Step Step, int Index)? StepWanting(string item)
     {
-        string key = LootTracker.ItemKey(item);
+        string key = Key(item);
         foreach (var q in _quests)
             for (int i = 0; i < q.Steps.Count; i++)
             {
                 var s = q.Steps[i];
                 if (IsDone(q, s)) continue;
-                if (s.Loot.Any(l => LootTracker.ItemKey(l) == key) || s.Handin.Any(h => LootTracker.ItemKey(h.Name) == key))
+                if (s.Loot.Any(l => Key(l) == key) || s.Handin.Any(h => Key(h.Name) == key))
                     return (q, s, i);
             }
         return null;
@@ -170,7 +191,7 @@ public sealed class QuestLines
         foreach (var q in _quests)
             foreach (var s in q.Steps)
                 foreach (var n in s.Handin)
-                    _handinKeys.Add(LootTracker.ItemKey(n.Name));
+                    _handinKeys.Add(Key(n.Name));
         LoadProgress();
         Sanitize();
     }
@@ -333,8 +354,8 @@ public sealed class QuestLines
     public int LedgerHeld(string item)
     {
         if (_loot is null) return 0;
-        string key = LootTracker.ItemKey(item);
-        int looted = _loot.Entries.Where(e => e.Kind == LootTracker.LootKind.Kept && LootTracker.ItemKey(e.Item) == key)
+        string key = Key(item);
+        int looted = _loot.Entries.Where(e => e.Kind == LootTracker.LootKind.Kept && Key(e.Item) == key)
             .Sum(e => Math.Max(1, e.Count));
         return Math.Max(0, looted - _offered.GetValueOrDefault(key) - _destroyed.GetValueOrDefault(key));
     }
@@ -349,34 +370,34 @@ public sealed class QuestLines
         bool changed = false;
 
         if (body.StartsWith("You have slain ", StringComparison.Ordinal) && SlainRx.Match(body) is { Success: true } sm)
-            changed = Satisfy(cond: "kill:", value: sm.Groups["mob"].Value, evidence: body, when, MatchKill);
+            changed = Satisfy(cond: "kill:", value: Who(sm.Groups["mob"].Value), evidence: body, when, MatchKill);
         else if (body.EndsWith("!", StringComparison.Ordinal) && SlainByRx.Match(body) is { Success: true } sbm)
-            changed = Satisfy("kill:", sbm.Groups["mob"].Value, body, when, MatchKill);
+            changed = Satisfy("kill:", Who(sbm.Groups["mob"].Value), body, when, MatchKill);
         else if ((body.StartsWith("You looted ", StringComparison.Ordinal) || body.StartsWith("--You have looted ", StringComparison.Ordinal))
                  && LootRx.Match(body) is { Success: true } lm)
         {
             string item = Regex.Replace(lm.Groups["item"].Value, @"^\d+ ", "");
             if (StepWanting(item) is { } want) ItemLooted?.Invoke(want.Quest, want.Step, item);
-            changed = Satisfy("loot:", LootTracker.ItemKey(item), body, when, MatchLoot);
+            changed = Satisfy("loot:", Key(item), body, when, MatchLoot);
         }
         else if (body.StartsWith("You say, '", StringComparison.Ordinal) && SayRx.Match(body) is { Success: true } saym)
             changed = Satisfy("say", saym.Groups["t"].Value.Trim().TrimEnd('.', '!'), body, when, MatchSay);
         else if (body.StartsWith("You offered ", StringComparison.Ordinal) && OfferRx.Match(body) is { Success: true } om)
         {
-            string itemKey = LootTracker.ItemKey(om.Groups["item"].Value);
+            string itemKey = Key(om.Groups["item"].Value);
             if (!_handinKeys.Contains(itemKey) || _offerSeen.Contains(rawLine)) return;
-            string npc = om.Groups["npc"].Value;
+            string npc = Who(om.Groups["npc"].Value);
             if (!_pending.TryGetValue(npc, out var list)) _pending[npc] = list = new List<PendingOffer>();
             list.RemoveAll(p => (when - p.At).TotalSeconds > TradeWindowSec);
             if (list.All(p => p.RawLine != rawLine))
-                list.Add(new PendingOffer(when, itemKey, Math.Max(1, int.Parse(om.Groups["n"].Value)), rawLine));
+                list.Add(new PendingOffer(when, itemKey, Math.Max(1, int.Parse(om.Groups["n"].Value.Replace(",", ""))), rawLine));
             return;
         }
         else if (body.StartsWith("You complete the trade with ", StringComparison.Ordinal) && TradeDoneRx.Match(body) is { Success: true } tm)
-            changed = CommitTrade(tm.Groups["npc"].Value, body, when);
+            changed = CommitTrade(Who(tm.Groups["npc"].Value), body, when);
         else if (body.StartsWith("You successfully destroyed ", StringComparison.Ordinal) && DestroyRx.Match(body) is { Success: true } dm)
         {
-            string key = LootTracker.ItemKey(dm.Groups["item"].Value);
+            string key = Key(dm.Groups["item"].Value);
             bool fresh = !_destroySeen.Contains(rawLine);
             if (fresh && StepWanting(dm.Groups["item"].Value) is { } gone) ItemDestroyed?.Invoke(gone.Quest, gone.Step, dm.Groups["item"].Value);
             if (_handinKeys.Contains(key) && _destroySeen.Add(rawLine))
@@ -394,9 +415,9 @@ public sealed class QuestLines
     }
 
     private static bool MatchKill(Step s, string mob) =>
-        s.Kill.Any(k => k.Equals(mob, StringComparison.OrdinalIgnoreCase));
+        s.Kill.Any(k => Who(k) == Who(mob));
     private static bool MatchLoot(Step s, string itemKey) =>
-        s.Loot.Any(l => LootTracker.ItemKey(l) == itemKey);
+        s.Loot.Any(l => Key(l) == itemKey);
     private static bool MatchSay(Step s, string said) =>
         s.Say.Length > 0 && s.Say.Trim().TrimEnd('.', '!').Equals(said, StringComparison.OrdinalIgnoreCase);
 
@@ -438,12 +459,12 @@ public sealed class QuestLines
             foreach (var s in q.Steps)
             {
                 if (IsDone(q, s) || !s.HasTrade) continue;
-                if (!s.NpcNames.Any(n => n.Equals(npc, StringComparison.OrdinalIgnoreCase))) continue;
+                if (!s.NpcNames.Any(n => Who(n) == npc)) continue;
                 string key = StepKey(q, s);
                 if (!_partial.TryGetValue(key, out var set)) _partial[key] = set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 bool any = false;
                 foreach (var k in sealedKeys)
-                    if (s.Handin.Any(h => LootTracker.ItemKey(h.Name) == k) && set.Add("offer:" + k)) any = true;
+                    if (s.Handin.Any(h => Key(h.Name) == k) && set.Add("offer:" + k)) any = true;
                 // Coins-only: the trade itself is the proof — but coins leave
                 // no offer line, and both swords pay the same Dason Goldblade,
                 // so it only counts for a line you have already started.
@@ -469,13 +490,13 @@ public sealed class QuestLines
         string key = StepKey(q, s);
         var set = _partial.GetValueOrDefault(key);
         if (set is null) return;
-        foreach (var k in s.Kill) if (!set.Contains("kill:" + k.ToLowerInvariant())) return;
-        foreach (var l in s.Loot) if (!set.Contains("loot:" + LootTracker.ItemKey(l))) return;
+        foreach (var k in s.Kill) if (!set.Contains("kill:" + Who(k))) return;
+        foreach (var l in s.Loot) if (!set.Contains("loot:" + Key(l))) return;
         if (s.Say.Length > 0 && !set.Contains("say")) return;
         if (s.Handin.Count > 0)
         {
             foreach (var h in s.Handin)
-                if (!set.Contains("offer:" + LootTracker.ItemKey(h.Name))) return;
+                if (!set.Contains("offer:" + Key(h.Name))) return;
         }
         else if (s.Coins.Length > 0 && !set.Contains("trade")) return; // coins-only: the trade line itself
         if (s.Click.Length > 0 && !set.Contains("click")) return; // the tick flips it
@@ -546,8 +567,8 @@ public sealed class QuestLines
         if (s.Click.Length == 0 || IsDone(q, s)) return false;
         var set = _partial.GetValueOrDefault(StepKey(q, s));
         if (set is null) return false;
-        return s.Kill.All(k => set.Contains("kill:" + k.ToLowerInvariant()))
-            && s.Loot.All(l => set.Contains("loot:" + LootTracker.ItemKey(l)));
+        return s.Kill.All(k => set.Contains("kill:" + Who(k)))
+            && s.Loot.All(l => set.Contains("loot:" + Key(l)));
     }
 
     private static DateTime LineTime(string rawLine)
