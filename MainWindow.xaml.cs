@@ -852,10 +852,17 @@ public partial class MainWindow : Window
         }
         if (_hidden || _sctHidden || _suppressSct) return;
         if (_sctLanes.TryGetValue(hit.Kind, out var lane))
-            lane.Post(hit.Ability, hit.Amount,
+            lane.Post(SctLabel(hit), hit.Amount,
                 plus: hit.Kind is CombatParser.SctKind.HealOut or CombatParser.SctKind.HealIn,
                 flavor: hit.Flavor, crit: hit.Crit, text: hit.Text);
     }
+
+    /// <summary>The small word after a float's number: the ability — and "(pet)" on the pet lanes,
+    /// so a pet lane dragged next to yours still reads as the pet's (owner, 16 Oct).</summary>
+    internal static string SctLabel(CombatParser.SctHit hit) =>
+        hit.Kind is CombatParser.SctKind.IncomingPet or CombatParser.SctKind.OutgoingPet
+            ? (hit.Ability.Length > 0 ? hit.Ability + " (pet)" : "(pet)")
+            : hit.Ability;
 
     private void UpdateSctVisibility()
     {
