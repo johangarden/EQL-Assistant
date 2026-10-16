@@ -4545,6 +4545,10 @@ public partial class App : Application
         Check("ts: config defaults — closed, step view, bag counts, notice spoken",
             new Models.AppConfig().Overlay is { TradeskillOpen: "", TradeskillVisible: false, TradeskillLadder: false, TradeskillBagCounts: true, TradeskillNoticeEnabled: true, TradeskillNoticeMode: "speak", TradeskillToolbarBtn: true });
         Check("ts: the phrase template", EQLOverlay.MainWindow.TradeskillPhrase("", "Metal Bits") == "Metal Bits is trivial" && EQLOverlay.MainWindow.TradeskillPhrase("Move on from {item}", "Skull Ale") == "Move on from Skull Ale");
+        Check("sct: a pet lane's float says (pet) after the number; your own says only the ability",
+            EQLOverlay.MainWindow.SctLabel(new CombatParser.SctHit(CombatParser.SctKind.OutgoingPet, "slash", 60, CombatParser.SctFlavor.Melee, false)) == "slash (pet)"
+            && EQLOverlay.MainWindow.SctLabel(new CombatParser.SctHit(CombatParser.SctKind.IncomingPet, "", 60, CombatParser.SctFlavor.Melee, false)) == "(pet)"
+            && EQLOverlay.MainWindow.SctLabel(new CombatParser.SctHit(CombatParser.SctKind.OutgoingSelf, "slash", 60, CombatParser.SctFlavor.Melee, false)) == "slash");
     }
 
     /// <summary>Crowd control (14 Sep): the charm card and mez panel engine,
