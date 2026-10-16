@@ -312,11 +312,18 @@ public partial class App : Application
                 openMeter.Close();
                 meter.SetSelfExpandedForTest(false);
                 var folded = meter.RowsForTest;
-                if (folded.Count != 2 || folded[0].Name != "Thorrak" || folded[1].Name != "Jobaner (pet)"
+                if (folded.Count != 2 || folded[0].Name != "Thorrak" || folded[1].Name != "▶ Jobaner (pet)" || !folded[1].IsFold
                     || !folded[0].ValueText.Contains("86%") || !folded[1].ValueText.Contains("14%") || folded[0].IsFold
                     || Math.Abs(folded[0].Fraction - 6.0 / 7) > 0.01 || Math.Abs(folded[1].Fraction - 1.0 / 7) > 0.01) // shares of the header
-                    throw new Exception("meter solo folded: expected [Thorrak, Jobaner (pet)] total bars, got "
+                    throw new Exception("meter solo folded: expected [Thorrak, ▶ Jobaner (pet)] total bars, got "
                         + string.Join(" | ", folded.Select(r => $"{r.Name} {r.ValueText}")));
+                // The pet's bar folds its split out even while your own stays folded (16 Oct).
+                meter.SetPetExpandedForTest(true);
+                var petOpen = meter.RowsForTest;
+                if (petOpen.Count != 3 || petOpen[1].Name != "▼ Jobaner (pet)" || petOpen[2].Name != "bite" || !petOpen[2].ValueText.Contains("100%"))
+                    throw new Exception("meter solo folded + pet open: expected [Thorrak, ▼ Jobaner (pet), bite], got "
+                        + string.Join(" | ", petOpen.Select(r => $"{r.Name} {r.ValueText}")));
+                meter.SetPetExpandedForTest(false);
                 meter.SetSelfExpandedForTest(true);
                 if (meter.RowsForTest.All(r => !r.IsFold)) throw new Exception("meter solo expanded: the pet fold row is gone");
                 meter.Close();

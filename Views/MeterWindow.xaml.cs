@@ -222,6 +222,7 @@ public partial class MeterWindow : Window
 
     /// <summary>Selftest hooks: fold/unfold the solo header and read the rows.</summary>
     internal void SetSelfExpandedForTest(bool expanded) { _selfExpanded = expanded; Refresh(); }
+    internal void SetPetExpandedForTest(bool expanded) { _petExpanded = expanded; Refresh(); }
     internal IReadOnlyList<MeterRowViewModel> RowsForTest => _rows;
 
     private void SelfHeader_Click(object sender, MouseButtonEventArgs e)
@@ -452,16 +453,24 @@ public partial class MeterWindow : Window
                 bool pet2 = isPet;
                 fills.Add(vm =>
                 {
-                    vm.Name = pet2 ? $"{_parser.ActivePet} (pet)" : _parser.SelfName.Trim();
+                    // The pet's total bar folds its own split out even here (owner, 16 Oct:
+                    // "I can only unfold the pet when I have myself unfolded").
+                    vm.Name = pet2 ? (_petExpanded ? "▼ " : "▶ ") + $"{_parser.ActivePet} (pet)" : _parser.SelfName.Trim();
                     vm.Fraction = total / top;
                     double pct = combined > 0 ? total / combined * 100 : 0;
                     vm.ValueText = $"{FormatDps(dur > 0 ? total / dur : 0)}  ({FormatNum(total)}, {pct:0}%)";
                     vm.Fill = pet2 ? PetBarFill : SelfBarFill;
-                    vm.Detail = "expand the header for the per-ability split";
-                    vm.IsFold = false;
+                    vm.Detail = pet2 ? "click to fold the pet's per-ability split in and out" : "expand the header for your per-ability split";
+                    vm.IsFold = pet2;
                     vm.Margin = new Thickness(0, 0, 0, 3);
                     vm.BarHeight = 22; // TOTAL bars, like the header
                 });
+                if (pet2 && _petExpanded)
+                {
+                    double petTop = pet.Count > 0 ? Math.Max(pet[0].Total, 1) : 1;
+                    foreach (var pr in pet.Take(MaxSoloRows))
+                        fills.Add(vm => FillAbilityVm(vm, pr, petTop, petTotal, new Thickness(16, 0, 0, 3)));
+                }
             }
         }
 
