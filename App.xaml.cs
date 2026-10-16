@@ -305,6 +305,11 @@ public partial class App : Application
                 var meter = new Views.MeterWindow(new ConfigService(), mp, new LootTracker(new ConfigService()), 1.0,
                     Array.Empty<string>(), false, false, soloMode: true);
                 meter.Show();
+                // Folded by default (16 Oct) and remembered: the config says so, the window opens that way.
+                if (!meter.SelfFoldedForTest || !new Models.AppConfig().Overlay.MeterSelfFolded) throw new Exception("meter: the split should open folded by default");
+                var openMeter = new Views.MeterWindow(new ConfigService(), mp, new LootTracker(new ConfigService()), 1.0, Array.Empty<string>(), false, false, soloMode: true, selfFolded: false);
+                if (openMeter.SelfFoldedForTest) throw new Exception("meter: selfFolded: false should open the split");
+                openMeter.Close();
                 meter.SetSelfExpandedForTest(false);
                 var folded = meter.RowsForTest;
                 if (folded.Count != 2 || folded[0].Name != "Thorrak" || folded[1].Name != "Jobaner (pet)"

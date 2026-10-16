@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -37,7 +37,7 @@ public partial class MeterWindow : Window
     private readonly bool _showHealing = false;
     private bool _soloMode;
     private bool _petExpanded;
-    private bool _selfExpanded = true; // your split starts open; the pet's starts folded
+    private bool _selfExpanded; // your split opens as you left it — folded by default (16 Oct); the pet's starts folded
     private readonly MeterRowViewModel _selfHeaderVm = new();
 
     // The two total bars wear FIXED, distinct colors — the name-hash palette
@@ -82,6 +82,8 @@ public partial class MeterWindow : Window
 
     /// <summary>Raised when the SOLO/GROUP button flips, so the choice persists.</summary>
     public event Action<bool>? SoloModeChanged;
+    /// <summary>Your split folded (true) or open — the host remembers it.</summary>
+    public event Action<bool>? SelfFoldChanged;
 
     private static readonly Brush SkillLowFill = Freeze(Color.FromRgb(0xE5, 0x73, 0x73));  // < 60%
     private static readonly Brush SkillMidFill = Freeze(Color.FromRgb(0xFF, 0xB7, 0x4D));  // 60–85%
@@ -106,10 +108,11 @@ public partial class MeterWindow : Window
 
     public MeterWindow(ConfigService config, CombatParser parser, LootTracker loot,
         double opacity, IEnumerable<string> skills, bool skillsVisible,
-        bool procsVisible = false, bool soloMode = true)
+        bool procsVisible = false, bool soloMode = true, bool selfFolded = true)
     {
         InitializeComponent();
         _soloMode = soloMode;
+        _selfExpanded = !selfFolded;
 
         _parser = parser;
         _config = config;
@@ -226,7 +229,10 @@ public partial class MeterWindow : Window
         e.Handled = true; // don't start a window drag
         _selfExpanded = !_selfExpanded;
         Refresh();
+        SelfFoldChanged?.Invoke(!_selfExpanded);
     }
+
+    internal bool SelfFoldedForTest => !_selfExpanded;
 
     private void OnClear(object sender, RoutedEventArgs e)
     {

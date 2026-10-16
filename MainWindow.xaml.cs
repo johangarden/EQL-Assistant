@@ -1008,11 +1008,16 @@ public partial class MainWindow : Window
         _meter = new MeterWindow(_configService, _combat, _loot,
             _config.Overlay.Opacity,
             _config.Overlay.SkillTrackerSkills, _config.Overlay.SkillTrackerVisible,
-            _config.Overlay.ProcWatcherVisible, _config.Overlay.MeterSoloMode);
+            _config.Overlay.ProcWatcherVisible, _config.Overlay.MeterSoloMode, _config.Overlay.MeterSelfFolded);
         _meter.Resists = _resists;
         _meter.SoloModeChanged += solo =>
         {
             _config.Overlay.MeterSoloMode = solo;
+            _configService.SaveSettings(_config);
+        };
+        _meter.SelfFoldChanged += folded =>
+        {
+            _config.Overlay.MeterSelfFolded = folded;
             _configService.SaveSettings(_config);
         };
         _meter.Show();
