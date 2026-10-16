@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -37,7 +37,7 @@ public partial class MeterWindow : Window
     private readonly bool _showHealing = false;
     private bool _soloMode;
     private bool _petExpanded;
-    private bool _selfExpanded = true; // your split starts open; the pet's starts folded
+    private bool _selfExpanded; // your split opens as you left it — folded by default (16 Oct); the pet's starts folded
     private readonly MeterRowViewModel _selfHeaderVm = new();
 
     // The two total bars wear FIXED, distinct colors — the name-hash palette
@@ -82,6 +82,8 @@ public partial class MeterWindow : Window
 
     /// <summary>Raised when the SOLO/GROUP button flips, so the choice persists.</summary>
     public event Action<bool>? SoloModeChanged;
+    /// <summary>Your split folded (true) or open — the host remembers it.</summary>
+    public event Action<bool>? SelfFoldChanged;
 
     private static readonly Brush SkillLowFill = Freeze(Color.FromRgb(0xE5, 0x73, 0x73));  // < 60%
     private static readonly Brush SkillMidFill = Freeze(Color.FromRgb(0xFF, 0xB7, 0x4D));  // 60–85%
@@ -106,10 +108,11 @@ public partial class MeterWindow : Window
 
     public MeterWindow(ConfigService config, CombatParser parser, LootTracker loot,
         double opacity, IEnumerable<string> skills, bool skillsVisible,
-        bool procsVisible = false, bool soloMode = true)
+        bool procsVisible = false, bool soloMode = true, bool selfFolded = true)
     {
         InitializeComponent();
         _soloMode = soloMode;
+        _selfExpanded = !selfFolded;
 
         _parser = parser;
         _config = config;
@@ -219,6 +222,7 @@ public partial class MeterWindow : Window
 
     /// <summary>Selftest hooks: fold/unfold the solo header and read the rows.</summary>
     internal void SetSelfExpandedForTest(bool expanded) { _selfExpanded = expanded; Refresh(); }
+    internal void SetPetExpandedForTest(bool expanded) { _petExpanded = expanded; Refresh(); }
     internal IReadOnlyList<MeterRowViewModel> RowsForTest => _rows;
 
     private void SelfHeader_Click(object sender, MouseButtonEventArgs e)
@@ -226,7 +230,10 @@ public partial class MeterWindow : Window
         e.Handled = true; // don't start a window drag
         _selfExpanded = !_selfExpanded;
         Refresh();
+        SelfFoldChanged?.Invoke(!_selfExpanded);
     }
+
+    internal bool SelfFoldedForTest => !_selfExpanded;
 
     private void OnClear(object sender, RoutedEventArgs e)
     {
@@ -446,16 +453,24 @@ public partial class MeterWindow : Window
                 bool pet2 = isPet;
                 fills.Add(vm =>
                 {
-                    vm.Name = pet2 ? $"{_parser.ActivePet} (pet)" : _parser.SelfName.Trim();
+                    // The pet's total bar folds its own split out even here (owner, 16 Oct:
+                    // "I can only unfold the pet when I have myself unfolded").
+                    vm.Name = pet2 ? (_petExpanded ? "▼ " : "▶ ") + $"{_parser.ActivePet} (pet)" : _parser.SelfName.Trim();
                     vm.Fraction = total / top;
                     double pct = combined > 0 ? total / combined * 100 : 0;
                     vm.ValueText = $"{FormatDps(dur > 0 ? total / dur : 0)}  ({FormatNum(total)}, {pct:0}%)";
                     vm.Fill = pet2 ? PetBarFill : SelfBarFill;
-                    vm.Detail = "expand the header for the per-ability split";
-                    vm.IsFold = false;
+                    vm.Detail = pet2 ? "click to fold the pet's per-ability split in and out" : "expand the header for your per-ability split";
+                    vm.IsFold = pet2;
                     vm.Margin = new Thickness(0, 0, 0, 3);
                     vm.BarHeight = 22; // TOTAL bars, like the header
                 });
+                if (pet2 && _petExpanded)
+                {
+                    double petTop = pet.Count > 0 ? Math.Max(pet[0].Total, 1) : 1;
+                    foreach (var pr in pet.Take(MaxSoloRows))
+                        fills.Add(vm => FillAbilityVm(vm, pr, petTop, petTotal, new Thickness(16, 0, 0, 3)));
+                }
             }
         }
 

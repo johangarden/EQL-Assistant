@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace EQLOverlay.Models;
@@ -92,6 +92,10 @@ public sealed class OverlayConfig
     /// <summary>Meter scope: solo (your abilities ranked, pet collapsible) vs
     /// group (everyone the log shows, ranked). EQL is solo-first.</summary>
     public bool MeterSoloMode { get; set; } = true;
+
+    /// <summary>The meter's own split (your abilities ranked) folded to its header — how it
+    /// opens (owner, 16 Oct: "start in collapsed mode") and how you left it; a click flips it.</summary>
+    public bool MeterSelfFolded { get; set; } = true;
 
     /// <summary>Your pet's name — enables the pet line in the DPS meter's incoming footer.</summary>
     public string PetName { get; set; } = "";
