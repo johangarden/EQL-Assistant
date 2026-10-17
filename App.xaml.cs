@@ -4140,6 +4140,21 @@ public partial class App : Application
                 && ItemUpgrade.RouteCopies(2, 8) == "63 more +2 copies, or 16 copies filled to +4 (3 Majors each from +0)"
                 && ItemUpgrade.RouteCopies(0, 3) == "7 more +0 copies" && ItemUpgrade.RouteCopies(6, 7) == "1 more +6 copy" && ItemUpgrade.RouteCopies(0, 10) == "1023 more +0 copies, or 64 copies filled to +4 (3 Majors each from +0)");
         }
+        // SHOW ALL (17 Oct: Dagas sat fourth under the weapon picks and never showed): the slot header's badge lists
+        // the whole ranking; the pair's rest hangs under its last sub-slot.
+        {
+            var bv = tw.BisForTest!;
+            var wristNames = new HashSet<string> { "Pristine Studded Leather Bracer", "Lustrous Russet Bracer", "Vermiculated Bracelet", "Indicolite Bracer", "Insidious Manacle" };
+            int WristRows() => bv.BoardForTest.Children.OfType<Border>().Select(b => b.Child).OfType<StackPanel>().Count(sp => sp.Children.OfType<TextBlock>().Any(t => wristNames.Contains(t.Text)));
+            bool badge = bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text.StartsWith("SHOW ALL · ") == true));
+            bv.OpenForTest("WRIST1"); bv.OpenForTest("WRIST2");
+            int before = WristRows();
+            bv.ShowAllForTest("WRIST");
+            int after = WristRows();
+            bool top3 = bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text == "TOP 3"));
+            Check("bis: a slot header offers SHOW ALL · N when the ranking runs past the rows shown; it lists the rest and turns into TOP 3",
+                badge && after > before && after >= 5 && top3);
+        }
         // The ×N pills (3 Oct): a click cycles the pick's weight, the title and the score line follow, four clicks come round.
         {
             var bv = tw.BisForTest!;
