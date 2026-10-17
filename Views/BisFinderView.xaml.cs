@@ -49,6 +49,7 @@ public partial class BisFinderView : UserControl
     private readonly double[] _weights = (double[])BisFinder.DefaultWeights.Clone(); // the ×N pills (owner, 3 Oct: 3·2·1 was too steep)
     private bool _backstab; // weapons: only main-hand weapons with a backstab number
     private readonly Dictionary<string, bool> _fold = new(StringComparer.Ordinal); // explicit toggles
+    private readonly HashSet<string> _showAll = new(StringComparer.Ordinal); // slots showing every ranked item, not the top three (owner, 17 Oct: Dagas sat fourth)
 
     private static readonly Brush ChipOnBg = Freeze("#16283E");
     private static readonly Brush ChipOnFg = Freeze("#4FC3F7");
@@ -505,7 +506,7 @@ public partial class BisFinderView : UserControl
         // Slot headers fold (Johan, 2 Sep): a slot you already wear the best
         // of collapses to "HEAD  BiS"; a slot with an upgrade in storage opens
         // with "1 UPGRADE". Any header toggles on click.
-        void SlotHeader(string key, string label, bool open, bool upgrade, BisFinder.Projection? wouldBe = null)
+        void SlotHeader(string key, string label, bool open, bool upgrade, BisFinder.Projection? wouldBe = null, int hidden = 0, string? allKey = null)
         {
             Board.RowDefinitions.Add(new RowDefinition());
             var head = new TextBlock
@@ -518,6 +519,16 @@ public partial class BisFinderView : UserControl
             head.Inlines.Add(new Run(label.ToUpperInvariant()) { Foreground = open ? SlotFg : DimFg });
             Badge(head, upgrade ? "UPGRADE" : "BiS", upgrade ? UpFg : WornFg);
             if (wouldBe is not null) Badge(head, $"{wouldBe.Item.BaseName.ToUpperInvariant()} WOULD BEAT IT AT +{wouldBe.Tier}", UpFg); // folded slots still tell (owner, 5 Oct)
+            if (allKey is not null && (hidden > 0 || _showAll.Contains(allKey)))
+            {
+                // SHOW ALL · 4 opens the slot's whole ranking; TOP 3 folds it back to the picks and the nearest alternatives.
+                bool all = _showAll.Contains(allKey);
+                var more = Badge(head, all ? "TOP 3" : $"SHOW ALL · {hidden} MORE", HeadFg);
+                more.Cursor = System.Windows.Input.Cursors.Hand;
+                more.ToolTip = all ? "Back to the picks and the nearest alternatives" : $"{hidden} more ranked item(s) sit below the three shown — list them all";
+                string ak = allKey;
+                more.MouseLeftButtonDown += (_, e) => { e.Handled = true; if (!_showAll.Add(ak)) _showAll.Remove(ak); _fold[key] = true; Refresh(); };
+            }
             head.MouseLeftButtonDown += (_, _) =>
             {
                 _fold[key] = !open;
@@ -580,7 +591,7 @@ public partial class BisFinderView : UserControl
         // Every slot becomes one foldable entry — paired slots become TWO
         // (EAR 1, EAR 2 …), each with its own verdict. Upgrades list first,
         // then a divider, then the slots you already wear the best of.
-        var entries = new List<(string Key, string Label, bool Upgrade, BisFinder.Projection? WouldBe, Action Render)>();
+        var entries = new List<(string Key, string Label, bool Upgrade, BisFinder.Projection? WouldBe, int Hidden, string? AllKey, Action Render)>();
         // Under a slot's rows: the owned items that would be BiS at a higher tier (owner, 5 Oct), best first.
         void ProjectedRows(List<BisFinder.Projection> projected)
         {
@@ -615,11 +626,12 @@ public partial class BisFinderView : UserControl
 
             if (slot.Count == 1)
             {
-                entries.Add((slot.Key, slot.Label, upgrades.Count > 0, headline, () =>
+                bool all1 = _showAll.Contains(slot.Key);
+                var top = slot.Ranked.Take(3).Concat(slot.Ranked.Skip(3).Where(c => c.Worn)).ToList();
+                int hidden1 = slot.Ranked.Count - top.Count;
+                entries.Add((slot.Key, slot.Label, upgrades.Count > 0, headline, hidden1, slot.Key, () =>
                 {
-                    var shown = slot.Ranked.Take(3)
-                        .Concat(slot.Ranked.Skip(3).Where(c => c.Worn));
-                    foreach (var c in shown)
+                    foreach (var c in all1 ? slot.Ranked : top)
                         RenderRow(c, picks.Contains(c), upgrades.Contains(c));
                     ProjectedRows(projected);
                 }));
@@ -643,27 +655,32 @@ public partial class BisFinderView : UserControl
                 subSlots.Add((f, dispIx < displaced.Count ? displaced[dispIx++] : null));
             while (subSlots.Count < slot.Count) subSlots.Add((null, null));
 
+            // Rows the pair shows by default: each sub-slot's pick, what it displaces and one alternative.
+            var pairShown = new HashSet<BisFinder.Candidate>(subSlots.Select(x => x.Pick).Concat(subSlots.Select(x => x.Replaces)).Where(c => c is not null)!.Cast<BisFinder.Candidate>().Concat(alts.Take(subSlots.Count)));
+            var pairRest = slot.Ranked.Where(c => !pairShown.Contains(c)).ToList();
+            bool allPair = _showAll.Contains(slot.Key);
             for (int s = 0; s < subSlots.Count; s++)
             {
                 var (pick, replaces) = subSlots[s];
                 var alt = s < alts.Count ? alts[s] : null;
                 bool upgrade = pick is not null && upgrades.Contains(pick);
-                bool last = s == subSlots.Count - 1; // the pair's projections hang under its last sub-slot
-                entries.Add(($"{slot.Key}{s + 1}", $"{slot.Label} {s + 1}", upgrade, last ? headline : null, () =>
+                bool last = s == subSlots.Count - 1; // the pair's projections (and the rest of the ranking) hang under its last sub-slot
+                entries.Add(($"{slot.Key}{s + 1}", $"{slot.Label} {s + 1}", upgrade, last ? headline : null, last ? pairRest.Count : 0, last ? slot.Key : null, () =>
                 {
                     if (pick is not null) RenderRow(pick, true, upgrade);
                     if (replaces is not null) RenderRow(replaces, false, false);
                     if (alt is not null) RenderRow(alt, false, false);
+                    if (last && allPair) foreach (var c in pairRest) RenderRow(c, false, false);
                     if (last) ProjectedRows(projected);
                 }));
             }
         }
 
-        void Emit((string Key, string Label, bool Upgrade, BisFinder.Projection? WouldBe, Action Render) e)
+        void Emit((string Key, string Label, bool Upgrade, BisFinder.Projection? WouldBe, int Hidden, string? AllKey, Action Render) e)
         {
             // Weapons: three slots, room for all — open even when BiS (owner ruling).
             bool open = _fold.TryGetValue(e.Key, out bool o) ? o : (e.Upgrade || _weapons);
-            SlotHeader(e.Key, e.Label, open, e.Upgrade, e.WouldBe);
+            SlotHeader(e.Key, e.Label, open, e.Upgrade, e.WouldBe, e.Hidden, e.AllKey);
             if (open) e.Render();
         }
 
@@ -710,15 +727,17 @@ public partial class BisFinderView : UserControl
         return parts.Count > 0 ? string.Join(" · ", parts) : "—";
     }
 
-    private static void Badge(TextBlock host, string text, Brush fg)
+    private static Border Badge(TextBlock host, string text, Brush fg)
     {
         host.Inlines.Add(new Run("  "));
-        host.Inlines.Add(new InlineUIContainer(new Border
+        var badge = new Border
         {
             Background = BadgeBg, CornerRadius = new CornerRadius(7),
             Padding = new Thickness(6, 0, 6, 1),
             Child = new TextBlock { Text = text, FontSize = 9.5, FontWeight = FontWeights.SemiBold, Foreground = fg },
-        }) { BaselineAlignment = BaselineAlignment.Center });
+        };
+        host.Inlines.Add(new InlineUIContainer(badge) { BaselineAlignment = BaselineAlignment.Center });
+        return badge;
     }
 
     private void CellHost(UIElement child, int row, int col, Grid? host = null)
@@ -750,6 +769,8 @@ public partial class BisFinderView : UserControl
     internal Grid BoardHeadForTest => BoardHead;
     /// <summary>Unfold one slot entry ("WRIST2", "HEAD") — selftest and the render's EQL_BIS_OPEN.</summary>
     internal void OpenForTest(string key) { _fold[key] = true; Refresh(); }
+    /// <summary>List a slot's whole ranking ("WRIST", "PRIMARY") — selftest.</summary>
+    internal void ShowAllForTest(string slotKey) { _showAll.Add(slotKey); Refresh(); }
     internal Grid BoardForTest => Board;
 
     /// <summary>The place, the slot finder's way: a lane badge and the dump's words
