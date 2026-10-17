@@ -4141,19 +4141,23 @@ public partial class App : Application
                 && ItemUpgrade.RouteCopies(0, 3) == "7 more +0 copies" && ItemUpgrade.RouteCopies(6, 7) == "1 more +6 copy" && ItemUpgrade.RouteCopies(0, 10) == "1023 more +0 copies, or 64 copies filled to +4 (3 Majors each from +0)");
         }
         // SHOW ALL (17 Oct: Dagas sat fourth under the weapon picks and never showed): the slot header's badge lists
-        // the whole ranking; the pair's rest hangs under its last sub-slot.
+        // the whole ranking past the three shown, and turns into TOP 3. Five helmets a SHD can wear, all in the bank.
         {
-            var bv = tw.BisForTest!;
-            var wristNames = new HashSet<string> { "Pristine Studded Leather Bracer", "Lustrous Russet Bracer", "Vermiculated Bracelet", "Indicolite Bracer", "Insidious Manacle" };
-            int WristRows() => bv.BoardForTest.Children.OfType<Border>().Select(b => b.Child).OfType<StackPanel>().Count(sp => sp.Children.OfType<TextBlock>().Any(t => wristNames.Contains(t.Text)));
-            bool badge = bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text.StartsWith("SHOW ALL · ") == true));
-            bv.OpenForTest("WRIST1"); bv.OpenForTest("WRIST2");
-            int before = WristRows();
-            bv.ShowAllForTest("WRIST");
-            int after = WristRows();
-            bool top3 = bv.BoardForTest.Children.OfType<TextBlock>().Any(t => t.Inlines.OfType<InlineUIContainer>().Any(c => ((c.Child as Border)?.Child as TextBlock)?.Text == "TOP 3"));
-            Check("bis: a slot header offers SHOW ALL · N when the ranking runs past the rows shown; it lists the rest and turns into TOP 3",
-                badge && after > before && after >= 5 && top3);
+            var hv = new Views.BisFinderView();
+            hv.Init(new ItemStats(), null, "showall");
+            var helms = new[] { "Blood Lord's Crown", "Blood Ember Helm", "Banded Helm", "Bamboo Splint Coif", "Batfang Headband" };
+            var helmRows = helms.Select((n, i) => new InventoryStore.CarryRow(n, n.ToLowerInvariant(), $"Bank{i + 1}", 1, "bank", i + 1)).ToList();
+            hv.Update(helmRows, "SHD/SHM/ENC", "now");
+            var helmSet = new HashSet<string>(helms);
+            int HelmRows() => hv.BoardForTest.Children.OfType<Border>().Select(b => b.Child).OfType<StackPanel>().Count(sp => sp.Children.OfType<TextBlock>().Any(t => helmSet.Contains(t.Text)));
+            string? BadgeText(string prefix) => hv.BoardForTest.Children.OfType<TextBlock>().SelectMany(t => t.Inlines.OfType<InlineUIContainer>()).Select(c => ((c.Child as Border)?.Child as TextBlock)?.Text).FirstOrDefault(x => x is not null && x.StartsWith(prefix, StringComparison.Ordinal));
+            hv.OpenForTest("HEAD");
+            string? offer = BadgeText("SHOW ALL"); int shown3 = HelmRows();
+            hv.ShowAllForTest("HEAD");
+            string? back = BadgeText("TOP 3"); int shownAll = HelmRows();
+            // The helmet names also appear under the Any slots and in the would-be-BiS rows, so the proof is the DELTA: exactly the two hidden rows.
+            Check("bis: a slot header offers SHOW ALL · N MORE when the ranking runs past the three shown; it lists them all and turns into TOP 3",
+                offer == "SHOW ALL · 2 MORE" && back == "TOP 3" && shownAll == shown3 + 2);
         }
         // The ×N pills (3 Oct): a click cycles the pick's weight, the title and the score line follow, four clicks come round.
         {
