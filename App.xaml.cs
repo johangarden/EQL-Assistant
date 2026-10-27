@@ -4580,6 +4580,24 @@ public partial class App : Application
             EQLOverlay.MainWindow.SctLabel(new CombatParser.SctHit(CombatParser.SctKind.OutgoingPet, "slash", 60, CombatParser.SctFlavor.Melee, false)) == "slash (pet)"
             && EQLOverlay.MainWindow.SctLabel(new CombatParser.SctHit(CombatParser.SctKind.IncomingPet, "", 60, CombatParser.SctFlavor.Melee, false)) == "(pet)"
             && EQLOverlay.MainWindow.SctLabel(new CombatParser.SctHit(CombatParser.SctKind.OutgoingSelf, "slash", 60, CombatParser.SctFlavor.Melee, false)) == "slash");
+        // The beastlord's warder (27 Oct, the 26 Oct diag): "Thorrak`s warder" is two words, so it read as a mob and its
+        // damage left the meter. Your possessive is your pet by construction; its tell names it too.
+        {
+            var wp = new CombatParser { SelfName = "Thorrak" };
+            string told = "";
+            wp.PetDetected += n => told += n + ";";
+            wp.ProcessLine("[Mon Oct 26 22:31:45 2026] Thorrak`s warder told you, 'Attacking Arisen Thaumaturgist Master.'");
+            Check("pet: the warder's tell names it — the possessive form passes the pet-speech pattern",
+                wp.PetName == "Thorrak`s warder" && told == "Thorrak`s warder;" && wp.IsPet("Thorrak`s warder") && !wp.IsEnemyName("Thorrak`s warder"));
+            var wq = new CombatParser { SelfName = "Thorrak" };
+            wq.ProcessLine("[Mon Oct 26 22:31:50 2026] Thorrak`s warder slashes a Teir`Dal ranger for 60 points of damage.");
+            wq.ProcessLine("[Mon Oct 26 22:31:52 2026] Thorrak`s warder begins casting Blast of Frost.");
+            wq.ProcessLine("[Mon Oct 26 22:31:53 2026] Thorrak`s warder hit a Teir`Dal ranger for 90 points of cold damage by Blast of Frost.");
+            Check("pet: with no tell at all, the possessive still reads as the pet — its hits land under the pet, a Teir`Dal ranger is the mob",
+                wq.PetName == "Thorrak`s warder" && wq.ActivePet == "Thorrak`s warder" && wq.IsPet("Thorrak`s warder") && !wq.IsEnemyName("Thorrak`s warder")
+                && wq.IsEnemyName("a Teir`Dal ranger") && wq.GetAbilityRows("Thorrak`s warder").Sum(r => r.Total) == 150
+                && !wq.IsPet("Thorrak") && !wq.IsPet("Thorraks warder") && !wq.IsPet("Thorrak`s"));
+        }
     }
 
     /// <summary>Crowd control (14 Sep): the charm card and mez panel engine,

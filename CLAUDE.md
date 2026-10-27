@@ -206,7 +206,11 @@ the affected suites (with `-Wait`) before committing.
   one-word name that hit you/your pet or took your hits (learned per zone —
   Dread, Fright, Terror, 30 Sep) OR a raid target (`KnownEnemy`), which also
   names the pull over its adds; your own spell on yourself (Cannibalize) is
-  no fight. `RaidKills`, `LootTracker`,
+  no fight. PETS: a one-word name that spoke a pet phrase ("Jobaner told
+  you, 'Attacking X Master.'"), the charmed mob, or YOUR POSSESSIVE —
+  "Thorrak`s warder" / "Thorrak`s pet" is your pet by construction, two
+  words or not, and names the pet on first sight (27 Oct: the beastlord's
+  warder had read as a mob). `RaidKills`, `LootTracker`,
   `SkyQuests`, `QuestLines` (embedded `data/quest-lines.json`: multi-step
   weapon quests tracked as proven-condition SETS — kills, loot, sealed
   trades, said keywords; right-clicks are owner ticks — unless the step
