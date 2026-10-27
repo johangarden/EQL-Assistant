@@ -119,8 +119,10 @@ public sealed class CombatParser
     /// <summary>Raised (watcher thread) when a pet names itself yours.</summary>
     public event Action<string>? PetDetected;
 
+    // A summoned pet is one capitalised word (Jobaner); a beastlord's warder is the
+    // owner's possessive — "Thorrak`s warder told you, 'Attacking X Master.'" (26 Oct diag).
     private static readonly Regex PetSpeechRx = new(
-        @"^(?<pet>[A-Z][a-z]+) (?<via>says|told you), '(?<msg>.+)'$",
+        @"^(?<pet>[A-Z][a-z]+(?:[`']s [a-z]+)?) (?<via>says|told you), '(?<msg>.+)'$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly HashSet<string> PetSayPhrases = new(StringComparer.Ordinal)
@@ -2076,7 +2078,24 @@ public sealed class CombatParser
         (!string.IsNullOrWhiteSpace(PetName)
          && name.Equals(PetName.Trim(), StringComparison.OrdinalIgnoreCase))
         || (CharmedPet.Length > 0 && name.Trim().Equals(CharmedPet.Trim(), StringComparison.OrdinalIgnoreCase))
-        || _knownPets.Contains(name.Trim());
+        || _knownPets.Contains(name.Trim())
+        || IsOwnPossessive(name);
+
+    /// <summary>"Thorrak`s warder", "Thorrak`s pet": a name that is YOUR possessive is your pet
+    /// by construction — no tell needed (owner, 27 Oct: the beastlord's warder read as a mob, being
+    /// two words). The first sighting names the pet when nothing else has.</summary>
+    private bool IsOwnPossessive(string name)
+    {
+        string n = name.Trim();
+        string self = Self();
+        if (self.Length == 0 || self.Equals("You", StringComparison.OrdinalIgnoreCase)) return false;
+        if (n.Length <= self.Length + 3) return false;
+        if (!n.StartsWith(self, StringComparison.OrdinalIgnoreCase)) return false;
+        char ap = n[self.Length];
+        if ((ap != '`' && ap != '\'') || n[self.Length + 1] != 's' || n[self.Length + 2] != ' ') return false;
+        if (_knownPets.Add(n) && PetName.Trim().Length == 0) { PetName = n; PetDetected?.Invoke(n); }
+        return true;
+    }
 
     private static double Amount(Match m, string group) =>
         double.TryParse(m.Groups[group].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out double v)
