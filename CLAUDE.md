@@ -491,6 +491,21 @@ Timestamps: `[ddd MMM d(d) HH:mm:ss yyyy] `. Key bodies (see
   `NativeMethods.ForceForeground`. `string.GetHashCode` is per-process
   randomized — never use it for cross-process names (mutexes).
 
+## Data sweeps (new zones, new gear)
+
+`tools/data-sweeps/` (not built): `refresh-items.py fetch` reads every page
+under eqlwiki's Category:Items (about 230 API calls, resumable into
+`%TEMP%\eqlwiki-focus\all-wikitext.json`), `refresh-items.py build` rebuilds
+`data/item-stats.json` from them with `sweep-items.py`'s stats-block reader
+and prints the drift against HEAD field by field (read it — a parser quirk
+shows up as hundreds of same-shaped changes, a wiki edit as a few). Icons the
+table points at but `data/item-icons` lacks are fetched from the wiki's
+`File:Item NNN.png`. Focus effects: diff Category:Focus_Effects against
+`data/focus-effects.json` (the 29 Oct update script shows the merge rules —
+exaltation-only effects and weapon procs the wiki files there stay out, Minor
+Improved Damage stays off), then raise the family/tier counts in the engine
+suite's "focus: N families / M tiers" check. Full ritual 29 Oct 2026.
+
 ## Data & design credits
 
 Spell library, Plane of Sky quest data, and the duration-learning +

@@ -1,5 +1,5 @@
 {
-  "source": "eqlwiki.com Category:Focus_Effects pages (fetched 2026-08-17) + jmoyers/everquest-companion items.json (MIT, (c) Josh Moyers)",
+  "source": "eqlwiki.com Category:Focus_Effects pages (fetched 2026-08-17, new-zone gear re-swept 2026-10-29) + jmoyers/everquest-companion items.json (MIT, (c) Josh Moyers)",
   "families": [
     {
       "family": "Affliction Efficiency",
@@ -117,6 +117,19 @@
               "name": "McVaxius` Horn of War",
               "slot": "",
               "classes": ""
+            }
+          ]
+        },
+        {
+          "effect": "Brass Resonance 15",
+          "tier": 2,
+          "description": "Increases the power of brass instrument based bard songs by up to 140%.",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Denon's Horn of Disaster",
+              "slot": "PRIMARY SECONDARY",
+              "classes": "ALL"
             }
           ]
         }
@@ -566,6 +579,16 @@
               "name": "White Dragonscale Cloak",
               "slot": "BACK",
               "classes": "ALL"
+            },
+            {
+              "name": "Warstaff of Hope's Demise",
+              "slot": "PRIMARY",
+              "classes": "ROG SHM NEC WIZ MAG ENC"
+            },
+            {
+              "name": "Checkmate",
+              "slot": "EAR",
+              "classes": "WAR MNK ROG BER"
             }
           ]
         }
@@ -616,6 +639,44 @@
               "name": "Idol of the Underking",
               "slot": "RANGE PRIMARY SECONDARY",
               "classes": "ALL"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "Improved Vampirism",
+      "group": "spell",
+      "kind": "lifetap damage",
+      "tiers": [
+        {
+          "effect": "Improved Vampirism II",
+          "tier": 1,
+          "description": "Increases the damage of lifetaps by up to 25%. This bonus will decay on spells over level 44.",
+          "levelCap": 44,
+          "items": [
+            {
+              "name": "Wine Thief",
+              "slot": "",
+              "classes": ""
+            }
+          ]
+        },
+        {
+          "effect": "Improved Vampirism III",
+          "tier": 2,
+          "description": "Increases the damage of lifetaps by up to 25%. This bonus will decay on spells over level 55.",
+          "levelCap": 55,
+          "items": [
+            {
+              "name": "Bloodmoon",
+              "slot": "PRIMARY",
+              "classes": "SHD"
+            },
+            {
+              "name": "Dark Ironbound Tome",
+              "slot": "PRIMARY",
+              "classes": "SHD NEC"
             }
           ]
         }
@@ -805,6 +866,24 @@
               "name": "Nisch Mas Ilkvel",
               "slot": "SECONDARY",
               "classes": "CLR DRU SHM"
+            }
+          ]
+        },
+        {
+          "effect": "Mana Preservation III",
+          "tier": 3,
+          "description": "Reduces the mana cost of spells by up to 10%. This bonus will decay on spells over level 60.",
+          "levelCap": 60,
+          "items": [
+            {
+              "name": "Signet Ring of Lord Everling",
+              "slot": "FINGER",
+              "classes": "SHD NEC WIZ MAG ENC"
+            },
+            {
+              "name": "The Unbreakable Word",
+              "slot": "PRIMARY",
+              "classes": "CLR PAL"
             }
           ]
         }
@@ -1401,8 +1480,21 @@
       "kind": "wind instruments",
       "tiers": [
         {
-          "effect": "Wind Resonance 10",
+          "effect": "Wind Resonance 8",
           "tier": 1,
+          "description": "Increases the power of wind instrument based bard songs by up to 80%.",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Broken Minotaur Lord's Horn",
+              "slot": "",
+              "classes": ""
+            }
+          ]
+        },
+        {
+          "effect": "Wind Resonance 10",
+          "tier": 2,
           "description": "Increases the power of wind instrument based bard songs by up to 100%",
           "levelCap": null,
           "items": [
@@ -1414,8 +1506,21 @@
           ]
         },
         {
+          "effect": "Wind Resonance 11",
+          "tier": 3,
+          "description": "Increases the power of wind instrument based bard songs by up to 110%.",
+          "levelCap": null,
+          "items": [
+            {
+              "name": "Brahhms Horn",
+              "slot": "SECONDARY",
+              "classes": "BRD"
+            }
+          ]
+        },
+        {
           "effect": "Wind Resonance 14",
-          "tier": 2,
+          "tier": 4,
           "description": "Increases the power of wind instrument based bard songs by up to 140%",
           "levelCap": null,
           "items": [

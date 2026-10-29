@@ -3363,9 +3363,18 @@ public partial class App : Application
 
                 // ---- focus-effect audit --------------------------------------
                 var focus = new FocusEffects();
-                Check("focus: 24 families / 68 tiers load from the embedded table",
-                    focus.Families.Count == 24
-                    && focus.Families.Sum(f => f.Tiers.Count) == 68);
+                // 29 Oct 2026: the new zones' gear — Improved Vampirism (II, III), Mana Preservation III,
+                // Brass Resonance 15, Wind Resonance 8 and 11, two more Improved Damage III carriers.
+                Check("focus: 25 families / 74 tiers load from the embedded table",
+                    focus.Families.Count == 25
+                    && focus.Families.Sum(f => f.Tiers.Count) == 74);
+                Check("focus: the new-zone sweep — Mana Preservation III on the Signet Ring, Improved Vampirism a lifetap family of two tiers, Wind Resonance ordered 8 < 10 < 11 < 14",
+                    focus.EffectsOf("Signet Ring of Lord Everling +2").Any(e => e.Tier.Effect == "Mana Preservation III" && e.Tier.LevelCap == 60)
+                    && focus.Families.First(f => f.Name == "Improved Vampirism") is { Group: "spell", Tiers.Count: 2 } iv
+                    && iv.Tiers[1].Effect == "Improved Vampirism III" && iv.Tiers[1].TierNum == 2 && iv.Tiers[1].Items.Any(i => i.Name == "Bloodmoon" && i.Classes == "SHD")
+                    && focus.Families.First(f => f.Name == "Wind Resonance").Tiers.Select(t => t.Effect).SequenceEqual(new[] { "Wind Resonance 8", "Wind Resonance 10", "Wind Resonance 11", "Wind Resonance 14" })
+                    && focus.Families.First(f => f.Name == "Improved Damage").Tiers[2].Items.Any(i => i.Name == "Checkmate" && i.Slot == "EAR")
+                    && focus.Families.All(f => f.Name != "Heritage of Mistmoore" && f.Name != "Lifebite"));
                 // Minor Improved Damage (10% ≤20, one robe) is dropped by
                 // Johan's call — a twink curiosity that broke the columns.
                 Check("focus: Minor Improved Damage stays off the board",
