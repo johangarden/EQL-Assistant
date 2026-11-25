@@ -99,6 +99,9 @@ public sealed class QuestLines
         public string Warning { get; set; } = "";
         /// <summary>Who starts it and where ("Kurron Ni · The Overthere").</summary>
         public string Start { get; set; } = "";
+        /// <summary>The quest ends in TWO rewards that finish apart (the ranger's Swiftwind and
+        /// Earthcaller): no step vouches for the whole quest, only for what made its items.</summary>
+        public bool Parallel { get; set; }
         public List<Step> Steps { get; set; } = new();
     }
 
@@ -656,7 +659,7 @@ public sealed class QuestLines
         // paper for one hand-in) — so a step of a PARTED quest vouches only for the steps that
         // MADE what it consumed: whoever looted, was given or combined the items it hands in or
         // uses, and in turn what those consumed. The quest's last step vouches for everything.
-        if (s.Part.Length > 0 && !ReferenceEquals(s, q.Steps.LastOrDefault(x => !x.Optional)))
+        if (s.Part.Length > 0 && (q.Parallel || !ReferenceEquals(s, q.Steps.LastOrDefault(x => !x.Optional))))
         {
             var want = new Queue<string>(s.Handin.Concat(s.Bring).Select(n => Key(n.Name)));
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

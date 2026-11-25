@@ -482,7 +482,12 @@ these, so merged cross-machine history survives a reset).
   a proven step marks the steps that looted / were given / combined what it consumed, recursively —
   never "everything earlier" (parts run side by side); only the last step marks the whole quest. The
   view (`QuestLinesView.Pack`) opens epics on "Fits my combo" and folds the other classes to one line
-  each. In: SHD, SHM, ENC; the other twelve classes follow (no Beastlord page on the wiki).
+  each. In: all 15 classes the wiki has written up — 421 steps (no Beastlord page; Berserker is transcribed
+  from its narrative walkthrough). Two more matching laws for unverified names: a mob's leading
+  a/an/the is ignored (`KillSeen` — the wiki's "Spiroc Lord" is the game's "The Spiroc Lord") and a said
+  keyword matches with or without "?". `Quest.Parallel` (the ranger's Swiftwind + Earthcaller): no step
+  vouches for the whole quest. Hand-ticked kinds: buy · forage · ground · pickpocket · talk · cast ·
+  quest · give (a hand-in whose taker the wiki does not name).
 - **Session panel** (`SessionStats` + `SessionStatsWindow`): "this session"
   starts at the game's last "Welcome to EverQuest Legends!" — or at the
   owner's RESET when that is later (`SessionMark`, 25 Nov: NOT part of the

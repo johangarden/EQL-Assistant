@@ -3098,10 +3098,13 @@ public partial class App : Application
                     var e0 = new DateTime(2026, 12, 9, 20, 0, 0);
                     string EL(int sec, string body) => $"[{e0.AddSeconds(sec).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
                     Check("epics: the epics load as their own pack beside the three notable lines; the shadow knight's 33 steps count 20 — 13 are optional",
-                        eq.QuestsIn("epics").Count >= 7 && eq.QuestsIn("epics").All(q => q.Classes.Count == 1 && q.Steps.All(x => x.Part.Length > 0)) && eq.QuestsIn("").Count == 3 && shd.Pack == "epics" && shd.Steps.Count == 33
+                        eq.QuestsIn("epics").Count == 15 && eq.QuestsIn("epics").Select(q => q.Classes[0]).Distinct().Count() == 15
+                        && eq.QuestsIn("epics").Sum(q => q.Steps.Count) == 421
+                        && eq.QuestsIn("epics").All(q => q.Classes.Count == 1 && q.Reward.Length > 0 && q.RewardStats.Contains("Slot:", StringComparison.Ordinal) && q.Steps.All(x => x.Part.Length > 0 && x.Title.Length > 0))
+                        && eq.QuestsIn("").Count == 3 && shd.Pack == "epics" && shd.Steps.Count == 33
                         && eq.RequiredCount(shd) == 20 && eq.NextStep(shd) == St(shd, "ghoulbane")
                         && eq.NoticeOf("epics").StartsWith("Before Kunark", StringComparison.Ordinal) && eq.NoticeOf("") == ""
-                        && eq.FooterOf("epics").Contains("Still to come", StringComparison.Ordinal)
+                        && eq.FooterOf("epics").Contains("Beastlord", StringComparison.Ordinal)
                         && shd.Steps.Select(x => x.Part).Distinct().Count() == 5 && shd.Warning.Length > 0 && shd.Start == "Kurron Ni · The Overthere");
 
                     // Any one of the three golems, and the sword — but a kill and a drop start nothing.
@@ -3163,6 +3166,17 @@ public partial class App : Application
                     Check("epics: the wiki's \"Spiroc Lord\" is the game's \"The Spiroc Lord\", and \"What favor\" is said with or without its question mark",
                         eq.IsDone(war, St(war, "favor")) && eq.IsDone(war, St(war, "wingblade"))
                         && QuestLines.KillSeen(eq.PartialOf(brd, St(brd, "tendril")), "Amygdalan warrior") && !eq.IsDone(brd, St(brd, "tendril")));
+                    // The ranger's epic ends in two swords that finish apart: Earthcaller's hand-in vouches for the chain
+                    // behind the Refined Mithril Blade and the emerald — never for Swiftwind, though it is the last step.
+                    var rng = eq.Quests.First(q => q.Key == "epic-rng");
+                    eq.ProcessLine(EL(84, "You offered 1 Shattered Emerald of Corruption to Xanuusus."));
+                    eq.ProcessLine(EL(84, "You offered 1 Refined Mithril Blade to Xanuusus."));
+                    eq.ProcessLine(EL(85, "You complete the trade with Xanuusus."));
+                    Check("epics: the ranger's two swords finish apart — Earthcaller's hand-in marks its own chain and leaves Swiftwind's alone",
+                        rng.Parallel && eq.IsDone(rng, St(rng, "earthcaller")) && eq.IsDone(rng, St(rng, "blade")) && eq.IsDone(rng, St(rng, "ancients"))
+                        && eq.IsDone(rng, St(rng, "jaeil")) && eq.IsDone(rng, St(rng, "sphere")) && eq.IsDone(rng, St(rng, "emerald"))
+                        && !eq.IsDone(rng, St(rng, "swiftwind")) && !eq.IsDone(rng, St(rng, "stone")) && !eq.IsDone(rng, St(rng, "telin")) && !eq.IsComplete(rng)
+                        && !eq.IsDone(eq.Quests.First(q => q.Key == "epic-dru"), St(eq.Quests.First(q => q.Key == "epic-dru"), "xanuusus")));
                     // The wizard's last step is an unnamed hand-in: proven by the trade, it still vouches for the whole quest.
                     eq.ProcessLine(EL(90, "You offered 1 Ro's Breath to Camin."));
                     eq.ProcessLine(EL(91, "You complete the trade with Camin."));
@@ -3186,7 +3200,7 @@ public partial class App : Application
                     var epicView = skyE.LinesViewForTest;
                     var listTexts = epicView.ListTextsForTest.ToList();
                     var detail = epicView.DetailTextsForTest.ToList();
-                    Check("epics view: the tab shows the pack — notice up, your two epics as cards, the rest folded under \"N other classes\", the shadow knight selected",
+                    Check("epics view: the tab shows the pack — notice up, your combo's epics as cards, the rest folded under \"N other classes\", the shadow knight selected",
                         skyE.Pack == "epics" && epicView.Pack == "epics" && epicView.NoticeForTest.StartsWith("Before Kunark", StringComparison.Ordinal)
                         && listTexts.Contains("Shadow Knight Epic") && listTexts.Contains("Shaman Epic") && !listTexts.Contains("Enchanter Epic")
                         && !listTexts.Contains("Druid Epic") && listTexts.Any(t => t.Contains(" other classes", StringComparison.Ordinal)) && epicView.SelectedKey == "epic-shd");

@@ -79,12 +79,13 @@ def combine(id, title, where, items, makes=(), **kw): return step(id, title, "co
 def by_hand(id, title, kind, npc="", zone="", **kw): return step(id, title, kind, npc, zone, **kw)   # buy · forage · ground · pickpocket · talk
 def unnamed(id, title, npc, zone, **kw): return step(id, title, "handin", npc, zone, trade=True, **kw)
 
-def quest(key, name, cls, reward, level, start, wiki, steps, warning="", note=""):
+def quest(key, name, cls, reward, level, start, wiki, steps, warning="", note="", parallel=False):
     _seen.clear(); part("")
     q = OrderedDict(key=key, name=name, pack="epics", reward=reward, rewardStats=reward_stats(reward), classes=[cls],
                     minLevel=level, start=start, wiki="https://eqlwiki.com/" + wiki.replace(" ", "_"))
     if warning: q["warning"] = warning
     if note: q["note"] = note
+    if parallel: q["parallel"] = True   # two rewards: no step vouches for the whole quest
     q["steps"] = steps()
     assert all(s["title"] for s in q["steps"])
     return q
@@ -488,6 +489,395 @@ def war():
                   ["Jeweled Dragon Head Hilt", "Finely Crafted Dragon Head Hilt", "Ancient Sword Blade", "Ancient Blade"], ["Jagged Blade of War"])]
     return S
 
+# ---- Cleric ----------------------------------------------------------------------------
+def clr():
+    S = []
+    part("Orb of Frozen Water")
+    S += [kill("crown", "Kill Lord Bergurgle for his crown", ["Lord Bergurgle"], "Lake Rathetear", ["Lord Bergurgle's Crown"]),
+          give("shmendrik", "Hand Shmendrik Lavawalker the crown", "Shmendrik Lavawalker", "Lake Rathetear", ["Lord Bergurgle's Crown"], get=["Oil of Fennin Ro"],
+               note="Natasha Whitewater appears nearby and leaves after five minutes unless she is fighting."),
+          kill("flame", "Kill Shmendrik Lavawalker, then the Spirit of Flame he becomes", ["Shmendrik Lavawalker", "A Spirit of Flame"], "Lake Rathetear",
+               ["Damaged Goblin Crown"], caution="Do not let Natasha Whitewater land the last hit — the corpse vanishes."),
+          give("natasha-crown", "Hand Natasha Whitewater the Damaged Goblin Crown", "Natasha Whitewater", "Lake Rathetear", ["Damaged Goblin Crown"], get=["Ornate Sea Shell"]),
+          give("omat-shell", "Hand Omat Vastsea the Ornate Sea Shell", "Omat Vastsea", "Timorous Deep", ["Ornate Sea Shell"], get=["Coral Statue of Tarew"]),
+          give("seeker", "Hand a Seeker the Coral Statue of Tarew", "A Seeker", "Temple of Solusek Ro", ["Coral Statue of Tarew"],
+               note="The seeker becomes A Plasmatic Priest."),
+          kill("priest", "Kill A Plasmatic Priest for his robe", ["A Plasmatic Priest"], "Temple of Solusek Ro", ["Blood Soaked Plasmatic Priest Robe"]),
+          give("frozen", "Hand Omat Vastsea the priest's robe", "Omat Vastsea", "Timorous Deep", ["Blood Soaked Plasmatic Priest Robe"], get=["Orb of Frozen Water"],
+               note="This puts Natasha inside the hut — the wiki suggests waiting until you hold Lord Gimblox's Signet Ring.")]
+    part("Orb of Clear Water")
+    S += [kill("gimblox", "Kill Lord Gimblox for his signet ring", ["Lord Gimblox"], "Solusek's Eye", ["Lord Gimblox's Signet Ring"]),
+          give("natasha-ring", "Hand Natasha Whitewater the signet ring", "Natasha Whitewater", "Timorous Deep", ["Lord Gimblox's Signet Ring"],
+               get=["Ornate Sea Shell"], note="A second shell; Natasha leaves."),
+          give("naxot", "Hand Naxot Deepwater the second Ornate Sea Shell", "Naxot Deepwater", "Burning Woods", ["Ornate Sea Shell"], get=["Message to Natasha"],
+               note="This spawns Ixiblat Fer."),
+          kill("ixiblat", "Kill Ixiblat Fer for his sceptre", ["Ixiblat Fer"], "Burning Woods", ["Sceptre of Ixiblat Fer"]),
+          kill("scroll", "Kill Overking Bathezid for a Singed Scroll", ["Overking Bathezid"], "Chardok", ["Singed Scroll"]),
+          give("clear", "Hand Omat Vastsea the sceptre and the scroll", "Omat Vastsea", "Timorous Deep", ["Sceptre of Ixiblat Fer", "Singed Scroll"],
+               get=["Orb of Clear Water"])]
+    part("Orb of Vapor")
+    S += [give("message", "Hand Natasha Whitewater the Message to Natasha", "Natasha Whitewater", "Timorous Deep", ["Message to Natasha"], get=["Shimmering Pearl"]),
+          give("zordak", "Hand Zordak Ragefire the Shimmering Pearl", "Zordak Ragefire", "Nagafen's Lair", ["Shimmering Pearl"],
+               note="He returns as Zordakalicus Ragefire and attacks."),
+          kill("heart", "Kill Zordakalicus Ragefire for his heart", ["Zordakalicus Ragefire"], "Nagafen's Lair", ["Heart of Zordak Ragefire"]),
+          give("vapor", "Hand Omat Vastsea the Heart of Zordak Ragefire", "Omat Vastsea", "Timorous Deep", ["Heart of Zordak Ragefire"], get=["Orb of Vapor"],
+               caution="Only once all three orbs are ready — this spawns Jhassad for the final hand-in.")]
+    part("Water Sprinkler of Nem Ankh")
+    S += [give("jhassad", "Hand Jhassad Oceanson the three orbs", "Jhassad Oceanson", "Timorous Deep",
+               ["Orb of Frozen Water", "Orb of Clear Water", "Orb of Vapor"], get=["Orb of Triumvirate"], note="This spawns the Avatar of Water in the lake."),
+          give("avatar", "Hand the Avatar of Water the Orb of Triumvirate", "Avatar of Water", "Timorous Deep", ["Orb of Triumvirate"],
+               get=["Water Sprinkler of Nem Ankh"])]
+    return S
+
+# ---- Monk ------------------------------------------------------------------------------
+def mnk():
+    S = []
+    part("Robe of the Lost Circle")
+    S += [kill_any("lost-circle", "Kill Brother Zephyl or Brother Qwinn for the Robe of the Lost Circle", ["Brother Zephyl", "Brother Qwinn"],
+                   "Rathe Mountains · Southern Karana", ["Robe of the Lost Circle"],
+                   note="Or make it: the wiki lists a sub-quest — headband and Code of Zan Fi to Qwinn, sash and The Idol to Zephyl, then two sewing-kit combines.")]
+    part("Robe of the Whistling Fists")
+    S += [kill("pipe-fi", "Kill an iksar betrayer for A Metal Pipe (Fi)", ["an iksar betrayer"], "Chardok", ["A Metal Pipe"]),
+          kill("pipe-zan", "Kill a drolvarg pawbuster for A Metal Pipe (Zan)", ["a drolvarg pawbuster"], "Karnor's Castle", ["A Metal Pipe"]),
+          give("balatin", "Hand Brother Balatin the two pipes and the robe", "Brother Balatin", "Dreadlands", [("A Metal Pipe", 2), "Robe of the Lost Circle"],
+               get=["Robe of the Whistling Fists"], caution="He must not be aggressive: charm or sneak work, pacify does not.")]
+    part("The Book")
+    S += [step("immortals", "Loot the book Immortals from a named mob", "loot", "", "Skyfire Mountains", loot=["Immortals"]),
+          give("danl", "Hand Tomekeeper Danl the Immortals", "Tomekeeper Danl", "Erudin, the library", ["Immortals"], get=["Danl's Reference"],
+               caution="Never hand in while feigned — he eats the book."),
+          give("lheao", "Hand Lheao the reference and the Robe of the Whistling Fists", "Lheao", "Timorous Deep, the hidden cove",
+               ["Danl's Reference", "Robe of the Whistling Fists"], get=["Celestial Fists"],
+               note="The book is called Celestial Fists too. Leave this until late if you want to keep wearing the robe.")]
+    part("The Four Fists")
+    S += [say("eejag-call", "Challenge Eejag through a fire sprite", "a fire sprite", "Lavastorm Mountains", "I challenge Eejag"),
+          kill("eejag", "Kill Eejag for a Charred Scale", ["Eejag"], "Lavastorm Mountains", ["Charred Scale"]),
+          give("presence", "Hand a presence the Charred Scale", "a presence", "Plane of Sky, Dojorn's island", ["Charred Scale"], note="This spawns Gwan."),
+          kill("gwan", "Kill Gwan for the Breath of Gwan", ["Gwan"], "Plane of Sky", ["Breath of Gwan"]),
+          give("ogre", "Hand a sleeping ogre the Breath of Gwan", "a sleeping ogre", "Mines of Nurga", ["Breath of Gwan"],
+               caution="He must con indifferent — sneak up from behind. This spawns Trunt."),
+          kill("trunt", "Kill Trunt for his head", ["Trunt"], "Mines of Nurga", ["Trunt's Head"]),
+          give("deep", "Show Deep the head", "Deep", "Lake Rathetear, the underwater caverns", ["Trunt's Head"], note="She gives it back and leaves.", optional=True),
+          give("eye", "Hand the Astral Projection Trunt's Head", "Astral Projection", "The Overthere", ["Trunt's Head"], get=["Eye of Kaiaren"]),
+          give("vorash-call", "Hand the Astral Projection by the lake the Eye of Kaiaren", "Astral Projection", "Lake of Ill Omen, the shore at -1900, -950",
+               ["Eye of Kaiaren"], note="This spawns Vorash and Deep; Xenevorash appears when Vorash dies."),
+          kill("fangs", "Kill Vorash, then Xenevorash, for the Demon Fangs", ["Vorash", "Xenevorash"], "Lake of Ill Omen", ["Demon Fangs"])]
+    part("Kaiaren")
+    S += [give("kaiaren-book", "Hand the book to the mad Kaiaren, then to the sane one", "Kaiaren", "Trakanon's Teeth", ["Celestial Fists"],
+               get=["Book of Celestial Fists"],
+               note="The mad one, at the ruins near Sebilis, hands it back and hits you; the sane one then appears in an empty hut by the lake.",
+               caution="Have the Demon Fangs in hand first — the sane Kaiaren leaves within 30 minutes, and the first book is spent."),
+          give("fists", "Hand the sane Kaiaren the Book of Celestial Fists and the Demon Fangs", "Kaiaren", "Trakanon's Teeth",
+               ["Book of Celestial Fists", "Demon Fangs"], get=["Celestial Fists"])]
+    return S
+
+# ---- Rogue -----------------------------------------------------------------------------
+def rog():
+    S = []
+    part("Stanos' Pouch")
+    S += [say("pouch", "Tell Malka Rale you can help", "Malka Rale", "Qeynos Aqueducts, +380, -210", "I can help", get=["Stanos' Pouch"],
+              note="She appears at 8pm game time.", optional=True)]
+    part("Pickpocketing and Travel")
+    S += [by_hand("p-top", "Pickpocket the Stained Parchment Top from Founy Jestands", "pickpocket", "Founy Jestands", "North Kaladim", get=["Stained Parchment Top"]),
+          by_hand("p-bottom", "Pickpocket the Stained Parchment Bottom from Tani N`Mar", "pickpocket", "Tani N`Mar", "Neriak Third Gate", get=["Stained Parchment Bottom"]),
+          give("anson", "Hand Anson Mcbale the pouch and ask to see Stanos", "Anson Mcbale", "Highpass Hold", ["Stanos' Pouch"],
+               note="Say \"I need to see Stanos\" — Stanos Herkanor appears."),
+          give("combined", "Hand Stanos Herkanor both halves of the parchment", "Stanos Herkanor", "Highpass Hold",
+               ["Stained Parchment Top", "Stained Parchment Bottom"], get=["Combined Parchment"]),
+          give("eldreth", "Hand Eldreth the parchment, 100 platinum and two bottles of milk", "Eldreth", "Lake Rathetear",
+               ["Combined Parchment", ("Bottle of Milk", 2)], coins="100 platinum", get=["Scribbled Parchment"], note="The two bottles must be unstacked."),
+          give("yendar", "Hand Yendar Starpyre the Scribbled Parchment", "Yendar Starpyre", "Steamfont Mountains", ["Scribbled Parchment"], get=["Tattered Parchment"])]
+    part("Book of Souls")
+    S += [by_hand("book", "Pick up the Book of Souls", "ground", "", "Plane of Hate, -60, +325", get=["Book of Souls"], note="A ten-hour ground spawn.")]
+    part("Renux")
+    S += [give("renux-call", "Hand Yendar Starpyre the Tattered Parchment and the Book of Souls", "Yendar Starpyre", "Steamfont Mountains",
+               ["Tattered Parchment", "Book of Souls"], note="This spawns Renux."),
+          kill("renux", "Kill Renux Herkanor for the Translated Parchment", ["Renux Herkanor"], "Steamfont Mountains", ["Translated Parchment"],
+               note="She may also drop the Jagged Diamond Dagger.")]
+    part("General V`Ghera")
+    S += [give("box", "Hand Stanos Herkanor the Translated Parchment", "Stanos Herkanor", "Highpass Hold", ["Translated Parchment"], get=["Sealed Box"]),
+          by_hand("general-call", "Hand the Sealed Box to one of the dark elves", "give", "any of the dark elves", "Kithicor Forest", bring=["Sealed Box"],
+                  note="This spawns General V`ghera.",
+                  caution="Sneak, but do not hide or go invisible — and check for an indifferent con before the hand-in, or the progress is lost."),
+          kill("general", "Kill General V`ghera for the General's Pouch", ["General V`ghera"], "Kithicor Forest", ["General's Pouch"],
+               note="He may also drop the Cazic Quill.")]
+    part("Cazic Quill — if it did not drop", optional=True)
+    S += [step("robes", "Collect the four robes", "loot", "", "Kedge Keep · Splitpaw · Lower Guk · Ocean of Tears",
+               loot=["Robe of the Kedge", "Robe of the Ishva", "Shining Metallic Robes", "Robe of the Oracle"],
+               note="Phinigel Autropos, The Ishva Mal, the ghoul arch magus and the Oracle of K`Arnon carry them."),
+          give("quill", "Hand Vilnius the Small the four robes", "Vilnius the Small", "Western Plains of Karana",
+               ["Robe of the Kedge", "Robe of the Ishva", "Shining Metallic Robes", "Robe of the Oracle"], get=["Cazic Quill"])]
+    part("Jagged Diamond Dagger — if it did not drop", optional=True)
+    S += [step("blades", "Collect the four blades", "loot", "", "Nagafen's Lair · Lower Guk · Everfrost Peaks",
+               loot=["Fleshripper", "Painbringer", "Mithril Two-Handed Sword", "Gigantic Zweihander"],
+               note="The Solusek kobold king, the Kobold champion, the froglok king and Karg Icebear carry them."),
+          give("dagger", "Hand Vilnius the Small the four blades", "Vilnius the Small", "Western Plains of Karana",
+               ["Fleshripper", "Painbringer", "Mithril Two-Handed Sword", "Gigantic Zweihander"], get=["Jagged Diamond Dagger"])]
+    part("Ragebringer")
+    S += [give("rage", "Hand Stanos Herkanor the pouch, the dagger and the quill", "Stanos Herkanor", "Highpass Hold",
+               ["General's Pouch", "Jagged Diamond Dagger", "Cazic Quill"], get=["Ragebringer"])]
+    return S
+
+# ---- Paladin ---------------------------------------------------------------------------
+def pal():
+    S = []
+    part("Fiery Avenger")
+    S += [by_hand("avenger", "Finish The Fiery Avenger", "quest", "", "", get=["Fiery Avenger"],
+                  note="It stands in the Notable quests tab, with SoulFire before it.")]
+    part("Gleaming Crested Breastplate")
+    S += [kill("t-breastplate", "Kill a thought destroyer for the Tainted Darksteel Breastplate", ["thought destroyer"], "Plane of Hate", ["Tainted Darksteel Breastplate"]),
+          say("dinner", "Tell Jark you will get his dinner", "Jark", "North Kaladim", "I will get your dinner", get=["Cold Plate of Beef and Bread"],
+              note="Nella Stonebraids appears in the temple area — ask her \"Do you have Jark's Dinner?\"."),
+          give("crystal", "Hand Jark the Cold Plate of Beef and Bread", "Jark", "North Kaladim", ["Cold Plate of Beef and Bread"], get=["Pure Crystal"]),
+          give("g-breastplate", "Hand Reklon Gnallen the tainted breastplate and the crystal", "Reklon Gnallen", "Erudin, the temple of Quellious",
+               ["Tainted Darksteel Breastplate", "Pure Crystal"], get=["Gleaming Crested Breastplate"])]
+    part("Gleaming Crested Sword")
+    S += [kill("t-sword", "Kill the Keeper of the Tombs for the Tainted Darksteel Sword", ["Keeper of the Tombs"], "The Hole", ["Tainted Darksteel Sword"]),
+          say("bucket", "Tell a peasant woman you will take it to him", "a peasant woman", "West Freeport, -190, -725", "I will take it to him", get=["Bucket of Water"]),
+          give("joshua", "Hand Joshua the Bucket of Water", "Joshua", "West Freeport, the back of the bakery", ["Bucket of Water"], get=["Bucket of Pure Water"]),
+          give("g-sword", "Hand Reklon Gnallen the tainted sword and the pure water", "Reklon Gnallen", "Erudin, the temple of Quellious",
+               ["Tainted Darksteel Sword", "Bucket of Pure Water"], get=["Gleaming Crested Sword"])]
+    part("Gleaming Crested Shield")
+    S += [kill("t-shield", "Kill Kirak Vil for the Tainted Darksteel Shield", ["Kirak Vil"], "Nektulos Forest", ["Tainted Darksteel Shield"]),
+          give("g-shield", "Hand Elia the Pure the tainted shield", "Elia the Pure", "Felwithe", ["Tainted Darksteel Shield"], get=["Gleaming Crested Shield"])]
+    part("Mark of Atonement")
+    S += [give("mark", "Hand Reklon Gnallen the three gleaming pieces", "Reklon Gnallen", "Erudin, the temple of Quellious",
+               ["Gleaming Crested Shield", "Gleaming Crested Breastplate", "Gleaming Crested Sword"], get=["Mark of Atonement"])]
+    part("Fiery Defender")
+    S += [give("defender", "Hand Irak Altil the Mark of Atonement and the Fiery Avenger", "Irak Altil", "Plane of Fear", ["Mark of Atonement", "Fiery Avenger"],
+               get=["Fiery Defender"], note="A wandering skeleton.")]
+    return S
+
+# ---- Necromancer -----------------------------------------------------------------------
+def nec():
+    S = []
+    part("Symbol of the Apprentice")
+    S += [hail("venenzi", "Venenzi Oberzendi", "Nektulos Forest", optional=True),
+          hail("kazen", "Kazen Fecae", "Lake Rathetear", optional=True),
+          kill("edwin", "Kill Sir Edwin Motte and loot his head", ["Sir Edwin Motte"], ""),
+          unnamed("apprentice", "Hand Kazen Fecae the head", "Kazen Fecae", "Lake Rathetear", get=["Symbol of the Apprentice"])]
+    part("Symbol of the Serpent")
+    S += [give("twisted", "Hand Venenzi Oberzendi the Symbol of the Apprentice", "Venenzi Oberzendi", "Nektulos Forest", ["Symbol of the Apprentice"],
+               get=["Twisted Symbol of the Apprentice"]),
+          kill("najena", "Kill Najena for the Flowing Black Robe", ["Najena"], "Najena", ["Flowing Black Robe"]),
+          give("moss", "Hand Venenzi the Flowing Black Robe", "Venenzi Oberzendi", "Nektulos Forest", ["Flowing Black Robe"], get=["Rolling Stone Moss"]),
+          give("emkel", "Hand Emkel Kabae the moss and the twisted symbol", "Emkel Kabae", "Lake Rathetear",
+               ["Rolling Stone Moss", "Twisted Symbol of the Apprentice"], get=["Symbol of the Serpent"])]
+    part("Symbol of Testing")
+    S += [give("ssess", "Hand Ssessthrass the Symbol of the Serpent", "Ssessthrass", "Swamp of No Hope", ["Symbol of the Serpent"], get=["Scaled Symbol of the Serpent"]),
+          kill_any("herb", "Kill the sarnak herbalist for the Manisi Herb", ["Grand Herbalist Mak`ha", "Royal Sarnak Herbalist"], "Chardok", ["Manisi Herb"]),
+          give("refined", "Hand Ssessthrass the herb and the scaled symbol", "Ssessthrass", "Swamp of No Hope", ["Manisi Herb", "Scaled Symbol of the Serpent"],
+               note="He returns the refined herb."),
+          unnamed("testing", "Hand Emkel Kabae the refined herb", "Emkel Kabae", "Lake Rathetear", get=["Symbol of Testing"])]
+    part("Symbol of Insanity")
+    S += [give("kazen-testing", "Hand Kazen Fecae the Symbol of Testing", "Kazen Fecae", "Lake Rathetear", ["Symbol of Testing"],
+               note="Or kill Kazen Fecae instead — his wiki page describes the fight.", optional=True),
+          kill("golem", "Kill a bone golem", ["a bone golem"], "Lake Rathetear, the small inlet east of Emkel"),
+          kill("failed", "Kill a failed apprentice", ["a failed apprentice"], "Lake Rathetear"),
+          kill("soul", "Kill A tortured soul for the Symbol of Insanity", ["A tortured soul"], "Lake Rathetear", ["Symbol of Insanity"])]
+    part("Gkzzallk in a Box")
+    S += [give("journal", "Hand Drendico Metalbones the Symbol of Insanity", "Drendico Metalbones", "Timorous Deep", ["Symbol of Insanity"],
+               note="He gives you the journal."),
+          by_hand("jzil", "Speak to Jzil GSix", "talk", "Jzil GSix", "Plane of Sky"),
+          step("disc", "Loot a Silver Disc on the second island", "loot", "", "Plane of Sky", loot=["Silver Disc"], note="An azarack and the other second-island mobs."),
+          step("feathers", "Loot Spiroc Feathers on the third island", "loot", "", "Plane of Sky", loot=["Spiroc Feathers"],
+               note="A gorgalask and the other third-island mobs."),
+          kill("cape", "Kill the Keeper of Souls for the Black Silk Cape", ["Keeper of Souls"], "Plane of Sky", ["Black Silk Cape"]),
+          give("cloak", "Hand Jzil GSix the disc, the feathers and the cape", "Jzil GSix", "Plane of Sky", ["Silver Disc", "Spiroc Feathers", "Black Silk Cape"],
+               get=["Cloak of Spiroc Feathers"]),
+          step("eye", "Loot the Eye of Innoruuk from the Hate mini-bosses", "loot", "", "Plane of Hate", loot=["Eye of Innoruuk"]),
+          step("slime", "Loot the Slime Blood of Cazic Thule", "loot", "", "Plane of Fear", loot=["Slime Blood of Cazic Thule"],
+               note="From the golems, or Cazic Thule himself."),
+          give("reagents", "Hand Drendico the cloak, the eye, the slime blood and the journal", "Drendico Metalbones", "Timorous Deep",
+               ["Cloak of Spiroc Feathers", "Eye of Innoruuk", "Slime Blood of Cazic Thule"], note="He gives you the prepared reagents box."),
+          unnamed("tome", "Hand Kazen Fecae the reagents box", "Kazen Fecae", "Lake Rathetear", get=["Tome of Instruction"]),
+          give("gkzzallk", "Hand Gkzzallk the Tome of Instruction", "Gkzzallk", "Plane of Sky", ["Tome of Instruction"], get=["Gkzzallk in a Box"],
+               caution="This despawns the first island's boss and blocks a normal Sky raid until respawn — never do it on another guild's slot unasked.")]
+    part("Scythe of the Shadowed Soul")
+    S += [give("scythe", "Hand Kazen Fecae Gkzzallk in a Box", "Kazen Fecae", "Lake Rathetear", ["Gkzzallk in a Box"], get=["Scythe of the Shadowed Soul"])]
+    return S
+
+# ---- Magician --------------------------------------------------------------------------
+def mag():
+    S = []
+    part("The Beginning", optional=True)
+    S += [by_hand("rykas", "Find Rykas for a Token of Mastery", "talk", "Rykas", "Lake Rathetear", get=["Token of Mastery"]),
+          give("jahsohn-token", "Hand Jahsohn Aksot the Token of Mastery", "Jahsohn Aksot", "West Commonlands", ["Token of Mastery"])]
+    part("Words of Magi`kot")
+    S += [kill("page1", "Kill an enraged dread wolf for page 1", ["enraged dread wolf"], "Kithicor Forest", ["Torn Page of Magi`kot pg. 1"]),
+          kill("page2", "Kill tentacle terrors for page 2", ["a tentacle terror"], "Estate of Unrest", ["Torn Page of Magi`kot pg. 2"]),
+          kill("page3", "Kill a bloodthirsty ghoul for page 3", ["a bloodthirsty ghoul"], "Lower Guk", ["Torn Page of Magi`kot pg. 3"]),
+          give("words", "Hand Jahsohn Aksot the three torn pages", "Jahsohn Aksot", "West Commonlands",
+               ["Torn Page of Magi`kot pg. 1", "Torn Page of Magi`kot pg. 2", "Torn Page of Magi`kot pg. 3"], get=["Words of Magi`kot"])]
+    part("Power of the Elements")
+    S += [kill("p-wind", "Kill a gypsy dancer for the Power of Wind", ["a gypsy dancer"], "Castle Mistmoore", ["Power of Wind"]),
+          kill_any("p-fire", "Kill a lava or blazing elemental for the Power of Fire", ["Lava elemental", "Blazing Elemental"], "Solusek's Eye", ["Power of Fire"]),
+          kill_any("p-water", "Kill a ravener for the Power of Water", ["famished ravener", "Hungered Ravener", "Gorged Ravener"], "Kaesora", ["Power of Water"]),
+          kill_any("p-earth", "Kill a fairy guard for the Power of Earth", ["A Fairy Guard", "a faerie guard"], "Lesser Faydark", ["Power of Earth"]),
+          give("elements", "Hand Walnan the four powers", "Walnan", "Butcherblock Mountains", ["Power of Wind", "Power of Fire", "Power of Water", "Power of Earth"],
+               get=["Power of the Elements"])]
+    part("Words of Mastery")
+    S += [step("m-pages", "Loot the four Torn Pages of Mastery", "loot", "", "Najena · Cazic Thule",
+               loot=["Torn Page of Mastery Earth", "Torn Page of Mastery Fire", "Torn Page of Mastery Water", "Torn Page of Mastery Wind"],
+               note="A Magician and A Goblin Magician in Najena, or an alligator in Cazic Thule."),
+          give("mastery", "Hand Akksstaff the four pages", "Akksstaff", "Najena",
+               ["Torn Page of Mastery Earth", "Torn Page of Mastery Fire", "Torn Page of Mastery Water", "Torn Page of Mastery Wind"], get=["Words of Mastery"])]
+    part("Power of the Orb")
+    S += [give("orb-power", "Hand Rykas the two Words and the Power of the Elements", "Rykas", "Lake Rathetear",
+               ["Words of Magi`kot", "Power of the Elements", "Words of Mastery"], get=["Power of the Orb"])]
+    part("Element of Fire")
+    S += [kill("torch", "Kill Neh'Ashiir for the Torch of the Elements", ["Neh'Ashiir"], "City of Mist", ["Torch of the Elements"]),
+          kill_any("embers", "Kill Gylton, Phurzikon or Nezekezena for Burning Embers", ["Gylton", "Phurzikon", "Nezekezena"], "Burning Woods", ["Burning Embers"],
+                   note="Listed from easiest to hardest."),
+          kill("wand", "Kill Undertow for the Blazing Wand", ["Undertow"], "Kedge Keep", ["Blazing Wand"]),
+          give("e-fire", "Hand Jennus Lyklobar the Power of the Orb and the three fire items", "Jennus Lyklobar", "Skyfire Mountains",
+               ["Power of the Orb", "Torch of the Elements", "Burning Embers", "Blazing Wand"], get=["Element of Fire"])]
+    part("Element of Earth")
+    S += [kill("s-earth", "Kill Magi P`Tasa for the earth staff", ["Magi P`Tasa"], "Plane of Hate", ["Staff of Elemental Mastery: Earth"]),
+          kill("dirt", "Kill Slixin Klex for the Dirt of Underfoot", ["Slixin Klex"], "Burning Woods", ["Dirt of Underfoot"]),
+          by_hand("shovel", "Quest for the Shovel of Ponz", "quest", "", "", get=["Shovel of Ponz"]),
+          by_hand("broom", "Quest for the Broom of Trilon", "quest", "", "", get=["Broom of Trilon"]),
+          give("e-earth", "Hand Tiblner Milnik the four earth items", "Tiblner Milnik", "Firiona Vie",
+               ["Staff of Elemental Mastery: Earth", "Dirt of Underfoot", "Shovel of Ponz", "Broom of Trilon"], get=["Element of Earth"])]
+    part("Element of Water")
+    S += [kill("s-water", "Kill Phinigel Autropos for the water staff", ["Phinigel Autropos"], "Kedge Keep", ["Staff of Elemental Mastery: Water"]),
+          kill("tears", "Kill Captain Rottgrime for the Tears of Erollisi", ["Captain Rottgrime"], "The Overthere", ["Tears of Erollisi"]),
+          kill("rain", "Kill Tarbul Earthstrider for the Rain of Karana", ["Tarbul Earthstrider"], "East Karana", ["Rain of Karana"]),
+          give("e-water", "Hand Jinalis Andir the three water items", "Jinalis Andir", "Dagnor's Cauldron",
+               ["Staff of Elemental Mastery: Water", "Tears of Erollisi", "Rain of Karana"], get=["Element of Water"])]
+    part("Element of Wind")
+    S += [step("crown", "Loot the Crown of Elemental Mastery on the seventh island", "loot", "", "Plane of Sky", loot=["Crown of Elemental Mastery"]),
+          step("binder", "Loot the Elemental Binder", "loot", "", "The Hole", loot=["Elemental Binder"]),
+          kill("cloak", "Kill Quillmane for the Pegasus Feather Cloak", ["Quillmane"], "South Karana", ["Pegasus Feather Cloak"]),
+          give("e-wind", "Hand Kihun Solstin the three wind items", "Kihun Solstin", "Plane of Sky",
+               ["Crown of Elemental Mastery", "Elemental Binder", "Pegasus Feather Cloak"], get=["Element of Wind"])]
+    part("Orb of Mastery")
+    S += [give("master", "Hand the Master of Elements the four Elements, then scribe and cast Summon Orb", "Master of Elements", "Plane of Sky",
+               ["Element of Fire", "Element of Earth", "Element of Water", "Element of Wind"], get=["Spell: Summon Orb", "Orb of Mastery"],
+               note="If he is not up, hail Kihun Solstin and say \"I want to see the master\".")]
+    return S
+
+# ---- Ranger ----------------------------------------------------------------------------
+def rng():
+    S = []
+    part("The Shiny Tin Bowl")
+    S += [say("telin", "Ask Telin Darkforest what action", "Telin Darkforest", "Burning Woods", "What action", get=["Worn note"]),
+          give("faelin", "Hand Faelin Bloodbriar the Worn note", "Faelin Bloodbriar", "Greater Faydark", ["Worn note"], get=["Faelin`s Ring"],
+               note="She has to be spawned."),
+          give("giz", "Hand Giz X`Tin Faelin`s Ring", "Giz X`Tin", "Kithicor Forest", ["Faelin`s Ring"], get=["Dark Metal Coin"]),
+          give("telin-coin", "Hand Telin Darkforest the Dark Metal Coin", "Telin Darkforest", "Burning Woods", ["Dark Metal Coin"], get=["Worn Dark Metal Coin"]),
+          give("althele", "Hand Althele the Worn Dark Metal Coin", "Althele", "East Karana", ["Worn Dark Metal Coin"], get=["Braided Grass Amulet"],
+               note="She sends you to Sionae, who shows on track."),
+          give("sionae", "Show Sionae the Braided Grass Amulet", "Sionae", "East Karana", ["Braided Grass Amulet"], get=["Frayed Braided Grass Amulet"]),
+          give("nuien", "Show Nuien the Frayed Braided Grass Amulet", "Nuien", "East Karana", ["Frayed Braided Grass Amulet"], note="It comes back."),
+          give("teloa", "Show Teloa the Frayed Braided Grass Amulet", "Teloa", "East Karana", ["Frayed Braided Grass Amulet"],
+               caution="This spawns the Dark Elf Corruptor and two Dark Elf Reavers, and they run almost as fast as Spirit of Wolf."),
+          kill("corruptor", "Kill the Dark Elf Corruptor for the Fleshbound Tome", ["Dark Elf Corruptor"], "East Karana", ["Fleshbound Tome"]),
+          give("althele-tome", "Hand Althele the Fleshbound Tome", "Althele", "East Karana", ["Fleshbound Tome"], get=["Earth Stained Note"]),
+          give("ella-note", "Hand Ella Foodcrafter the Earth Stained Note", "Ella Foodcrafter", "Misty Thicket", ["Earth Stained Note"], get=["Shiny Tin Bowl"])]
+    part("The Hardened Mixture")
+    S += [by_hand("forage", "Forage the four ingredients", "forage", "", "Everfrost · Greater Faydark · Innothule Swamp · Misty Thicket",
+                  get=["Chilled Tundra Root", "Ripened Heartfruit", "Speckled Molded Mushroom", "Sweetened Mudroot"], note="One from each zone, in that order."),
+          combine("mixture", "Combine the four ingredients in the Shiny Tin Bowl", "In the Shiny Tin Bowl",
+                  ["Chilled Tundra Root", "Ripened Heartfruit", "Speckled Molded Mushroom", "Sweetened Mudroot"], ["Hardened Mixture"],
+                  caution="Keep the Shiny Tin Bowl — the Refined Mithril Blade needs it again.")]
+    part("The Runecrested Bowl")
+    S += [by_hand("alrik", "Talk to Alrik Farsight for a Crushed Pot", "talk", "Alrik Farsight", "Timorous Deep", get=["Crushed Pot"]),
+          give("farios", "Hand Farios Elianos the Crushed Pot", "Farios Elianos", "Felwithe", ["Crushed Pot"], get=["Grocery List"]),
+          give("nora", "Hand Merchant Nora the Grocery List", "Merchant Nora", "Northern Felwithe", ["Grocery List"], get=["Bag of Provisions"]),
+          give("farios-bag", "Hand Farios Elianos the Bag of Provisions", "Farios Elianos", "Felwithe", ["Bag of Provisions"], get=["Receipt"]),
+          give("pattern", "Hand Alrik Farsight the Receipt", "Alrik Farsight", "Timorous Deep", ["Receipt"], get=["Ancient Pattern"]),
+          by_hand("rose", "Forage a Rose of Firiona", "forage", "", "Firiona Vie", get=["Rose of Firiona"]),
+          give("merdan", "Hand Merdan Fleetfoot the Rose of Firiona", "Merdan Fleetfoot", "Surefall Glade", ["Rose of Firiona"], get=["Wood Painting"],
+               note="Ask him \"Who is Niera?\" first."),
+          give("skeleton", "Hand a human skeleton the Wood Painting", "a human skeleton", "Frontier Mountains", ["Wood Painting"], get=["Silver Chained Locket"]),
+          give("niera", "Hand Niera Farbreeze the Silver Chained Locket", "Niera Farbreeze", "Surefall Glade", ["Silver Chained Locket"], get=["Platinum Speckled Powder"]),
+          kill("reaver", "Kill a black reaver for a Jade Reaver", ["a black reaver"], "City of Mist", ["Jade Reaver"]),
+          give("kinlo", "Hand Kinlo Strongarm the Jade Reaver", "Kinlo Strongarm", "North Kaladim", ["Jade Reaver"], get=["Enchanted Clay"]),
+          combine("bowl", "Combine the pattern, the powder and the clay on a pottery wheel", "On a pottery wheel",
+                  ["Ancient Pattern", "Platinum Speckled Powder", "Enchanted Clay"], ["Runecrested Bowl"])]
+    part("Swiftwind")
+    S += [give("stone", "Hand Ella Foodcrafter the mixture and the bowl", "Ella Foodcrafter", "Misty Thicket", ["Hardened Mixture", "Runecrested Bowl"],
+               get=["Softly Glowing Stone"]),
+          by_hand("globe", "Cast a Summoned: Firefly Globe", "cast", "", "anywhere, at night", get=["Summoned: Firefly Globe"],
+                  note="A level 1 druid spell, castable only at night (7pm to 4am); the globe does not last."),
+          by_hand("res", "Buy a scroll of Resurrection", "buy", "A cleric spell vendor", "", get=["Spell: Resurrection"], note="The level 49 cleric spell."),
+          give("remains", "Hand Venril Sathir Remains the Firefly Globe", "Venril Sathir Remains", "Karnor's Castle", ["Summoned: Firefly Globe"],
+               note="This spawns the Spirit of Venril Sathir."),
+          give("vs-spirit", "Hand the Spirit of Venril Sathir the Resurrection scroll", "Spirit of Venril Sathir", "Karnor's Castle", ["Spell: Resurrection"],
+               note="This spawns Venril Sathir."),
+          kill("vs", "Kill Venril Sathir for a Pulsing Green Stone", ["Venril Sathir"], "Karnor's Castle", ["Pulsing Green Stone"]),
+          give("foloal", "Hand Foloal Stormforest the two stones", "Foloal Stormforest", "Firiona Vie", ["Pulsing Green Stone", "Softly Glowing Stone"],
+               get=["Warmly Glowing Stone"]),
+          give("longsword", "Hand Telin Darkforest the Warmly Glowing Stone", "Telin Darkforest", "Burning Woods", ["Warmly Glowing Stone"], get=["Ancient Longsword"]),
+          give("usbak", "Hand Usbak the Old the Ancient Longsword", "Usbak the Old", "North Kaladim", ["Ancient Longsword"], get=["Refined Ancient Sword"],
+               note="Kinlo Strongarm calls Usbak when he takes the Hammer of the Ancients — see the Refined Mithril Blade part."),
+          give("swiftwind", "Hand the Refined Ancient Sword to Telin, then to Faelin Bloodbriar", "Telin Darkforest", "Burning Woods", ["Refined Ancient Sword"],
+               get=["Swiftwind"], npcs=["Telin Darkforest", "Faelin Bloodbriar"], note="Telin hands it back and Faelin appears; she gives you Swiftwind.")]
+    part("Refined Mithril Blade")
+    S += [kill("sphere", "Kill essence tamers for a Swirling Sphere of Color", ["an essence tamer"], "Plane of Sky", ["Swirling Sphere of Color"]),
+          give("jaeil-call", "Hand Jaeil the Wretched the Shiny Tin Bowl", "Jaeil the Wretched", "The Hole", ["Shiny Tin Bowl"], note="This spawns Jaeil the Insane."),
+          kill("jaeil", "Kill Jaeil the Insane for the Soulbound Hammer", ["Jaeil the Insane"], "The Hole", ["Soulbound Hammer"]),
+          give("mairee", "Hand Mairee Silentone the Soulbound Hammer", "Mairee Silentone", "Erudin Palace", ["Soulbound Hammer"], get=["Dwarven Smiths Hammer"]),
+          give("ancients", "Hand Mairee the smith's hammer and the sphere", "Mairee Silentone", "Erudin Palace", ["Dwarven Smiths Hammer", "Swirling Sphere of Color"],
+               get=["Hammer of the Ancients"]),
+          give("ore", "Hand Kinlo Strongarm the Hammer of the Ancients", "Kinlo Strongarm", "North Kaladim", ["Hammer of the Ancients"], get=["Small bit of Mithril Ore"],
+               caution="This calls Usbak the Old, and he leaves again — hold the Ancient Longsword for him before you do it."),
+          give("blade", "Hand Kinlo Strongarm the Small bit of Mithril Ore", "Kinlo Strongarm", "North Kaladim", ["Small bit of Mithril Ore"], get=["Refined Mithril Blade"])]
+    part("Earthcaller")
+    S += [step("emerald", "Loot a Shattered Emerald of Corruption", "loot", "", "Plane of Hate", loot=["Shattered Emerald of Corruption"],
+               note="From the mini-bosses (a 72-hour respawn) or Innoruuk."),
+          give("earthcaller", "Hand Xanuusus the emerald and the Refined Mithril Blade", "Xanuusus", "North Karana",
+               ["Shattered Emerald of Corruption", "Refined Mithril Blade"], get=["Earthcaller"])]
+    return S
+
+# ---- Berserker -------------------------------------------------------------------------
+def ber():
+    S = []
+    KERAS = "Lake of Ill Omen, -110, -3400"
+    part("Axe Me No Questions")
+    S += [say("keras", "Tell Keras McArik you wish to take this great stride", "Keras McArik", KERAS, "I wish to take this great stride",
+              get=["Throwing Axe of the Spirit", "Medal of Blood"], note="Say \"I wish to master the fires\" first.")]
+    part("Trial of Blood")
+    S += [give("axefall", "Hand Lingering Axefall the Throwing Axe of the Spirit", "Lingering Axefall", "Lake of Ill Omen, +65, +2490",
+               ["Throwing Axe of the Spirit"], note="He does not answer hails. He hands you three Bore Axes; ask what he was sent to defeat."),
+          kill("bloodbeast", "Kill the Impervious Bloodbeast for a tooth", ["Impervious Bloodbeast"], "Lake of Ill Omen", ["Bloodbeast Tooth"],
+               note="Stay at range and throw the Bore Axes; hail Axefall for three more."),
+          give("blood", "Hand Keras the tooth and the Medal of Blood", "Keras McArik", KERAS, ["Bloodbeast Tooth", "Medal of Blood"], get=["Medal of Mirages"])]
+    part("Trial of Mirages")
+    S += [give("mardic", "Hand Mardic Crimsonsteel the sealed note", "Mardic Crimsonsteel", "Field of Bone, +2115, +3625", ["A Sealed Note for Mardic"],
+               note="Keras gives you the note when you say you are ready for this challenge. Mardic sends you to a sealed room."),
+          kill("image", "Kill the Berserker's Image, alone", ["Berserker's Image"], "a sealed room", ["Axe of Lost Souls"],
+               note="It pauses at intervals so you can bandage. Mardic gives you the Image Essence afterwards."),
+          give("mirages", "Hand Keras the Image Essence and the Medal of Mirages", "Keras McArik", KERAS, ["Image Essence", "Medal of Mirages"], get=["Medal of Strategy"])]
+    part("Trial of Strategy")
+    S += [give("treanik", "Hand Treanik Ireblade the note", "Treanik Ireblade", "Dagnor's Cauldron, -1585, +210", ["Note for Treanik"]),
+          kill("praklion", "Kill Praklion of the Cauldron for Treanik's axe", ["Praklion of the Cauldron"], "Dagnor's Cauldron, -525, -1400", ["Treanik's Tarnished Axe"]),
+          give("trinket", "Hand Treanik her Tarnished Axe", "Treanik Ireblade", "Dagnor's Cauldron", ["Treanik's Tarnished Axe"], get=["A Bone Trinket"]),
+          give("strategy", "Hand Keras the trinket and the Medal of Strategy", "Keras McArik", KERAS, ["A Bone Trinket", "Medal of Strategy"], get=["Medal of Fervid Rage"])]
+    part("Trial of Fervid Rage")
+    S += [kill("imp", "Kill the Ireblind Imp for the Burning Essence of Rage", ["Ireblind Imp"], "Plane of Fear", ["Burning Essence of Rage"],
+               note="Kill scarelings until the Enraged Imp appears; its death calls the Ireblind Imp.",
+               caution="The Ireblind Imp has near-zonewide aggro and an area mesmerize."),
+          give("rage", "Hand Keras the essence and the Medal of Fervid Rage", "Keras McArik", KERAS, ["Medal of Fervid Rage", "Burning Essence of Rage"],
+               get=["McArik Reagent Satchel"])]
+    part("Trial of Hunting")
+    S += [kill("liver", "Kill the Disease-Ridden Gorilla for a Decaying Liver", ["Disease-Ridden Gorilla"], "Emerald Jungle", ["Decaying Liver"],
+               note="Its placeholder is a tottering ape near -1525, -90."),
+          kill("paw", "Kill the Gnashing Kobold for its paw", ["Gnashing Kobold"], "Stonebrunt Mountains", ["Gnashing Kobold Paw"],
+               note="Its placeholder is A Kobold at +1885, +2340."),
+          kill("gland", "Kill the Reeking Skunk for a Scent Gland", ["Reeking Skunk"], "Toxxulia Forest", ["Scent Gland"]),
+          combine("dust", "Combine the three with a Philter of Major Translocation in the satchel", "In the McArik Reagent Satchel",
+                  ["Decaying Liver", "Gnashing Kobold Paw", "Scent Gland", "Philter of Major Translocation"], ["Bag of Image Essence Dust"],
+                  note="A shaman makes the philter."),
+          give("hunting", "Hand Keras the bag and your medal", "Keras McArik", KERAS, ["Bag of Image Essence Dust"], get=["Medal of Mastery"])]
+    part("Trial of Mastery")
+    S += [step("hopeful", "Pay the Lurking Hopeful 1000 platinum", "handin", "Lurking Hopeful", "Warsliks Woods, +175, +630", coins="1000 platinum",
+               note="She is there from 11pm to 7am game time, then leaves."),
+          step("tome", "Kill the goblin up the river and loot A Maniac's Garbled Tome", "loot", "", "Warsliks Woods", loot=["A Maniac's Garbled Tome"],
+               note="Three waves of frantic goblins, then ferocious goblins, a minute a wave. Bring melee help and levitation."),
+          give("axe", "Hand Keras the tome and the Medal of Mastery", "Keras McArik", KERAS, ["Medal of Mastery", "A Maniac's Garbled Tome"], get=["Kerasian Axe of Ire"])]
+    return S
+
 QUESTS = [
     quest("epic-shd", "Shadow Knight Epic", "SHD", "Innoruuk's Curse", 46, "Kurron Ni · The Overthere", "Shadow Knight Epic Quest", shd,
           warning="Con INDIFFERENT to every hand-in NPC before you press Trade: items in the window, then Hide or invisibility, then check the con. A hand-in at a worse con is eaten.",
@@ -506,6 +896,21 @@ QUESTS = [
           note="The wiki's page does not name Solomen's note, Challice's ring or Arantir's bag; those steps tick on the trade or by hand."),
     quest("epic-war", "Warrior Epic", "WAR", "Jagged Blade of War", 46, "Kargek Redblade · East Freeport", "Warrior Epic Quest", war,
           note="The same combine can make the Blade of Strategy and the Blade of Tactics instead."),
+    quest("epic-clr", "Cleric Epic", "CLR", "Water Sprinkler of Nem Ankh", 46, "Shmendrik Lavawalker · Lake Rathetear", "Cleric Epic Quest", clr,
+          warning="Natasha Whitewater leaves five minutes after she appears in Lake Rathetear unless she is fighting — have each hand-in ready."),
+    quest("epic-mnk", "Monk Epic", "MNK", "Celestial Fists", 46, "Tomekeeper Danl · Erudin", "Monk Epic Quest", mnk,
+          note="The book from Lheao and the final reward are both called Celestial Fists."),
+    quest("epic-rog", "Rogue Epic", "ROG", "Ragebringer", 46, "Malka Rale · Qeynos Aqueducts", "Rogue Epic Quest", rog,
+          note="The quill and the dagger can drop from General V`ghera and Renux; the two optional parts are the long way round."),
+    quest("epic-pal", "Paladin Epic", "PAL", "Fiery Defender", 46, "Irak Altil · Plane of Fear", "Paladin Epic Quest", pal),
+    quest("epic-nec", "Necromancer Epic", "NEC", "Scythe of the Shadowed Soul", 46, "Venenzi Oberzendi · Nektulos Forest", "Necromancer Epic Quest", nec,
+          note="The wiki's page does not link Sir Edwin's head, the refined herb, the journal or the reagents box; those steps tick on the trade or by hand."),
+    quest("epic-mag", "Magician Epic", "MAG", "Orb of Mastery", 46, "Rykas · Lake Rathetear", "Magician Epic Quest", mag),
+    quest("epic-rng", "Ranger Epic", "RNG", "Swiftwind", 46, "Telin Darkforest · Burning Woods", "Ranger Epic Quest", rng, parallel=True,
+          warning="Usbak the Old appears only when Kinlo Strongarm takes the Hammer of the Ancients, and leaves again — hold the Ancient Longsword for him first.",
+          note="Two swords: Swiftwind and Earthcaller. They share the bowl and Usbak, and finish apart."),
+    quest("epic-ber", "Berserker Epic", "BER", "Kerasian Axe of Ire", 46, "Keras McArik · Lake of Ill Omen", "Berserker Epic Quest", ber,
+          note="Transcribed from the wiki's walkthrough; it has no checklist."),
 ]
 
 DOC = OrderedDict(
@@ -513,8 +918,7 @@ DOC = OrderedDict(
     pack="epics",
     notice="Before Kunark (8 Dec): these steps come from eqlwiki's classic-era walkthroughs and are unverified in EQ Legends. "
            "A name the game spells differently will not tick by itself — tick the step by hand; the steps get corrected once the epics are live.",
-    footer="7 of 15 class epics so far. Still to come: Berserker, Cleric, Magician, Monk, Necromancer, Paladin, Ranger, Rogue. "
-           "eqlwiki has no Beastlord epic page yet.",
+    footer="All 15 class epics eqlwiki has written up. It has no Beastlord epic page yet.",
     quests=QUESTS)
 
 OUT = os.path.join(ROOT, "data", "epic-quests.json")

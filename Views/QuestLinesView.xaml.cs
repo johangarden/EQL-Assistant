@@ -746,7 +746,9 @@ public partial class QuestLinesView : UserControl
             return s.Kind switch
             {
                 "combine" => "the wiki does not name what this makes — tick it once the combine is done",
-                "buy" or "forage" or "ground" or "pickpocket" or "talk" => "the log prints nothing it could be told by — tick it yourself",
+                "buy" or "forage" or "ground" or "pickpocket" or "talk" or "cast" => "the log prints nothing it could be told by — tick it yourself",
+                "give" => "the wiki does not name who takes it — tick it yourself",
+                "quest" => "a quest of its own — tick it once you hold the reward",
                 _ => "tick it yourself",
             };
         return "checks itself off on " + Join(bits) + (s.Trade && s.Handin.Count == 0 ? " (the wiki does not name the item)" : "");
@@ -765,7 +767,7 @@ public partial class QuestLinesView : UserControl
             bits.Add(s.Kind switch
             {
                 "combine" => "COMBINE", "buy" => "BUY", "forage" => "FORAGE", "ground" => "PICK UP",
-                "pickpocket" => "PICKPOCKET", "talk" => "TALK", var k => k.ToUpperInvariant(),
+                "pickpocket" => "PICKPOCKET", "talk" => "TALK", "give" => "HAND IN", var k => k.ToUpperInvariant(),
             });
         return string.Join(" · ", bits);
     }

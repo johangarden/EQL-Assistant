@@ -2,7 +2,7 @@
  "credit": "Epic quest steps transcribed from eqlwiki.com's class epic pages; step-tracking design EQL Assistant.",
  "pack": "epics",
  "notice": "Before Kunark (8 Dec): these steps come from eqlwiki's classic-era walkthroughs and are unverified in EQ Legends. A name the game spells differently will not tick by itself — tick the step by hand; the steps get corrected once the epics are live.",
- "footer": "7 of 15 class epics so far. Still to come: Berserker, Cleric, Magician, Monk, Necromancer, Paladin, Ranger, Rogue. eqlwiki has no Beastlord epic page yet.",
+ "footer": "All 15 class epics eqlwiki has written up. It has no Beastlord epic page yet.",
  "quests": [
   {
    "key": "epic-shd",
@@ -3825,6 +3825,3371 @@
       },
       {
        "name": "Ancient Blade",
+       "count": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "epic-clr",
+   "name": "Cleric Epic",
+   "pack": "epics",
+   "reward": "Water Sprinkler of Nem Ankh",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 32\nDMG: 20\nSTA: +10 CHA: +15 WIS: +25 MANA: +100\nSV FIRE: +10 SV DISEASE: +10 SV COLD: +10 SV MAGIC: +10 SV POISON: +10\nEffect: Reviviscence (Must Equip, Casting Time: 10.0, Req Level 50)\nWT: 8.0 Size: MEDIUM\nClass: CLR\nRace: ALL",
+   "classes": [
+    "CLR"
+   ],
+   "minLevel": 46,
+   "start": "Shmendrik Lavawalker · Lake Rathetear",
+   "wiki": "https://eqlwiki.com/Cleric_Epic_Quest",
+   "warning": "Natasha Whitewater leaves five minutes after she appears in Lake Rathetear unless she is fighting — have each hand-in ready.",
+   "steps": [
+    {
+     "id": "crown",
+     "title": "Kill Lord Bergurgle for his crown",
+     "kind": "kill",
+     "npc": "Lord Bergurgle",
+     "zone": "Lake Rathetear",
+     "part": "Orb of Frozen Water",
+     "kill": [
+      "Lord Bergurgle"
+     ],
+     "loot": [
+      "Lord Bergurgle's Crown"
+     ]
+    },
+    {
+     "id": "shmendrik",
+     "title": "Hand Shmendrik Lavawalker the crown",
+     "kind": "handin",
+     "npc": "Shmendrik Lavawalker",
+     "zone": "Lake Rathetear",
+     "part": "Orb of Frozen Water",
+     "get": [
+      "Oil of Fennin Ro"
+     ],
+     "handin": [
+      {
+       "name": "Lord Bergurgle's Crown",
+       "count": 1
+      }
+     ],
+     "note": "Natasha Whitewater appears nearby and leaves after five minutes unless she is fighting."
+    },
+    {
+     "id": "flame",
+     "title": "Kill Shmendrik Lavawalker, then the Spirit of Flame he becomes",
+     "kind": "kill",
+     "npc": "Shmendrik Lavawalker",
+     "zone": "Lake Rathetear",
+     "part": "Orb of Frozen Water",
+     "kill": [
+      "Shmendrik Lavawalker",
+      "A Spirit of Flame"
+     ],
+     "loot": [
+      "Damaged Goblin Crown"
+     ],
+     "caution": "Do not let Natasha Whitewater land the last hit — the corpse vanishes."
+    },
+    {
+     "id": "natasha-crown",
+     "title": "Hand Natasha Whitewater the Damaged Goblin Crown",
+     "kind": "handin",
+     "npc": "Natasha Whitewater",
+     "zone": "Lake Rathetear",
+     "part": "Orb of Frozen Water",
+     "get": [
+      "Ornate Sea Shell"
+     ],
+     "handin": [
+      {
+       "name": "Damaged Goblin Crown",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "omat-shell",
+     "title": "Hand Omat Vastsea the Ornate Sea Shell",
+     "kind": "handin",
+     "npc": "Omat Vastsea",
+     "zone": "Timorous Deep",
+     "part": "Orb of Frozen Water",
+     "get": [
+      "Coral Statue of Tarew"
+     ],
+     "handin": [
+      {
+       "name": "Ornate Sea Shell",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "seeker",
+     "title": "Hand a Seeker the Coral Statue of Tarew",
+     "kind": "handin",
+     "npc": "A Seeker",
+     "zone": "Temple of Solusek Ro",
+     "part": "Orb of Frozen Water",
+     "handin": [
+      {
+       "name": "Coral Statue of Tarew",
+       "count": 1
+      }
+     ],
+     "note": "The seeker becomes A Plasmatic Priest."
+    },
+    {
+     "id": "priest",
+     "title": "Kill A Plasmatic Priest for his robe",
+     "kind": "kill",
+     "npc": "A Plasmatic Priest",
+     "zone": "Temple of Solusek Ro",
+     "part": "Orb of Frozen Water",
+     "kill": [
+      "A Plasmatic Priest"
+     ],
+     "loot": [
+      "Blood Soaked Plasmatic Priest Robe"
+     ]
+    },
+    {
+     "id": "frozen",
+     "title": "Hand Omat Vastsea the priest's robe",
+     "kind": "handin",
+     "npc": "Omat Vastsea",
+     "zone": "Timorous Deep",
+     "part": "Orb of Frozen Water",
+     "get": [
+      "Orb of Frozen Water"
+     ],
+     "handin": [
+      {
+       "name": "Blood Soaked Plasmatic Priest Robe",
+       "count": 1
+      }
+     ],
+     "note": "This puts Natasha inside the hut — the wiki suggests waiting until you hold Lord Gimblox's Signet Ring."
+    },
+    {
+     "id": "gimblox",
+     "title": "Kill Lord Gimblox for his signet ring",
+     "kind": "kill",
+     "npc": "Lord Gimblox",
+     "zone": "Solusek's Eye",
+     "part": "Orb of Clear Water",
+     "kill": [
+      "Lord Gimblox"
+     ],
+     "loot": [
+      "Lord Gimblox's Signet Ring"
+     ]
+    },
+    {
+     "id": "natasha-ring",
+     "title": "Hand Natasha Whitewater the signet ring",
+     "kind": "handin",
+     "npc": "Natasha Whitewater",
+     "zone": "Timorous Deep",
+     "part": "Orb of Clear Water",
+     "get": [
+      "Ornate Sea Shell"
+     ],
+     "handin": [
+      {
+       "name": "Lord Gimblox's Signet Ring",
+       "count": 1
+      }
+     ],
+     "note": "A second shell; Natasha leaves."
+    },
+    {
+     "id": "naxot",
+     "title": "Hand Naxot Deepwater the second Ornate Sea Shell",
+     "kind": "handin",
+     "npc": "Naxot Deepwater",
+     "zone": "Burning Woods",
+     "part": "Orb of Clear Water",
+     "get": [
+      "Message to Natasha"
+     ],
+     "handin": [
+      {
+       "name": "Ornate Sea Shell",
+       "count": 1
+      }
+     ],
+     "note": "This spawns Ixiblat Fer."
+    },
+    {
+     "id": "ixiblat",
+     "title": "Kill Ixiblat Fer for his sceptre",
+     "kind": "kill",
+     "npc": "Ixiblat Fer",
+     "zone": "Burning Woods",
+     "part": "Orb of Clear Water",
+     "kill": [
+      "Ixiblat Fer"
+     ],
+     "loot": [
+      "Sceptre of Ixiblat Fer"
+     ]
+    },
+    {
+     "id": "scroll",
+     "title": "Kill Overking Bathezid for a Singed Scroll",
+     "kind": "kill",
+     "npc": "Overking Bathezid",
+     "zone": "Chardok",
+     "part": "Orb of Clear Water",
+     "kill": [
+      "Overking Bathezid"
+     ],
+     "loot": [
+      "Singed Scroll"
+     ]
+    },
+    {
+     "id": "clear",
+     "title": "Hand Omat Vastsea the sceptre and the scroll",
+     "kind": "handin",
+     "npc": "Omat Vastsea",
+     "zone": "Timorous Deep",
+     "part": "Orb of Clear Water",
+     "get": [
+      "Orb of Clear Water"
+     ],
+     "handin": [
+      {
+       "name": "Sceptre of Ixiblat Fer",
+       "count": 1
+      },
+      {
+       "name": "Singed Scroll",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "message",
+     "title": "Hand Natasha Whitewater the Message to Natasha",
+     "kind": "handin",
+     "npc": "Natasha Whitewater",
+     "zone": "Timorous Deep",
+     "part": "Orb of Vapor",
+     "get": [
+      "Shimmering Pearl"
+     ],
+     "handin": [
+      {
+       "name": "Message to Natasha",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "zordak",
+     "title": "Hand Zordak Ragefire the Shimmering Pearl",
+     "kind": "handin",
+     "npc": "Zordak Ragefire",
+     "zone": "Nagafen's Lair",
+     "part": "Orb of Vapor",
+     "handin": [
+      {
+       "name": "Shimmering Pearl",
+       "count": 1
+      }
+     ],
+     "note": "He returns as Zordakalicus Ragefire and attacks."
+    },
+    {
+     "id": "heart",
+     "title": "Kill Zordakalicus Ragefire for his heart",
+     "kind": "kill",
+     "npc": "Zordakalicus Ragefire",
+     "zone": "Nagafen's Lair",
+     "part": "Orb of Vapor",
+     "kill": [
+      "Zordakalicus Ragefire"
+     ],
+     "loot": [
+      "Heart of Zordak Ragefire"
+     ]
+    },
+    {
+     "id": "vapor",
+     "title": "Hand Omat Vastsea the Heart of Zordak Ragefire",
+     "kind": "handin",
+     "npc": "Omat Vastsea",
+     "zone": "Timorous Deep",
+     "part": "Orb of Vapor",
+     "get": [
+      "Orb of Vapor"
+     ],
+     "handin": [
+      {
+       "name": "Heart of Zordak Ragefire",
+       "count": 1
+      }
+     ],
+     "caution": "Only once all three orbs are ready — this spawns Jhassad for the final hand-in."
+    },
+    {
+     "id": "jhassad",
+     "title": "Hand Jhassad Oceanson the three orbs",
+     "kind": "handin",
+     "npc": "Jhassad Oceanson",
+     "zone": "Timorous Deep",
+     "part": "Water Sprinkler of Nem Ankh",
+     "get": [
+      "Orb of Triumvirate"
+     ],
+     "handin": [
+      {
+       "name": "Orb of Frozen Water",
+       "count": 1
+      },
+      {
+       "name": "Orb of Clear Water",
+       "count": 1
+      },
+      {
+       "name": "Orb of Vapor",
+       "count": 1
+      }
+     ],
+     "note": "This spawns the Avatar of Water in the lake."
+    },
+    {
+     "id": "avatar",
+     "title": "Hand the Avatar of Water the Orb of Triumvirate",
+     "kind": "handin",
+     "npc": "Avatar of Water",
+     "zone": "Timorous Deep",
+     "part": "Water Sprinkler of Nem Ankh",
+     "get": [
+      "Water Sprinkler of Nem Ankh"
+     ],
+     "handin": [
+      {
+       "name": "Orb of Triumvirate",
+       "count": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "epic-mnk",
+   "name": "Monk Epic",
+   "pack": "epics",
+   "reward": "Celestial Fists",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP REQUIRED LEVEL OF 46.\nSlot: HANDS\nAC: 15\nSTR: +20 DEX: +10 STA: +10 AGI: +10 HP: +100\nSV FIRE: +10 SV DISEASE: +10 SV COLD: +10 SV MAGIC: +10 SV POISON: +10\nEffect: Celestial Tranquility (Must Equip, Casting Time: Instant, Req Level 50)\nWT: 0.1 Size: SMALL\nClass: MNK\nRace: ALL",
+   "classes": [
+    "MNK"
+   ],
+   "minLevel": 46,
+   "start": "Tomekeeper Danl · Erudin",
+   "wiki": "https://eqlwiki.com/Monk_Epic_Quest",
+   "note": "The book from Lheao and the final reward are both called Celestial Fists.",
+   "steps": [
+    {
+     "id": "lost-circle",
+     "title": "Kill Brother Zephyl or Brother Qwinn for the Robe of the Lost Circle",
+     "kind": "kill",
+     "npc": "",
+     "zone": "Rathe Mountains · Southern Karana",
+     "part": "Robe of the Lost Circle",
+     "killAny": [
+      "Brother Zephyl",
+      "Brother Qwinn"
+     ],
+     "loot": [
+      "Robe of the Lost Circle"
+     ],
+     "note": "Or make it: the wiki lists a sub-quest — headband and Code of Zan Fi to Qwinn, sash and The Idol to Zephyl, then two sewing-kit combines."
+    },
+    {
+     "id": "pipe-fi",
+     "title": "Kill an iksar betrayer for A Metal Pipe (Fi)",
+     "kind": "kill",
+     "npc": "an iksar betrayer",
+     "zone": "Chardok",
+     "part": "Robe of the Whistling Fists",
+     "kill": [
+      "an iksar betrayer"
+     ],
+     "loot": [
+      "A Metal Pipe"
+     ]
+    },
+    {
+     "id": "pipe-zan",
+     "title": "Kill a drolvarg pawbuster for A Metal Pipe (Zan)",
+     "kind": "kill",
+     "npc": "a drolvarg pawbuster",
+     "zone": "Karnor's Castle",
+     "part": "Robe of the Whistling Fists",
+     "kill": [
+      "a drolvarg pawbuster"
+     ],
+     "loot": [
+      "A Metal Pipe"
+     ]
+    },
+    {
+     "id": "balatin",
+     "title": "Hand Brother Balatin the two pipes and the robe",
+     "kind": "handin",
+     "npc": "Brother Balatin",
+     "zone": "Dreadlands",
+     "part": "Robe of the Whistling Fists",
+     "get": [
+      "Robe of the Whistling Fists"
+     ],
+     "handin": [
+      {
+       "name": "A Metal Pipe",
+       "count": 2
+      },
+      {
+       "name": "Robe of the Lost Circle",
+       "count": 1
+      }
+     ],
+     "caution": "He must not be aggressive: charm or sneak work, pacify does not."
+    },
+    {
+     "id": "immortals",
+     "title": "Loot the book Immortals from a named mob",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Skyfire Mountains",
+     "part": "The Book",
+     "loot": [
+      "Immortals"
+     ]
+    },
+    {
+     "id": "danl",
+     "title": "Hand Tomekeeper Danl the Immortals",
+     "kind": "handin",
+     "npc": "Tomekeeper Danl",
+     "zone": "Erudin, the library",
+     "part": "The Book",
+     "get": [
+      "Danl's Reference"
+     ],
+     "handin": [
+      {
+       "name": "Immortals",
+       "count": 1
+      }
+     ],
+     "caution": "Never hand in while feigned — he eats the book."
+    },
+    {
+     "id": "lheao",
+     "title": "Hand Lheao the reference and the Robe of the Whistling Fists",
+     "kind": "handin",
+     "npc": "Lheao",
+     "zone": "Timorous Deep, the hidden cove",
+     "part": "The Book",
+     "get": [
+      "Celestial Fists"
+     ],
+     "handin": [
+      {
+       "name": "Danl's Reference",
+       "count": 1
+      },
+      {
+       "name": "Robe of the Whistling Fists",
+       "count": 1
+      }
+     ],
+     "note": "The book is called Celestial Fists too. Leave this until late if you want to keep wearing the robe."
+    },
+    {
+     "id": "eejag-call",
+     "title": "Challenge Eejag through a fire sprite",
+     "kind": "say",
+     "npc": "a fire sprite",
+     "zone": "Lavastorm Mountains",
+     "part": "The Four Fists",
+     "say": "I challenge Eejag"
+    },
+    {
+     "id": "eejag",
+     "title": "Kill Eejag for a Charred Scale",
+     "kind": "kill",
+     "npc": "Eejag",
+     "zone": "Lavastorm Mountains",
+     "part": "The Four Fists",
+     "kill": [
+      "Eejag"
+     ],
+     "loot": [
+      "Charred Scale"
+     ]
+    },
+    {
+     "id": "presence",
+     "title": "Hand a presence the Charred Scale",
+     "kind": "handin",
+     "npc": "a presence",
+     "zone": "Plane of Sky, Dojorn's island",
+     "part": "The Four Fists",
+     "handin": [
+      {
+       "name": "Charred Scale",
+       "count": 1
+      }
+     ],
+     "note": "This spawns Gwan."
+    },
+    {
+     "id": "gwan",
+     "title": "Kill Gwan for the Breath of Gwan",
+     "kind": "kill",
+     "npc": "Gwan",
+     "zone": "Plane of Sky",
+     "part": "The Four Fists",
+     "kill": [
+      "Gwan"
+     ],
+     "loot": [
+      "Breath of Gwan"
+     ]
+    },
+    {
+     "id": "ogre",
+     "title": "Hand a sleeping ogre the Breath of Gwan",
+     "kind": "handin",
+     "npc": "a sleeping ogre",
+     "zone": "Mines of Nurga",
+     "part": "The Four Fists",
+     "handin": [
+      {
+       "name": "Breath of Gwan",
+       "count": 1
+      }
+     ],
+     "caution": "He must con indifferent — sneak up from behind. This spawns Trunt."
+    },
+    {
+     "id": "trunt",
+     "title": "Kill Trunt for his head",
+     "kind": "kill",
+     "npc": "Trunt",
+     "zone": "Mines of Nurga",
+     "part": "The Four Fists",
+     "kill": [
+      "Trunt"
+     ],
+     "loot": [
+      "Trunt's Head"
+     ]
+    },
+    {
+     "id": "deep",
+     "title": "Show Deep the head",
+     "kind": "handin",
+     "npc": "Deep",
+     "zone": "Lake Rathetear, the underwater caverns",
+     "part": "The Four Fists",
+     "optional": true,
+     "handin": [
+      {
+       "name": "Trunt's Head",
+       "count": 1
+      }
+     ],
+     "note": "She gives it back and leaves."
+    },
+    {
+     "id": "eye",
+     "title": "Hand the Astral Projection Trunt's Head",
+     "kind": "handin",
+     "npc": "Astral Projection",
+     "zone": "The Overthere",
+     "part": "The Four Fists",
+     "get": [
+      "Eye of Kaiaren"
+     ],
+     "handin": [
+      {
+       "name": "Trunt's Head",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "vorash-call",
+     "title": "Hand the Astral Projection by the lake the Eye of Kaiaren",
+     "kind": "handin",
+     "npc": "Astral Projection",
+     "zone": "Lake of Ill Omen, the shore at -1900, -950",
+     "part": "The Four Fists",
+     "handin": [
+      {
+       "name": "Eye of Kaiaren",
+       "count": 1
+      }
+     ],
+     "note": "This spawns Vorash and Deep; Xenevorash appears when Vorash dies."
+    },
+    {
+     "id": "fangs",
+     "title": "Kill Vorash, then Xenevorash, for the Demon Fangs",
+     "kind": "kill",
+     "npc": "Vorash",
+     "zone": "Lake of Ill Omen",
+     "part": "The Four Fists",
+     "kill": [
+      "Vorash",
+      "Xenevorash"
+     ],
+     "loot": [
+      "Demon Fangs"
+     ]
+    },
+    {
+     "id": "kaiaren-book",
+     "title": "Hand the book to the mad Kaiaren, then to the sane one",
+     "kind": "handin",
+     "npc": "Kaiaren",
+     "zone": "Trakanon's Teeth",
+     "part": "Kaiaren",
+     "get": [
+      "Book of Celestial Fists"
+     ],
+     "handin": [
+      {
+       "name": "Celestial Fists",
+       "count": 1
+      }
+     ],
+     "note": "The mad one, at the ruins near Sebilis, hands it back and hits you; the sane one then appears in an empty hut by the lake.",
+     "caution": "Have the Demon Fangs in hand first — the sane Kaiaren leaves within 30 minutes, and the first book is spent."
+    },
+    {
+     "id": "fists",
+     "title": "Hand the sane Kaiaren the Book of Celestial Fists and the Demon Fangs",
+     "kind": "handin",
+     "npc": "Kaiaren",
+     "zone": "Trakanon's Teeth",
+     "part": "Kaiaren",
+     "get": [
+      "Celestial Fists"
+     ],
+     "handin": [
+      {
+       "name": "Book of Celestial Fists",
+       "count": 1
+      },
+      {
+       "name": "Demon Fangs",
+       "count": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "epic-rog",
+   "name": "Rogue Epic",
+   "pack": "epics",
+   "reward": "Ragebringer",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP REQUIRED LEVEL OF 46.\nSlot: PRIMARY SECONDARY\nSkill: Piercing Atk Delay: 25\nDMG: 15\nSTR: +20 DEX: +10 STA: +10 AGI: +10 HP: +100 HASTE: 40%\nSV DISEASE: +10 SV MAGIC: +20 SV POISON: +20\nEffect: Seething Fury (Worn)\nWT: 2.5 Size: SMALL\nClass: ROG\nRace: ALL",
+   "classes": [
+    "ROG"
+   ],
+   "minLevel": 46,
+   "start": "Malka Rale · Qeynos Aqueducts",
+   "wiki": "https://eqlwiki.com/Rogue_Epic_Quest",
+   "note": "The quill and the dagger can drop from General V`ghera and Renux; the two optional parts are the long way round.",
+   "steps": [
+    {
+     "id": "pouch",
+     "title": "Tell Malka Rale you can help",
+     "kind": "say",
+     "npc": "Malka Rale",
+     "zone": "Qeynos Aqueducts, +380, -210",
+     "part": "Stanos' Pouch",
+     "optional": true,
+     "get": [
+      "Stanos' Pouch"
+     ],
+     "say": "I can help",
+     "note": "She appears at 8pm game time."
+    },
+    {
+     "id": "p-top",
+     "title": "Pickpocket the Stained Parchment Top from Founy Jestands",
+     "kind": "pickpocket",
+     "npc": "Founy Jestands",
+     "zone": "North Kaladim",
+     "part": "Pickpocketing and Travel",
+     "get": [
+      "Stained Parchment Top"
+     ]
+    },
+    {
+     "id": "p-bottom",
+     "title": "Pickpocket the Stained Parchment Bottom from Tani N`Mar",
+     "kind": "pickpocket",
+     "npc": "Tani N`Mar",
+     "zone": "Neriak Third Gate",
+     "part": "Pickpocketing and Travel",
+     "get": [
+      "Stained Parchment Bottom"
+     ]
+    },
+    {
+     "id": "anson",
+     "title": "Hand Anson Mcbale the pouch and ask to see Stanos",
+     "kind": "handin",
+     "npc": "Anson Mcbale",
+     "zone": "Highpass Hold",
+     "part": "Pickpocketing and Travel",
+     "handin": [
+      {
+       "name": "Stanos' Pouch",
+       "count": 1
+      }
+     ],
+     "note": "Say \"I need to see Stanos\" — Stanos Herkanor appears."
+    },
+    {
+     "id": "combined",
+     "title": "Hand Stanos Herkanor both halves of the parchment",
+     "kind": "handin",
+     "npc": "Stanos Herkanor",
+     "zone": "Highpass Hold",
+     "part": "Pickpocketing and Travel",
+     "get": [
+      "Combined Parchment"
+     ],
+     "handin": [
+      {
+       "name": "Stained Parchment Top",
+       "count": 1
+      },
+      {
+       "name": "Stained Parchment Bottom",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "eldreth",
+     "title": "Hand Eldreth the parchment, 100 platinum and two bottles of milk",
+     "kind": "handin",
+     "npc": "Eldreth",
+     "zone": "Lake Rathetear",
+     "part": "Pickpocketing and Travel",
+     "get": [
+      "Scribbled Parchment"
+     ],
+     "handin": [
+      {
+       "name": "Combined Parchment",
+       "count": 1
+      },
+      {
+       "name": "Bottle of Milk",
+       "count": 2
+      }
+     ],
+     "coins": "100 platinum",
+     "note": "The two bottles must be unstacked."
+    },
+    {
+     "id": "yendar",
+     "title": "Hand Yendar Starpyre the Scribbled Parchment",
+     "kind": "handin",
+     "npc": "Yendar Starpyre",
+     "zone": "Steamfont Mountains",
+     "part": "Pickpocketing and Travel",
+     "get": [
+      "Tattered Parchment"
+     ],
+     "handin": [
+      {
+       "name": "Scribbled Parchment",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "book",
+     "title": "Pick up the Book of Souls",
+     "kind": "ground",
+     "npc": "",
+     "zone": "Plane of Hate, -60, +325",
+     "part": "Book of Souls",
+     "get": [
+      "Book of Souls"
+     ],
+     "note": "A ten-hour ground spawn."
+    },
+    {
+     "id": "renux-call",
+     "title": "Hand Yendar Starpyre the Tattered Parchment and the Book of Souls",
+     "kind": "handin",
+     "npc": "Yendar Starpyre",
+     "zone": "Steamfont Mountains",
+     "part": "Renux",
+     "handin": [
+      {
+       "name": "Tattered Parchment",
+       "count": 1
+      },
+      {
+       "name": "Book of Souls",
+       "count": 1
+      }
+     ],
+     "note": "This spawns Renux."
+    },
+    {
+     "id": "renux",
+     "title": "Kill Renux Herkanor for the Translated Parchment",
+     "kind": "kill",
+     "npc": "Renux Herkanor",
+     "zone": "Steamfont Mountains",
+     "part": "Renux",
+     "kill": [
+      "Renux Herkanor"
+     ],
+     "loot": [
+      "Translated Parchment"
+     ],
+     "note": "She may also drop the Jagged Diamond Dagger."
+    },
+    {
+     "id": "box",
+     "title": "Hand Stanos Herkanor the Translated Parchment",
+     "kind": "handin",
+     "npc": "Stanos Herkanor",
+     "zone": "Highpass Hold",
+     "part": "General V`Ghera",
+     "get": [
+      "Sealed Box"
+     ],
+     "handin": [
+      {
+       "name": "Translated Parchment",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "general-call",
+     "title": "Hand the Sealed Box to one of the dark elves",
+     "kind": "give",
+     "npc": "any of the dark elves",
+     "zone": "Kithicor Forest",
+     "part": "General V`Ghera",
+     "bring": [
+      {
+       "name": "Sealed Box",
+       "count": 1
+      }
+     ],
+     "note": "This spawns General V`ghera.",
+     "caution": "Sneak, but do not hide or go invisible — and check for an indifferent con before the hand-in, or the progress is lost."
+    },
+    {
+     "id": "general",
+     "title": "Kill General V`ghera for the General's Pouch",
+     "kind": "kill",
+     "npc": "General V`ghera",
+     "zone": "Kithicor Forest",
+     "part": "General V`Ghera",
+     "kill": [
+      "General V`ghera"
+     ],
+     "loot": [
+      "General's Pouch"
+     ],
+     "note": "He may also drop the Cazic Quill."
+    },
+    {
+     "id": "robes",
+     "title": "Collect the four robes",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Kedge Keep · Splitpaw · Lower Guk · Ocean of Tears",
+     "part": "Cazic Quill — if it did not drop",
+     "optional": true,
+     "loot": [
+      "Robe of the Kedge",
+      "Robe of the Ishva",
+      "Shining Metallic Robes",
+      "Robe of the Oracle"
+     ],
+     "note": "Phinigel Autropos, The Ishva Mal, the ghoul arch magus and the Oracle of K`Arnon carry them."
+    },
+    {
+     "id": "quill",
+     "title": "Hand Vilnius the Small the four robes",
+     "kind": "handin",
+     "npc": "Vilnius the Small",
+     "zone": "Western Plains of Karana",
+     "part": "Cazic Quill — if it did not drop",
+     "optional": true,
+     "get": [
+      "Cazic Quill"
+     ],
+     "handin": [
+      {
+       "name": "Robe of the Kedge",
+       "count": 1
+      },
+      {
+       "name": "Robe of the Ishva",
+       "count": 1
+      },
+      {
+       "name": "Shining Metallic Robes",
+       "count": 1
+      },
+      {
+       "name": "Robe of the Oracle",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "blades",
+     "title": "Collect the four blades",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Nagafen's Lair · Lower Guk · Everfrost Peaks",
+     "part": "Jagged Diamond Dagger — if it did not drop",
+     "optional": true,
+     "loot": [
+      "Fleshripper",
+      "Painbringer",
+      "Mithril Two-Handed Sword",
+      "Gigantic Zweihander"
+     ],
+     "note": "The Solusek kobold king, the Kobold champion, the froglok king and Karg Icebear carry them."
+    },
+    {
+     "id": "dagger",
+     "title": "Hand Vilnius the Small the four blades",
+     "kind": "handin",
+     "npc": "Vilnius the Small",
+     "zone": "Western Plains of Karana",
+     "part": "Jagged Diamond Dagger — if it did not drop",
+     "optional": true,
+     "get": [
+      "Jagged Diamond Dagger"
+     ],
+     "handin": [
+      {
+       "name": "Fleshripper",
+       "count": 1
+      },
+      {
+       "name": "Painbringer",
+       "count": 1
+      },
+      {
+       "name": "Mithril Two-Handed Sword",
+       "count": 1
+      },
+      {
+       "name": "Gigantic Zweihander",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "rage",
+     "title": "Hand Stanos Herkanor the pouch, the dagger and the quill",
+     "kind": "handin",
+     "npc": "Stanos Herkanor",
+     "zone": "Highpass Hold",
+     "part": "Ragebringer",
+     "get": [
+      "Ragebringer"
+     ],
+     "handin": [
+      {
+       "name": "General's Pouch",
+       "count": 1
+      },
+      {
+       "name": "Jagged Diamond Dagger",
+       "count": 1
+      },
+      {
+       "name": "Cazic Quill",
+       "count": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "epic-pal",
+   "name": "Paladin Epic",
+   "pack": "epics",
+   "reward": "Fiery Defender",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 2H Slashing Atk Delay: 40\nDMG: 35\nAC: 15\nSTR: +20 STA: +10 WIS: +15 HP: +70 MANA: +30\nSV FIRE: +10 SV DISEASE: +10 SV COLD: +10 SV MAGIC: +10 SV POISON: +10\nEffect: Holy Shock (Combat, Casting Time: Instant, Req Level 50)\nWT: 0.1 Size: LARGE\nClass: PAL\nRace: ALL",
+   "classes": [
+    "PAL"
+   ],
+   "minLevel": 46,
+   "start": "Irak Altil · Plane of Fear",
+   "wiki": "https://eqlwiki.com/Paladin_Epic_Quest",
+   "steps": [
+    {
+     "id": "avenger",
+     "title": "Finish The Fiery Avenger",
+     "kind": "quest",
+     "npc": "",
+     "zone": "",
+     "part": "Fiery Avenger",
+     "get": [
+      "Fiery Avenger"
+     ],
+     "note": "It stands in the Notable quests tab, with SoulFire before it."
+    },
+    {
+     "id": "t-breastplate",
+     "title": "Kill a thought destroyer for the Tainted Darksteel Breastplate",
+     "kind": "kill",
+     "npc": "thought destroyer",
+     "zone": "Plane of Hate",
+     "part": "Gleaming Crested Breastplate",
+     "kill": [
+      "thought destroyer"
+     ],
+     "loot": [
+      "Tainted Darksteel Breastplate"
+     ]
+    },
+    {
+     "id": "dinner",
+     "title": "Tell Jark you will get his dinner",
+     "kind": "say",
+     "npc": "Jark",
+     "zone": "North Kaladim",
+     "part": "Gleaming Crested Breastplate",
+     "get": [
+      "Cold Plate of Beef and Bread"
+     ],
+     "say": "I will get your dinner",
+     "note": "Nella Stonebraids appears in the temple area — ask her \"Do you have Jark's Dinner?\"."
+    },
+    {
+     "id": "crystal",
+     "title": "Hand Jark the Cold Plate of Beef and Bread",
+     "kind": "handin",
+     "npc": "Jark",
+     "zone": "North Kaladim",
+     "part": "Gleaming Crested Breastplate",
+     "get": [
+      "Pure Crystal"
+     ],
+     "handin": [
+      {
+       "name": "Cold Plate of Beef and Bread",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "g-breastplate",
+     "title": "Hand Reklon Gnallen the tainted breastplate and the crystal",
+     "kind": "handin",
+     "npc": "Reklon Gnallen",
+     "zone": "Erudin, the temple of Quellious",
+     "part": "Gleaming Crested Breastplate",
+     "get": [
+      "Gleaming Crested Breastplate"
+     ],
+     "handin": [
+      {
+       "name": "Tainted Darksteel Breastplate",
+       "count": 1
+      },
+      {
+       "name": "Pure Crystal",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "t-sword",
+     "title": "Kill the Keeper of the Tombs for the Tainted Darksteel Sword",
+     "kind": "kill",
+     "npc": "Keeper of the Tombs",
+     "zone": "The Hole",
+     "part": "Gleaming Crested Sword",
+     "kill": [
+      "Keeper of the Tombs"
+     ],
+     "loot": [
+      "Tainted Darksteel Sword"
+     ]
+    },
+    {
+     "id": "bucket",
+     "title": "Tell a peasant woman you will take it to him",
+     "kind": "say",
+     "npc": "a peasant woman",
+     "zone": "West Freeport, -190, -725",
+     "part": "Gleaming Crested Sword",
+     "get": [
+      "Bucket of Water"
+     ],
+     "say": "I will take it to him"
+    },
+    {
+     "id": "joshua",
+     "title": "Hand Joshua the Bucket of Water",
+     "kind": "handin",
+     "npc": "Joshua",
+     "zone": "West Freeport, the back of the bakery",
+     "part": "Gleaming Crested Sword",
+     "get": [
+      "Bucket of Pure Water"
+     ],
+     "handin": [
+      {
+       "name": "Bucket of Water",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "g-sword",
+     "title": "Hand Reklon Gnallen the tainted sword and the pure water",
+     "kind": "handin",
+     "npc": "Reklon Gnallen",
+     "zone": "Erudin, the temple of Quellious",
+     "part": "Gleaming Crested Sword",
+     "get": [
+      "Gleaming Crested Sword"
+     ],
+     "handin": [
+      {
+       "name": "Tainted Darksteel Sword",
+       "count": 1
+      },
+      {
+       "name": "Bucket of Pure Water",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "t-shield",
+     "title": "Kill Kirak Vil for the Tainted Darksteel Shield",
+     "kind": "kill",
+     "npc": "Kirak Vil",
+     "zone": "Nektulos Forest",
+     "part": "Gleaming Crested Shield",
+     "kill": [
+      "Kirak Vil"
+     ],
+     "loot": [
+      "Tainted Darksteel Shield"
+     ]
+    },
+    {
+     "id": "g-shield",
+     "title": "Hand Elia the Pure the tainted shield",
+     "kind": "handin",
+     "npc": "Elia the Pure",
+     "zone": "Felwithe",
+     "part": "Gleaming Crested Shield",
+     "get": [
+      "Gleaming Crested Shield"
+     ],
+     "handin": [
+      {
+       "name": "Tainted Darksteel Shield",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "mark",
+     "title": "Hand Reklon Gnallen the three gleaming pieces",
+     "kind": "handin",
+     "npc": "Reklon Gnallen",
+     "zone": "Erudin, the temple of Quellious",
+     "part": "Mark of Atonement",
+     "get": [
+      "Mark of Atonement"
+     ],
+     "handin": [
+      {
+       "name": "Gleaming Crested Shield",
+       "count": 1
+      },
+      {
+       "name": "Gleaming Crested Breastplate",
+       "count": 1
+      },
+      {
+       "name": "Gleaming Crested Sword",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "defender",
+     "title": "Hand Irak Altil the Mark of Atonement and the Fiery Avenger",
+     "kind": "handin",
+     "npc": "Irak Altil",
+     "zone": "Plane of Fear",
+     "part": "Fiery Defender",
+     "get": [
+      "Fiery Defender"
+     ],
+     "handin": [
+      {
+       "name": "Mark of Atonement",
+       "count": 1
+      },
+      {
+       "name": "Fiery Avenger",
+       "count": 1
+      }
+     ],
+     "note": "A wandering skeleton."
+    }
+   ]
+  },
+  {
+   "key": "epic-nec",
+   "name": "Necromancer Epic",
+   "pack": "epics",
+   "reward": "Scythe of the Shadowed Soul",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 34\nDMG: 22\nSTR: +5 STA: +10 CHA: +5 INT: +20 HP: +20 MANA: +80\nSV FIRE: +5 SV DISEASE: +15 SV COLD: +5 SV MAGIC: +10 SV POISON: +15\nEffect: Torment of Shadows (Must Equip, Casting Time: 9.0, Req Level 50)\nWT: 5.0 Size: MEDIUM\nClass: NEC\nRace: ALL",
+   "classes": [
+    "NEC"
+   ],
+   "minLevel": 46,
+   "start": "Venenzi Oberzendi · Nektulos Forest",
+   "wiki": "https://eqlwiki.com/Necromancer_Epic_Quest",
+   "note": "The wiki's page does not link Sir Edwin's head, the refined herb, the journal or the reagents box; those steps tick on the trade or by hand.",
+   "steps": [
+    {
+     "id": "venenzi",
+     "title": "Hail Venenzi Oberzendi",
+     "kind": "say",
+     "npc": "Venenzi Oberzendi",
+     "zone": "Nektulos Forest",
+     "part": "Symbol of the Apprentice",
+     "optional": true,
+     "say": "Hail, Venenzi Oberzendi"
+    },
+    {
+     "id": "kazen",
+     "title": "Hail Kazen Fecae",
+     "kind": "say",
+     "npc": "Kazen Fecae",
+     "zone": "Lake Rathetear",
+     "part": "Symbol of the Apprentice",
+     "optional": true,
+     "say": "Hail, Kazen Fecae"
+    },
+    {
+     "id": "edwin",
+     "title": "Kill Sir Edwin Motte and loot his head",
+     "kind": "kill",
+     "npc": "Sir Edwin Motte",
+     "zone": "",
+     "part": "Symbol of the Apprentice",
+     "kill": [
+      "Sir Edwin Motte"
+     ]
+    },
+    {
+     "id": "apprentice",
+     "title": "Hand Kazen Fecae the head",
+     "kind": "handin",
+     "npc": "Kazen Fecae",
+     "zone": "Lake Rathetear",
+     "part": "Symbol of the Apprentice",
+     "get": [
+      "Symbol of the Apprentice"
+     ],
+     "trade": true
+    },
+    {
+     "id": "twisted",
+     "title": "Hand Venenzi Oberzendi the Symbol of the Apprentice",
+     "kind": "handin",
+     "npc": "Venenzi Oberzendi",
+     "zone": "Nektulos Forest",
+     "part": "Symbol of the Serpent",
+     "get": [
+      "Twisted Symbol of the Apprentice"
+     ],
+     "handin": [
+      {
+       "name": "Symbol of the Apprentice",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "najena",
+     "title": "Kill Najena for the Flowing Black Robe",
+     "kind": "kill",
+     "npc": "Najena",
+     "zone": "Najena",
+     "part": "Symbol of the Serpent",
+     "kill": [
+      "Najena"
+     ],
+     "loot": [
+      "Flowing Black Robe"
+     ]
+    },
+    {
+     "id": "moss",
+     "title": "Hand Venenzi the Flowing Black Robe",
+     "kind": "handin",
+     "npc": "Venenzi Oberzendi",
+     "zone": "Nektulos Forest",
+     "part": "Symbol of the Serpent",
+     "get": [
+      "Rolling Stone Moss"
+     ],
+     "handin": [
+      {
+       "name": "Flowing Black Robe",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "emkel",
+     "title": "Hand Emkel Kabae the moss and the twisted symbol",
+     "kind": "handin",
+     "npc": "Emkel Kabae",
+     "zone": "Lake Rathetear",
+     "part": "Symbol of the Serpent",
+     "get": [
+      "Symbol of the Serpent"
+     ],
+     "handin": [
+      {
+       "name": "Rolling Stone Moss",
+       "count": 1
+      },
+      {
+       "name": "Twisted Symbol of the Apprentice",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "ssess",
+     "title": "Hand Ssessthrass the Symbol of the Serpent",
+     "kind": "handin",
+     "npc": "Ssessthrass",
+     "zone": "Swamp of No Hope",
+     "part": "Symbol of Testing",
+     "get": [
+      "Scaled Symbol of the Serpent"
+     ],
+     "handin": [
+      {
+       "name": "Symbol of the Serpent",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "herb",
+     "title": "Kill the sarnak herbalist for the Manisi Herb",
+     "kind": "kill",
+     "npc": "",
+     "zone": "Chardok",
+     "part": "Symbol of Testing",
+     "killAny": [
+      "Grand Herbalist Mak`ha",
+      "Royal Sarnak Herbalist"
+     ],
+     "loot": [
+      "Manisi Herb"
+     ]
+    },
+    {
+     "id": "refined",
+     "title": "Hand Ssessthrass the herb and the scaled symbol",
+     "kind": "handin",
+     "npc": "Ssessthrass",
+     "zone": "Swamp of No Hope",
+     "part": "Symbol of Testing",
+     "handin": [
+      {
+       "name": "Manisi Herb",
+       "count": 1
+      },
+      {
+       "name": "Scaled Symbol of the Serpent",
+       "count": 1
+      }
+     ],
+     "note": "He returns the refined herb."
+    },
+    {
+     "id": "testing",
+     "title": "Hand Emkel Kabae the refined herb",
+     "kind": "handin",
+     "npc": "Emkel Kabae",
+     "zone": "Lake Rathetear",
+     "part": "Symbol of Testing",
+     "get": [
+      "Symbol of Testing"
+     ],
+     "trade": true
+    },
+    {
+     "id": "kazen-testing",
+     "title": "Hand Kazen Fecae the Symbol of Testing",
+     "kind": "handin",
+     "npc": "Kazen Fecae",
+     "zone": "Lake Rathetear",
+     "part": "Symbol of Insanity",
+     "optional": true,
+     "handin": [
+      {
+       "name": "Symbol of Testing",
+       "count": 1
+      }
+     ],
+     "note": "Or kill Kazen Fecae instead — his wiki page describes the fight."
+    },
+    {
+     "id": "golem",
+     "title": "Kill a bone golem",
+     "kind": "kill",
+     "npc": "a bone golem",
+     "zone": "Lake Rathetear, the small inlet east of Emkel",
+     "part": "Symbol of Insanity",
+     "kill": [
+      "a bone golem"
+     ]
+    },
+    {
+     "id": "failed",
+     "title": "Kill a failed apprentice",
+     "kind": "kill",
+     "npc": "a failed apprentice",
+     "zone": "Lake Rathetear",
+     "part": "Symbol of Insanity",
+     "kill": [
+      "a failed apprentice"
+     ]
+    },
+    {
+     "id": "soul",
+     "title": "Kill A tortured soul for the Symbol of Insanity",
+     "kind": "kill",
+     "npc": "A tortured soul",
+     "zone": "Lake Rathetear",
+     "part": "Symbol of Insanity",
+     "kill": [
+      "A tortured soul"
+     ],
+     "loot": [
+      "Symbol of Insanity"
+     ]
+    },
+    {
+     "id": "journal",
+     "title": "Hand Drendico Metalbones the Symbol of Insanity",
+     "kind": "handin",
+     "npc": "Drendico Metalbones",
+     "zone": "Timorous Deep",
+     "part": "Gkzzallk in a Box",
+     "handin": [
+      {
+       "name": "Symbol of Insanity",
+       "count": 1
+      }
+     ],
+     "note": "He gives you the journal."
+    },
+    {
+     "id": "jzil",
+     "title": "Speak to Jzil GSix",
+     "kind": "talk",
+     "npc": "Jzil GSix",
+     "zone": "Plane of Sky",
+     "part": "Gkzzallk in a Box"
+    },
+    {
+     "id": "disc",
+     "title": "Loot a Silver Disc on the second island",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Plane of Sky",
+     "part": "Gkzzallk in a Box",
+     "loot": [
+      "Silver Disc"
+     ],
+     "note": "An azarack and the other second-island mobs."
+    },
+    {
+     "id": "feathers",
+     "title": "Loot Spiroc Feathers on the third island",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Plane of Sky",
+     "part": "Gkzzallk in a Box",
+     "loot": [
+      "Spiroc Feathers"
+     ],
+     "note": "A gorgalask and the other third-island mobs."
+    },
+    {
+     "id": "cape",
+     "title": "Kill the Keeper of Souls for the Black Silk Cape",
+     "kind": "kill",
+     "npc": "Keeper of Souls",
+     "zone": "Plane of Sky",
+     "part": "Gkzzallk in a Box",
+     "kill": [
+      "Keeper of Souls"
+     ],
+     "loot": [
+      "Black Silk Cape"
+     ]
+    },
+    {
+     "id": "cloak",
+     "title": "Hand Jzil GSix the disc, the feathers and the cape",
+     "kind": "handin",
+     "npc": "Jzil GSix",
+     "zone": "Plane of Sky",
+     "part": "Gkzzallk in a Box",
+     "get": [
+      "Cloak of Spiroc Feathers"
+     ],
+     "handin": [
+      {
+       "name": "Silver Disc",
+       "count": 1
+      },
+      {
+       "name": "Spiroc Feathers",
+       "count": 1
+      },
+      {
+       "name": "Black Silk Cape",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "eye",
+     "title": "Loot the Eye of Innoruuk from the Hate mini-bosses",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Plane of Hate",
+     "part": "Gkzzallk in a Box",
+     "loot": [
+      "Eye of Innoruuk"
+     ]
+    },
+    {
+     "id": "slime",
+     "title": "Loot the Slime Blood of Cazic Thule",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Plane of Fear",
+     "part": "Gkzzallk in a Box",
+     "loot": [
+      "Slime Blood of Cazic Thule"
+     ],
+     "note": "From the golems, or Cazic Thule himself."
+    },
+    {
+     "id": "reagents",
+     "title": "Hand Drendico the cloak, the eye, the slime blood and the journal",
+     "kind": "handin",
+     "npc": "Drendico Metalbones",
+     "zone": "Timorous Deep",
+     "part": "Gkzzallk in a Box",
+     "handin": [
+      {
+       "name": "Cloak of Spiroc Feathers",
+       "count": 1
+      },
+      {
+       "name": "Eye of Innoruuk",
+       "count": 1
+      },
+      {
+       "name": "Slime Blood of Cazic Thule",
+       "count": 1
+      }
+     ],
+     "note": "He gives you the prepared reagents box."
+    },
+    {
+     "id": "tome",
+     "title": "Hand Kazen Fecae the reagents box",
+     "kind": "handin",
+     "npc": "Kazen Fecae",
+     "zone": "Lake Rathetear",
+     "part": "Gkzzallk in a Box",
+     "get": [
+      "Tome of Instruction"
+     ],
+     "trade": true
+    },
+    {
+     "id": "gkzzallk",
+     "title": "Hand Gkzzallk the Tome of Instruction",
+     "kind": "handin",
+     "npc": "Gkzzallk",
+     "zone": "Plane of Sky",
+     "part": "Gkzzallk in a Box",
+     "get": [
+      "Gkzzallk in a Box"
+     ],
+     "handin": [
+      {
+       "name": "Tome of Instruction",
+       "count": 1
+      }
+     ],
+     "caution": "This despawns the first island's boss and blocks a normal Sky raid until respawn — never do it on another guild's slot unasked."
+    },
+    {
+     "id": "scythe",
+     "title": "Hand Kazen Fecae Gkzzallk in a Box",
+     "kind": "handin",
+     "npc": "Kazen Fecae",
+     "zone": "Lake Rathetear",
+     "part": "Scythe of the Shadowed Soul",
+     "get": [
+      "Scythe of the Shadowed Soul"
+     ],
+     "handin": [
+      {
+       "name": "Gkzzallk in a Box",
+       "count": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "epic-mag",
+   "name": "Magician Epic",
+   "pack": "epics",
+   "reward": "Orb of Mastery",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 30\nDMG: 20\nCHARGES: 1 STR: +15 DEX: +5 STA: +10 INT: +20 MANA: +100\nSV FIRE: +20 SV COLD: +20 SV MAGIC: +10\nEffect: Manifest Elements (Must Equip, Casting Time: 20.0, Req Level 46)\nWT: 1.0 Size: TINY\nClass: MAG\nRace: ALL",
+   "classes": [
+    "MAG"
+   ],
+   "minLevel": 46,
+   "start": "Rykas · Lake Rathetear",
+   "wiki": "https://eqlwiki.com/Magician_Epic_Quest",
+   "steps": [
+    {
+     "id": "rykas",
+     "title": "Find Rykas for a Token of Mastery",
+     "kind": "talk",
+     "npc": "Rykas",
+     "zone": "Lake Rathetear",
+     "part": "The Beginning",
+     "optional": true,
+     "get": [
+      "Token of Mastery"
+     ]
+    },
+    {
+     "id": "jahsohn-token",
+     "title": "Hand Jahsohn Aksot the Token of Mastery",
+     "kind": "handin",
+     "npc": "Jahsohn Aksot",
+     "zone": "West Commonlands",
+     "part": "The Beginning",
+     "optional": true,
+     "handin": [
+      {
+       "name": "Token of Mastery",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "page1",
+     "title": "Kill an enraged dread wolf for page 1",
+     "kind": "kill",
+     "npc": "enraged dread wolf",
+     "zone": "Kithicor Forest",
+     "part": "Words of Magi`kot",
+     "kill": [
+      "enraged dread wolf"
+     ],
+     "loot": [
+      "Torn Page of Magi`kot pg. 1"
+     ]
+    },
+    {
+     "id": "page2",
+     "title": "Kill tentacle terrors for page 2",
+     "kind": "kill",
+     "npc": "a tentacle terror",
+     "zone": "Estate of Unrest",
+     "part": "Words of Magi`kot",
+     "kill": [
+      "a tentacle terror"
+     ],
+     "loot": [
+      "Torn Page of Magi`kot pg. 2"
+     ]
+    },
+    {
+     "id": "page3",
+     "title": "Kill a bloodthirsty ghoul for page 3",
+     "kind": "kill",
+     "npc": "a bloodthirsty ghoul",
+     "zone": "Lower Guk",
+     "part": "Words of Magi`kot",
+     "kill": [
+      "a bloodthirsty ghoul"
+     ],
+     "loot": [
+      "Torn Page of Magi`kot pg. 3"
+     ]
+    },
+    {
+     "id": "words",
+     "title": "Hand Jahsohn Aksot the three torn pages",
+     "kind": "handin",
+     "npc": "Jahsohn Aksot",
+     "zone": "West Commonlands",
+     "part": "Words of Magi`kot",
+     "get": [
+      "Words of Magi`kot"
+     ],
+     "handin": [
+      {
+       "name": "Torn Page of Magi`kot pg. 1",
+       "count": 1
+      },
+      {
+       "name": "Torn Page of Magi`kot pg. 2",
+       "count": 1
+      },
+      {
+       "name": "Torn Page of Magi`kot pg. 3",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "p-wind",
+     "title": "Kill a gypsy dancer for the Power of Wind",
+     "kind": "kill",
+     "npc": "a gypsy dancer",
+     "zone": "Castle Mistmoore",
+     "part": "Power of the Elements",
+     "kill": [
+      "a gypsy dancer"
+     ],
+     "loot": [
+      "Power of Wind"
+     ]
+    },
+    {
+     "id": "p-fire",
+     "title": "Kill a lava or blazing elemental for the Power of Fire",
+     "kind": "kill",
+     "npc": "",
+     "zone": "Solusek's Eye",
+     "part": "Power of the Elements",
+     "killAny": [
+      "Lava elemental",
+      "Blazing Elemental"
+     ],
+     "loot": [
+      "Power of Fire"
+     ]
+    },
+    {
+     "id": "p-water",
+     "title": "Kill a ravener for the Power of Water",
+     "kind": "kill",
+     "npc": "",
+     "zone": "Kaesora",
+     "part": "Power of the Elements",
+     "killAny": [
+      "famished ravener",
+      "Hungered Ravener",
+      "Gorged Ravener"
+     ],
+     "loot": [
+      "Power of Water"
+     ]
+    },
+    {
+     "id": "p-earth",
+     "title": "Kill a fairy guard for the Power of Earth",
+     "kind": "kill",
+     "npc": "",
+     "zone": "Lesser Faydark",
+     "part": "Power of the Elements",
+     "killAny": [
+      "A Fairy Guard",
+      "a faerie guard"
+     ],
+     "loot": [
+      "Power of Earth"
+     ]
+    },
+    {
+     "id": "elements",
+     "title": "Hand Walnan the four powers",
+     "kind": "handin",
+     "npc": "Walnan",
+     "zone": "Butcherblock Mountains",
+     "part": "Power of the Elements",
+     "get": [
+      "Power of the Elements"
+     ],
+     "handin": [
+      {
+       "name": "Power of Wind",
+       "count": 1
+      },
+      {
+       "name": "Power of Fire",
+       "count": 1
+      },
+      {
+       "name": "Power of Water",
+       "count": 1
+      },
+      {
+       "name": "Power of Earth",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "m-pages",
+     "title": "Loot the four Torn Pages of Mastery",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Najena · Cazic Thule",
+     "part": "Words of Mastery",
+     "loot": [
+      "Torn Page of Mastery Earth",
+      "Torn Page of Mastery Fire",
+      "Torn Page of Mastery Water",
+      "Torn Page of Mastery Wind"
+     ],
+     "note": "A Magician and A Goblin Magician in Najena, or an alligator in Cazic Thule."
+    },
+    {
+     "id": "mastery",
+     "title": "Hand Akksstaff the four pages",
+     "kind": "handin",
+     "npc": "Akksstaff",
+     "zone": "Najena",
+     "part": "Words of Mastery",
+     "get": [
+      "Words of Mastery"
+     ],
+     "handin": [
+      {
+       "name": "Torn Page of Mastery Earth",
+       "count": 1
+      },
+      {
+       "name": "Torn Page of Mastery Fire",
+       "count": 1
+      },
+      {
+       "name": "Torn Page of Mastery Water",
+       "count": 1
+      },
+      {
+       "name": "Torn Page of Mastery Wind",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "orb-power",
+     "title": "Hand Rykas the two Words and the Power of the Elements",
+     "kind": "handin",
+     "npc": "Rykas",
+     "zone": "Lake Rathetear",
+     "part": "Power of the Orb",
+     "get": [
+      "Power of the Orb"
+     ],
+     "handin": [
+      {
+       "name": "Words of Magi`kot",
+       "count": 1
+      },
+      {
+       "name": "Power of the Elements",
+       "count": 1
+      },
+      {
+       "name": "Words of Mastery",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "torch",
+     "title": "Kill Neh'Ashiir for the Torch of the Elements",
+     "kind": "kill",
+     "npc": "Neh'Ashiir",
+     "zone": "City of Mist",
+     "part": "Element of Fire",
+     "kill": [
+      "Neh'Ashiir"
+     ],
+     "loot": [
+      "Torch of the Elements"
+     ]
+    },
+    {
+     "id": "embers",
+     "title": "Kill Gylton, Phurzikon or Nezekezena for Burning Embers",
+     "kind": "kill",
+     "npc": "",
+     "zone": "Burning Woods",
+     "part": "Element of Fire",
+     "killAny": [
+      "Gylton",
+      "Phurzikon",
+      "Nezekezena"
+     ],
+     "loot": [
+      "Burning Embers"
+     ],
+     "note": "Listed from easiest to hardest."
+    },
+    {
+     "id": "wand",
+     "title": "Kill Undertow for the Blazing Wand",
+     "kind": "kill",
+     "npc": "Undertow",
+     "zone": "Kedge Keep",
+     "part": "Element of Fire",
+     "kill": [
+      "Undertow"
+     ],
+     "loot": [
+      "Blazing Wand"
+     ]
+    },
+    {
+     "id": "e-fire",
+     "title": "Hand Jennus Lyklobar the Power of the Orb and the three fire items",
+     "kind": "handin",
+     "npc": "Jennus Lyklobar",
+     "zone": "Skyfire Mountains",
+     "part": "Element of Fire",
+     "get": [
+      "Element of Fire"
+     ],
+     "handin": [
+      {
+       "name": "Power of the Orb",
+       "count": 1
+      },
+      {
+       "name": "Torch of the Elements",
+       "count": 1
+      },
+      {
+       "name": "Burning Embers",
+       "count": 1
+      },
+      {
+       "name": "Blazing Wand",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "s-earth",
+     "title": "Kill Magi P`Tasa for the earth staff",
+     "kind": "kill",
+     "npc": "Magi P`Tasa",
+     "zone": "Plane of Hate",
+     "part": "Element of Earth",
+     "kill": [
+      "Magi P`Tasa"
+     ],
+     "loot": [
+      "Staff of Elemental Mastery: Earth"
+     ]
+    },
+    {
+     "id": "dirt",
+     "title": "Kill Slixin Klex for the Dirt of Underfoot",
+     "kind": "kill",
+     "npc": "Slixin Klex",
+     "zone": "Burning Woods",
+     "part": "Element of Earth",
+     "kill": [
+      "Slixin Klex"
+     ],
+     "loot": [
+      "Dirt of Underfoot"
+     ]
+    },
+    {
+     "id": "shovel",
+     "title": "Quest for the Shovel of Ponz",
+     "kind": "quest",
+     "npc": "",
+     "zone": "",
+     "part": "Element of Earth",
+     "get": [
+      "Shovel of Ponz"
+     ]
+    },
+    {
+     "id": "broom",
+     "title": "Quest for the Broom of Trilon",
+     "kind": "quest",
+     "npc": "",
+     "zone": "",
+     "part": "Element of Earth",
+     "get": [
+      "Broom of Trilon"
+     ]
+    },
+    {
+     "id": "e-earth",
+     "title": "Hand Tiblner Milnik the four earth items",
+     "kind": "handin",
+     "npc": "Tiblner Milnik",
+     "zone": "Firiona Vie",
+     "part": "Element of Earth",
+     "get": [
+      "Element of Earth"
+     ],
+     "handin": [
+      {
+       "name": "Staff of Elemental Mastery: Earth",
+       "count": 1
+      },
+      {
+       "name": "Dirt of Underfoot",
+       "count": 1
+      },
+      {
+       "name": "Shovel of Ponz",
+       "count": 1
+      },
+      {
+       "name": "Broom of Trilon",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "s-water",
+     "title": "Kill Phinigel Autropos for the water staff",
+     "kind": "kill",
+     "npc": "Phinigel Autropos",
+     "zone": "Kedge Keep",
+     "part": "Element of Water",
+     "kill": [
+      "Phinigel Autropos"
+     ],
+     "loot": [
+      "Staff of Elemental Mastery: Water"
+     ]
+    },
+    {
+     "id": "tears",
+     "title": "Kill Captain Rottgrime for the Tears of Erollisi",
+     "kind": "kill",
+     "npc": "Captain Rottgrime",
+     "zone": "The Overthere",
+     "part": "Element of Water",
+     "kill": [
+      "Captain Rottgrime"
+     ],
+     "loot": [
+      "Tears of Erollisi"
+     ]
+    },
+    {
+     "id": "rain",
+     "title": "Kill Tarbul Earthstrider for the Rain of Karana",
+     "kind": "kill",
+     "npc": "Tarbul Earthstrider",
+     "zone": "East Karana",
+     "part": "Element of Water",
+     "kill": [
+      "Tarbul Earthstrider"
+     ],
+     "loot": [
+      "Rain of Karana"
+     ]
+    },
+    {
+     "id": "e-water",
+     "title": "Hand Jinalis Andir the three water items",
+     "kind": "handin",
+     "npc": "Jinalis Andir",
+     "zone": "Dagnor's Cauldron",
+     "part": "Element of Water",
+     "get": [
+      "Element of Water"
+     ],
+     "handin": [
+      {
+       "name": "Staff of Elemental Mastery: Water",
+       "count": 1
+      },
+      {
+       "name": "Tears of Erollisi",
+       "count": 1
+      },
+      {
+       "name": "Rain of Karana",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "crown",
+     "title": "Loot the Crown of Elemental Mastery on the seventh island",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Plane of Sky",
+     "part": "Element of Wind",
+     "loot": [
+      "Crown of Elemental Mastery"
+     ]
+    },
+    {
+     "id": "binder",
+     "title": "Loot the Elemental Binder",
+     "kind": "loot",
+     "npc": "",
+     "zone": "The Hole",
+     "part": "Element of Wind",
+     "loot": [
+      "Elemental Binder"
+     ]
+    },
+    {
+     "id": "cloak",
+     "title": "Kill Quillmane for the Pegasus Feather Cloak",
+     "kind": "kill",
+     "npc": "Quillmane",
+     "zone": "South Karana",
+     "part": "Element of Wind",
+     "kill": [
+      "Quillmane"
+     ],
+     "loot": [
+      "Pegasus Feather Cloak"
+     ]
+    },
+    {
+     "id": "e-wind",
+     "title": "Hand Kihun Solstin the three wind items",
+     "kind": "handin",
+     "npc": "Kihun Solstin",
+     "zone": "Plane of Sky",
+     "part": "Element of Wind",
+     "get": [
+      "Element of Wind"
+     ],
+     "handin": [
+      {
+       "name": "Crown of Elemental Mastery",
+       "count": 1
+      },
+      {
+       "name": "Elemental Binder",
+       "count": 1
+      },
+      {
+       "name": "Pegasus Feather Cloak",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "master",
+     "title": "Hand the Master of Elements the four Elements, then scribe and cast Summon Orb",
+     "kind": "handin",
+     "npc": "Master of Elements",
+     "zone": "Plane of Sky",
+     "part": "Orb of Mastery",
+     "get": [
+      "Spell: Summon Orb",
+      "Orb of Mastery"
+     ],
+     "handin": [
+      {
+       "name": "Element of Fire",
+       "count": 1
+      },
+      {
+       "name": "Element of Earth",
+       "count": 1
+      },
+      {
+       "name": "Element of Water",
+       "count": 1
+      },
+      {
+       "name": "Element of Wind",
+       "count": 1
+      }
+     ],
+     "note": "If he is not up, hail Kihun Solstin and say \"I want to see the master\"."
+    }
+   ]
+  },
+  {
+   "key": "epic-rng",
+   "name": "Ranger Epic",
+   "pack": "epics",
+   "reward": "Swiftwind",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: SECONDARY\nSkill: 1H Slashing Atk Delay: 21\nDMG: 13\nSTR: +15 DEX: +5 STA: +10 HP: +50\nSV FIRE: +5 SV DISEASE: +5 SV COLD: +5 SV MAGIC: +5 SV POISON: +5\nEffect: Swift Spirit (Worn)\nWT: 2.0 Size: MEDIUM\nClass: RNG\nRace: ALL",
+   "classes": [
+    "RNG"
+   ],
+   "minLevel": 46,
+   "start": "Telin Darkforest · Burning Woods",
+   "wiki": "https://eqlwiki.com/Ranger_Epic_Quest",
+   "warning": "Usbak the Old appears only when Kinlo Strongarm takes the Hammer of the Ancients, and leaves again — hold the Ancient Longsword for him first.",
+   "note": "Two swords: Swiftwind and Earthcaller. They share the bowl and Usbak, and finish apart.",
+   "parallel": true,
+   "steps": [
+    {
+     "id": "telin",
+     "title": "Ask Telin Darkforest what action",
+     "kind": "say",
+     "npc": "Telin Darkforest",
+     "zone": "Burning Woods",
+     "part": "The Shiny Tin Bowl",
+     "get": [
+      "Worn note"
+     ],
+     "say": "What action"
+    },
+    {
+     "id": "faelin",
+     "title": "Hand Faelin Bloodbriar the Worn note",
+     "kind": "handin",
+     "npc": "Faelin Bloodbriar",
+     "zone": "Greater Faydark",
+     "part": "The Shiny Tin Bowl",
+     "get": [
+      "Faelin`s Ring"
+     ],
+     "handin": [
+      {
+       "name": "Worn note",
+       "count": 1
+      }
+     ],
+     "note": "She has to be spawned."
+    },
+    {
+     "id": "giz",
+     "title": "Hand Giz X`Tin Faelin`s Ring",
+     "kind": "handin",
+     "npc": "Giz X`Tin",
+     "zone": "Kithicor Forest",
+     "part": "The Shiny Tin Bowl",
+     "get": [
+      "Dark Metal Coin"
+     ],
+     "handin": [
+      {
+       "name": "Faelin`s Ring",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "telin-coin",
+     "title": "Hand Telin Darkforest the Dark Metal Coin",
+     "kind": "handin",
+     "npc": "Telin Darkforest",
+     "zone": "Burning Woods",
+     "part": "The Shiny Tin Bowl",
+     "get": [
+      "Worn Dark Metal Coin"
+     ],
+     "handin": [
+      {
+       "name": "Dark Metal Coin",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "althele",
+     "title": "Hand Althele the Worn Dark Metal Coin",
+     "kind": "handin",
+     "npc": "Althele",
+     "zone": "East Karana",
+     "part": "The Shiny Tin Bowl",
+     "get": [
+      "Braided Grass Amulet"
+     ],
+     "handin": [
+      {
+       "name": "Worn Dark Metal Coin",
+       "count": 1
+      }
+     ],
+     "note": "She sends you to Sionae, who shows on track."
+    },
+    {
+     "id": "sionae",
+     "title": "Show Sionae the Braided Grass Amulet",
+     "kind": "handin",
+     "npc": "Sionae",
+     "zone": "East Karana",
+     "part": "The Shiny Tin Bowl",
+     "get": [
+      "Frayed Braided Grass Amulet"
+     ],
+     "handin": [
+      {
+       "name": "Braided Grass Amulet",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "nuien",
+     "title": "Show Nuien the Frayed Braided Grass Amulet",
+     "kind": "handin",
+     "npc": "Nuien",
+     "zone": "East Karana",
+     "part": "The Shiny Tin Bowl",
+     "handin": [
+      {
+       "name": "Frayed Braided Grass Amulet",
+       "count": 1
+      }
+     ],
+     "note": "It comes back."
+    },
+    {
+     "id": "teloa",
+     "title": "Show Teloa the Frayed Braided Grass Amulet",
+     "kind": "handin",
+     "npc": "Teloa",
+     "zone": "East Karana",
+     "part": "The Shiny Tin Bowl",
+     "handin": [
+      {
+       "name": "Frayed Braided Grass Amulet",
+       "count": 1
+      }
+     ],
+     "caution": "This spawns the Dark Elf Corruptor and two Dark Elf Reavers, and they run almost as fast as Spirit of Wolf."
+    },
+    {
+     "id": "corruptor",
+     "title": "Kill the Dark Elf Corruptor for the Fleshbound Tome",
+     "kind": "kill",
+     "npc": "Dark Elf Corruptor",
+     "zone": "East Karana",
+     "part": "The Shiny Tin Bowl",
+     "kill": [
+      "Dark Elf Corruptor"
+     ],
+     "loot": [
+      "Fleshbound Tome"
+     ]
+    },
+    {
+     "id": "althele-tome",
+     "title": "Hand Althele the Fleshbound Tome",
+     "kind": "handin",
+     "npc": "Althele",
+     "zone": "East Karana",
+     "part": "The Shiny Tin Bowl",
+     "get": [
+      "Earth Stained Note"
+     ],
+     "handin": [
+      {
+       "name": "Fleshbound Tome",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "ella-note",
+     "title": "Hand Ella Foodcrafter the Earth Stained Note",
+     "kind": "handin",
+     "npc": "Ella Foodcrafter",
+     "zone": "Misty Thicket",
+     "part": "The Shiny Tin Bowl",
+     "get": [
+      "Shiny Tin Bowl"
+     ],
+     "handin": [
+      {
+       "name": "Earth Stained Note",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "forage",
+     "title": "Forage the four ingredients",
+     "kind": "forage",
+     "npc": "",
+     "zone": "Everfrost · Greater Faydark · Innothule Swamp · Misty Thicket",
+     "part": "The Hardened Mixture",
+     "get": [
+      "Chilled Tundra Root",
+      "Ripened Heartfruit",
+      "Speckled Molded Mushroom",
+      "Sweetened Mudroot"
+     ],
+     "note": "One from each zone, in that order."
+    },
+    {
+     "id": "mixture",
+     "title": "Combine the four ingredients in the Shiny Tin Bowl",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In the Shiny Tin Bowl",
+     "part": "The Hardened Mixture",
+     "make": [
+      "Hardened Mixture"
+     ],
+     "bring": [
+      {
+       "name": "Chilled Tundra Root",
+       "count": 1
+      },
+      {
+       "name": "Ripened Heartfruit",
+       "count": 1
+      },
+      {
+       "name": "Speckled Molded Mushroom",
+       "count": 1
+      },
+      {
+       "name": "Sweetened Mudroot",
+       "count": 1
+      }
+     ],
+     "caution": "Keep the Shiny Tin Bowl — the Refined Mithril Blade needs it again."
+    },
+    {
+     "id": "alrik",
+     "title": "Talk to Alrik Farsight for a Crushed Pot",
+     "kind": "talk",
+     "npc": "Alrik Farsight",
+     "zone": "Timorous Deep",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Crushed Pot"
+     ]
+    },
+    {
+     "id": "farios",
+     "title": "Hand Farios Elianos the Crushed Pot",
+     "kind": "handin",
+     "npc": "Farios Elianos",
+     "zone": "Felwithe",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Grocery List"
+     ],
+     "handin": [
+      {
+       "name": "Crushed Pot",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "nora",
+     "title": "Hand Merchant Nora the Grocery List",
+     "kind": "handin",
+     "npc": "Merchant Nora",
+     "zone": "Northern Felwithe",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Bag of Provisions"
+     ],
+     "handin": [
+      {
+       "name": "Grocery List",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "farios-bag",
+     "title": "Hand Farios Elianos the Bag of Provisions",
+     "kind": "handin",
+     "npc": "Farios Elianos",
+     "zone": "Felwithe",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Receipt"
+     ],
+     "handin": [
+      {
+       "name": "Bag of Provisions",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "pattern",
+     "title": "Hand Alrik Farsight the Receipt",
+     "kind": "handin",
+     "npc": "Alrik Farsight",
+     "zone": "Timorous Deep",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Ancient Pattern"
+     ],
+     "handin": [
+      {
+       "name": "Receipt",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "rose",
+     "title": "Forage a Rose of Firiona",
+     "kind": "forage",
+     "npc": "",
+     "zone": "Firiona Vie",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Rose of Firiona"
+     ]
+    },
+    {
+     "id": "merdan",
+     "title": "Hand Merdan Fleetfoot the Rose of Firiona",
+     "kind": "handin",
+     "npc": "Merdan Fleetfoot",
+     "zone": "Surefall Glade",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Wood Painting"
+     ],
+     "handin": [
+      {
+       "name": "Rose of Firiona",
+       "count": 1
+      }
+     ],
+     "note": "Ask him \"Who is Niera?\" first."
+    },
+    {
+     "id": "skeleton",
+     "title": "Hand a human skeleton the Wood Painting",
+     "kind": "handin",
+     "npc": "a human skeleton",
+     "zone": "Frontier Mountains",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Silver Chained Locket"
+     ],
+     "handin": [
+      {
+       "name": "Wood Painting",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "niera",
+     "title": "Hand Niera Farbreeze the Silver Chained Locket",
+     "kind": "handin",
+     "npc": "Niera Farbreeze",
+     "zone": "Surefall Glade",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Platinum Speckled Powder"
+     ],
+     "handin": [
+      {
+       "name": "Silver Chained Locket",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "reaver",
+     "title": "Kill a black reaver for a Jade Reaver",
+     "kind": "kill",
+     "npc": "a black reaver",
+     "zone": "City of Mist",
+     "part": "The Runecrested Bowl",
+     "kill": [
+      "a black reaver"
+     ],
+     "loot": [
+      "Jade Reaver"
+     ]
+    },
+    {
+     "id": "kinlo",
+     "title": "Hand Kinlo Strongarm the Jade Reaver",
+     "kind": "handin",
+     "npc": "Kinlo Strongarm",
+     "zone": "North Kaladim",
+     "part": "The Runecrested Bowl",
+     "get": [
+      "Enchanted Clay"
+     ],
+     "handin": [
+      {
+       "name": "Jade Reaver",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "bowl",
+     "title": "Combine the pattern, the powder and the clay on a pottery wheel",
+     "kind": "combine",
+     "npc": "",
+     "zone": "On a pottery wheel",
+     "part": "The Runecrested Bowl",
+     "make": [
+      "Runecrested Bowl"
+     ],
+     "bring": [
+      {
+       "name": "Ancient Pattern",
+       "count": 1
+      },
+      {
+       "name": "Platinum Speckled Powder",
+       "count": 1
+      },
+      {
+       "name": "Enchanted Clay",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "stone",
+     "title": "Hand Ella Foodcrafter the mixture and the bowl",
+     "kind": "handin",
+     "npc": "Ella Foodcrafter",
+     "zone": "Misty Thicket",
+     "part": "Swiftwind",
+     "get": [
+      "Softly Glowing Stone"
+     ],
+     "handin": [
+      {
+       "name": "Hardened Mixture",
+       "count": 1
+      },
+      {
+       "name": "Runecrested Bowl",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "globe",
+     "title": "Cast a Summoned: Firefly Globe",
+     "kind": "cast",
+     "npc": "",
+     "zone": "anywhere, at night",
+     "part": "Swiftwind",
+     "get": [
+      "Summoned: Firefly Globe"
+     ],
+     "note": "A level 1 druid spell, castable only at night (7pm to 4am); the globe does not last."
+    },
+    {
+     "id": "res",
+     "title": "Buy a scroll of Resurrection",
+     "kind": "buy",
+     "npc": "A cleric spell vendor",
+     "zone": "",
+     "part": "Swiftwind",
+     "get": [
+      "Spell: Resurrection"
+     ],
+     "note": "The level 49 cleric spell."
+    },
+    {
+     "id": "remains",
+     "title": "Hand Venril Sathir Remains the Firefly Globe",
+     "kind": "handin",
+     "npc": "Venril Sathir Remains",
+     "zone": "Karnor's Castle",
+     "part": "Swiftwind",
+     "handin": [
+      {
+       "name": "Summoned: Firefly Globe",
+       "count": 1
+      }
+     ],
+     "note": "This spawns the Spirit of Venril Sathir."
+    },
+    {
+     "id": "vs-spirit",
+     "title": "Hand the Spirit of Venril Sathir the Resurrection scroll",
+     "kind": "handin",
+     "npc": "Spirit of Venril Sathir",
+     "zone": "Karnor's Castle",
+     "part": "Swiftwind",
+     "handin": [
+      {
+       "name": "Spell: Resurrection",
+       "count": 1
+      }
+     ],
+     "note": "This spawns Venril Sathir."
+    },
+    {
+     "id": "vs",
+     "title": "Kill Venril Sathir for a Pulsing Green Stone",
+     "kind": "kill",
+     "npc": "Venril Sathir",
+     "zone": "Karnor's Castle",
+     "part": "Swiftwind",
+     "kill": [
+      "Venril Sathir"
+     ],
+     "loot": [
+      "Pulsing Green Stone"
+     ]
+    },
+    {
+     "id": "foloal",
+     "title": "Hand Foloal Stormforest the two stones",
+     "kind": "handin",
+     "npc": "Foloal Stormforest",
+     "zone": "Firiona Vie",
+     "part": "Swiftwind",
+     "get": [
+      "Warmly Glowing Stone"
+     ],
+     "handin": [
+      {
+       "name": "Pulsing Green Stone",
+       "count": 1
+      },
+      {
+       "name": "Softly Glowing Stone",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "longsword",
+     "title": "Hand Telin Darkforest the Warmly Glowing Stone",
+     "kind": "handin",
+     "npc": "Telin Darkforest",
+     "zone": "Burning Woods",
+     "part": "Swiftwind",
+     "get": [
+      "Ancient Longsword"
+     ],
+     "handin": [
+      {
+       "name": "Warmly Glowing Stone",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "usbak",
+     "title": "Hand Usbak the Old the Ancient Longsword",
+     "kind": "handin",
+     "npc": "Usbak the Old",
+     "zone": "North Kaladim",
+     "part": "Swiftwind",
+     "get": [
+      "Refined Ancient Sword"
+     ],
+     "handin": [
+      {
+       "name": "Ancient Longsword",
+       "count": 1
+      }
+     ],
+     "note": "Kinlo Strongarm calls Usbak when he takes the Hammer of the Ancients — see the Refined Mithril Blade part."
+    },
+    {
+     "id": "swiftwind",
+     "title": "Hand the Refined Ancient Sword to Telin, then to Faelin Bloodbriar",
+     "kind": "handin",
+     "npc": "Telin Darkforest",
+     "zone": "Burning Woods",
+     "part": "Swiftwind",
+     "npcs": [
+      "Telin Darkforest",
+      "Faelin Bloodbriar"
+     ],
+     "get": [
+      "Swiftwind"
+     ],
+     "handin": [
+      {
+       "name": "Refined Ancient Sword",
+       "count": 1
+      }
+     ],
+     "note": "Telin hands it back and Faelin appears; she gives you Swiftwind."
+    },
+    {
+     "id": "sphere",
+     "title": "Kill essence tamers for a Swirling Sphere of Color",
+     "kind": "kill",
+     "npc": "an essence tamer",
+     "zone": "Plane of Sky",
+     "part": "Refined Mithril Blade",
+     "kill": [
+      "an essence tamer"
+     ],
+     "loot": [
+      "Swirling Sphere of Color"
+     ]
+    },
+    {
+     "id": "jaeil-call",
+     "title": "Hand Jaeil the Wretched the Shiny Tin Bowl",
+     "kind": "handin",
+     "npc": "Jaeil the Wretched",
+     "zone": "The Hole",
+     "part": "Refined Mithril Blade",
+     "handin": [
+      {
+       "name": "Shiny Tin Bowl",
+       "count": 1
+      }
+     ],
+     "note": "This spawns Jaeil the Insane."
+    },
+    {
+     "id": "jaeil",
+     "title": "Kill Jaeil the Insane for the Soulbound Hammer",
+     "kind": "kill",
+     "npc": "Jaeil the Insane",
+     "zone": "The Hole",
+     "part": "Refined Mithril Blade",
+     "kill": [
+      "Jaeil the Insane"
+     ],
+     "loot": [
+      "Soulbound Hammer"
+     ]
+    },
+    {
+     "id": "mairee",
+     "title": "Hand Mairee Silentone the Soulbound Hammer",
+     "kind": "handin",
+     "npc": "Mairee Silentone",
+     "zone": "Erudin Palace",
+     "part": "Refined Mithril Blade",
+     "get": [
+      "Dwarven Smiths Hammer"
+     ],
+     "handin": [
+      {
+       "name": "Soulbound Hammer",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "ancients",
+     "title": "Hand Mairee the smith's hammer and the sphere",
+     "kind": "handin",
+     "npc": "Mairee Silentone",
+     "zone": "Erudin Palace",
+     "part": "Refined Mithril Blade",
+     "get": [
+      "Hammer of the Ancients"
+     ],
+     "handin": [
+      {
+       "name": "Dwarven Smiths Hammer",
+       "count": 1
+      },
+      {
+       "name": "Swirling Sphere of Color",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "ore",
+     "title": "Hand Kinlo Strongarm the Hammer of the Ancients",
+     "kind": "handin",
+     "npc": "Kinlo Strongarm",
+     "zone": "North Kaladim",
+     "part": "Refined Mithril Blade",
+     "get": [
+      "Small bit of Mithril Ore"
+     ],
+     "handin": [
+      {
+       "name": "Hammer of the Ancients",
+       "count": 1
+      }
+     ],
+     "caution": "This calls Usbak the Old, and he leaves again — hold the Ancient Longsword for him before you do it."
+    },
+    {
+     "id": "blade",
+     "title": "Hand Kinlo Strongarm the Small bit of Mithril Ore",
+     "kind": "handin",
+     "npc": "Kinlo Strongarm",
+     "zone": "North Kaladim",
+     "part": "Refined Mithril Blade",
+     "get": [
+      "Refined Mithril Blade"
+     ],
+     "handin": [
+      {
+       "name": "Small bit of Mithril Ore",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "emerald",
+     "title": "Loot a Shattered Emerald of Corruption",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Plane of Hate",
+     "part": "Earthcaller",
+     "loot": [
+      "Shattered Emerald of Corruption"
+     ],
+     "note": "From the mini-bosses (a 72-hour respawn) or Innoruuk."
+    },
+    {
+     "id": "earthcaller",
+     "title": "Hand Xanuusus the emerald and the Refined Mithril Blade",
+     "kind": "handin",
+     "npc": "Xanuusus",
+     "zone": "North Karana",
+     "part": "Earthcaller",
+     "get": [
+      "Earthcaller"
+     ],
+     "handin": [
+      {
+       "name": "Shattered Emerald of Corruption",
+       "count": 1
+      },
+      {
+       "name": "Refined Mithril Blade",
+       "count": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "epic-ber",
+   "name": "Berserker Epic",
+   "pack": "epics",
+   "reward": "Kerasian Axe of Ire",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP REQUIRED LEVEL OF 46.\nSlot: PRIMARY\nSkill: 2H Slashing Atk Delay: 37\nDMG: 46\nAC: 5\nSTR: +15 DEX: +15 STA: +20 HP: +125 END: +100 ATTACK: +40 HASTE: 40%\nSV FIRE: +8 SV DISEASE: +10 SV COLD: +15 SV MAGIC: +7 SV POISON: +10\nEffect: Kerasian Axe of Ire (Worn, Req Level 46)\nWT: 6.0 Size: TINY\nClass: BER\nRace: ALL",
+   "classes": [
+    "BER"
+   ],
+   "minLevel": 46,
+   "start": "Keras McArik · Lake of Ill Omen",
+   "wiki": "https://eqlwiki.com/Berserker_Epic_Quest",
+   "note": "Transcribed from the wiki's walkthrough; it has no checklist.",
+   "steps": [
+    {
+     "id": "keras",
+     "title": "Tell Keras McArik you wish to take this great stride",
+     "kind": "say",
+     "npc": "Keras McArik",
+     "zone": "Lake of Ill Omen, -110, -3400",
+     "part": "Axe Me No Questions",
+     "get": [
+      "Throwing Axe of the Spirit",
+      "Medal of Blood"
+     ],
+     "say": "I wish to take this great stride",
+     "note": "Say \"I wish to master the fires\" first."
+    },
+    {
+     "id": "axefall",
+     "title": "Hand Lingering Axefall the Throwing Axe of the Spirit",
+     "kind": "handin",
+     "npc": "Lingering Axefall",
+     "zone": "Lake of Ill Omen, +65, +2490",
+     "part": "Trial of Blood",
+     "handin": [
+      {
+       "name": "Throwing Axe of the Spirit",
+       "count": 1
+      }
+     ],
+     "note": "He does not answer hails. He hands you three Bore Axes; ask what he was sent to defeat."
+    },
+    {
+     "id": "bloodbeast",
+     "title": "Kill the Impervious Bloodbeast for a tooth",
+     "kind": "kill",
+     "npc": "Impervious Bloodbeast",
+     "zone": "Lake of Ill Omen",
+     "part": "Trial of Blood",
+     "kill": [
+      "Impervious Bloodbeast"
+     ],
+     "loot": [
+      "Bloodbeast Tooth"
+     ],
+     "note": "Stay at range and throw the Bore Axes; hail Axefall for three more."
+    },
+    {
+     "id": "blood",
+     "title": "Hand Keras the tooth and the Medal of Blood",
+     "kind": "handin",
+     "npc": "Keras McArik",
+     "zone": "Lake of Ill Omen, -110, -3400",
+     "part": "Trial of Blood",
+     "get": [
+      "Medal of Mirages"
+     ],
+     "handin": [
+      {
+       "name": "Bloodbeast Tooth",
+       "count": 1
+      },
+      {
+       "name": "Medal of Blood",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "mardic",
+     "title": "Hand Mardic Crimsonsteel the sealed note",
+     "kind": "handin",
+     "npc": "Mardic Crimsonsteel",
+     "zone": "Field of Bone, +2115, +3625",
+     "part": "Trial of Mirages",
+     "handin": [
+      {
+       "name": "A Sealed Note for Mardic",
+       "count": 1
+      }
+     ],
+     "note": "Keras gives you the note when you say you are ready for this challenge. Mardic sends you to a sealed room."
+    },
+    {
+     "id": "image",
+     "title": "Kill the Berserker's Image, alone",
+     "kind": "kill",
+     "npc": "Berserker's Image",
+     "zone": "a sealed room",
+     "part": "Trial of Mirages",
+     "kill": [
+      "Berserker's Image"
+     ],
+     "loot": [
+      "Axe of Lost Souls"
+     ],
+     "note": "It pauses at intervals so you can bandage. Mardic gives you the Image Essence afterwards."
+    },
+    {
+     "id": "mirages",
+     "title": "Hand Keras the Image Essence and the Medal of Mirages",
+     "kind": "handin",
+     "npc": "Keras McArik",
+     "zone": "Lake of Ill Omen, -110, -3400",
+     "part": "Trial of Mirages",
+     "get": [
+      "Medal of Strategy"
+     ],
+     "handin": [
+      {
+       "name": "Image Essence",
+       "count": 1
+      },
+      {
+       "name": "Medal of Mirages",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "treanik",
+     "title": "Hand Treanik Ireblade the note",
+     "kind": "handin",
+     "npc": "Treanik Ireblade",
+     "zone": "Dagnor's Cauldron, -1585, +210",
+     "part": "Trial of Strategy",
+     "handin": [
+      {
+       "name": "Note for Treanik",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "praklion",
+     "title": "Kill Praklion of the Cauldron for Treanik's axe",
+     "kind": "kill",
+     "npc": "Praklion of the Cauldron",
+     "zone": "Dagnor's Cauldron, -525, -1400",
+     "part": "Trial of Strategy",
+     "kill": [
+      "Praklion of the Cauldron"
+     ],
+     "loot": [
+      "Treanik's Tarnished Axe"
+     ]
+    },
+    {
+     "id": "trinket",
+     "title": "Hand Treanik her Tarnished Axe",
+     "kind": "handin",
+     "npc": "Treanik Ireblade",
+     "zone": "Dagnor's Cauldron",
+     "part": "Trial of Strategy",
+     "get": [
+      "A Bone Trinket"
+     ],
+     "handin": [
+      {
+       "name": "Treanik's Tarnished Axe",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "strategy",
+     "title": "Hand Keras the trinket and the Medal of Strategy",
+     "kind": "handin",
+     "npc": "Keras McArik",
+     "zone": "Lake of Ill Omen, -110, -3400",
+     "part": "Trial of Strategy",
+     "get": [
+      "Medal of Fervid Rage"
+     ],
+     "handin": [
+      {
+       "name": "A Bone Trinket",
+       "count": 1
+      },
+      {
+       "name": "Medal of Strategy",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "imp",
+     "title": "Kill the Ireblind Imp for the Burning Essence of Rage",
+     "kind": "kill",
+     "npc": "Ireblind Imp",
+     "zone": "Plane of Fear",
+     "part": "Trial of Fervid Rage",
+     "kill": [
+      "Ireblind Imp"
+     ],
+     "loot": [
+      "Burning Essence of Rage"
+     ],
+     "note": "Kill scarelings until the Enraged Imp appears; its death calls the Ireblind Imp.",
+     "caution": "The Ireblind Imp has near-zonewide aggro and an area mesmerize."
+    },
+    {
+     "id": "rage",
+     "title": "Hand Keras the essence and the Medal of Fervid Rage",
+     "kind": "handin",
+     "npc": "Keras McArik",
+     "zone": "Lake of Ill Omen, -110, -3400",
+     "part": "Trial of Fervid Rage",
+     "get": [
+      "McArik Reagent Satchel"
+     ],
+     "handin": [
+      {
+       "name": "Medal of Fervid Rage",
+       "count": 1
+      },
+      {
+       "name": "Burning Essence of Rage",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "liver",
+     "title": "Kill the Disease-Ridden Gorilla for a Decaying Liver",
+     "kind": "kill",
+     "npc": "Disease-Ridden Gorilla",
+     "zone": "Emerald Jungle",
+     "part": "Trial of Hunting",
+     "kill": [
+      "Disease-Ridden Gorilla"
+     ],
+     "loot": [
+      "Decaying Liver"
+     ],
+     "note": "Its placeholder is a tottering ape near -1525, -90."
+    },
+    {
+     "id": "paw",
+     "title": "Kill the Gnashing Kobold for its paw",
+     "kind": "kill",
+     "npc": "Gnashing Kobold",
+     "zone": "Stonebrunt Mountains",
+     "part": "Trial of Hunting",
+     "kill": [
+      "Gnashing Kobold"
+     ],
+     "loot": [
+      "Gnashing Kobold Paw"
+     ],
+     "note": "Its placeholder is A Kobold at +1885, +2340."
+    },
+    {
+     "id": "gland",
+     "title": "Kill the Reeking Skunk for a Scent Gland",
+     "kind": "kill",
+     "npc": "Reeking Skunk",
+     "zone": "Toxxulia Forest",
+     "part": "Trial of Hunting",
+     "kill": [
+      "Reeking Skunk"
+     ],
+     "loot": [
+      "Scent Gland"
+     ]
+    },
+    {
+     "id": "dust",
+     "title": "Combine the three with a Philter of Major Translocation in the satchel",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In the McArik Reagent Satchel",
+     "part": "Trial of Hunting",
+     "make": [
+      "Bag of Image Essence Dust"
+     ],
+     "bring": [
+      {
+       "name": "Decaying Liver",
+       "count": 1
+      },
+      {
+       "name": "Gnashing Kobold Paw",
+       "count": 1
+      },
+      {
+       "name": "Scent Gland",
+       "count": 1
+      },
+      {
+       "name": "Philter of Major Translocation",
+       "count": 1
+      }
+     ],
+     "note": "A shaman makes the philter."
+    },
+    {
+     "id": "hunting",
+     "title": "Hand Keras the bag and your medal",
+     "kind": "handin",
+     "npc": "Keras McArik",
+     "zone": "Lake of Ill Omen, -110, -3400",
+     "part": "Trial of Hunting",
+     "get": [
+      "Medal of Mastery"
+     ],
+     "handin": [
+      {
+       "name": "Bag of Image Essence Dust",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "hopeful",
+     "title": "Pay the Lurking Hopeful 1000 platinum",
+     "kind": "handin",
+     "npc": "Lurking Hopeful",
+     "zone": "Warsliks Woods, +175, +630",
+     "part": "Trial of Mastery",
+     "coins": "1000 platinum",
+     "note": "She is there from 11pm to 7am game time, then leaves."
+    },
+    {
+     "id": "tome",
+     "title": "Kill the goblin up the river and loot A Maniac's Garbled Tome",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Warsliks Woods",
+     "part": "Trial of Mastery",
+     "loot": [
+      "A Maniac's Garbled Tome"
+     ],
+     "note": "Three waves of frantic goblins, then ferocious goblins, a minute a wave. Bring melee help and levitation."
+    },
+    {
+     "id": "axe",
+     "title": "Hand Keras the tome and the Medal of Mastery",
+     "kind": "handin",
+     "npc": "Keras McArik",
+     "zone": "Lake of Ill Omen, -110, -3400",
+     "part": "Trial of Mastery",
+     "get": [
+      "Kerasian Axe of Ire"
+     ],
+     "handin": [
+      {
+       "name": "Medal of Mastery",
+       "count": 1
+      },
+      {
+       "name": "A Maniac's Garbled Tome",
        "count": 1
       }
      ]
