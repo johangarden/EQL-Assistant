@@ -5,12 +5,16 @@
 The steps are HAND-TRANSCRIBED from eqlwiki's "<Class> Epic Quest" pages (their Checklist
 sections, the long walkthrough where the checklist names nothing). Those pages sit under the
 wiki's "Epics Era" banner: classic-era write-ups, unverified in EQ Legends until Kunark is live
-(8 Dec 2026). Rules of the transcription:
+(8 Dec 2026). A second source fills what eqlwiki leaves open (owner, 25 Nov: "a pretty stable
+proven information site"): eqprogression.com's 1.0 epic guides for original EverQuest — the
+names of items eqlwiki's pages leave unnamed (the shaman's three books, the enchanter's four
+sacks, the wizard's bag, the necromancer's head and boxes), and the whole Beastlord epic, which
+eqlwiki has no page for. Where the two disagree and our item table knows one spelling, the
+table's wins (Golem Sprocket). Rules of the transcription:
 
-  * a name goes into a MATCHED list (kill / killAny / loot / handin / make / say) only when the
-    wiki spells it — a guessed name silently never fires. What the page leaves unnamed ("the
-    combined sack", "his ring") stays out of those lists: the step is then proven by the trade
-    line alone (trade=True, a started quest only) or ticked by hand;
+  * a name goes into a MATCHED list (kill / killAny / loot / handin / make / say) only when one
+    of the two sources spells it — a guessed name silently never fires. A step neither source
+    can name a taker or an item for is a hand-ticked kind (by_hand);
   * a quest's PARTS run side by side, so a proven step vouches only for its own part;
   * OPTIONAL steps are never counted and never implied.
 
@@ -25,10 +29,15 @@ ITEMS = json.load(io.open(os.path.join(ROOT, "data", "item-stats.json"), encodin
 
 def item_key(n): return n.replace("'", "").replace("`", "").lower()
 
+# Rewards eqlwiki has no item page for yet (so no stats line) — named here on purpose.
+NO_STATS_YET = {"Claw of the Savage Spirit"}
+
 def reward_stats(name):
     """The item table's record as the stats text the quest view reads (Skill … Atk Delay / DMG lines)."""
     r = ITEMS.get(item_key(name))
-    assert r, "reward not in the item table: " + name
+    if not r:
+        assert name in NO_STATS_YET, "reward not in the item table: " + name
+        return ""
     L = []
     if r.get("flags"): L.append(r["flags"].replace(" · ", " ").upper())
     if r.get("slot"): L.append("Slot: " + r["slot"])
@@ -66,7 +75,6 @@ def step(id, title, kind, npc="", zone="", **kw):
     for k in ("coins", "say", "reply", "faction", "note", "caution"):
         v = kw.pop(k, None)
         if v: s[k] = v
-    if kw.pop("trade", False): s["trade"] = True
     assert not kw, f"unknown fields on {id}: {kw}"
     return s
 
@@ -77,12 +85,11 @@ def kill(id, title, mobs, zone, loot=(), **kw): return step(id, title, "kill", m
 def kill_any(id, title, mobs, zone, loot=(), **kw): return step(id, title, "kill", "", zone, killAny=mobs, loot=loot, **kw)
 def combine(id, title, where, items, makes=(), **kw): return step(id, title, "combine", "", where, bring=items, make=makes, **kw)
 def by_hand(id, title, kind, npc="", zone="", **kw): return step(id, title, kind, npc, zone, **kw)   # buy · forage · ground · pickpocket · talk
-def unnamed(id, title, npc, zone, **kw): return step(id, title, "handin", npc, zone, trade=True, **kw)
 
-def quest(key, name, cls, reward, level, start, wiki, steps, warning="", note="", parallel=False):
+def quest(key, name, cls, reward, level, start, wiki, steps, warning="", note="", parallel=False, url=""):
     _seen.clear(); part("")
     q = OrderedDict(key=key, name=name, pack="epics", reward=reward, rewardStats=reward_stats(reward), classes=[cls],
-                    minLevel=level, start=start, wiki="https://eqlwiki.com/" + wiki.replace(" ", "_"))
+                    minLevel=level, start=start, wiki=url or "https://eqlwiki.com/" + wiki.replace(" ", "_"))
     if warning: q["warning"] = warning
     if note: q["note"] = note
     if parallel: q["parallel"] = True   # two rewards: no step vouches for the whole quest
@@ -178,37 +185,38 @@ def enc():
           give("gift", "Hand Brokk Boxtripper the Scribbled Parchment", "Brokk Boxtripper", "Oggok", ["Scribbled Parchment"], get=["Gift to Bozlum"]),
           give("blossoms", "Hand Bozlum Blossom the Gift to Bozlum", "Bozlum Blossom", "Oggok", ["Gift to Bozlum"], get=["Snow Blossoms"]),
           combine("sack1", "Combine the chalice, the rod, the blossoms and the word in an Enchanters Sack", "In an Enchanters Sack",
-                  ["Chalice of Kings", "Xolion Rod", "Snow Blossoms", "Innoruuk's Word"], note=SACK),
-          unnamed("piece1", "Hand Modani Qu`Loni the combined sack", "Modani Qu`Loni", "The Overthere", get=["1st Piece of Staff"])]
+                  ["Chalice of Kings", "Xolion Rod", "Snow Blossoms", "Innoruuk's Word"], ["Sack for Modani"], note=SACK),
+          give("piece1", "Hand Modani Qu`Loni the Sack for Modani", "Modani Qu`Loni", "The Overthere", ["Sack for Modani"], get=["1st Piece of Staff"])]
     part("2nd Piece of Staff — Test of Enlightenment")
     S += [kill("spoon", "Kill Cazel for a Spoon", ["Cazel"], "Oasis of Marr", ["Spoon"]),
           by_hand("key", "Pick up The One Key", "ground", "", "The Overthere", get=["The One Key"]),
           by_hand("scroll", "Pick up the Lost Scroll", "ground", "", "Dalnir", get=["Lost Scroll"]),
           by_hand("book", "Pick up the book Charm and Sacrifice", "ground", "", "Plane of Sky", get=["Charm and Sacrifice"]),
           combine("sack2", "Combine the spoon, the key, the scroll and the book in an Enchanters Sack", "In an Enchanters Sack",
-                  ["Spoon", "The One Key", "Lost Scroll", "Charm and Sacrifice"], note=SACK),
-          unnamed("piece2", "Hand Mizzle Gepple the combined sack", "Clockwork VIIX", "Ak'Anon", get=["2nd Piece of Staff"],
-                  npcs=["Clockwork VIIX", "Mizzle Gepple"], note="Mizzle Gepple stands there as Clockwork VIIX.")]
+                  ["Spoon", "The One Key", "Lost Scroll", "Charm and Sacrifice"], ["Sack for Mizzle"], note=SACK),
+          give("piece2", "Hand Mizzle Gepple the Sack for Mizzle", "Clockwork VIIX", "Ak'Anon", ["Sack for Mizzle"], get=["2nd Piece of Staff"],
+               npcs=["Clockwork VIIX", "Mizzle Gepple"], note="Mizzle Gepple stands there as Clockwork VIIX.")]
     part("3rd Piece of Staff — Test of Charm")
     S += [by_hand("gems", "Get the four dull gems from Nadia Starfeast", "talk", "Nadia Starfeast", "Firiona Vie",
-                  get=["Dull Diamond", "Dull Sapphire", "Dull Ruby", "Dull Emerald"]),
+                  get=["Dull Diamond", "Dull Sapphire", "Dull Ruby", "Dull Emerald"],
+                  note="Hand her Jeb's Seal (it comes back), then say \"diamond\", \"sapphire\", \"emerald\" and \"ruby\"."),
           give("diamond", "Charm a Spectral librarian and hand him the Dull Diamond", "Spectral librarian", "Kaesora", ["Dull Diamond"],
                get=["Enchanted Diamond"], caution="An enraged spectral librarian spawns on the hand-in — the wiki says not to kill it."),
           give("sapphire", "Charm Felia Goldenwing and hand her the Dull Sapphire", "Felia Goldenwing", "Skyfire Mountains", ["Dull Sapphire"], get=["Enchanted Sapphire"]),
           give("ruby", "Charm the Wraith of Jaxion and hand him the Dull Ruby", "Wraith of Jaxion", "City of Mist", ["Dull Ruby"], get=["Enchanted Ruby"]),
           give("emerald", "Charm Impaler Tzilug and hand him the Dull Emerald", "Impaler Tzilug", "The Overthere", ["Dull Emerald"], get=["Enchanted Emerald"]),
           combine("sack3", "Combine the four enchanted gems in an Enchanters Sack", "In an Enchanters Sack",
-                  ["Enchanted Diamond", "Enchanted Sapphire", "Enchanted Ruby", "Enchanted Emerald"], note=SACK),
-          unnamed("piece3", "Hand Nadia Starfeast the combined sack", "Nadia Starfeast", "Firiona Vie", get=["3rd Piece of Staff"])]
+                  ["Enchanted Diamond", "Enchanted Sapphire", "Enchanted Ruby", "Enchanted Emerald"], ["Sack for Nadia"], note=SACK),
+          give("piece3", "Hand Nadia Starfeast the Sack for Nadia", "Nadia Starfeast", "Firiona Vie", ["Sack for Nadia"], get=["3rd Piece of Staff"])]
     part("4th Piece of Staff — Test of the Phantasm")
     S += [kill("serpent", "Kill the Wraith of a Shissir for the Head of the Serpent", ["Wraith of a Shissir"], "Plane of Fear", ["Head of the Serpent"]),
           kill("ghost", "Kill the Ghost of Kindle for the Essence of a Ghost", ["the Ghost of Kindle"], "The Hole", ["Essence of a Ghost"]),
           kill("vampire", "Kill a forsaken revenant for the Essence of a Vampire", ["a forsaken revenant"], "Plane of Hate", ["Essence of a Vampire"]),
           kill("sands", "Kill The Tangrin for the Sands of the Mystics", ["The Tangrin"], "Field of Bone", ["Sands of the Mystics"]),
           combine("sack4", "Combine the head, the two essences and the sands in an Enchanters Sack", "In an Enchanters Sack",
-                  ["Head of the Serpent", "Essence of a Ghost", "Essence of a Vampire", "Sands of the Mystics"], note=SACK),
-          unnamed("piece4", "Hand Polzin Mrid the combined sack", "Polzin Mrid", "The Hole", get=["4th Piece of Staff"],
-                  note="In The Hole an elemental illusion plus Collaboration reads dubious to most of the zone.")]
+                  ["Head of the Serpent", "Essence of a Ghost", "Essence of a Vampire", "Sands of the Mystics"], ["Sack for Polzin"], note=SACK),
+          give("piece4", "Hand Polzin Mrid the Sack for Polzin", "Polzin Mrid", "The Hole", ["Sack for Polzin"], get=["4th Piece of Staff"],
+               note="In The Hole an elemental illusion plus Collaboration reads dubious to most of the zone.")]
     part("Staff of the Serpent")
     S += [combine("bundle", "Combine the four pieces of staff in an Enchanters Sack", "In an Enchanters Sack",
                   ["1st Piece of Staff", "2nd Piece of Staff", "3rd Piece of Staff", "4th Piece of Staff"], ["Bundle of Staves"]),
@@ -250,24 +258,30 @@ def shm():
           kill("dire", "Kill Black Dire for his pelt", ["Black Dire"], "Castle Mistmoore", ["Black Dire Pelt"],
                note="Killing an advisor in the library calls him."),
           give("boots", "Hand the Spirit Sentinel the Black Dire Pelt", "Spirit Sentinel", "Emerald Jungle", ["Black Dire Pelt"],
-               get=["Black Fur Boots"], note="He also hands you a six-slot booklet.")]
+               get=["Black Fur Boots", "Ancient Journal"], note="Say \"how it all began\" for the Ancient Journal, a six-slot container.")]
     part("The City of Mist Reports")
     S += [step("reports", "Loot the six reports in the City of Mist", "loot", "", "City of Mist",
                loot=["Personal Diary Page", "Crier's Scroll", "Merchant's Letter", "Written Announcement", "Priest's Diary Page", "Student's Log"],
                note="The Student's Log drops only from a spectral courier."),
-          combine("booklet", "Combine the six reports in the booklet", "In the booklet",
-                  ["Personal Diary Page", "Crier's Scroll", "Merchant's Letter", "Written Announcement", "Priest's Diary Page", "Student's Log"]),
-          unnamed("report", "Hand the Spirit Sentinel the completed report", "Spirit Sentinel", "Emerald Jungle", faction="True Spirit ≥ Kindly")]
+          combine("booklet", "Combine the six reports in the Ancient Journal", "In the Ancient Journal",
+                  ["Personal Diary Page", "Crier's Scroll", "Merchant's Letter", "Written Announcement", "Priest's Diary Page", "Student's Log"],
+                  ["Completed Report"]),
+          give("report", "Hand the Spirit Sentinel the Completed Report", "Spirit Sentinel", "Emerald Jungle", ["Completed Report"],
+               faction="True Spirit ≥ Kindly")]
     part("The Three Books of Lord Ghiosk")
-    S += [kill("ghiosk", "Kill Lord Ghiosk and loot his three books", ["Lord Ghiosk"], "City of Mist"),
-          unnamed("books", "Hand the three books to the Spirit Sentinel in the pond", "Spirit Sentinel", "Emerald Jungle, the pond",
-                  caution="Not the Spirit Sentinel near the City of Mist — the one in the pond."),
+    S += [kill("ghiosk", "Kill Lord Ghiosk for his three books", ["Lord Ghiosk"], "City of Mist",
+               ["Crusades of the High Scale", "Head Housekeeper's Log", "Historic Article"],
+               note="He appears when a black reaver behind the first locked door dies."),
+          give("books", "Hand the three books to the Spirit Sentinel in the lake", "Spirit Sentinel", "Emerald Jungle, the lake in the north",
+               ["Crusades of the High Scale", "Head Housekeeper's Log", "Historic Article"],
+               caution="Not the Spirit Sentinel near the City of Mist — the second one, under water in the lake."),
           by_hand("icon", "Pick up the Icon of the High Scale", "ground", "", "City of Mist, the temple", get=["Icon of the High Scale"]),
           give("kirn-icon", "Hand High Scale Kirn the icon", "High Scale Kirn", "The Hole", ["Icon of the High Scale"]),
-          kill("kirn", "Kill High Scale Kirn and loot his ring", ["High Scale Kirn"], "The Hole"),
-          unnamed("neh-ring", "Hand Neh`Ashiir the ring", "Neh`Ashiir", "City of Mist"),
-          kill("neh", "Kill Neh`Ashiir and loot her diary", ["Neh`Ashiir"], "City of Mist"),
-          unnamed("diary", "Hand the Spirit Sentinel the diary", "Spirit Sentinel", "Emerald Jungle"),
+          kill("kirn", "Kill High Scale Kirn for the Engraved Ring", ["High Scale Kirn"], "The Hole", ["Engraved Ring"]),
+          give("neh-ring", "Hand Neh`Ashiir the Engraved Ring", "Neh`Ashiir", "City of Mist", ["Engraved Ring"],
+               note="A black reaver in the hut on the last floating island calls Neh`Ashiir."),
+          kill("neh", "Kill Neh`Ashiir for the diary", ["Neh`Ashiir"], "City of Mist", ["Neh`Ashiir's Diary"]),
+          give("diary", "Hand the Spirit Sentinel in the lake the diary", "Spirit Sentinel", "Emerald Jungle, the lake in the north", ["Neh`Ashiir's Diary"]),
           kill("tear", "Kill the Iksar Broodling for a Child's Tear", ["Iksar Broodling"], "Plane of Fear", ["Child's Tear"],
                note="It appears at random when a golem dies — Dread, Fright or Terror."),
           give("rak", "Hand Lord Rak`Ashiir the Child's Tear", "Lord Rak`Ashiir", "City of Mist", ["Child's Tear"],
@@ -416,9 +430,10 @@ def brd():
 def wiz():
     S = []
     part("Camin")
-    S += [by_hand("solomen", "Talk to Solomen for his note", "talk", "Solomen", "Temple of Solusek Ro"),
-          step("camin", "Hand Camin the note, hail him, then hand him 1000 platinum", "handin", "Camin", "Erudin, the Vasty Deep Inn",
-               coins="1000 platinum", trade=True, note="Doing this twice is still not enough faction for indifferent.")]
+    S += [by_hand("solomen", "Agree to help Solomen for the Note to Camin", "talk", "Solomen", "Temple of Solusek Ro, the second floor",
+                  get=["Note to Camin"], note="Say you agree."),
+          give("camin", "Hand Camin the note, then 1000 platinum", "Camin", "Erudin, the Vasty Deep Inn", ["Note to Camin"],
+               coins="1000 platinum", note="Each in its own trade. Doing this twice is still not enough faction for indifferent.")]
     part("Arantir Karondor")
     S += [by_hand("potion", "Buy Ro's Breath from Dargon", "buy", "Dargon", "Halas, outside the shaman guild", get=["Ro's Breath"],
                   note="It costs 900 to 1100 platinum."),
@@ -426,8 +441,8 @@ def wiz():
           give("dargon-potion", "Hand Dargon the spent potion, then hail Arantir Karondor", "Dargon", "Halas", ["Ro's Breath"], get=["Arantir's Ring"],
                npcs=["Dargon", "Arantir Karondor"], note="Dargon turns into Arantir Karondor; any wizard may hail him for a ring."),
           give("challice", "Hand Challice the ring", "Challice", "Felwithe, under the paladin guild", ["Arantir's Ring"], note="She hands back another ring."),
-          unnamed("arantir-ring", "Hand Arantir Karondor the second ring and hear him out", "Dargon", "Halas", get=["Note from Arantir"],
-                  npcs=["Dargon", "Arantir Karondor"], note="\"Who is the gnome?\" skips to the end of his story."),
+          give("arantir-ring", "Hand Dargon the ring again and ask Arantir about the gnome", "Dargon", "Halas", ["Arantir's Ring"], get=["Note from Arantir"],
+               npcs=["Dargon", "Arantir Karondor"], note="\"Who is the gnome?\" skips to the end of his story."),
           give("kandin-note", "Hand Kandin Firepot the Note from Arantir and ask about the oil", "Kandin Firepot", "Butcherblock Mountains", ["Note from Arantir"],
                get=["Golem Sprocket"], note="Say \"what oil?\".")]
     part("The Three Staves")
@@ -439,8 +454,8 @@ def wiz():
     part("Staff of the Four")
     S += [give("arantir-note", "Hand Dargon the Note to Arantir, then hail Arantir Karondor", "Dargon", "Halas", ["Note to Arantir"], npcs=["Dargon", "Arantir Karondor"]),
           give("staves", "Hand Arantir Karondor the three staves", "Arantir Karondor", "Halas", ["Blue Crystal Staff", "Gnarled Staff", "Staff of Gabstik"],
-               npcs=["Arantir Karondor", "Dargon"], note="He hands you a bag."),
-          unnamed("staff", "Hand Solomen the bag", "Solomen", "Temple of Solusek Ro", get=["Staff of the Four"])]
+               npcs=["Arantir Karondor", "Dargon"], get=["Magically Sealed Bag"]),
+          give("staff", "Hand Solomen the Magically Sealed Bag", "Solomen", "Temple of Solusek Ro", ["Magically Sealed Bag"], get=["Staff of the Four"])]
     return S
 
 # ---- Warrior ---------------------------------------------------------------------------
@@ -653,8 +668,9 @@ def nec():
     part("Symbol of the Apprentice")
     S += [hail("venenzi", "Venenzi Oberzendi", "Nektulos Forest", optional=True),
           hail("kazen", "Kazen Fecae", "Lake Rathetear", optional=True),
-          kill("edwin", "Kill Sir Edwin Motte and loot his head", ["Sir Edwin Motte"], ""),
-          unnamed("apprentice", "Hand Kazen Fecae the head", "Kazen Fecae", "Lake Rathetear", get=["Symbol of the Apprentice"])]
+          kill("edwin", "Kill Sir Edwin Motte for his head", ["Sir Edwin Motte"], "Rathe Mountains, the inn by the hill giants", ["Head of Sir Edwin Motte"],
+               note="He comes round in a cycle of placeholders that leave by themselves."),
+          give("apprentice", "Hand Kazen Fecae the head", "Kazen Fecae", "Lake Rathetear", ["Head of Sir Edwin Motte"], get=["Symbol of the Apprentice"])]
     part("Symbol of the Serpent")
     S += [give("twisted", "Hand Venenzi Oberzendi the Symbol of the Apprentice", "Venenzi Oberzendi", "Nektulos Forest", ["Symbol of the Apprentice"],
                get=["Twisted Symbol of the Apprentice"]),
@@ -666,18 +682,19 @@ def nec():
     S += [give("ssess", "Hand Ssessthrass the Symbol of the Serpent", "Ssessthrass", "Swamp of No Hope", ["Symbol of the Serpent"], get=["Scaled Symbol of the Serpent"]),
           kill_any("herb", "Kill the sarnak herbalist for the Manisi Herb", ["Grand Herbalist Mak`ha", "Royal Sarnak Herbalist"], "Chardok", ["Manisi Herb"]),
           give("refined", "Hand Ssessthrass the herb and the scaled symbol", "Ssessthrass", "Swamp of No Hope", ["Manisi Herb", "Scaled Symbol of the Serpent"],
-               note="He returns the refined herb."),
-          unnamed("testing", "Hand Emkel Kabae the refined herb", "Emkel Kabae", "Lake Rathetear", get=["Symbol of Testing"])]
+               get=["Refined Manisi Herb"]),
+          give("testing", "Hand Emkel Kabae the Refined Manisi Herb", "Emkel Kabae", "Lake Rathetear", ["Refined Manisi Herb"], get=["Symbol of Testing"])]
     part("Symbol of Insanity")
     S += [give("kazen-testing", "Hand Kazen Fecae the Symbol of Testing", "Kazen Fecae", "Lake Rathetear", ["Symbol of Testing"],
-               note="Or kill Kazen Fecae instead — his wiki page describes the fight.", optional=True),
+               note="This calls the three: a bone golem, a failed apprentice and a tortured soul, one at a time. Or kill Kazen Fecae instead.", optional=True),
           kill("golem", "Kill a bone golem", ["a bone golem"], "Lake Rathetear, the small inlet east of Emkel"),
           kill("failed", "Kill a failed apprentice", ["a failed apprentice"], "Lake Rathetear"),
           kill("soul", "Kill A tortured soul for the Symbol of Insanity", ["A tortured soul"], "Lake Rathetear", ["Symbol of Insanity"])]
     part("Gkzzallk in a Box")
     S += [give("journal", "Hand Drendico Metalbones the Symbol of Insanity", "Drendico Metalbones", "Timorous Deep", ["Symbol of Insanity"],
-               note="He gives you the journal."),
-          by_hand("jzil", "Speak to Jzil GSix", "talk", "Jzil GSix", "Plane of Sky"),
+               get=["Journal of Drendico"]),
+          by_hand("jzil", "Ask Drakis Bloodcaster to be tested by Jzil", "talk", "Drakis Bloodcaster", "Plane of Sky, the quest room",
+                  note="Say \"I wish to be tested by Jzil\", then hand his Shadowy Thoughts back — Jzil GSix appears."),
           step("disc", "Loot a Silver Disc on the second island", "loot", "", "Plane of Sky", loot=["Silver Disc"], note="An azarack and the other second-island mobs."),
           step("feathers", "Loot Spiroc Feathers on the third island", "loot", "", "Plane of Sky", loot=["Spiroc Feathers"],
                note="A gorgalask and the other third-island mobs."),
@@ -688,9 +705,10 @@ def nec():
           step("slime", "Loot the Slime Blood of Cazic Thule", "loot", "", "Plane of Fear", loot=["Slime Blood of Cazic Thule"],
                note="From the golems, or Cazic Thule himself."),
           give("reagents", "Hand Drendico the cloak, the eye, the slime blood and the journal", "Drendico Metalbones", "Timorous Deep",
-               ["Cloak of Spiroc Feathers", "Eye of Innoruuk", "Slime Blood of Cazic Thule"], note="He gives you the prepared reagents box."),
-          unnamed("tome", "Hand Kazen Fecae the reagents box", "Kazen Fecae", "Lake Rathetear", get=["Tome of Instruction"]),
-          give("gkzzallk", "Hand Gkzzallk the Tome of Instruction", "Gkzzallk", "Plane of Sky", ["Tome of Instruction"], get=["Gkzzallk in a Box"],
+               ["Cloak of Spiroc Feathers", "Eye of Innoruuk", "Slime Blood of Cazic Thule", "Journal of Drendico"], get=["Prepared Reagent Box"]),
+          give("tome", "Hand Kazen Fecae the Prepared Reagent Box", "Kazen Fecae", "Lake Rathetear", ["Prepared Reagent Box"], get=["Tome of Instruction"]),
+          give("gkzzallk", "Hand Gkzzallk the Tome of Instruction", "Gkzzallk", "Plane of Sky, the third island", ["Tome of Instruction"], get=["Gkzzallk in a Box"],
+               note="Handing a thunder spirit princess on the first island 1 platinum calls him.",
                caution="This despawns the first island's boss and blocks a normal Sky raid until respawn — never do it on another guild's slot unasked.")]
     part("Scythe of the Shadowed Soul")
     S += [give("scythe", "Hand Kazen Fecae Gkzzallk in a Box", "Kazen Fecae", "Lake Rathetear", ["Gkzzallk in a Box"], get=["Scythe of the Shadowed Soul"])]
@@ -859,7 +877,7 @@ def ber():
                note="Kill scarelings until the Enraged Imp appears; its death calls the Ireblind Imp.",
                caution="The Ireblind Imp has near-zonewide aggro and an area mesmerize."),
           give("rage", "Hand Keras the essence and the Medal of Fervid Rage", "Keras McArik", KERAS, ["Medal of Fervid Rage", "Burning Essence of Rage"],
-               get=["McArik Reagent Satchel"])]
+               get=["Medal of Hunting", "McArik Reagent Satchel"], note="Say \"must do\" for the satchel.")]
     part("Trial of Hunting")
     S += [kill("liver", "Kill the Disease-Ridden Gorilla for a Decaying Liver", ["Disease-Ridden Gorilla"], "Emerald Jungle", ["Decaying Liver"],
                note="Its placeholder is a tottering ape near -1525, -90."),
@@ -869,13 +887,70 @@ def ber():
           combine("dust", "Combine the three with a Philter of Major Translocation in the satchel", "In the McArik Reagent Satchel",
                   ["Decaying Liver", "Gnashing Kobold Paw", "Scent Gland", "Philter of Major Translocation"], ["Bag of Image Essence Dust"],
                   note="A shaman makes the philter."),
-          give("hunting", "Hand Keras the bag and your medal", "Keras McArik", KERAS, ["Bag of Image Essence Dust"], get=["Medal of Mastery"])]
+          give("hunting", "Hand Keras the bag and the Medal of Hunting", "Keras McArik", KERAS, ["Bag of Image Essence Dust", "Medal of Hunting"],
+               get=["Medal of Mastery"])]
     part("Trial of Mastery")
     S += [step("hopeful", "Pay the Lurking Hopeful 1000 platinum", "handin", "Lurking Hopeful", "Warsliks Woods, +175, +630", coins="1000 platinum",
                note="She is there from 11pm to 7am game time, then leaves."),
-          step("tome", "Kill the goblin up the river and loot A Maniac's Garbled Tome", "loot", "", "Warsliks Woods", loot=["A Maniac's Garbled Tome"],
-               note="Three waves of frantic goblins, then ferocious goblins, a minute a wave. Bring melee help and levitation."),
+          kill("tome", "Kill the Raving Goblinmaster for A Maniac's Garbled Tome", ["Raving Goblinmaster"], "Warsliks Woods, north along the shore",
+               ["A Maniac's Garbled Tome"],
+               note="Tell him \"I am a berserker and I am ready\" and follow: three packs of frantic goblins, then ferocious goblins, then hail him."),
           give("axe", "Hand Keras the tome and the Medal of Mastery", "Keras McArik", KERAS, ["Medal of Mastery", "A Maniac's Garbled Tome"], get=["Kerasian Axe of Ire"])]
+    return S
+
+# ---- Beastlord (from eqprogression.com — eqlwiki has no page) ----------------------------
+def bst():
+    S = []
+    DUMUL = "Shar Vahl, +310, +100"
+    part("Copper Medal of War")
+    S += [step("medal", "Win a Copper Medal of War in the grimling war", "loot", "", "Grimling Forest, the town in the south-east", loot=["Copper Medal of War"],
+               note="Tell Captain Necin you are ready to go, follow him to a camp, say you are ready to fight and clear it. A named there may carry the medal; it can take several tries."),
+          give("dumul-medal", "Hand Elder Animist Dumul the medal", "Elder Animist Dumul", DUMUL, ["Copper Medal of War"],
+               get=["Official Seal of the Khati Sha", "Carved Wooden Chest"])]
+    part("The Six Totems")
+    for sid, scout, zone, spirit, totem in [
+            ("gorilla", "Scout Vyrak", "Emerald Jungle, +230, +4200", "The Spirit of Rage", "Gorilla"),
+            ("bear", "Scout Janomin", "Permafrost Caverns", "The Icebound Spirit", "Ice Bear"),
+            ("spider", "Scout Ahlikal", "The Feerrott", "The Spirit of Decay", "Spider"),
+            ("wolf", "Scout Rahjiq", "Lesser Faydark", "The Spirit of Malevolence", "Wolf"),
+            ("watcher", "Scout Malom", "Stonebrunt Mountains", "The Spirit of Torment", "Watcher"),
+            ("alligator", "Scout Eyru", "Swamp of No Hope", "The Spirit of Sorrow", "Alligator")]:
+        S += [kill(sid + "-spirit", f"Show {scout} the seal and kill {spirit}", [spirit], zone, [f"Totem of the {totem}"],
+                   note=f"Handing {scout} the Official Seal of the Khati Sha calls it." + (" It stands above the waterfall, off the map." if sid == "watcher" else "")),
+              give(sid + "-totem", f"Hand {scout} the Totem of the {totem}", scout, zone, [f"Totem of the {totem}"], get=[f"Wrapped {totem} Totem"])]
+    S += [combine("totems", "Combine the six wrapped totems in the Carved Wooden Chest", "In the Carved Wooden Chest",
+                  ["Wrapped Gorilla Totem", "Wrapped Ice Bear Totem", "Wrapped Spider Totem", "Wrapped Wolf Totem", "Wrapped Watcher Totem", "Wrapped Alligator Totem"],
+                  ["Sealed Box of Totems"]),
+          give("dumul-totems", "Hand Elder Animist Dumul the Sealed Box of Totems", "Elder Animist Dumul", DUMUL, ["Sealed Box of Totems"], get=["Seal of Elder Dumul"])]
+    part("The Broken Glass")
+    S += [give("sihmoj", "Hand Scout Sihmoj the Seal of Elder Dumul", "Scout Sihmoj", "Timorous Deep, from the Butcherblock dock", ["Seal of Elder Dumul"],
+               get=["Black Silk Sack"], note="Six images appear on the island to the east."),
+          step("shards", "Kill the six images and loot their Shards of Broken Glass", "loot", "", "Timorous Deep", loot=["Shards of Broken Glass"]),
+          combine("glass", "Combine the six shards in the Black Silk Sack", "In the Black Silk Sack", [("Shards of Broken Glass", 6)], ["Sack of Broken Glass"]),
+          give("sihmoj-sack", "Show Scout Sihmoj the Sack of Broken Glass", "Scout Sihmoj", "Timorous Deep", ["Sack of Broken Glass"], note="He hands it back and leaves."),
+          give("dumul-sack", "Hand Elder Animist Dumul the Sack of Broken Glass", "Elder Animist Dumul", DUMUL, ["Sack of Broken Glass"], get=["Note for Historian Qua"]),
+          give("qua", "Hand Arms Historian Qua the note", "Arms Historian Qua", "Shar Vahl", ["Note for Historian Qua"], get=["Qua's Receipt"]),
+          give("rahoul", "Hand Weapons Master Rahoul the receipt", "Weapons Master Rahoul", "Shar Vahl", ["Qua's Receipt"], get=["Rahoul's Collection Box"])]
+    part("The Jagged Claws")
+    S += [step("void", "Loot two Gems of the Void", "loot", "", "Maiden's Eye", loot=["Gem of the Void"], note="From the Xi Xaui and the reaper-shaped mobs. You need two."),
+          kill("padding", "Kill an ancient shrieker for a Chunk of Dense Fungal Padding", ["an ancient shrieker"], "The Deep", ["Chunk of Dense Fungal Padding"]),
+          step("ore", "Loot a Perfect Acrylia Ore from a trap golem", "loot", "", "The Grey", loot=["Perfect Acrylia Ore"], note="Only the golems that spring from traps carry it."),
+          combine("collection", "Combine the four in Rahoul's Collection Box", "In Rahoul's Collection Box",
+                  [("Gem of the Void", 2), "Chunk of Dense Fungal Padding", "Perfect Acrylia Ore"], ["Sealed Collection Box"]),
+          give("claws", "Hand Weapons Master Rahoul the Sealed Collection Box", "Weapons Master Rahoul", "Shar Vahl", ["Sealed Collection Box"],
+               get=["Jagged Claw of Rending"], note="He gives you two."),
+          give("dumul-claws", "Show Elder Animist Dumul the two Jagged Claws of Rending", "Elder Animist Dumul", DUMUL, [("Jagged Claw of Rending", 2)],
+               get=["Khati Sha Seal of War", "Acrylia Gilded Box"], note="He hands the claws back.")]
+    part("Draz Nurakk")
+    S += [give("halmia", "Hand Scout Halmia the Khati Sha Seal of War", "Scout Halmia", "Fungus Grove, by the Twilight Sea portal", ["Khati Sha Seal of War"],
+               note="This calls Draz Nurakk at +640, -10."),
+          kill("draz", "Kill Draz Nurakk for his head", ["Draz Nurakk"], "Fungus Grove", ["Draz Nurakk's Head"],
+               caution="He is immune to melee — except the two Jagged Claws of Rending.")]
+    part("Claw of the Savage Spirit")
+    S += [combine("chest", "Combine the claws, the seal and the head in the Acrylia Gilded Box", "In the Acrylia Gilded Box",
+                  [("Jagged Claw of Rending", 2), "Khati Sha Seal of War", "Draz Nurakk's Head"], ["Sealed Gilded Wooden Chest"]),
+          give("savage", "Hand Elder Animist Dumul the Sealed Gilded Wooden Chest", "Elder Animist Dumul", DUMUL, ["Sealed Gilded Wooden Chest"],
+               get=["Claw of the Savage Spirit"], note="He gives you two claws.")]
     return S
 
 QUESTS = [
@@ -884,7 +959,7 @@ QUESTS = [
           note="The Letter to Duriek and The Dusty Tome are not required."),
     quest("epic-shm", "Shaman Epic", "SHM", "Spear of Fate", 46, "a lesser spirit · four zones", "Shaman Epic Quest", shm,
           warning="True Spirit faction carries this quest: about amiable to move along, and MAX ally for the final scale — below that the scale is eaten.",
-          note="The wiki's page does not name the three books, Kirn's ring or the diary; those steps tick on the trade or by hand."),
+          note="The three books, Kirn's ring, the diary and the journal are named after eqprogression.com's guide."),
     quest("epic-enc", "Enchanter Epic", "ENC", "Staff of the Serpent", 50, "Stofo Olan · Erudin", "Enchanter Epic Quest", enc,
           warning="One Enchanters Sack does every combine: hand any of the four masters Jeb's Seal (it comes back), then say \"I need a sack\"."),
     quest("epic-dru", "Druid Epic", "DRU", "Nature Walkers Scimitar", 46, "Telin Darkforest · Burning Woods", "Druid Epic Quest", dru,
@@ -893,7 +968,7 @@ QUESTS = [
           note="The Alluring Horn chain under the lute head is optional."),
     quest("epic-wiz", "Wizard Epic", "WIZ", "Staff of the Four", 46, "Solomen · Temple of Solusek Ro", "Wizard Epic Quest", wiz,
           warning="An Ornate Velium Pendant lets you skip straight to the Golem Sprocket — but then it must be used on EVERY hand-in after that, or the hand-in is eaten.",
-          note="The wiki's page does not name Solomen's note, Challice's ring or Arantir's bag; those steps tick on the trade or by hand."),
+          note="Solomen's note and Arantir's bag are named after eqprogression.com's guide. It calls the sprocket a Gnome Sprocket; eqlwiki's item table says Golem Sprocket."),
     quest("epic-war", "Warrior Epic", "WAR", "Jagged Blade of War", 46, "Kargek Redblade · East Freeport", "Warrior Epic Quest", war,
           note="The same combine can make the Blade of Strategy and the Blade of Tactics instead."),
     quest("epic-clr", "Cleric Epic", "CLR", "Water Sprinkler of Nem Ankh", 46, "Shmendrik Lavawalker · Lake Rathetear", "Cleric Epic Quest", clr,
@@ -904,21 +979,26 @@ QUESTS = [
           note="The quill and the dagger can drop from General V`ghera and Renux; the two optional parts are the long way round."),
     quest("epic-pal", "Paladin Epic", "PAL", "Fiery Defender", 46, "Irak Altil · Plane of Fear", "Paladin Epic Quest", pal),
     quest("epic-nec", "Necromancer Epic", "NEC", "Scythe of the Shadowed Soul", 46, "Venenzi Oberzendi · Nektulos Forest", "Necromancer Epic Quest", nec,
-          note="The wiki's page does not link Sir Edwin's head, the refined herb, the journal or the reagents box; those steps tick on the trade or by hand."),
+          note="Sir Edwin's head, the refined herb, the journal and the reagent box are named after eqprogression.com's guide."),
     quest("epic-mag", "Magician Epic", "MAG", "Orb of Mastery", 46, "Rykas · Lake Rathetear", "Magician Epic Quest", mag),
     quest("epic-rng", "Ranger Epic", "RNG", "Swiftwind", 46, "Telin Darkforest · Burning Woods", "Ranger Epic Quest", rng, parallel=True,
           warning="Usbak the Old appears only when Kinlo Strongarm takes the Hammer of the Ancients, and leaves again — hold the Ancient Longsword for him first.",
           note="Two swords: Swiftwind and Earthcaller. They share the bowl and Usbak, and finish apart."),
     quest("epic-ber", "Berserker Epic", "BER", "Kerasian Axe of Ire", 46, "Keras McArik · Lake of Ill Omen", "Berserker Epic Quest", ber,
-          note="Transcribed from the wiki's walkthrough; it has no checklist."),
+          note="Transcribed from eqlwiki's walkthrough and eqprogression.com's guide."),
+    quest("epic-bst", "Beastlord Epic", "BST", "Claw of the Savage Spirit", 46, "Captain Necin · Grimling Forest", "", bst,
+          url="https://www.eqprogression.com/beastlord-1-0-epic-quest/",
+          warning="This is original EverQuest's quest, and most of it happens on Luclin: Shar Vahl, Grimling Forest, Maiden's Eye, The Deep, The Grey and Fungus Grove. "
+                  "EQ Legends has no Luclin, so expect its Beastlord epic to be different, or to come later.",
+          note="From eqprogression.com's guide; eqlwiki has no Beastlord epic page, and its item table does not know the reward yet."),
 ]
 
 DOC = OrderedDict(
-    credit="Epic quest steps transcribed from eqlwiki.com's class epic pages; step-tracking design EQL Assistant.",
+    credit="Epic quest steps transcribed from eqlwiki.com's class epic pages and eqprogression.com's 1.0 epic guides; step-tracking design EQL Assistant.",
     pack="epics",
-    notice="Before Kunark (8 Dec): these steps come from eqlwiki's classic-era walkthroughs and are unverified in EQ Legends. "
+    notice="Before Kunark (8 Dec): these steps come from eqlwiki's classic-era walkthroughs and eqprogression.com's guides for original EverQuest, and are unverified in EQ Legends. "
            "A name the game spells differently will not tick by itself — tick the step by hand; the steps get corrected once the epics are live.",
-    footer="All 15 class epics eqlwiki has written up. It has no Beastlord epic page yet.",
+    footer="All 16 class epics, from eqlwiki and eqprogression.com. The Beastlord's is original EverQuest's Luclin quest — see its warning.",
     quests=QUESTS)
 
 OUT = os.path.join(ROOT, "data", "epic-quests.json")

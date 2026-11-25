@@ -384,7 +384,7 @@ public partial class QuestLinesView : UserControl
 
         var stats = new TextBlock { Foreground = Hint, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
         stats.Inlines.Add(RewardLink(q.Reward));
-        stats.Inlines.Add(new System.Windows.Documents.Run(" · " + StatsLine(q.RewardStats)));
+        if (q.RewardStats.Length > 0) stats.Inlines.Add(new System.Windows.Documents.Run(" · " + StatsLine(q.RewardStats))); // the Beastlord claw has no stats line yet
         Grid.SetRow(stats, 1);
         head.Children.Add(stats);
 
@@ -407,7 +407,7 @@ public partial class QuestLinesView : UserControl
         if (q.Start.Length > 0) req.Children.Add(Badge("starts with " + q.Start, Hint, Line));
         if (q.Wiki.Length > 0)
         {
-            var wiki = Badge("eqlwiki ↗", Cyan, PreLine);
+            var wiki = Badge((q.Wiki.Contains("eqprogression", StringComparison.OrdinalIgnoreCase) ? "eqprogression" : "eqlwiki") + " ↗", Cyan, PreLine);
             wiki.Cursor = Cursors.Hand;
             wiki.ToolTip = q.Wiki;
             string url = q.Wiki;
@@ -751,7 +751,7 @@ public partial class QuestLinesView : UserControl
                 "quest" => "a quest of its own — tick it once you hold the reward",
                 _ => "tick it yourself",
             };
-        return "checks itself off on " + Join(bits) + (s.Trade && s.Handin.Count == 0 ? " (the wiki does not name the item)" : "");
+        return "checks itself off on " + Join(bits);
     }
 
     private static string KindLabel(QuestLines.Step s)

@@ -72,12 +72,8 @@ public sealed class QuestLines
         /// <summary>What a combine produces, when the wiki names it — proven by the game's own
         /// "You have fashioned the items together to create something new: X." line.</summary>
         public List<string> Make { get; set; } = new();
-        /// <summary>A hand-in whose item the wiki does not name ("the combined sack", "his ring"):
-        /// the trade line with this NPC proves it — on a started quest only, one such step per trade.</summary>
-        public bool Trade { get; set; }
-
         [JsonIgnore] public IEnumerable<string> NpcNames => Npcs.Count > 0 ? Npcs : new[] { Npc };
-        [JsonIgnore] public bool HasTrade => Handin.Count > 0 || Coins.Length > 0 || Trade;
+        [JsonIgnore] public bool HasTrade => Handin.Count > 0 || Coins.Length > 0;
         [JsonIgnore] public IEnumerable<string> KillNames => Kill.Concat(KillAny);
     }
 
@@ -533,7 +529,6 @@ public sealed class QuestLines
     private bool CommitTrade(string npc, string evidence, DateTime when)
     {
         _pending.Remove(npc, out var list);
-        var unnamedUsed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var sealedKeys = new List<string>();
         bool changed = false;
         if (list is not null)
@@ -557,14 +552,7 @@ public sealed class QuestLines
                 // Coins-only: the trade itself is the proof — but coins leave
                 // no offer line, and both swords pay the same Dason Goldblade,
                 // so it only counts for a line you have already started.
-                if (s.Handin.Count == 0 && Started(q))
-                {
-                    // An UNNAMED hand-in (Trade): one trade proves one such step — the first still open
-                    // for this NPC, in the quest's order (the Spirit Sentinel takes four of them).
-                    // A trade that carried NAMED quest items was somebody else's step, not this one.
-                    if (s.Trade && s.Coins.Length == 0 && (sealedKeys.Count > 0 || !unnamedUsed.Add(q.Key + "|" + npc))) continue;
-                    if (set.Add("trade")) any = true;
-                }
+                if (s.Handin.Count == 0 && Started(q) && set.Add("trade")) any = true;
                 if (!any) continue;
                 AddEvidence(key, $"{evidence} · {when:d MMM HH:mm}");
                 changed = true;
@@ -596,7 +584,7 @@ public sealed class QuestLines
             foreach (var h in s.Handin)
                 if (!set.Contains("offer:" + Key(h.Name))) return;
         }
-        else if ((s.Coins.Length > 0 || s.Trade) && !set.Contains("trade")) return; // coins-only / unnamed: the trade line itself
+        else if (s.Coins.Length > 0 && !set.Contains("trade")) return; // coins-only: the trade line itself
         if (s.Click.Length > 0 && !set.Contains("click")) return; // the switch flips it — or the item's own line
         // A kill or a drop alone never starts a line — the evidence waits in
         // the partial set until an anchoring step (or a tick) begins it. A

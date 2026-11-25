@@ -3098,9 +3098,10 @@ public partial class App : Application
                     var e0 = new DateTime(2026, 12, 9, 20, 0, 0);
                     string EL(int sec, string body) => $"[{e0.AddSeconds(sec).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
                     Check("epics: the epics load as their own pack beside the three notable lines; the shadow knight's 33 steps count 20 — 13 are optional",
-                        eq.QuestsIn("epics").Count == 15 && eq.QuestsIn("epics").Select(q => q.Classes[0]).Distinct().Count() == 15
-                        && eq.QuestsIn("epics").Sum(q => q.Steps.Count) == 421
-                        && eq.QuestsIn("epics").All(q => q.Classes.Count == 1 && q.Reward.Length > 0 && q.RewardStats.Contains("Slot:", StringComparison.Ordinal) && q.Steps.All(x => x.Part.Length > 0 && x.Title.Length > 0))
+                        eq.QuestsIn("epics").Count == 16 && eq.QuestsIn("epics").Select(q => q.Classes[0]).Distinct().Count() == 16
+                        && eq.QuestsIn("epics").Sum(q => q.Steps.Count) == 454
+                        && eq.QuestsIn("epics").All(q => q.Classes.Count == 1 && q.Reward.Length > 0 && q.Wiki.StartsWith("https://", StringComparison.Ordinal)
+                            && (q.RewardStats.Contains("Slot:", StringComparison.Ordinal) || q.Key == "epic-bst") && q.Steps.All(x => x.Part.Length > 0 && x.Title.Length > 0))
                         && eq.QuestsIn("").Count == 3 && shd.Pack == "epics" && shd.Steps.Count == 33
                         && eq.RequiredCount(shd) == 20 && eq.NextStep(shd) == St(shd, "ghoulbane")
                         && eq.NoticeOf("epics").StartsWith("Before Kunark", StringComparison.Ordinal) && eq.NoticeOf("") == ""
@@ -3133,18 +3134,21 @@ public partial class App : Application
                     eq.Tick(shd, St(shd, "kurron-hail"));
                     Check("epics: an optional step ticks without counting", eq.IsDone(shd, St(shd, "kurron-hail")) && eq.DoneCount(shd) == 8 && !eq.IsComplete(shd));
 
-                    // An unnamed hand-in (the wiki names no item): a trade with no quest offers proves ONE such step, in order —
-                    // and a trade that carried named quest items is some other step's.
+                    // One NPC, six hand-ins (the shaman's Spirit Sentinel): each trade proves the step whose item it carried and no other —
+                    // the three books are named after eqprogression.com's guide, eqlwiki's page leaving them out.
                     eq.ProcessLine(EL(30, "You say, 'I wish to know more'"));
                     bool started = eq.IsDone(shm, St(shm, "tiny-gem")) && eq.Started(shm);
                     eq.ProcessLine(EL(40, "You offered 1 Sparkling Gem to Spirit Sentinel."));
                     eq.ProcessLine(EL(41, "You complete the trade with Spirit Sentinel."));
-                    bool named = eq.IsDone(shm, St(shm, "sentinel")) && !eq.IsDone(shm, St(shm, "report"));
-                    eq.ProcessLine(EL(50, "You complete the trade with Spirit Sentinel."));
-                    bool first = eq.IsDone(shm, St(shm, "report")) && !eq.IsDone(shm, St(shm, "books")) && !eq.IsDone(shm, St(shm, "diary"));
-                    eq.ProcessLine(EL(60, "You complete the trade with Spirit Sentinel."));
-                    Check("epics: an unnamed hand-in ticks on a trade that carried no named quest item — one step per trade, in the quest's order",
-                        started && named && first && eq.IsDone(shm, St(shm, "books")) && !eq.IsDone(shm, St(shm, "diary")));
+                    bool gem = eq.IsDone(shm, St(shm, "sentinel")) && !eq.IsDone(shm, St(shm, "report")) && !eq.IsDone(shm, St(shm, "books"));
+                    eq.ProcessLine(EL(50, "You complete the trade with Spirit Sentinel.")); // a trade with nothing of the quest's in it
+                    bool empty = !eq.IsDone(shm, St(shm, "report")) && !eq.IsDone(shm, St(shm, "books")) && !eq.IsDone(shm, St(shm, "diary"));
+                    foreach (var book in new[] { "Crusades of the High Scale", "Head Housekeeper's Log", "Historic Article" })
+                        eq.ProcessLine(EL(60, $"You offered 1 {book} to Spirit Sentinel."));
+                    eq.ProcessLine(EL(61, "You complete the trade with Spirit Sentinel."));
+                    Check("epics: one NPC, many hand-ins — a trade proves the step whose items it carried, an empty trade proves nothing",
+                        started && gem && empty && eq.IsDone(shm, St(shm, "books")) && eq.IsDone(shm, St(shm, "ghiosk"))
+                        && !eq.IsDone(shm, St(shm, "report")) && !eq.IsDone(shm, St(shm, "diary")) && !eq.IsDone(shm, St(shm, "spear")));
 
                     // The last step vouches for the whole quest; an unstarted quest ignores a stray trade.
                     Check("epics: a trade proves nothing on a quest never started", !eq.IsDone(enc, St(enc, "piece3")) && !eq.Started(enc));
@@ -3177,14 +3181,23 @@ public partial class App : Application
                         && eq.IsDone(rng, St(rng, "jaeil")) && eq.IsDone(rng, St(rng, "sphere")) && eq.IsDone(rng, St(rng, "emerald"))
                         && !eq.IsDone(rng, St(rng, "swiftwind")) && !eq.IsDone(rng, St(rng, "stone")) && !eq.IsDone(rng, St(rng, "telin")) && !eq.IsComplete(rng)
                         && !eq.IsDone(eq.Quests.First(q => q.Key == "epic-dru"), St(eq.Quests.First(q => q.Key == "epic-dru"), "xanuusus")));
-                    // The wizard's last step is an unnamed hand-in: proven by the trade, it still vouches for the whole quest.
-                    eq.ProcessLine(EL(90, "You offered 1 Ro's Breath to Camin."));
-                    eq.ProcessLine(EL(91, "You complete the trade with Camin."));
-                    bool wizStarted = eq.IsDone(wiz, St(wiz, "camin-potion")) && !eq.IsComplete(wiz);
-                    eq.ProcessLine(EL(95, "You complete the trade with Solomen."));
-                    Check("epics: an epic's last step vouches for the whole quest even when it is an unnamed hand-in",
-                        wizStarted && eq.IsComplete(wiz) && eq.DoneCount(wiz) == eq.RequiredCount(wiz) && eq.MarkOf(wiz, St(wiz, "staff"))!.How == "auto"
-                        && new QuestLines(new ConfigService(), null, epPath) is var eq3 && eq3.IsComplete(eq3.Quests.First(q => q.Key == "epic-wiz")));
+                    // An epic's last step vouches for the whole quest — the wizard's is the Magically Sealed Bag (named after
+                    // eqprogression.com), the shadow knight's a kill and a drop, which on a started quest counts just the same.
+                    eq.ProcessLine(EL(90, "You offered 1 Magically Sealed Bag to Solomen."));
+                    eq.ProcessLine(EL(91, "You complete the trade with Solomen."));
+                    bool wizDone = eq.IsComplete(wiz) && eq.DoneCount(wiz) == eq.RequiredCount(wiz) && eq.MarkOf(wiz, St(wiz, "staff"))!.How == "auto";
+                    eq.ProcessLine(EL(95, "You have slain Lhranc!"));
+                    eq.ProcessLine(EL(96, "--You have looted a Innoruuk's Curse from Lhranc's corpse.--"));
+                    var bst = eq.Quests.First(q => q.Key == "epic-bst");
+                    Check("epics: an epic's last step vouches for the whole quest — a hand-in, or the shadow knight's final kill and drop; the marks survive a reload",
+                        wizDone && eq.IsComplete(shd) && eq.MarkOf(shd, St(shd, "curse"))!.How == "auto" && eq.MarkOf(shd, St(shd, "lhranc"))!.How == "implied"
+                        && !eq.IsDone(shd, St(shd, "kurron-kill"))
+                        && new QuestLines(new ConfigService(), null, epPath) is var eq3 && eq3.IsComplete(eq3.Quests.First(q => q.Key == "epic-wiz"))
+                        && eq3.IsComplete(eq3.Quests.First(q => q.Key == "epic-shd")));
+                    Check("epics: the Beastlord epic comes from eqprogression.com — its link says so, its warning names Luclin, six scouts make twelve totem steps",
+                        bst.Wiki.Contains("eqprogression.com", StringComparison.Ordinal) && bst.Warning.Contains("Luclin", StringComparison.Ordinal)
+                        && bst.RewardStats == "" && bst.Steps.Count(x => x.Part == "The Six Totems") == 14
+                        && bst.Steps.Count(x => x.Id.EndsWith("-spirit", StringComparison.Ordinal)) == 6 && eq.RequiredCount(bst) == bst.Steps.Count);
                     try { File.Delete(epPath); } catch { /* temp */ }
 
                     // The Quests window: the Epics tab is real, opens on your combo's epics and folds the rest.
@@ -6731,7 +6744,8 @@ public partial class App : Application
             win.Show(at15 ? 15 : 44, classes, lib.UnlocksAt(at15 ? 15 : 44, classes));
             mgr = win;
         }
-        else if (page.Equals("quests:epics", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:epics:open", StringComparison.OrdinalIgnoreCase))
+        else if (page.Equals("quests:epics", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:epics:open", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("quests:epics:bst", StringComparison.OrdinalIgnoreCase))
         {
             // The Epics pack mid-quest on a scratch progress file: a shadow knight who has handed Teydar the
             // sheath's three pieces and killed Dread for the sword (quests:epics:open unfolds two more parts).
@@ -6747,13 +6761,14 @@ public partial class App : Application
             el.ProcessLine(RL(601, "--You have looted a Ghoulbane from The froglok shin lord's corpse.--"));
             foreach (var it in new[] { "Drake Spine", "Decrepit Hide", "Enchanted Platinum Bar" }) el.ProcessLine(RL(1200, $"You offered 1 {it} to Teydar."));
             el.ProcessLine(RL(1202, "You complete the trade with Teydar."));
-            var swE = new Views.SkyWindow(new SkyQuests(cse, new LootTracker(cse)), null, () => "SHD/SHM/ENC", el)
+            var swE = new Views.SkyWindow(new SkyQuests(cse, new LootTracker(cse)), null, () => page.EndsWith(":bst", StringComparison.OrdinalIgnoreCase) ? "WAR/BST" : "SHD/SHM/ENC", el)
             {
                 WindowStartupLocation = WindowStartupLocation.Manual,
                 Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
             };
             swE.Show();
             swE.ShowPack("epics");
+            if (page.EndsWith(":bst", StringComparison.OrdinalIgnoreCase)) swE.LinesViewForTest.Select("epic-bst"); // a WAR/BST: the Beastlord epic from the second source
             if (page.EndsWith(":open", StringComparison.OrdinalIgnoreCase))
             {
                 swE.LinesViewForTest.FlipPartForTest("epic-shd", "The Corrupted Ghoulbane"); // fold the current part…

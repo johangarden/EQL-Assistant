@@ -499,6 +499,6 @@ the item icons (`data\item-icons\` — the wikis' 40×40 game art) are converted
 from
 [jmoyers/everquest-companion](https://github.com/jmoyers/everquest-companion)
 (MIT License, Copyright 2026 Josh Moyers), whose data was in turn sourced from
-eqlwiki.com and wiki.project1999.com; spell effect categories come from eqlwiki.com spell pages; the tradeskill helper's leveling ladders, recipes, vendors and drop tables are eqlwiki.com's Skill and item pages; the crafting-station locations it shows (forge, oven, brew barrel, pottery wheel, kiln, loom, per zone with /loc) come from wiki.project1999.com's container pages. The character sheet's +N tier math is
+eqlwiki.com and wiki.project1999.com; spell effect categories come from eqlwiki.com spell pages; the tradeskill helper's leveling ladders, recipes, vendors and drop tables are eqlwiki.com's Skill and item pages; the crafting-station locations it shows (forge, oven, brew barrel, pottery wheel, kiln, loom, per zone with /loc) come from wiki.project1999.com's container pages; the class epic quests in the Quests window are transcribed from eqlwiki.com's class epic pages and from [eqprogression.com](https://www.eqprogression.com/everquest-1-0-epics/)'s 1.0 epic guides (the Beastlord epic and the item names eqlwiki leaves out). The character sheet's +N tier math is
 the wiki's own item-level slider algorithm, via Companion's verified port.
 Thanks!

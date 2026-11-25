@@ -1,8 +1,8 @@
 {
- "credit": "Epic quest steps transcribed from eqlwiki.com's class epic pages; step-tracking design EQL Assistant.",
+ "credit": "Epic quest steps transcribed from eqlwiki.com's class epic pages and eqprogression.com's 1.0 epic guides; step-tracking design EQL Assistant.",
  "pack": "epics",
- "notice": "Before Kunark (8 Dec): these steps come from eqlwiki's classic-era walkthroughs and are unverified in EQ Legends. A name the game spells differently will not tick by itself — tick the step by hand; the steps get corrected once the epics are live.",
- "footer": "All 15 class epics eqlwiki has written up. It has no Beastlord epic page yet.",
+ "notice": "Before Kunark (8 Dec): these steps come from eqlwiki's classic-era walkthroughs and eqprogression.com's guides for original EverQuest, and are unverified in EQ Legends. A name the game spells differently will not tick by itself — tick the step by hand; the steps get corrected once the epics are live.",
+ "footer": "All 16 class epics, from eqlwiki and eqprogression.com. The Beastlord's is original EverQuest's Luclin quest — see its warning.",
  "quests": [
   {
    "key": "epic-shd",
@@ -570,7 +570,7 @@
    "start": "a lesser spirit · four zones",
    "wiki": "https://eqlwiki.com/Shaman_Epic_Quest",
    "warning": "True Spirit faction carries this quest: about amiable to move along, and MAX ally for the final scale — below that the scale is eaten.",
-   "note": "The wiki's page does not name the three books, Kirn's ring or the diary; those steps tick on the trade or by hand.",
+   "note": "The three books, Kirn's ring, the diary and the journal are named after eqprogression.com's guide.",
    "steps": [
     {
      "id": "spirit",
@@ -752,7 +752,8 @@
      "zone": "Emerald Jungle",
      "part": "The Test of Might",
      "get": [
-      "Black Fur Boots"
+      "Black Fur Boots",
+      "Ancient Journal"
      ],
      "handin": [
       {
@@ -760,7 +761,7 @@
        "count": 1
       }
      ],
-     "note": "He also hands you a six-slot booklet."
+     "note": "Say \"how it all began\" for the Ancient Journal, a six-slot container."
     },
     {
      "id": "reports",
@@ -781,11 +782,14 @@
     },
     {
      "id": "booklet",
-     "title": "Combine the six reports in the booklet",
+     "title": "Combine the six reports in the Ancient Journal",
      "kind": "combine",
      "npc": "",
-     "zone": "In the booklet",
+     "zone": "In the Ancient Journal",
      "part": "The City of Mist Reports",
+     "make": [
+      "Completed Report"
+     ],
      "bring": [
       {
        "name": "Personal Diary Page",
@@ -815,34 +819,58 @@
     },
     {
      "id": "report",
-     "title": "Hand the Spirit Sentinel the completed report",
+     "title": "Hand the Spirit Sentinel the Completed Report",
      "kind": "handin",
      "npc": "Spirit Sentinel",
      "zone": "Emerald Jungle",
      "part": "The City of Mist Reports",
-     "faction": "True Spirit ≥ Kindly",
-     "trade": true
+     "handin": [
+      {
+       "name": "Completed Report",
+       "count": 1
+      }
+     ],
+     "faction": "True Spirit ≥ Kindly"
     },
     {
      "id": "ghiosk",
-     "title": "Kill Lord Ghiosk and loot his three books",
+     "title": "Kill Lord Ghiosk for his three books",
      "kind": "kill",
      "npc": "Lord Ghiosk",
      "zone": "City of Mist",
      "part": "The Three Books of Lord Ghiosk",
      "kill": [
       "Lord Ghiosk"
-     ]
+     ],
+     "loot": [
+      "Crusades of the High Scale",
+      "Head Housekeeper's Log",
+      "Historic Article"
+     ],
+     "note": "He appears when a black reaver behind the first locked door dies."
     },
     {
      "id": "books",
-     "title": "Hand the three books to the Spirit Sentinel in the pond",
+     "title": "Hand the three books to the Spirit Sentinel in the lake",
      "kind": "handin",
      "npc": "Spirit Sentinel",
-     "zone": "Emerald Jungle, the pond",
+     "zone": "Emerald Jungle, the lake in the north",
      "part": "The Three Books of Lord Ghiosk",
-     "caution": "Not the Spirit Sentinel near the City of Mist — the one in the pond.",
-     "trade": true
+     "handin": [
+      {
+       "name": "Crusades of the High Scale",
+       "count": 1
+      },
+      {
+       "name": "Head Housekeeper's Log",
+       "count": 1
+      },
+      {
+       "name": "Historic Article",
+       "count": 1
+      }
+     ],
+     "caution": "Not the Spirit Sentinel near the City of Mist — the second one, under water in the lake."
     },
     {
      "id": "icon",
@@ -871,43 +899,60 @@
     },
     {
      "id": "kirn",
-     "title": "Kill High Scale Kirn and loot his ring",
+     "title": "Kill High Scale Kirn for the Engraved Ring",
      "kind": "kill",
      "npc": "High Scale Kirn",
      "zone": "The Hole",
      "part": "The Three Books of Lord Ghiosk",
      "kill": [
       "High Scale Kirn"
+     ],
+     "loot": [
+      "Engraved Ring"
      ]
     },
     {
      "id": "neh-ring",
-     "title": "Hand Neh`Ashiir the ring",
+     "title": "Hand Neh`Ashiir the Engraved Ring",
      "kind": "handin",
      "npc": "Neh`Ashiir",
      "zone": "City of Mist",
      "part": "The Three Books of Lord Ghiosk",
-     "trade": true
+     "handin": [
+      {
+       "name": "Engraved Ring",
+       "count": 1
+      }
+     ],
+     "note": "A black reaver in the hut on the last floating island calls Neh`Ashiir."
     },
     {
      "id": "neh",
-     "title": "Kill Neh`Ashiir and loot her diary",
+     "title": "Kill Neh`Ashiir for the diary",
      "kind": "kill",
      "npc": "Neh`Ashiir",
      "zone": "City of Mist",
      "part": "The Three Books of Lord Ghiosk",
      "kill": [
       "Neh`Ashiir"
+     ],
+     "loot": [
+      "Neh`Ashiir's Diary"
      ]
     },
     {
      "id": "diary",
-     "title": "Hand the Spirit Sentinel the diary",
+     "title": "Hand the Spirit Sentinel in the lake the diary",
      "kind": "handin",
      "npc": "Spirit Sentinel",
-     "zone": "Emerald Jungle",
+     "zone": "Emerald Jungle, the lake in the north",
      "part": "The Three Books of Lord Ghiosk",
-     "trade": true
+     "handin": [
+      {
+       "name": "Neh`Ashiir's Diary",
+       "count": 1
+      }
+     ]
     },
     {
      "id": "tear",
@@ -1277,6 +1322,9 @@
      "npc": "",
      "zone": "In an Enchanters Sack",
      "part": "1st Piece of Staff — Test of Illusion",
+     "make": [
+      "Sack for Modani"
+     ],
      "bring": [
       {
        "name": "Chalice of Kings",
@@ -1299,7 +1347,7 @@
     },
     {
      "id": "piece1",
-     "title": "Hand Modani Qu`Loni the combined sack",
+     "title": "Hand Modani Qu`Loni the Sack for Modani",
      "kind": "handin",
      "npc": "Modani Qu`Loni",
      "zone": "The Overthere",
@@ -1307,7 +1355,12 @@
      "get": [
       "1st Piece of Staff"
      ],
-     "trade": true
+     "handin": [
+      {
+       "name": "Sack for Modani",
+       "count": 1
+      }
+     ]
     },
     {
      "id": "spoon",
@@ -1363,6 +1416,9 @@
      "npc": "",
      "zone": "In an Enchanters Sack",
      "part": "2nd Piece of Staff — Test of Enlightenment",
+     "make": [
+      "Sack for Mizzle"
+     ],
      "bring": [
       {
        "name": "Spoon",
@@ -1385,7 +1441,7 @@
     },
     {
      "id": "piece2",
-     "title": "Hand Mizzle Gepple the combined sack",
+     "title": "Hand Mizzle Gepple the Sack for Mizzle",
      "kind": "handin",
      "npc": "Clockwork VIIX",
      "zone": "Ak'Anon",
@@ -1397,8 +1453,13 @@
      "get": [
       "2nd Piece of Staff"
      ],
-     "note": "Mizzle Gepple stands there as Clockwork VIIX.",
-     "trade": true
+     "handin": [
+      {
+       "name": "Sack for Mizzle",
+       "count": 1
+      }
+     ],
+     "note": "Mizzle Gepple stands there as Clockwork VIIX."
     },
     {
      "id": "gems",
@@ -1412,7 +1473,8 @@
       "Dull Sapphire",
       "Dull Ruby",
       "Dull Emerald"
-     ]
+     ],
+     "note": "Hand her Jeb's Seal (it comes back), then say \"diamond\", \"sapphire\", \"emerald\" and \"ruby\"."
     },
     {
      "id": "diamond",
@@ -1490,6 +1552,9 @@
      "npc": "",
      "zone": "In an Enchanters Sack",
      "part": "3rd Piece of Staff — Test of Charm",
+     "make": [
+      "Sack for Nadia"
+     ],
      "bring": [
       {
        "name": "Enchanted Diamond",
@@ -1512,7 +1577,7 @@
     },
     {
      "id": "piece3",
-     "title": "Hand Nadia Starfeast the combined sack",
+     "title": "Hand Nadia Starfeast the Sack for Nadia",
      "kind": "handin",
      "npc": "Nadia Starfeast",
      "zone": "Firiona Vie",
@@ -1520,7 +1585,12 @@
      "get": [
       "3rd Piece of Staff"
      ],
-     "trade": true
+     "handin": [
+      {
+       "name": "Sack for Nadia",
+       "count": 1
+      }
+     ]
     },
     {
      "id": "serpent",
@@ -1585,6 +1655,9 @@
      "npc": "",
      "zone": "In an Enchanters Sack",
      "part": "4th Piece of Staff — Test of the Phantasm",
+     "make": [
+      "Sack for Polzin"
+     ],
      "bring": [
       {
        "name": "Head of the Serpent",
@@ -1607,7 +1680,7 @@
     },
     {
      "id": "piece4",
-     "title": "Hand Polzin Mrid the combined sack",
+     "title": "Hand Polzin Mrid the Sack for Polzin",
      "kind": "handin",
      "npc": "Polzin Mrid",
      "zone": "The Hole",
@@ -1615,8 +1688,13 @@
      "get": [
       "4th Piece of Staff"
      ],
-     "note": "In The Hole an elemental illusion plus Collaboration reads dubious to most of the zone.",
-     "trade": true
+     "handin": [
+      {
+       "name": "Sack for Polzin",
+       "count": 1
+      }
+     ],
+     "note": "In The Hole an elemental illusion plus Collaboration reads dubious to most of the zone."
     },
     {
      "id": "bundle",
@@ -3100,26 +3178,35 @@
    "start": "Solomen · Temple of Solusek Ro",
    "wiki": "https://eqlwiki.com/Wizard_Epic_Quest",
    "warning": "An Ornate Velium Pendant lets you skip straight to the Golem Sprocket — but then it must be used on EVERY hand-in after that, or the hand-in is eaten.",
-   "note": "The wiki's page does not name Solomen's note, Challice's ring or Arantir's bag; those steps tick on the trade or by hand.",
+   "note": "Solomen's note and Arantir's bag are named after eqprogression.com's guide. It calls the sprocket a Gnome Sprocket; eqlwiki's item table says Golem Sprocket.",
    "steps": [
     {
      "id": "solomen",
-     "title": "Talk to Solomen for his note",
+     "title": "Agree to help Solomen for the Note to Camin",
      "kind": "talk",
      "npc": "Solomen",
-     "zone": "Temple of Solusek Ro",
-     "part": "Camin"
+     "zone": "Temple of Solusek Ro, the second floor",
+     "part": "Camin",
+     "get": [
+      "Note to Camin"
+     ],
+     "note": "Say you agree."
     },
     {
      "id": "camin",
-     "title": "Hand Camin the note, hail him, then hand him 1000 platinum",
+     "title": "Hand Camin the note, then 1000 platinum",
      "kind": "handin",
      "npc": "Camin",
      "zone": "Erudin, the Vasty Deep Inn",
      "part": "Camin",
+     "handin": [
+      {
+       "name": "Note to Camin",
+       "count": 1
+      }
+     ],
      "coins": "1000 platinum",
-     "note": "Doing this twice is still not enough faction for indifferent.",
-     "trade": true
+     "note": "Each in its own trade. Doing this twice is still not enough faction for indifferent."
     },
     {
      "id": "potion",
@@ -3187,7 +3274,7 @@
     },
     {
      "id": "arantir-ring",
-     "title": "Hand Arantir Karondor the second ring and hear him out",
+     "title": "Hand Dargon the ring again and ask Arantir about the gnome",
      "kind": "handin",
      "npc": "Dargon",
      "zone": "Halas",
@@ -3199,8 +3286,13 @@
      "get": [
       "Note from Arantir"
      ],
-     "note": "\"Who is the gnome?\" skips to the end of his story.",
-     "trade": true
+     "handin": [
+      {
+       "name": "Arantir's Ring",
+       "count": 1
+      }
+     ],
+     "note": "\"Who is the gnome?\" skips to the end of his story."
     },
     {
      "id": "kandin-note",
@@ -3324,6 +3416,9 @@
       "Arantir Karondor",
       "Dargon"
      ],
+     "get": [
+      "Magically Sealed Bag"
+     ],
      "handin": [
       {
        "name": "Blue Crystal Staff",
@@ -3337,12 +3432,11 @@
        "name": "Staff of Gabstik",
        "count": 1
       }
-     ],
-     "note": "He hands you a bag."
+     ]
     },
     {
      "id": "staff",
-     "title": "Hand Solomen the bag",
+     "title": "Hand Solomen the Magically Sealed Bag",
      "kind": "handin",
      "npc": "Solomen",
      "zone": "Temple of Solusek Ro",
@@ -3350,7 +3444,12 @@
      "get": [
       "Staff of the Four"
      ],
-     "trade": true
+     "handin": [
+      {
+       "name": "Magically Sealed Bag",
+       "count": 1
+      }
+     ]
     }
    ]
   },
@@ -5084,7 +5183,7 @@
    "minLevel": 46,
    "start": "Venenzi Oberzendi · Nektulos Forest",
    "wiki": "https://eqlwiki.com/Necromancer_Epic_Quest",
-   "note": "The wiki's page does not link Sir Edwin's head, the refined herb, the journal or the reagents box; those steps tick on the trade or by hand.",
+   "note": "Sir Edwin's head, the refined herb, the journal and the reagent box are named after eqprogression.com's guide.",
    "steps": [
     {
      "id": "venenzi",
@@ -5108,14 +5207,18 @@
     },
     {
      "id": "edwin",
-     "title": "Kill Sir Edwin Motte and loot his head",
+     "title": "Kill Sir Edwin Motte for his head",
      "kind": "kill",
      "npc": "Sir Edwin Motte",
-     "zone": "",
+     "zone": "Rathe Mountains, the inn by the hill giants",
      "part": "Symbol of the Apprentice",
      "kill": [
       "Sir Edwin Motte"
-     ]
+     ],
+     "loot": [
+      "Head of Sir Edwin Motte"
+     ],
+     "note": "He comes round in a cycle of placeholders that leave by themselves."
     },
     {
      "id": "apprentice",
@@ -5127,7 +5230,12 @@
      "get": [
       "Symbol of the Apprentice"
      ],
-     "trade": true
+     "handin": [
+      {
+       "name": "Head of Sir Edwin Motte",
+       "count": 1
+      }
+     ]
     },
     {
      "id": "twisted",
@@ -5237,6 +5345,9 @@
      "npc": "Ssessthrass",
      "zone": "Swamp of No Hope",
      "part": "Symbol of Testing",
+     "get": [
+      "Refined Manisi Herb"
+     ],
      "handin": [
       {
        "name": "Manisi Herb",
@@ -5246,12 +5357,11 @@
        "name": "Scaled Symbol of the Serpent",
        "count": 1
       }
-     ],
-     "note": "He returns the refined herb."
+     ]
     },
     {
      "id": "testing",
-     "title": "Hand Emkel Kabae the refined herb",
+     "title": "Hand Emkel Kabae the Refined Manisi Herb",
      "kind": "handin",
      "npc": "Emkel Kabae",
      "zone": "Lake Rathetear",
@@ -5259,7 +5369,12 @@
      "get": [
       "Symbol of Testing"
      ],
-     "trade": true
+     "handin": [
+      {
+       "name": "Refined Manisi Herb",
+       "count": 1
+      }
+     ]
     },
     {
      "id": "kazen-testing",
@@ -5275,7 +5390,7 @@
        "count": 1
       }
      ],
-     "note": "Or kill Kazen Fecae instead — his wiki page describes the fight."
+     "note": "This calls the three: a bone golem, a failed apprentice and a tortured soul, one at a time. Or kill Kazen Fecae instead."
     },
     {
      "id": "golem",
@@ -5320,21 +5435,24 @@
      "npc": "Drendico Metalbones",
      "zone": "Timorous Deep",
      "part": "Gkzzallk in a Box",
+     "get": [
+      "Journal of Drendico"
+     ],
      "handin": [
       {
        "name": "Symbol of Insanity",
        "count": 1
       }
-     ],
-     "note": "He gives you the journal."
+     ]
     },
     {
      "id": "jzil",
-     "title": "Speak to Jzil GSix",
+     "title": "Ask Drakis Bloodcaster to be tested by Jzil",
      "kind": "talk",
-     "npc": "Jzil GSix",
-     "zone": "Plane of Sky",
-     "part": "Gkzzallk in a Box"
+     "npc": "Drakis Bloodcaster",
+     "zone": "Plane of Sky, the quest room",
+     "part": "Gkzzallk in a Box",
+     "note": "Say \"I wish to be tested by Jzil\", then hand his Shadowy Thoughts back — Jzil GSix appears."
     },
     {
      "id": "disc",
@@ -5429,6 +5547,9 @@
      "npc": "Drendico Metalbones",
      "zone": "Timorous Deep",
      "part": "Gkzzallk in a Box",
+     "get": [
+      "Prepared Reagent Box"
+     ],
      "handin": [
       {
        "name": "Cloak of Spiroc Feathers",
@@ -5441,13 +5562,16 @@
       {
        "name": "Slime Blood of Cazic Thule",
        "count": 1
+      },
+      {
+       "name": "Journal of Drendico",
+       "count": 1
       }
-     ],
-     "note": "He gives you the prepared reagents box."
+     ]
     },
     {
      "id": "tome",
-     "title": "Hand Kazen Fecae the reagents box",
+     "title": "Hand Kazen Fecae the Prepared Reagent Box",
      "kind": "handin",
      "npc": "Kazen Fecae",
      "zone": "Lake Rathetear",
@@ -5455,14 +5579,19 @@
      "get": [
       "Tome of Instruction"
      ],
-     "trade": true
+     "handin": [
+      {
+       "name": "Prepared Reagent Box",
+       "count": 1
+      }
+     ]
     },
     {
      "id": "gkzzallk",
      "title": "Hand Gkzzallk the Tome of Instruction",
      "kind": "handin",
      "npc": "Gkzzallk",
-     "zone": "Plane of Sky",
+     "zone": "Plane of Sky, the third island",
      "part": "Gkzzallk in a Box",
      "get": [
       "Gkzzallk in a Box"
@@ -5473,6 +5602,7 @@
        "count": 1
       }
      ],
+     "note": "Handing a thunder spirit princess on the first island 1 platinum calls him.",
      "caution": "This despawns the first island's boss and blocks a normal Sky raid until respawn — never do it on another guild's slot unasked."
     },
     {
@@ -6839,7 +6969,7 @@
    "minLevel": 46,
    "start": "Keras McArik · Lake of Ill Omen",
    "wiki": "https://eqlwiki.com/Berserker_Epic_Quest",
-   "note": "Transcribed from the wiki's walkthrough; it has no checklist.",
+   "note": "Transcribed from eqlwiki's walkthrough and eqprogression.com's guide.",
    "steps": [
     {
      "id": "keras",
@@ -7047,6 +7177,7 @@
      "zone": "Lake of Ill Omen, -110, -3400",
      "part": "Trial of Fervid Rage",
      "get": [
+      "Medal of Hunting",
       "McArik Reagent Satchel"
      ],
      "handin": [
@@ -7058,7 +7189,8 @@
        "name": "Burning Essence of Rage",
        "count": 1
       }
-     ]
+     ],
+     "note": "Say \"must do\" for the satchel."
     },
     {
      "id": "liver",
@@ -7136,7 +7268,7 @@
     },
     {
      "id": "hunting",
-     "title": "Hand Keras the bag and your medal",
+     "title": "Hand Keras the bag and the Medal of Hunting",
      "kind": "handin",
      "npc": "Keras McArik",
      "zone": "Lake of Ill Omen, -110, -3400",
@@ -7147,6 +7279,10 @@
      "handin": [
       {
        "name": "Bag of Image Essence Dust",
+       "count": 1
+      },
+      {
+       "name": "Medal of Hunting",
        "count": 1
       }
      ]
@@ -7163,15 +7299,18 @@
     },
     {
      "id": "tome",
-     "title": "Kill the goblin up the river and loot A Maniac's Garbled Tome",
-     "kind": "loot",
-     "npc": "",
-     "zone": "Warsliks Woods",
+     "title": "Kill the Raving Goblinmaster for A Maniac's Garbled Tome",
+     "kind": "kill",
+     "npc": "Raving Goblinmaster",
+     "zone": "Warsliks Woods, north along the shore",
      "part": "Trial of Mastery",
+     "kill": [
+      "Raving Goblinmaster"
+     ],
      "loot": [
       "A Maniac's Garbled Tome"
      ],
-     "note": "Three waves of frantic goblins, then ferocious goblins, a minute a wave. Bring melee help and levitation."
+     "note": "Tell him \"I am a berserker and I am ready\" and follow: three packs of frantic goblins, then ferocious goblins, then hail him."
     },
     {
      "id": "axe",
@@ -7193,6 +7332,584 @@
        "count": 1
       }
      ]
+    }
+   ]
+  },
+  {
+   "key": "epic-bst",
+   "name": "Beastlord Epic",
+   "pack": "epics",
+   "reward": "Claw of the Savage Spirit",
+   "rewardStats": "",
+   "classes": [
+    "BST"
+   ],
+   "minLevel": 46,
+   "start": "Captain Necin · Grimling Forest",
+   "wiki": "https://www.eqprogression.com/beastlord-1-0-epic-quest/",
+   "warning": "This is original EverQuest's quest, and most of it happens on Luclin: Shar Vahl, Grimling Forest, Maiden's Eye, The Deep, The Grey and Fungus Grove. EQ Legends has no Luclin, so expect its Beastlord epic to be different, or to come later.",
+   "note": "From eqprogression.com's guide; eqlwiki has no Beastlord epic page, and its item table does not know the reward yet.",
+   "steps": [
+    {
+     "id": "medal",
+     "title": "Win a Copper Medal of War in the grimling war",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Grimling Forest, the town in the south-east",
+     "part": "Copper Medal of War",
+     "loot": [
+      "Copper Medal of War"
+     ],
+     "note": "Tell Captain Necin you are ready to go, follow him to a camp, say you are ready to fight and clear it. A named there may carry the medal; it can take several tries."
+    },
+    {
+     "id": "dumul-medal",
+     "title": "Hand Elder Animist Dumul the medal",
+     "kind": "handin",
+     "npc": "Elder Animist Dumul",
+     "zone": "Shar Vahl, +310, +100",
+     "part": "Copper Medal of War",
+     "get": [
+      "Official Seal of the Khati Sha",
+      "Carved Wooden Chest"
+     ],
+     "handin": [
+      {
+       "name": "Copper Medal of War",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "gorilla-spirit",
+     "title": "Show Scout Vyrak the seal and kill The Spirit of Rage",
+     "kind": "kill",
+     "npc": "The Spirit of Rage",
+     "zone": "Emerald Jungle, +230, +4200",
+     "part": "The Six Totems",
+     "kill": [
+      "The Spirit of Rage"
+     ],
+     "loot": [
+      "Totem of the Gorilla"
+     ],
+     "note": "Handing Scout Vyrak the Official Seal of the Khati Sha calls it."
+    },
+    {
+     "id": "gorilla-totem",
+     "title": "Hand Scout Vyrak the Totem of the Gorilla",
+     "kind": "handin",
+     "npc": "Scout Vyrak",
+     "zone": "Emerald Jungle, +230, +4200",
+     "part": "The Six Totems",
+     "get": [
+      "Wrapped Gorilla Totem"
+     ],
+     "handin": [
+      {
+       "name": "Totem of the Gorilla",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "bear-spirit",
+     "title": "Show Scout Janomin the seal and kill The Icebound Spirit",
+     "kind": "kill",
+     "npc": "The Icebound Spirit",
+     "zone": "Permafrost Caverns",
+     "part": "The Six Totems",
+     "kill": [
+      "The Icebound Spirit"
+     ],
+     "loot": [
+      "Totem of the Ice Bear"
+     ],
+     "note": "Handing Scout Janomin the Official Seal of the Khati Sha calls it."
+    },
+    {
+     "id": "bear-totem",
+     "title": "Hand Scout Janomin the Totem of the Ice Bear",
+     "kind": "handin",
+     "npc": "Scout Janomin",
+     "zone": "Permafrost Caverns",
+     "part": "The Six Totems",
+     "get": [
+      "Wrapped Ice Bear Totem"
+     ],
+     "handin": [
+      {
+       "name": "Totem of the Ice Bear",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "spider-spirit",
+     "title": "Show Scout Ahlikal the seal and kill The Spirit of Decay",
+     "kind": "kill",
+     "npc": "The Spirit of Decay",
+     "zone": "The Feerrott",
+     "part": "The Six Totems",
+     "kill": [
+      "The Spirit of Decay"
+     ],
+     "loot": [
+      "Totem of the Spider"
+     ],
+     "note": "Handing Scout Ahlikal the Official Seal of the Khati Sha calls it."
+    },
+    {
+     "id": "spider-totem",
+     "title": "Hand Scout Ahlikal the Totem of the Spider",
+     "kind": "handin",
+     "npc": "Scout Ahlikal",
+     "zone": "The Feerrott",
+     "part": "The Six Totems",
+     "get": [
+      "Wrapped Spider Totem"
+     ],
+     "handin": [
+      {
+       "name": "Totem of the Spider",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "wolf-spirit",
+     "title": "Show Scout Rahjiq the seal and kill The Spirit of Malevolence",
+     "kind": "kill",
+     "npc": "The Spirit of Malevolence",
+     "zone": "Lesser Faydark",
+     "part": "The Six Totems",
+     "kill": [
+      "The Spirit of Malevolence"
+     ],
+     "loot": [
+      "Totem of the Wolf"
+     ],
+     "note": "Handing Scout Rahjiq the Official Seal of the Khati Sha calls it."
+    },
+    {
+     "id": "wolf-totem",
+     "title": "Hand Scout Rahjiq the Totem of the Wolf",
+     "kind": "handin",
+     "npc": "Scout Rahjiq",
+     "zone": "Lesser Faydark",
+     "part": "The Six Totems",
+     "get": [
+      "Wrapped Wolf Totem"
+     ],
+     "handin": [
+      {
+       "name": "Totem of the Wolf",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "watcher-spirit",
+     "title": "Show Scout Malom the seal and kill The Spirit of Torment",
+     "kind": "kill",
+     "npc": "The Spirit of Torment",
+     "zone": "Stonebrunt Mountains",
+     "part": "The Six Totems",
+     "kill": [
+      "The Spirit of Torment"
+     ],
+     "loot": [
+      "Totem of the Watcher"
+     ],
+     "note": "Handing Scout Malom the Official Seal of the Khati Sha calls it. It stands above the waterfall, off the map."
+    },
+    {
+     "id": "watcher-totem",
+     "title": "Hand Scout Malom the Totem of the Watcher",
+     "kind": "handin",
+     "npc": "Scout Malom",
+     "zone": "Stonebrunt Mountains",
+     "part": "The Six Totems",
+     "get": [
+      "Wrapped Watcher Totem"
+     ],
+     "handin": [
+      {
+       "name": "Totem of the Watcher",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "alligator-spirit",
+     "title": "Show Scout Eyru the seal and kill The Spirit of Sorrow",
+     "kind": "kill",
+     "npc": "The Spirit of Sorrow",
+     "zone": "Swamp of No Hope",
+     "part": "The Six Totems",
+     "kill": [
+      "The Spirit of Sorrow"
+     ],
+     "loot": [
+      "Totem of the Alligator"
+     ],
+     "note": "Handing Scout Eyru the Official Seal of the Khati Sha calls it."
+    },
+    {
+     "id": "alligator-totem",
+     "title": "Hand Scout Eyru the Totem of the Alligator",
+     "kind": "handin",
+     "npc": "Scout Eyru",
+     "zone": "Swamp of No Hope",
+     "part": "The Six Totems",
+     "get": [
+      "Wrapped Alligator Totem"
+     ],
+     "handin": [
+      {
+       "name": "Totem of the Alligator",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "totems",
+     "title": "Combine the six wrapped totems in the Carved Wooden Chest",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In the Carved Wooden Chest",
+     "part": "The Six Totems",
+     "make": [
+      "Sealed Box of Totems"
+     ],
+     "bring": [
+      {
+       "name": "Wrapped Gorilla Totem",
+       "count": 1
+      },
+      {
+       "name": "Wrapped Ice Bear Totem",
+       "count": 1
+      },
+      {
+       "name": "Wrapped Spider Totem",
+       "count": 1
+      },
+      {
+       "name": "Wrapped Wolf Totem",
+       "count": 1
+      },
+      {
+       "name": "Wrapped Watcher Totem",
+       "count": 1
+      },
+      {
+       "name": "Wrapped Alligator Totem",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "dumul-totems",
+     "title": "Hand Elder Animist Dumul the Sealed Box of Totems",
+     "kind": "handin",
+     "npc": "Elder Animist Dumul",
+     "zone": "Shar Vahl, +310, +100",
+     "part": "The Six Totems",
+     "get": [
+      "Seal of Elder Dumul"
+     ],
+     "handin": [
+      {
+       "name": "Sealed Box of Totems",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "sihmoj",
+     "title": "Hand Scout Sihmoj the Seal of Elder Dumul",
+     "kind": "handin",
+     "npc": "Scout Sihmoj",
+     "zone": "Timorous Deep, from the Butcherblock dock",
+     "part": "The Broken Glass",
+     "get": [
+      "Black Silk Sack"
+     ],
+     "handin": [
+      {
+       "name": "Seal of Elder Dumul",
+       "count": 1
+      }
+     ],
+     "note": "Six images appear on the island to the east."
+    },
+    {
+     "id": "shards",
+     "title": "Kill the six images and loot their Shards of Broken Glass",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Timorous Deep",
+     "part": "The Broken Glass",
+     "loot": [
+      "Shards of Broken Glass"
+     ]
+    },
+    {
+     "id": "glass",
+     "title": "Combine the six shards in the Black Silk Sack",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In the Black Silk Sack",
+     "part": "The Broken Glass",
+     "make": [
+      "Sack of Broken Glass"
+     ],
+     "bring": [
+      {
+       "name": "Shards of Broken Glass",
+       "count": 6
+      }
+     ]
+    },
+    {
+     "id": "sihmoj-sack",
+     "title": "Show Scout Sihmoj the Sack of Broken Glass",
+     "kind": "handin",
+     "npc": "Scout Sihmoj",
+     "zone": "Timorous Deep",
+     "part": "The Broken Glass",
+     "handin": [
+      {
+       "name": "Sack of Broken Glass",
+       "count": 1
+      }
+     ],
+     "note": "He hands it back and leaves."
+    },
+    {
+     "id": "dumul-sack",
+     "title": "Hand Elder Animist Dumul the Sack of Broken Glass",
+     "kind": "handin",
+     "npc": "Elder Animist Dumul",
+     "zone": "Shar Vahl, +310, +100",
+     "part": "The Broken Glass",
+     "get": [
+      "Note for Historian Qua"
+     ],
+     "handin": [
+      {
+       "name": "Sack of Broken Glass",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "qua",
+     "title": "Hand Arms Historian Qua the note",
+     "kind": "handin",
+     "npc": "Arms Historian Qua",
+     "zone": "Shar Vahl",
+     "part": "The Broken Glass",
+     "get": [
+      "Qua's Receipt"
+     ],
+     "handin": [
+      {
+       "name": "Note for Historian Qua",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "rahoul",
+     "title": "Hand Weapons Master Rahoul the receipt",
+     "kind": "handin",
+     "npc": "Weapons Master Rahoul",
+     "zone": "Shar Vahl",
+     "part": "The Broken Glass",
+     "get": [
+      "Rahoul's Collection Box"
+     ],
+     "handin": [
+      {
+       "name": "Qua's Receipt",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "void",
+     "title": "Loot two Gems of the Void",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Maiden's Eye",
+     "part": "The Jagged Claws",
+     "loot": [
+      "Gem of the Void"
+     ],
+     "note": "From the Xi Xaui and the reaper-shaped mobs. You need two."
+    },
+    {
+     "id": "padding",
+     "title": "Kill an ancient shrieker for a Chunk of Dense Fungal Padding",
+     "kind": "kill",
+     "npc": "an ancient shrieker",
+     "zone": "The Deep",
+     "part": "The Jagged Claws",
+     "kill": [
+      "an ancient shrieker"
+     ],
+     "loot": [
+      "Chunk of Dense Fungal Padding"
+     ]
+    },
+    {
+     "id": "ore",
+     "title": "Loot a Perfect Acrylia Ore from a trap golem",
+     "kind": "loot",
+     "npc": "",
+     "zone": "The Grey",
+     "part": "The Jagged Claws",
+     "loot": [
+      "Perfect Acrylia Ore"
+     ],
+     "note": "Only the golems that spring from traps carry it."
+    },
+    {
+     "id": "collection",
+     "title": "Combine the four in Rahoul's Collection Box",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In Rahoul's Collection Box",
+     "part": "The Jagged Claws",
+     "make": [
+      "Sealed Collection Box"
+     ],
+     "bring": [
+      {
+       "name": "Gem of the Void",
+       "count": 2
+      },
+      {
+       "name": "Chunk of Dense Fungal Padding",
+       "count": 1
+      },
+      {
+       "name": "Perfect Acrylia Ore",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "claws",
+     "title": "Hand Weapons Master Rahoul the Sealed Collection Box",
+     "kind": "handin",
+     "npc": "Weapons Master Rahoul",
+     "zone": "Shar Vahl",
+     "part": "The Jagged Claws",
+     "get": [
+      "Jagged Claw of Rending"
+     ],
+     "handin": [
+      {
+       "name": "Sealed Collection Box",
+       "count": 1
+      }
+     ],
+     "note": "He gives you two."
+    },
+    {
+     "id": "dumul-claws",
+     "title": "Show Elder Animist Dumul the two Jagged Claws of Rending",
+     "kind": "handin",
+     "npc": "Elder Animist Dumul",
+     "zone": "Shar Vahl, +310, +100",
+     "part": "The Jagged Claws",
+     "get": [
+      "Khati Sha Seal of War",
+      "Acrylia Gilded Box"
+     ],
+     "handin": [
+      {
+       "name": "Jagged Claw of Rending",
+       "count": 2
+      }
+     ],
+     "note": "He hands the claws back."
+    },
+    {
+     "id": "halmia",
+     "title": "Hand Scout Halmia the Khati Sha Seal of War",
+     "kind": "handin",
+     "npc": "Scout Halmia",
+     "zone": "Fungus Grove, by the Twilight Sea portal",
+     "part": "Draz Nurakk",
+     "handin": [
+      {
+       "name": "Khati Sha Seal of War",
+       "count": 1
+      }
+     ],
+     "note": "This calls Draz Nurakk at +640, -10."
+    },
+    {
+     "id": "draz",
+     "title": "Kill Draz Nurakk for his head",
+     "kind": "kill",
+     "npc": "Draz Nurakk",
+     "zone": "Fungus Grove",
+     "part": "Draz Nurakk",
+     "kill": [
+      "Draz Nurakk"
+     ],
+     "loot": [
+      "Draz Nurakk's Head"
+     ],
+     "caution": "He is immune to melee — except the two Jagged Claws of Rending."
+    },
+    {
+     "id": "chest",
+     "title": "Combine the claws, the seal and the head in the Acrylia Gilded Box",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In the Acrylia Gilded Box",
+     "part": "Claw of the Savage Spirit",
+     "make": [
+      "Sealed Gilded Wooden Chest"
+     ],
+     "bring": [
+      {
+       "name": "Jagged Claw of Rending",
+       "count": 2
+      },
+      {
+       "name": "Khati Sha Seal of War",
+       "count": 1
+      },
+      {
+       "name": "Draz Nurakk's Head",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "savage",
+     "title": "Hand Elder Animist Dumul the Sealed Gilded Wooden Chest",
+     "kind": "handin",
+     "npc": "Elder Animist Dumul",
+     "zone": "Shar Vahl, +310, +100",
+     "part": "Claw of the Savage Spirit",
+     "get": [
+      "Claw of the Savage Spirit"
+     ],
+     "handin": [
+      {
+       "name": "Sealed Gilded Wooden Chest",
+       "count": 1
+      }
+     ],
+     "note": "He gives you two claws."
     }
    ]
   }
