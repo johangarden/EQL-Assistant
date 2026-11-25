@@ -99,11 +99,10 @@ public partial class SessionStatsWindow : Window
 
     public void SetLocked(bool locked)
     {
+        // The lock only pins the panel in place: RESET, the pills and the picker answer either way
+        // (owner, 25 Nov — "it should be clickable in locked state"), like the meter's own keys.
         _locked = locked;
         ApplyClickThrough();
-        // The picker and pills only respond while unlocked (click-through
-        // covers the mouse; enabling tracks it for keyboard/visual honesty).
-        SliceBox.IsEnabled = !locked;
         Refresh();
     }
 
@@ -163,7 +162,6 @@ public partial class SessionStatsWindow : Window
     /// starts a fresh session from now. One stray click costs nothing.</summary>
     private void Reset_Click(object sender, MouseButtonEventArgs e)
     {
-        if (_locked) return;
         var now = DateTime.Now;
         if (now < _resetArmedUntil)
         {
@@ -201,7 +199,6 @@ public partial class SessionStatsWindow : Window
 
     private void Tier_Click(object sender, MouseButtonEventArgs e)
     {
-        if (_locked) return;
         _exactTier = !_exactTier;
         SettingsChanged?.Invoke(_slice, _exactTier, _basis);
         Refresh();
@@ -209,17 +206,18 @@ public partial class SessionStatsWindow : Window
 
     private void Basis_Click(object sender, MouseButtonEventArgs e)
     {
-        if (_locked) return;
         _basis = _basis == SessionStats.Basis.Active
             ? SessionStats.Basis.Elapsed : SessionStats.Basis.Active;
         SettingsChanged?.Invoke(_slice, _exactTier, _basis);
         Refresh();
     }
 
+    /// <summary>Interactive (never click-through) but no-activate + tool-window: its keys work while
+    /// the panels are locked, and a click on it never takes focus from the game.</summary>
     private void ApplyClickThrough()
     {
         if (_hwnd != nint.Zero)
-            NativeMethods.SetClickThrough(_hwnd, _locked);
+            NativeMethods.SetClickThrough(_hwnd, false);
     }
 
     private void Header_DragMove(object sender, MouseButtonEventArgs e)
