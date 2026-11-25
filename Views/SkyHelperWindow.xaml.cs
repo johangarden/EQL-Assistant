@@ -199,10 +199,10 @@ public partial class SkyHelperWindow : Window
             for (int i = 0; i < q.Steps.Count; i++)
             {
                 var s = q.Steps[i];
-                if (s.Loot.Count == 0 || s.Kill.Count == 0) continue;
+                if (s.Loot.Count == 0 || !s.KillNames.Any()) continue;
                 bool done = _lines!.IsDone(q, s);
                 lines.Add(new LineVm(
-                    $"{string.Join(", ", s.Loot)} — {string.Join(" / ", s.Kill)}{(s.Zone.Length > 0 ? $" · {s.Zone}" : "")} · step {i + 1}",
+                    $"{string.Join(", ", s.Loot)} — {string.Join(" / ", s.KillNames)}{(s.Zone.Length > 0 ? $" · {s.Zone}" : "")} · step {i + 1}",
                     done ? DimFg : HintFg, FontWeights.Normal, 11, new Thickness(10, 0, 0, 0),
                     done ? TextDecorations.Strikethrough : null));
             }

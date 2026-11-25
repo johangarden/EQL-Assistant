@@ -1,0 +1,1674 @@
+{
+ "credit": "Epic quest steps transcribed from eqlwiki.com's class epic pages (Shadow Knight, Shaman, Enchanter); step-tracking design EQL Assistant.",
+ "pack": "epics",
+ "notice": "Before Kunark (8 Dec): these steps come from eqlwiki's classic-era walkthroughs and are unverified in EQ Legends. A name the game spells differently will not tick by itself — tick the step by hand; the steps get corrected once the epics are live.",
+ "footer": "3 of 15 class epics so far: Shadow Knight, Shaman, Enchanter. Still to come: Bard, Berserker, Cleric, Druid, Magician, Monk, Necromancer, Paladin, Ranger, Rogue, Warrior, Wizard. eqlwiki has no Beastlord epic page yet.",
+ "quests": [
+  {
+   "key": "epic-shd",
+   "name": "Shadow Knight Epic",
+   "pack": "epics",
+   "reward": "Innoruuk's Curse",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 2H Slashing Atk Delay: 45\nDMG: 40\nSTR: +20 DEX: +15 INT: +15 HP: +60 MANA: +40\nSV FIRE: +10 SV DISEASE: +5 SV COLD: +10 SV MAGIC: +15 SV POISON: +5\nEffect: Soul Consumption (Combat, Casting Time: Instant, Req Level 50)\nWT: 5.0 Size: SMALL\nClass: SHD\nRace: ALL",
+   "classes": [
+    "SHD"
+   ],
+   "minLevel": 46,
+   "start": "Kurron Ni · The Overthere",
+   "wiki": "https://eqlwiki.com/Shadow_Knight_Epic_Quest",
+   "warning": "Con INDIFFERENT to every hand-in NPC before you press Trade: items in the window, then Hide or invisibility, then check the con. A hand-in at a worse con is eaten.",
+   "note": "The Letter to Duriek and The Dusty Tome are not required.",
+   "steps": [
+    {
+     "id": "kurron-hail",
+     "title": "Hail Kurron Ni",
+     "kind": "say",
+     "npc": "Kurron Ni",
+     "zone": "The Overthere, the outpost",
+     "part": "The Letter to Duriek",
+     "optional": true,
+     "say": "Hail, Kurron Ni"
+    },
+    {
+     "id": "kurron-armor",
+     "title": "Hand Kurron Ni the three Darkforge pieces and 900 platinum",
+     "kind": "handin",
+     "npc": "Kurron Ni",
+     "zone": "The Overthere, the outpost",
+     "part": "The Letter to Duriek",
+     "optional": true,
+     "handin": [
+      {
+       "name": "Darkforge Breastplate",
+       "count": 1
+      },
+      {
+       "name": "Darkforge Greaves",
+       "count": 1
+      },
+      {
+       "name": "Darkforge Helm",
+       "count": 1
+      }
+     ],
+     "coins": "900 platinum",
+     "note": "The armor comes from the Darkforge Armor quests."
+    },
+    {
+     "id": "kurron-kill",
+     "title": "Kill Kurron Ni for the Letter to Duriek",
+     "kind": "kill",
+     "npc": "Kurron Ni",
+     "zone": "The Overthere",
+     "part": "The Letter to Duriek",
+     "optional": true,
+     "kill": [
+      "Kurron Ni"
+     ],
+     "loot": [
+      "Letter to Duriek"
+     ]
+    },
+    {
+     "id": "duriek-letter",
+     "title": "Hand Duriek Bloodpool the letter",
+     "kind": "handin",
+     "npc": "Duriek Bloodpool",
+     "zone": "Paineel",
+     "part": "The Dusty Tome",
+     "optional": true,
+     "handin": [
+      {
+       "name": "Letter to Duriek",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent first — put the items in the window, hide, then check the con."
+    },
+    {
+     "id": "smaka-hail",
+     "title": "Hail Smaka",
+     "kind": "say",
+     "npc": "Smaka",
+     "zone": "Neriak Foreign Quarter",
+     "part": "The Dusty Tome",
+     "optional": true,
+     "say": "Hail, Smaka"
+    },
+    {
+     "id": "smaka-elixir",
+     "title": "Pay Smaka 1000 platinum for a Cough Elixir",
+     "kind": "handin",
+     "npc": "Smaka",
+     "zone": "Neriak Foreign Quarter",
+     "part": "The Dusty Tome",
+     "optional": true,
+     "get": [
+      "Cough Elixir"
+     ],
+     "coins": "1000 platinum"
+    },
+    {
+     "id": "duriek-elixir",
+     "title": "Hand Duriek the Cough Elixir",
+     "kind": "handin",
+     "npc": "Duriek Bloodpool",
+     "zone": "Paineel",
+     "part": "The Dusty Tome",
+     "optional": true,
+     "handin": [
+      {
+       "name": "Cough Elixir",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent first — put the items in the window, hide, then check the con."
+    },
+    {
+     "id": "tome-kill",
+     "title": "Kill a ratman guard for a Dusty Tome",
+     "kind": "kill",
+     "npc": "a ratman guard",
+     "zone": "The Hole",
+     "part": "The Dusty Tome",
+     "optional": true,
+     "kill": [
+      "a ratman guard"
+     ],
+     "loot": [
+      "Dusty Tome"
+     ]
+    },
+    {
+     "id": "duriek-tome",
+     "title": "Hand Duriek the Dusty Tome",
+     "kind": "handin",
+     "npc": "Duriek Bloodpool",
+     "zone": "Paineel",
+     "part": "The Dusty Tome",
+     "optional": true,
+     "handin": [
+      {
+       "name": "Dusty Tome",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent first — put the items in the window, hide, then check the con."
+    },
+    {
+     "id": "ghoulbane",
+     "title": "Kill the froglok shin lord for the Ghoulbane",
+     "kind": "kill",
+     "npc": "The froglok shin lord",
+     "zone": "Ruins of Upper Guk",
+     "part": "The Corrupted Ghoulbane",
+     "kill": [
+      "The froglok shin lord"
+     ],
+     "loot": [
+      "Ghoulbane"
+     ]
+    },
+    {
+     "id": "soul-leech",
+     "title": "Kill a Fear golem for the Soul Leech, Dark Sword of Blood",
+     "kind": "kill",
+     "npc": "",
+     "zone": "Plane of Fear",
+     "part": "The Corrupted Ghoulbane",
+     "killAny": [
+      "Fright",
+      "Dread",
+      "Terror"
+     ],
+     "loot": [
+      "Soul Leech, Dark Sword of Blood"
+     ],
+     "note": "Cazic-Thule carried it before the Fear revamp."
+    },
+    {
+     "id": "abrogation",
+     "title": "Loot a Blade of Abrogation in the Plane of Sky",
+     "kind": "loot",
+     "npc": "",
+     "zone": "Plane of Sky",
+     "part": "The Corrupted Ghoulbane",
+     "loot": [
+      "Blade of Abrogation"
+     ]
+    },
+    {
+     "id": "drake-spine",
+     "title": "Kill Rharzar for a Drake Spine",
+     "kind": "kill",
+     "npc": "Rharzar",
+     "zone": "Rathe Mountains",
+     "part": "The Corrupted Ghoulbane",
+     "kill": [
+      "Rharzar"
+     ],
+     "loot": [
+      "Drake Spine"
+     ]
+    },
+    {
+     "id": "hide",
+     "title": "Kill an ashenbone drake for a Decrepit Hide",
+     "kind": "kill",
+     "npc": "An ashenbone drake",
+     "zone": "Plane of Hate",
+     "part": "The Corrupted Ghoulbane",
+     "kill": [
+      "An ashenbone drake"
+     ],
+     "loot": [
+      "Decrepit Hide"
+     ]
+    },
+    {
+     "id": "bar",
+     "title": "Buy a Platinum Bar and have an enchanter enchant it",
+     "kind": "buy",
+     "npc": "Any jeweller",
+     "zone": "an enchanter makes the bar",
+     "part": "The Corrupted Ghoulbane",
+     "get": [
+      "Enchanted Platinum Bar"
+     ]
+    },
+    {
+     "id": "sheath",
+     "title": "Hand Teydar the spine, the hide and the bar",
+     "kind": "handin",
+     "npc": "Teydar",
+     "zone": "Qeynos Aqueducts, the evil guild area",
+     "part": "The Corrupted Ghoulbane",
+     "get": [
+      "Decrepit Sheath"
+     ],
+     "handin": [
+      {
+       "name": "Drake Spine",
+       "count": 1
+      },
+      {
+       "name": "Decrepit Hide",
+       "count": 1
+      },
+      {
+       "name": "Enchanted Platinum Bar",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent first — put the items in the window, hide, then check the con."
+    },
+    {
+     "id": "corrupted",
+     "title": "Hand Duriek the three swords and the sheath",
+     "kind": "handin",
+     "npc": "Duriek Bloodpool",
+     "zone": "Paineel",
+     "part": "The Corrupted Ghoulbane",
+     "get": [
+      "Corrupted Ghoulbane"
+     ],
+     "handin": [
+      {
+       "name": "Ghoulbane",
+       "count": 1
+      },
+      {
+       "name": "Soul Leech, Dark Sword of Blood",
+       "count": 1
+      },
+      {
+       "name": "Blade of Abrogation",
+       "count": 1
+      },
+      {
+       "name": "Decrepit Sheath",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent first — put the items in the window, hide, then check the con."
+    },
+    {
+     "id": "lhranc-hail",
+     "title": "Hail Lhranc",
+     "kind": "say",
+     "npc": "Lhranc",
+     "zone": "City of Mist",
+     "part": "The Dark Shroud",
+     "optional": true,
+     "say": "Hail, Lhranc"
+    },
+    {
+     "id": "marl-seal",
+     "title": "Ask Marl Kastane about the prophecy for a Seal of Kastane",
+     "kind": "say",
+     "npc": "Marl Kastane",
+     "zone": "Kerra Isle",
+     "part": "The Dark Shroud",
+     "optional": true,
+     "get": [
+      "Seal of Kastane"
+     ],
+     "say": "What prophecy?",
+     "note": "Say \"I have the will of Innoruuk\" first."
+    },
+    {
+     "id": "gerot-seal",
+     "title": "Hand Gerot Kastane the Seal of Kastane",
+     "kind": "handin",
+     "npc": "Gerot Kastane",
+     "zone": "Paineel",
+     "part": "The Dark Shroud",
+     "optional": true,
+     "get": [
+      "Note to Marl"
+     ],
+     "handin": [
+      {
+       "name": "Seal of Kastane",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "marl-note",
+     "title": "Hand Marl Kastane the Note to Marl",
+     "kind": "handin",
+     "npc": "Marl Kastane",
+     "zone": "Kerra Isle",
+     "part": "The Dark Shroud",
+     "optional": true,
+     "handin": [
+      {
+       "name": "Note to Marl",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "soulcase",
+     "title": "Ask Knarthenne Skurl about the heart of an innocent for a Soulcase",
+     "kind": "say",
+     "npc": "Knarthenne Skurl",
+     "zone": "Toxxulia Forest",
+     "part": "The Dark Shroud",
+     "get": [
+      "Soulcase"
+     ],
+     "say": "What heart of an innocent?"
+    },
+    {
+     "id": "cell-key",
+     "title": "Kill a mimic for a Cell Key",
+     "kind": "kill",
+     "npc": "a mimic",
+     "zone": "The Hole, the city bank",
+     "part": "The Dark Shroud",
+     "kill": [
+      "a mimic"
+     ],
+     "loot": [
+      "Cell Key"
+     ],
+     "note": "It looks like a chest."
+    },
+    {
+     "id": "caradon",
+     "title": "Hand Caradon the Cell Key",
+     "kind": "handin",
+     "npc": "Caradon",
+     "zone": "The Hole",
+     "part": "The Dark Shroud",
+     "handin": [
+      {
+       "name": "Cell Key",
+       "count": 1
+      }
+     ],
+     "note": "This spawns Kyrenna.",
+     "caution": "Con indifferent first — put the items in the window, hide, then check the con."
+    },
+    {
+     "id": "kyrenna",
+     "title": "Kill Kyrenna for her blood and her heart",
+     "kind": "kill",
+     "npc": "Kyrenna",
+     "zone": "The Hole",
+     "part": "The Dark Shroud",
+     "kill": [
+      "Kyrenna"
+     ],
+     "loot": [
+      "Blood of Kyrenna",
+      "Heart of Kyrenna"
+     ],
+     "note": "Kill Kyrenna, not Caradon, if it can be avoided."
+    },
+    {
+     "id": "shroud",
+     "title": "Hand Marl Kastane the Blood of Kyrenna",
+     "kind": "handin",
+     "npc": "Marl Kastane",
+     "zone": "Kerra Isle",
+     "part": "The Dark Shroud",
+     "get": [
+      "Dark Shroud"
+     ],
+     "handin": [
+      {
+       "name": "Blood of Kyrenna",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent first — hide, and never feign death on this hand-in."
+    },
+    {
+     "id": "glohnor",
+     "title": "Hand the Ghost of Glohnor the Dark Shroud",
+     "kind": "handin",
+     "npc": "Ghost of Glohnor",
+     "zone": "The Hole",
+     "part": "Lhranc's Coin",
+     "handin": [
+      {
+       "name": "Dark Shroud",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent with invisibility to undead before you trade."
+    },
+    {
+     "id": "mummy",
+     "title": "Kill the Mummy of Glohnor for his head and wrappings",
+     "kind": "kill",
+     "npc": "Mummy of Glohnor",
+     "zone": "The Hole",
+     "part": "Lhranc's Coin",
+     "kill": [
+      "Mummy of Glohnor"
+     ],
+     "loot": [
+      "Head of Glohnor",
+      "Glohnor wrappings"
+     ]
+    },
+    {
+     "id": "valiant",
+     "title": "Hand Gerot Kastane the Head of Glohnor",
+     "kind": "handin",
+     "npc": "Gerot Kastane",
+     "zone": "Paineel",
+     "part": "Lhranc's Coin",
+     "get": [
+      "Head of the Valiant"
+     ],
+     "handin": [
+      {
+       "name": "Head of Glohnor",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent first — put the items in the window, hide, then check the con."
+    },
+    {
+     "id": "will",
+     "title": "Hand Marl Kastane the Glohnor wrappings",
+     "kind": "handin",
+     "npc": "Marl Kastane",
+     "zone": "Kerra Isle",
+     "part": "Lhranc's Coin",
+     "get": [
+      "Will of Innoruuk"
+     ],
+     "handin": [
+      {
+       "name": "Glohnor wrappings",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent first — put the items in the window, hide, then check the con."
+    },
+    {
+     "id": "heart",
+     "title": "Combine the Heart of Kyrenna in the Soulcase",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In the Soulcase",
+     "part": "Lhranc's Coin",
+     "make": [
+      "Heart of the Innocent"
+     ],
+     "bring": [
+      {
+       "name": "Heart of Kyrenna",
+       "count": 1
+      },
+      {
+       "name": "Soulcase",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "lhranc",
+     "title": "Hand Lhranc the Corrupted Ghoulbane, the heart, the head and the will",
+     "kind": "handin",
+     "npc": "Lhranc",
+     "zone": "City of Mist",
+     "part": "Lhranc's Coin",
+     "handin": [
+      {
+       "name": "Corrupted Ghoulbane",
+       "count": 1
+      },
+      {
+       "name": "Heart of the Innocent",
+       "count": 1
+      },
+      {
+       "name": "Head of the Valiant",
+       "count": 1
+      },
+      {
+       "name": "Will of Innoruuk",
+       "count": 1
+      }
+     ],
+     "caution": "Con indifferent first — have someone cast invisibility to undead on you. He returns with the sword: bring at least two groups."
+    },
+    {
+     "id": "curse",
+     "title": "Kill Lhranc and loot Innoruuk's Curse",
+     "kind": "kill",
+     "npc": "Lhranc",
+     "zone": "City of Mist",
+     "part": "Lhranc's Coin",
+     "kill": [
+      "Lhranc"
+     ],
+     "loot": [
+      "Innoruuk's Curse"
+     ],
+     "note": "If you wipe, Lhranc does not despawn."
+    }
+   ]
+  },
+  {
+   "key": "epic-shm",
+   "name": "Shaman Epic",
+   "pack": "epics",
+   "reward": "Spear of Fate",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP REQUIRED LEVEL OF 46.\nSlot: PRIMARY\nSkill: Piercing Atk Delay: 30\nDMG: 20\nSTR: +10 DEX: +10 STA: +10 WIS: +20 HP: +30 MANA: +70\nSV FIRE: +10 SV DISEASE: +10 SV COLD: +10 SV MAGIC: +10 SV POISON: +10\nEffect: Curse of the Spirits (Must Equip, Casting Time: 9.0, Req Level 50)\nWT: 1.0 Size: MEDIUM\nClass: SHM\nRace: ALL",
+   "classes": [
+    "SHM"
+   ],
+   "minLevel": 46,
+   "start": "a lesser spirit · four zones",
+   "wiki": "https://eqlwiki.com/Shaman_Epic_Quest",
+   "warning": "True Spirit faction carries this quest: about amiable to move along, and MAX ally for the final scale — below that the scale is eaten.",
+   "note": "The wiki's page does not name the three books, Kirn's ring or the diary; those steps tick on the trade or by hand.",
+   "steps": [
+    {
+     "id": "spirit",
+     "title": "Kill one of the four to call a lesser spirit",
+     "kind": "kill",
+     "npc": "",
+     "zone": "Ocean of Tears · Rathe Mountains · Butcherblock Mountains · Field of Bone",
+     "part": "Beginning the Quest",
+     "killAny": [
+      "Capt Surestout",
+      "Blinde the Cutpurse",
+      "Peg Leg",
+      "an iksar manslayer"
+     ],
+     "note": "A lesser spirit appears where it dies. Do not kill the spirit."
+    },
+    {
+     "id": "tiny-gem",
+     "title": "Tell the lesser spirit you wish to know more",
+     "kind": "say",
+     "npc": "a lesser spirit",
+     "zone": "where the mob died",
+     "part": "Beginning the Quest",
+     "get": [
+      "Tiny Gem"
+     ],
+     "say": "I wish to know more"
+    },
+    {
+     "id": "bondl",
+     "title": "Hand Bondl Felligan the Tiny Gem",
+     "kind": "handin",
+     "npc": "Bondl Felligan",
+     "zone": "North Freeport, the sewers",
+     "part": "The Drunken Shaman",
+     "handin": [
+      {
+       "name": "Tiny Gem",
+       "count": 1
+      }
+     ],
+     "note": "He leads you to the Jade Tiger, where the greater spirits appear."
+    },
+    {
+     "id": "opaque",
+     "title": "Question the greater spirit of your god until it gives the Opaque Gem",
+     "kind": "say",
+     "npc": "a greater spirit",
+     "zone": "North Freeport, the Jade Tiger",
+     "part": "The Drunken Shaman",
+     "get": [
+      "Opaque Gem"
+     ],
+     "say": "What Heyokah?",
+     "caution": "Say \"I will walk the path of the Heyokah\" only once you hold the gem — the spirit leaves at once."
+    },
+    {
+     "id": "ooglyn",
+     "title": "Hand Ooglyn the Opaque Gem",
+     "kind": "handin",
+     "npc": "Ooglyn",
+     "zone": "Erud's Crossing, the island",
+     "part": "The Test of Patience",
+     "handin": [
+      {
+       "name": "Opaque Gem",
+       "count": 1
+      }
+     ],
+     "note": "Her spawn takes two hours."
+    },
+    {
+     "id": "small-gem",
+     "title": "Hear out the drowned, then ask the greater spirit for the next path",
+     "kind": "say",
+     "npc": "a greater spirit",
+     "zone": "Erud's Crossing, under the water",
+     "part": "The Test of Patience",
+     "get": [
+      "Small Gem"
+     ],
+     "say": "What is the next path?",
+     "note": "Only one shaman can take the test at a time."
+    },
+    {
+     "id": "wandering",
+     "title": "Hand a wandering spirit the Small Gem",
+     "kind": "handin",
+     "npc": "a wandering spirit",
+     "zone": "West Karana",
+     "part": "The Test of Wisdom",
+     "handin": [
+      {
+       "name": "Small Gem",
+       "count": 1
+      }
+     ],
+     "note": "It looks like a brighter wisp and roams between Qeynos Hills and the bandit camp."
+    },
+    {
+     "id": "twins",
+     "title": "Kill Glaron the Wicked and Tabien the Goodly",
+     "kind": "kill",
+     "npc": "Glaron the Wicked",
+     "zone": "Rathe Mountains",
+     "part": "The Test of Wisdom",
+     "kill": [
+      "Glaron the Wicked",
+      "Tabien the Goodly"
+     ],
+     "loot": [
+      "Envy",
+      "Woe",
+      "Marr's Promise"
+     ]
+    },
+    {
+     "id": "falsehood",
+     "title": "Hand the wandering spirit Envy, Woe and Marr's Promise",
+     "kind": "handin",
+     "npc": "a wandering spirit",
+     "zone": "West Karana",
+     "part": "The Test of Wisdom",
+     "get": [
+      "Shield of Falsehood",
+      "Sparkling Gem"
+     ],
+     "handin": [
+      {
+       "name": "Envy",
+       "count": 1
+      },
+      {
+       "name": "Woe",
+       "count": 1
+      },
+      {
+       "name": "Marr's Promise",
+       "count": 1
+      }
+     ],
+     "note": "Ask \"What shield of falsehood?\" and \"What last path?\"."
+    },
+    {
+     "id": "sentinel",
+     "title": "Hand the Spirit Sentinel the Sparkling Gem",
+     "kind": "handin",
+     "npc": "Spirit Sentinel",
+     "zone": "Emerald Jungle",
+     "part": "The Test of Might",
+     "handin": [
+      {
+       "name": "Sparkling Gem",
+       "count": 1
+      }
+     ],
+     "faction": "True Spirit ≥ Amiable (reported)"
+    },
+    {
+     "id": "dire",
+     "title": "Kill Black Dire for his pelt",
+     "kind": "kill",
+     "npc": "Black Dire",
+     "zone": "Castle Mistmoore",
+     "part": "The Test of Might",
+     "kill": [
+      "Black Dire"
+     ],
+     "loot": [
+      "Black Dire Pelt"
+     ],
+     "note": "Killing an advisor in the library calls him."
+    },
+    {
+     "id": "boots",
+     "title": "Hand the Spirit Sentinel the Black Dire Pelt",
+     "kind": "handin",
+     "npc": "Spirit Sentinel",
+     "zone": "Emerald Jungle",
+     "part": "The Test of Might",
+     "get": [
+      "Black Fur Boots"
+     ],
+     "handin": [
+      {
+       "name": "Black Dire Pelt",
+       "count": 1
+      }
+     ],
+     "note": "He also hands you a six-slot booklet."
+    },
+    {
+     "id": "reports",
+     "title": "Loot the six reports in the City of Mist",
+     "kind": "loot",
+     "npc": "",
+     "zone": "City of Mist",
+     "part": "The City of Mist Reports",
+     "loot": [
+      "Personal Diary Page",
+      "Crier's Scroll",
+      "Merchant's Letter",
+      "Written Announcement",
+      "Priest's Diary Page",
+      "Student's Log"
+     ],
+     "note": "The Student's Log drops only from a spectral courier."
+    },
+    {
+     "id": "booklet",
+     "title": "Combine the six reports in the booklet",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In the booklet",
+     "part": "The City of Mist Reports",
+     "bring": [
+      {
+       "name": "Personal Diary Page",
+       "count": 1
+      },
+      {
+       "name": "Crier's Scroll",
+       "count": 1
+      },
+      {
+       "name": "Merchant's Letter",
+       "count": 1
+      },
+      {
+       "name": "Written Announcement",
+       "count": 1
+      },
+      {
+       "name": "Priest's Diary Page",
+       "count": 1
+      },
+      {
+       "name": "Student's Log",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "report",
+     "title": "Hand the Spirit Sentinel the completed report",
+     "kind": "handin",
+     "npc": "Spirit Sentinel",
+     "zone": "Emerald Jungle",
+     "part": "The City of Mist Reports",
+     "faction": "True Spirit ≥ Kindly",
+     "trade": true
+    },
+    {
+     "id": "ghiosk",
+     "title": "Kill Lord Ghiosk and loot his three books",
+     "kind": "kill",
+     "npc": "Lord Ghiosk",
+     "zone": "City of Mist",
+     "part": "The Three Books of Lord Ghiosk",
+     "kill": [
+      "Lord Ghiosk"
+     ]
+    },
+    {
+     "id": "books",
+     "title": "Hand the three books to the Spirit Sentinel in the pond",
+     "kind": "handin",
+     "npc": "Spirit Sentinel",
+     "zone": "Emerald Jungle, the pond",
+     "part": "The Three Books of Lord Ghiosk",
+     "caution": "Not the Spirit Sentinel near the City of Mist — the one in the pond.",
+     "trade": true
+    },
+    {
+     "id": "icon",
+     "title": "Pick up the Icon of the High Scale",
+     "kind": "ground",
+     "npc": "",
+     "zone": "City of Mist, the temple",
+     "part": "The Three Books of Lord Ghiosk",
+     "get": [
+      "Icon of the High Scale"
+     ]
+    },
+    {
+     "id": "kirn-icon",
+     "title": "Hand High Scale Kirn the icon",
+     "kind": "handin",
+     "npc": "High Scale Kirn",
+     "zone": "The Hole",
+     "part": "The Three Books of Lord Ghiosk",
+     "handin": [
+      {
+       "name": "Icon of the High Scale",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "kirn",
+     "title": "Kill High Scale Kirn and loot his ring",
+     "kind": "kill",
+     "npc": "High Scale Kirn",
+     "zone": "The Hole",
+     "part": "The Three Books of Lord Ghiosk",
+     "kill": [
+      "High Scale Kirn"
+     ]
+    },
+    {
+     "id": "neh-ring",
+     "title": "Hand Neh`Ashiir the ring",
+     "kind": "handin",
+     "npc": "Neh`Ashiir",
+     "zone": "City of Mist",
+     "part": "The Three Books of Lord Ghiosk",
+     "trade": true
+    },
+    {
+     "id": "neh",
+     "title": "Kill Neh`Ashiir and loot her diary",
+     "kind": "kill",
+     "npc": "Neh`Ashiir",
+     "zone": "City of Mist",
+     "part": "The Three Books of Lord Ghiosk",
+     "kill": [
+      "Neh`Ashiir"
+     ]
+    },
+    {
+     "id": "diary",
+     "title": "Hand the Spirit Sentinel the diary",
+     "kind": "handin",
+     "npc": "Spirit Sentinel",
+     "zone": "Emerald Jungle",
+     "part": "The Three Books of Lord Ghiosk",
+     "trade": true
+    },
+    {
+     "id": "tear",
+     "title": "Kill the Iksar Broodling for a Child's Tear",
+     "kind": "kill",
+     "npc": "Iksar Broodling",
+     "zone": "Plane of Fear",
+     "part": "The Three Books of Lord Ghiosk",
+     "kill": [
+      "Iksar Broodling"
+     ],
+     "loot": [
+      "Child's Tear"
+     ],
+     "note": "It appears at random when a golem dies — Dread, Fright or Terror."
+    },
+    {
+     "id": "rak",
+     "title": "Hand Lord Rak`Ashiir the Child's Tear",
+     "kind": "handin",
+     "npc": "Lord Rak`Ashiir",
+     "zone": "City of Mist",
+     "part": "The Three Books of Lord Ghiosk",
+     "handin": [
+      {
+       "name": "Child's Tear",
+       "count": 1
+      }
+     ],
+     "faction": "True Spirit ally",
+     "note": "Ally is enough here; it need not be maxed."
+    },
+    {
+     "id": "scale",
+     "title": "Kill Lord Rak`Ashiir for his Iksar Scale",
+     "kind": "kill",
+     "npc": "Lord Rak`Ashiir",
+     "zone": "City of Mist",
+     "part": "The Three Books of Lord Ghiosk",
+     "kill": [
+      "Lord Rak`Ashiir"
+     ],
+     "loot": [
+      "Iksar Scale"
+     ]
+    },
+    {
+     "id": "spear",
+     "title": "Hand the Spirit Sentinel in the pond the Iksar Scale",
+     "kind": "handin",
+     "npc": "Spirit Sentinel",
+     "zone": "Emerald Jungle, the pond",
+     "part": "The Three Books of Lord Ghiosk",
+     "get": [
+      "Spear of Fate"
+     ],
+     "handin": [
+      {
+       "name": "Iksar Scale",
+       "count": 1
+      }
+     ],
+     "caution": "MAX ally, not just ally, or the scale is eaten — wait for \"Your faction with True Spirit can not get any better\"."
+    }
+   ]
+  },
+  {
+   "key": "epic-enc",
+   "name": "Enchanter Epic",
+   "pack": "epics",
+   "reward": "Staff of the Serpent",
+   "rewardStats": "MAGIC ITEM LORE ITEM NO DROP\nSlot: PRIMARY\nSkill: 1H Blunt Atk Delay: 24\nDMG: 11\nSTR: +5 STA: +10 CHA: +15 INT: +20 HP: +40 MANA: +60\nSV FIRE: +10 SV DISEASE: +10 SV COLD: +10 SV MAGIC: +10 SV POISON: +10\nEffect: Speed of the Shissar (Must Equip, Casting Time: 6.0, Req Level 50)\nWT: 1.0 Size: LARGE\nClass: ENC\nRace: ALL",
+   "classes": [
+    "ENC"
+   ],
+   "minLevel": 50,
+   "start": "Stofo Olan · Erudin",
+   "wiki": "https://eqlwiki.com/Enchanter_Epic_Quest",
+   "warning": "One Enchanters Sack does every combine: hand any of the four masters Jeb's Seal (it comes back), then say \"I need a sack\".",
+   "steps": [
+    {
+     "id": "stofo",
+     "title": "Hail Stofo Olan",
+     "kind": "say",
+     "npc": "Stofo Olan",
+     "zone": "Erudin",
+     "part": "Jeb's Seal",
+     "say": "Hail, Stofo Olan",
+     "note": "You must be level 50."
+    },
+    {
+     "id": "vial",
+     "title": "Get an Empty Ink Vial from Reania Jukle",
+     "kind": "talk",
+     "npc": "Reania Jukle",
+     "zone": "Qeynos Catacombs",
+     "part": "Jeb's Seal",
+     "get": [
+      "Empty Ink Vial"
+     ]
+    },
+    {
+     "id": "ink",
+     "title": "Charm a ghoul scribe and hand him the Empty Ink Vial",
+     "kind": "handin",
+     "npc": "a ghoul scribe",
+     "zone": "Lower Guk",
+     "part": "Jeb's Seal",
+     "get": [
+      "Ink of the Dark"
+     ],
+     "handin": [
+      {
+       "name": "Empty Ink Vial",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "robes",
+     "title": "Kill the ghoul arch magus for the Shining Metallic Robes",
+     "kind": "kill",
+     "npc": "the ghoul arch magus",
+     "zone": "Lower Guk",
+     "part": "Jeb's Seal",
+     "kill": [
+      "the ghoul arch magus"
+     ],
+     "loot": [
+      "Shining Metallic Robes"
+     ]
+    },
+    {
+     "id": "pen",
+     "title": "Hand Rilgor Plegnog the Shining Metallic Robes",
+     "kind": "handin",
+     "npc": "Rilgor Plegnog",
+     "zone": "Ak'Anon",
+     "part": "Jeb's Seal",
+     "get": [
+      "Mechanical Pen"
+     ],
+     "handin": [
+      {
+       "name": "Shining Metallic Robes",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "quill",
+     "title": "Buy a Quill and a Piece of Parchment",
+     "kind": "buy",
+     "npc": "Any merchant",
+     "zone": "",
+     "part": "Jeb's Seal",
+     "get": [
+      "Quill",
+      "Piece of Parchment"
+     ]
+    },
+    {
+     "id": "chrislin",
+     "title": "Hand Chrislin Baker the Quill and the Piece of Parchment",
+     "kind": "handin",
+     "npc": "Chrislin Baker",
+     "zone": "Western Karana",
+     "part": "Jeb's Seal",
+     "handin": [
+      {
+       "name": "Quill",
+       "count": 1
+      },
+      {
+       "name": "Piece of Parchment",
+       "count": 1
+      }
+     ],
+     "note": "This spawns Thrackin Griften."
+    },
+    {
+     "id": "thrackin",
+     "title": "Kill Thrackin Griften for a White Paper",
+     "kind": "kill",
+     "npc": "Thrackin Griften",
+     "zone": "Western Karana",
+     "part": "Jeb's Seal",
+     "kill": [
+      "Thrackin Griften"
+     ],
+     "loot": [
+      "White Paper"
+     ]
+    },
+    {
+     "id": "notes",
+     "title": "Hand Stofo Olan the ink, the pen and the paper",
+     "kind": "handin",
+     "npc": "Stofo Olan",
+     "zone": "Erudin",
+     "part": "Jeb's Seal",
+     "get": [
+      "Copy of Notes"
+     ],
+     "handin": [
+      {
+       "name": "Ink of the Dark",
+       "count": 1
+      },
+      {
+       "name": "Mechanical Pen",
+       "count": 1
+      },
+      {
+       "name": "White Paper",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "seal",
+     "title": "Hand Jeb Lumsed the Copy of Notes",
+     "kind": "handin",
+     "npc": "a sarnak imitator",
+     "zone": "Burning Woods",
+     "part": "Jeb's Seal",
+     "npcs": [
+      "a sarnak imitator",
+      "Jeb Lumsed"
+     ],
+     "get": [
+      "Jeb's Seal"
+     ],
+     "handin": [
+      {
+       "name": "Copy of Notes",
+       "count": 1
+      }
+     ],
+     "note": "Jeb Lumsed stands there as a sarnak imitator."
+    },
+    {
+     "id": "rod",
+     "title": "Kill Vessel Drozlin for the Xolion Rod",
+     "kind": "kill",
+     "npc": "Vessel Drozlin",
+     "zone": "Cabilis East",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "kill": [
+      "Vessel Drozlin"
+     ],
+     "loot": [
+      "Xolion Rod"
+     ]
+    },
+    {
+     "id": "word",
+     "title": "Kill Verina Tomb for Innoruuk's Word",
+     "kind": "kill",
+     "npc": "Verina Tomb",
+     "zone": "Neriak",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "kill": [
+      "Verina Tomb"
+     ],
+     "loot": [
+      "Innoruuk's Word"
+     ]
+    },
+    {
+     "id": "prince",
+     "title": "Kill Prince Selrach Di'zok for the Head of a Prince",
+     "kind": "kill",
+     "npc": "Prince Selrach Di'zok",
+     "zone": "Chardok",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "kill": [
+      "Prince Selrach Di'zok"
+     ],
+     "loot": [
+      "Head of a Prince"
+     ]
+    },
+    {
+     "id": "chalice",
+     "title": "Hand Joren Nobleheart the Head of a Prince",
+     "kind": "handin",
+     "npc": "Joren Nobleheart",
+     "zone": "Felwithe",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "get": [
+      "Chalice of Kings"
+     ],
+     "handin": [
+      {
+       "name": "Head of a Prince",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "sandals",
+     "title": "Pick up the Large Muddy Sandals",
+     "kind": "ground",
+     "npc": "",
+     "zone": "Oggok",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "get": [
+      "Large Muddy Sandals"
+     ]
+    },
+    {
+     "id": "parchment",
+     "title": "Hand Bozlum Blossom the Large Muddy Sandals",
+     "kind": "handin",
+     "npc": "Bozlum Blossom",
+     "zone": "Oggok",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "get": [
+      "Scribbled Parchment"
+     ],
+     "handin": [
+      {
+       "name": "Large Muddy Sandals",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "gift",
+     "title": "Hand Brokk Boxtripper the Scribbled Parchment",
+     "kind": "handin",
+     "npc": "Brokk Boxtripper",
+     "zone": "Oggok",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "get": [
+      "Gift to Bozlum"
+     ],
+     "handin": [
+      {
+       "name": "Scribbled Parchment",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "blossoms",
+     "title": "Hand Bozlum Blossom the Gift to Bozlum",
+     "kind": "handin",
+     "npc": "Bozlum Blossom",
+     "zone": "Oggok",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "get": [
+      "Snow Blossoms"
+     ],
+     "handin": [
+      {
+       "name": "Gift to Bozlum",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "sack1",
+     "title": "Combine the chalice, the rod, the blossoms and the word in an Enchanters Sack",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In an Enchanters Sack",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "bring": [
+      {
+       "name": "Chalice of Kings",
+       "count": 1
+      },
+      {
+       "name": "Xolion Rod",
+       "count": 1
+      },
+      {
+       "name": "Snow Blossoms",
+       "count": 1
+      },
+      {
+       "name": "Innoruuk's Word",
+       "count": 1
+      }
+     ],
+     "note": "Any master's Enchanters Sack does the combine."
+    },
+    {
+     "id": "piece1",
+     "title": "Hand Modani Qu`Loni the combined sack",
+     "kind": "handin",
+     "npc": "Modani Qu`Loni",
+     "zone": "The Overthere",
+     "part": "1st Piece of Staff — Test of Illusion",
+     "get": [
+      "1st Piece of Staff"
+     ],
+     "trade": true
+    },
+    {
+     "id": "spoon",
+     "title": "Kill Cazel for a Spoon",
+     "kind": "kill",
+     "npc": "Cazel",
+     "zone": "Oasis of Marr",
+     "part": "2nd Piece of Staff — Test of Enlightenment",
+     "kill": [
+      "Cazel"
+     ],
+     "loot": [
+      "Spoon"
+     ]
+    },
+    {
+     "id": "key",
+     "title": "Pick up The One Key",
+     "kind": "ground",
+     "npc": "",
+     "zone": "The Overthere",
+     "part": "2nd Piece of Staff — Test of Enlightenment",
+     "get": [
+      "The One Key"
+     ]
+    },
+    {
+     "id": "scroll",
+     "title": "Pick up the Lost Scroll",
+     "kind": "ground",
+     "npc": "",
+     "zone": "Dalnir",
+     "part": "2nd Piece of Staff — Test of Enlightenment",
+     "get": [
+      "Lost Scroll"
+     ]
+    },
+    {
+     "id": "book",
+     "title": "Pick up the book Charm and Sacrifice",
+     "kind": "ground",
+     "npc": "",
+     "zone": "Plane of Sky",
+     "part": "2nd Piece of Staff — Test of Enlightenment",
+     "get": [
+      "Charm and Sacrifice"
+     ]
+    },
+    {
+     "id": "sack2",
+     "title": "Combine the spoon, the key, the scroll and the book in an Enchanters Sack",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In an Enchanters Sack",
+     "part": "2nd Piece of Staff — Test of Enlightenment",
+     "bring": [
+      {
+       "name": "Spoon",
+       "count": 1
+      },
+      {
+       "name": "The One Key",
+       "count": 1
+      },
+      {
+       "name": "Lost Scroll",
+       "count": 1
+      },
+      {
+       "name": "Charm and Sacrifice",
+       "count": 1
+      }
+     ],
+     "note": "Any master's Enchanters Sack does the combine."
+    },
+    {
+     "id": "piece2",
+     "title": "Hand Mizzle Gepple the combined sack",
+     "kind": "handin",
+     "npc": "Clockwork VIIX",
+     "zone": "Ak'Anon",
+     "part": "2nd Piece of Staff — Test of Enlightenment",
+     "npcs": [
+      "Clockwork VIIX",
+      "Mizzle Gepple"
+     ],
+     "get": [
+      "2nd Piece of Staff"
+     ],
+     "note": "Mizzle Gepple stands there as Clockwork VIIX.",
+     "trade": true
+    },
+    {
+     "id": "gems",
+     "title": "Get the four dull gems from Nadia Starfeast",
+     "kind": "talk",
+     "npc": "Nadia Starfeast",
+     "zone": "Firiona Vie",
+     "part": "3rd Piece of Staff — Test of Charm",
+     "get": [
+      "Dull Diamond",
+      "Dull Sapphire",
+      "Dull Ruby",
+      "Dull Emerald"
+     ]
+    },
+    {
+     "id": "diamond",
+     "title": "Charm a Spectral librarian and hand him the Dull Diamond",
+     "kind": "handin",
+     "npc": "Spectral librarian",
+     "zone": "Kaesora",
+     "part": "3rd Piece of Staff — Test of Charm",
+     "get": [
+      "Enchanted Diamond"
+     ],
+     "handin": [
+      {
+       "name": "Dull Diamond",
+       "count": 1
+      }
+     ],
+     "caution": "An enraged spectral librarian spawns on the hand-in — the wiki says not to kill it."
+    },
+    {
+     "id": "sapphire",
+     "title": "Charm Felia Goldenwing and hand her the Dull Sapphire",
+     "kind": "handin",
+     "npc": "Felia Goldenwing",
+     "zone": "Skyfire Mountains",
+     "part": "3rd Piece of Staff — Test of Charm",
+     "get": [
+      "Enchanted Sapphire"
+     ],
+     "handin": [
+      {
+       "name": "Dull Sapphire",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "ruby",
+     "title": "Charm the Wraith of Jaxion and hand him the Dull Ruby",
+     "kind": "handin",
+     "npc": "Wraith of Jaxion",
+     "zone": "City of Mist",
+     "part": "3rd Piece of Staff — Test of Charm",
+     "get": [
+      "Enchanted Ruby"
+     ],
+     "handin": [
+      {
+       "name": "Dull Ruby",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "emerald",
+     "title": "Charm Impaler Tzilug and hand him the Dull Emerald",
+     "kind": "handin",
+     "npc": "Impaler Tzilug",
+     "zone": "The Overthere",
+     "part": "3rd Piece of Staff — Test of Charm",
+     "get": [
+      "Enchanted Emerald"
+     ],
+     "handin": [
+      {
+       "name": "Dull Emerald",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "sack3",
+     "title": "Combine the four enchanted gems in an Enchanters Sack",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In an Enchanters Sack",
+     "part": "3rd Piece of Staff — Test of Charm",
+     "bring": [
+      {
+       "name": "Enchanted Diamond",
+       "count": 1
+      },
+      {
+       "name": "Enchanted Sapphire",
+       "count": 1
+      },
+      {
+       "name": "Enchanted Ruby",
+       "count": 1
+      },
+      {
+       "name": "Enchanted Emerald",
+       "count": 1
+      }
+     ],
+     "note": "Any master's Enchanters Sack does the combine."
+    },
+    {
+     "id": "piece3",
+     "title": "Hand Nadia Starfeast the combined sack",
+     "kind": "handin",
+     "npc": "Nadia Starfeast",
+     "zone": "Firiona Vie",
+     "part": "3rd Piece of Staff — Test of Charm",
+     "get": [
+      "3rd Piece of Staff"
+     ],
+     "trade": true
+    },
+    {
+     "id": "serpent",
+     "title": "Kill the Wraith of a Shissir for the Head of the Serpent",
+     "kind": "kill",
+     "npc": "Wraith of a Shissir",
+     "zone": "Plane of Fear",
+     "part": "4th Piece of Staff — Test of the Phantasm",
+     "kill": [
+      "Wraith of a Shissir"
+     ],
+     "loot": [
+      "Head of the Serpent"
+     ]
+    },
+    {
+     "id": "ghost",
+     "title": "Kill the Ghost of Kindle for the Essence of a Ghost",
+     "kind": "kill",
+     "npc": "the Ghost of Kindle",
+     "zone": "The Hole",
+     "part": "4th Piece of Staff — Test of the Phantasm",
+     "kill": [
+      "the Ghost of Kindle"
+     ],
+     "loot": [
+      "Essence of a Ghost"
+     ]
+    },
+    {
+     "id": "vampire",
+     "title": "Kill a forsaken revenant for the Essence of a Vampire",
+     "kind": "kill",
+     "npc": "a forsaken revenant",
+     "zone": "Plane of Hate",
+     "part": "4th Piece of Staff — Test of the Phantasm",
+     "kill": [
+      "a forsaken revenant"
+     ],
+     "loot": [
+      "Essence of a Vampire"
+     ]
+    },
+    {
+     "id": "sands",
+     "title": "Kill The Tangrin for the Sands of the Mystics",
+     "kind": "kill",
+     "npc": "The Tangrin",
+     "zone": "Field of Bone",
+     "part": "4th Piece of Staff — Test of the Phantasm",
+     "kill": [
+      "The Tangrin"
+     ],
+     "loot": [
+      "Sands of the Mystics"
+     ]
+    },
+    {
+     "id": "sack4",
+     "title": "Combine the head, the two essences and the sands in an Enchanters Sack",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In an Enchanters Sack",
+     "part": "4th Piece of Staff — Test of the Phantasm",
+     "bring": [
+      {
+       "name": "Head of the Serpent",
+       "count": 1
+      },
+      {
+       "name": "Essence of a Ghost",
+       "count": 1
+      },
+      {
+       "name": "Essence of a Vampire",
+       "count": 1
+      },
+      {
+       "name": "Sands of the Mystics",
+       "count": 1
+      }
+     ],
+     "note": "Any master's Enchanters Sack does the combine."
+    },
+    {
+     "id": "piece4",
+     "title": "Hand Polzin Mrid the combined sack",
+     "kind": "handin",
+     "npc": "Polzin Mrid",
+     "zone": "The Hole",
+     "part": "4th Piece of Staff — Test of the Phantasm",
+     "get": [
+      "4th Piece of Staff"
+     ],
+     "note": "In The Hole an elemental illusion plus Collaboration reads dubious to most of the zone.",
+     "trade": true
+    },
+    {
+     "id": "bundle",
+     "title": "Combine the four pieces of staff in an Enchanters Sack",
+     "kind": "combine",
+     "npc": "",
+     "zone": "In an Enchanters Sack",
+     "part": "Staff of the Serpent",
+     "make": [
+      "Bundle of Staves"
+     ],
+     "bring": [
+      {
+       "name": "1st Piece of Staff",
+       "count": 1
+      },
+      {
+       "name": "2nd Piece of Staff",
+       "count": 1
+      },
+      {
+       "name": "3rd Piece of Staff",
+       "count": 1
+      },
+      {
+       "name": "4th Piece of Staff",
+       "count": 1
+      }
+     ]
+    },
+    {
+     "id": "staff",
+     "title": "Hand Jeb Lumsed the Bundle of Staves",
+     "kind": "handin",
+     "npc": "a sarnak imitator",
+     "zone": "Burning Woods",
+     "part": "Staff of the Serpent",
+     "npcs": [
+      "a sarnak imitator",
+      "Jeb Lumsed"
+     ],
+     "get": [
+      "Staff of the Serpent"
+     ],
+     "handin": [
+      {
+       "name": "Bundle of Staves",
+       "count": 1
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

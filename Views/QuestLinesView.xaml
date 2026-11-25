@@ -5,6 +5,11 @@
          left, the chosen line's header, "Up next" card and step timeline on
          the right — every piece built in code from the QuestLines service. -->
     <DockPanel>
+        <!-- A pack's standing notice — the epics' "unverified before Kunark" line (25 Nov). -->
+        <Border x:Name="NoticeBox" DockPanel.Dock="Top" Visibility="Collapsed" Background="#2A2414" BorderBrush="#5A4A2E"
+                BorderThickness="1" CornerRadius="6" Padding="11,7,11,8" Margin="0,0,0,10">
+            <TextBlock x:Name="NoticeText" Foreground="#FFB74D" FontSize="11.5" TextWrapping="Wrap"/>
+        </Border>
         <DockPanel x:Name="PillRow" DockPanel.Dock="Top" Margin="0,0,0,10">
             <StackPanel x:Name="ShowRow" DockPanel.Dock="Right" Orientation="Horizontal"/>
             <StackPanel x:Name="Pills" Orientation="Horizontal"/>

@@ -59,8 +59,26 @@ public sealed class QuestLines
         public string Reply { get; set; } = "";
         public string Faction { get; set; } = "";
 
+        // ---- epics (25 Nov): what a twenty-to-forty-step class quest needs beyond a weapon line ----
+        /// <summary>The named part of the quest this step belongs to ("The Dark Shroud"). An epic's
+        /// parts run side by side, so a proven step vouches only for the steps of its own part.</summary>
+        public string Part { get; set; } = "";
+        /// <summary>Not required: never counted, never implied by a later step.</summary>
+        public bool Optional { get; set; }
+        /// <summary>The thing that goes wrong here ("con indifferent first") — its own amber line.</summary>
+        public string Caution { get; set; } = "";
+        /// <summary>Any ONE of these kills will do (Fright, Dread or Terror).</summary>
+        public List<string> KillAny { get; set; } = new();
+        /// <summary>What a combine produces, when the wiki names it — proven by the game's own
+        /// "You have fashioned the items together to create something new: X." line.</summary>
+        public List<string> Make { get; set; } = new();
+        /// <summary>A hand-in whose item the wiki does not name ("the combined sack", "his ring"):
+        /// the trade line with this NPC proves it — on a started quest only, one such step per trade.</summary>
+        public bool Trade { get; set; }
+
         [JsonIgnore] public IEnumerable<string> NpcNames => Npcs.Count > 0 ? Npcs : new[] { Npc };
-        [JsonIgnore] public bool HasTrade => Handin.Count > 0 || Coins.Length > 0;
+        [JsonIgnore] public bool HasTrade => Handin.Count > 0 || Coins.Length > 0 || Trade;
+        [JsonIgnore] public IEnumerable<string> KillNames => Kill.Concat(KillAny);
     }
 
     public sealed class Quest
@@ -75,12 +93,21 @@ public sealed class QuestLines
         public List<Prereq> Prereqs { get; set; } = new();
         public string Wiki { get; set; } = "";
         public string Note { get; set; } = "";
+        /// <summary>"" = the Notable quests pack, "epics" = the class epics (25 Nov).</summary>
+        public string Pack { get; set; } = "";
+        /// <summary>A caution for the WHOLE quest (the shadow knight's "con indifferent on every hand-in").</summary>
+        public string Warning { get; set; } = "";
+        /// <summary>Who starts it and where ("Kurron Ni · The Overthere").</summary>
+        public string Start { get; set; } = "";
         public List<Step> Steps { get; set; } = new();
     }
 
     private sealed class Doc
     {
         public string Credit { get; set; } = "";
+        public string Pack { get; set; } = "";
+        public string Notice { get; set; } = "";
+        public string Footer { get; set; } = "";
         public List<Quest> Quests { get; set; } = new();
     }
 
@@ -119,6 +146,9 @@ public sealed class QuestLines
     private static readonly Regex OfferRx = new(@"^You offered (?<n>[\d,]+) (?<item>.+?) to (?<npc>.+?)\.$", RegexOptions.Compiled); // "1,000 Platinum" too
     private static readonly Regex TradeDoneRx = new(@"^You complete the trade with (?<npc>.+?)\.$", RegexOptions.Compiled);
     private static readonly Regex DestroyRx = new(@"^You successfully destroyed (?<n>\d+) (?<item>.+?)\.$", RegexOptions.Compiled);
+    // A combine's own line (the tradeskill helper reads the same one): the product is named.
+    private static readonly Regex MakeRx = new(
+        @"^You have fashioned the items together to create (?:something new|an alternate product): (?<item>.+?)\.$", RegexOptions.Compiled);
 
     private const double TradeWindowSec = 300;
 
@@ -161,6 +191,13 @@ public sealed class QuestLines
 
     public IReadOnlyList<Quest> Quests => _quests;
     public string Credit { get; private set; } = "";
+
+    private readonly Dictionary<string, (string Notice, string Footer)> _packNotes = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>One pack's quests: "" = Notable quests, "epics" = the class epics.</summary>
+    public IReadOnlyList<Quest> QuestsIn(string pack) => _quests.Where(q => q.Pack.Equals(pack, StringComparison.OrdinalIgnoreCase)).ToList();
+    /// <summary>The pack's standing notice (the epics' "unverified before Kunark" line) and its list footer.</summary>
+    public string NoticeOf(string pack) => _packNotes.GetValueOrDefault(pack).Notice ?? "";
+    public string FooterOf(string pack) => _packNotes.GetValueOrDefault(pack).Footer ?? "";
 
     public event Action? Changed;
     /// <summary>A step just proved itself from the log (never on ticks or replays of known marks).</summary>
@@ -212,16 +249,22 @@ public sealed class QuestLines
 
     private void LoadQuests()
     {
+        LoadFile("quest-lines.json");
+        LoadFile("epic-quests.json"); // the class epics — their own pack (25 Nov)
+    }
+
+    private void LoadFile(string name)
+    {
         try
         {
-            string diskPath = Path.Combine(AppContext.BaseDirectory, "data", "quest-lines.json");
+            string diskPath = Path.Combine(AppContext.BaseDirectory, "data", name);
             string? json = null;
             if (File.Exists(diskPath)) json = File.ReadAllText(diskPath);
             else
             {
                 var asm = Assembly.GetExecutingAssembly();
                 string? res = asm.GetManifestResourceNames()
-                    .FirstOrDefault(n => n.EndsWith("quest-lines.json", StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(n => n.EndsWith(name, StringComparison.OrdinalIgnoreCase));
                 if (res is not null)
                 {
                     using var stream = asm.GetManifestResourceStream(res)!;
@@ -232,12 +275,17 @@ public sealed class QuestLines
             if (json is null) return;
             var doc = JsonSerializer.Deserialize<Doc>(json, JsonOpts);
             if (doc is null) return;
-            Credit = doc.Credit;
-            _quests.AddRange(doc.Quests.Where(q => q.Key.Length > 0 && q.Steps.Count > 0));
+            if (Credit.Length == 0) Credit = doc.Credit;
+            _packNotes[doc.Pack] = (doc.Notice, doc.Footer);
+            foreach (var q in doc.Quests.Where(q => q.Key.Length > 0 && q.Steps.Count > 0))
+            {
+                if (q.Pack.Length == 0) q.Pack = doc.Pack;
+                if (_quests.All(x => x.Key != q.Key)) _quests.Add(q);
+            }
         }
         catch (Exception ex)
         {
-            Log.Warn($"quest-lines.json failed to load: {ex.Message}");
+            Log.Warn($"{name} failed to load: {ex.Message}");
         }
     }
 
@@ -309,9 +357,11 @@ public sealed class QuestLines
     public IReadOnlyCollection<string> PartialOf(Quest q, Step s) =>
         _partial.GetValueOrDefault(StepKey(q, s)) ?? (IReadOnlyCollection<string>)Array.Empty<string>();
 
-    public int DoneCount(Quest q) => q.Steps.Count(s => IsDone(q, s));
-    public bool IsComplete(Quest q) => q.Steps.All(s => IsDone(q, s));
-    public Step? NextStep(Quest q) => q.Steps.FirstOrDefault(s => !IsDone(q, s));
+    /// <summary>The steps that count: an OPTIONAL step is never part of the tally.</summary>
+    public int RequiredCount(Quest q) => q.Steps.Count(s => !s.Optional);
+    public int DoneCount(Quest q) => q.Steps.Count(s => !s.Optional && IsDone(q, s));
+    public bool IsComplete(Quest q) => q.Steps.All(s => s.Optional || IsDone(q, s));
+    public Step? NextStep(Quest q) => q.Steps.FirstOrDefault(s => !s.Optional && !IsDone(q, s));
 
     /// <summary>A step whose proof is an act of quest INTENT: a sealed hand-in
     /// of quest items, or a said keyword. Kills and drops happen for a hundred
@@ -319,7 +369,7 @@ public sealed class QuestLines
     /// evening, Dark Reavers drop all night in Guk — so they vouch for nothing
     /// but themselves, and only once the line is started (owner, 17 Sep: two
     /// lines "in progress" he had never begun).</summary>
-    public static bool Anchors(Step s) => s.Handin.Count > 0 || s.Say.Length > 0;
+    public static bool Anchors(Step s) => s.Handin.Count > 0 || s.Say.Length > 0 || s.Make.Count > 0; // a combine of quest items is intent too
 
     /// <summary>The line was begun on purpose: an owner tick anywhere, or the
     /// log proving an anchoring step.</summary>
@@ -412,6 +462,8 @@ public sealed class QuestLines
         }
         else if (body.StartsWith("You complete the trade with ", StringComparison.Ordinal) && TradeDoneRx.Match(body) is { Success: true } tm)
             changed = CommitTrade(Who(tm.Groups["npc"].Value), body, when);
+        else if (body.StartsWith("You have fashioned the items together", StringComparison.Ordinal) && MakeRx.Match(body) is { Success: true } mk)
+            changed = Satisfy("make:", Key(mk.Groups["item"].Value), body, when, MatchMake);
         else if (body.StartsWith("You successfully destroyed ", StringComparison.Ordinal) && DestroyRx.Match(body) is { Success: true } dm)
         {
             string key = Key(dm.Groups["item"].Value);
@@ -432,7 +484,9 @@ public sealed class QuestLines
     }
 
     private static bool MatchKill(Step s, string mob) =>
-        s.Kill.Any(k => Who(k) == Who(mob));
+        s.KillNames.Any(k => Who(k) == Who(mob));
+    private static bool MatchMake(Step s, string itemKey) =>
+        s.Make.Any(m => Key(m) == itemKey);
     private static bool MatchLoot(Step s, string itemKey) =>
         s.Loot.Any(l => Key(l) == itemKey);
     private static bool MatchClick(Step s, string line) =>
@@ -463,6 +517,7 @@ public sealed class QuestLines
     private bool CommitTrade(string npc, string evidence, DateTime when)
     {
         _pending.Remove(npc, out var list);
+        var unnamedUsed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var sealedKeys = new List<string>();
         bool changed = false;
         if (list is not null)
@@ -486,7 +541,14 @@ public sealed class QuestLines
                 // Coins-only: the trade itself is the proof — but coins leave
                 // no offer line, and both swords pay the same Dason Goldblade,
                 // so it only counts for a line you have already started.
-                if (s.Handin.Count == 0 && Started(q) && set.Add("trade")) any = true;
+                if (s.Handin.Count == 0 && Started(q))
+                {
+                    // An UNNAMED hand-in (Trade): one trade proves one such step — the first still open
+                    // for this NPC, in the quest's order (the Spirit Sentinel takes four of them).
+                    // A trade that carried NAMED quest items was somebody else's step, not this one.
+                    if (s.Trade && s.Coins.Length == 0 && (sealedKeys.Count > 0 || !unnamedUsed.Add(q.Key + "|" + npc))) continue;
+                    if (set.Add("trade")) any = true;
+                }
                 if (!any) continue;
                 AddEvidence(key, $"{evidence} · {when:d MMM HH:mm}");
                 changed = true;
@@ -509,14 +571,16 @@ public sealed class QuestLines
         var set = _partial.GetValueOrDefault(key);
         if (set is null) return;
         foreach (var k in s.Kill) if (!set.Contains("kill:" + Who(k))) return;
+        if (s.KillAny.Count > 0 && !s.KillAny.Any(k => set.Contains("kill:" + Who(k)))) return; // any one of them
         foreach (var l in s.Loot) if (!set.Contains("loot:" + Key(l))) return;
+        foreach (var mk in s.Make) if (!set.Contains("make:" + Key(mk))) return;
         if (s.Say.Length > 0 && !set.Contains("say")) return;
         if (s.Handin.Count > 0)
         {
             foreach (var h in s.Handin)
                 if (!set.Contains("offer:" + Key(h.Name))) return;
         }
-        else if (s.Coins.Length > 0 && !set.Contains("trade")) return; // coins-only: the trade line itself
+        else if ((s.Coins.Length > 0 || s.Trade) && !set.Contains("trade")) return; // coins-only / unnamed: the trade line itself
         if (s.Click.Length > 0 && !set.Contains("click")) return; // the switch flips it — or the item's own line
         // A kill or a drop alone never starts a line — the evidence waits in
         // the partial set until an anchoring step (or a tick) begins it. A
@@ -573,9 +637,35 @@ public sealed class QuestLines
     private void ImplyEarlier(Quest q, Step s, DateTime when)
     {
         int ix = q.Steps.IndexOf(s);
+        // An epic's parts run side by side, and inside a part several chains merge (ink, pen and
+        // paper for one hand-in) — so a step of a PARTED quest vouches only for the steps that
+        // MADE what it consumed: whoever looted, was given or combined the items it hands in or
+        // uses, and in turn what those consumed. The quest's last step vouches for everything.
+        if (s.Part.Length > 0 && !ReferenceEquals(s, q.Steps.LastOrDefault(x => !x.Optional)))
+        {
+            var want = new Queue<string>(s.Handin.Concat(s.Bring).Select(n => Key(n.Name)));
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            while (want.Count > 0)
+            {
+                string item = want.Dequeue();
+                if (!seen.Add(item)) continue;
+                for (int i = 0; i < ix; i++)
+                {
+                    var maker = q.Steps[i];
+                    if (!maker.Loot.Concat(maker.Get).Concat(maker.Make).Any(x => Key(x) == item)) continue;
+                    foreach (var n in maker.Handin.Concat(maker.Bring)) want.Enqueue(Key(n.Name));
+                    string mk = StepKey(q, maker);
+                    if (!_marks.ContainsKey(mk))
+                        _marks[mk] = new Mark(when, "implied", $"implied by step {ix + 1}: {s.Title}");
+                }
+            }
+            return;
+        }
         for (int i = 0; i < ix; i++)
         {
-            string key = StepKey(q, q.Steps[i]);
+            var earlier = q.Steps[i];
+            if (earlier.Optional) continue; // nobody can know an optional step was done
+            string key = StepKey(q, earlier);
             if (_marks.ContainsKey(key)) continue;
             _marks[key] = new Mark(when, "implied", $"implied by step {ix + 1}: {s.Title}");
         }
@@ -588,6 +678,7 @@ public sealed class QuestLines
         var set = _partial.GetValueOrDefault(StepKey(q, s));
         if (set is null) return false;
         return s.Kill.All(k => set.Contains("kill:" + Who(k)))
+            && (s.KillAny.Count == 0 || s.KillAny.Any(k => set.Contains("kill:" + Who(k))))
             && s.Loot.All(l => set.Contains("loot:" + Key(l)));
     }
 

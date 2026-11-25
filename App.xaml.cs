@@ -3084,6 +3084,111 @@ public partial class App : Application
                 && !TriggerManagerWindow.IsOnlineVoice("Microsoft Jenny (Natural) - English (United States)")
                 && !TriggerManagerWindow.IsOnlineVoice(""));
 
+            // The class epics (25 Nov, ahead of Kunark): a second pack in the same engine — parts, optional
+            // steps, any-one-of kills, combines, unnamed hand-ins, and a hand-in that vouches only for
+            // the steps that made its items.
+                {
+                    string epPath = Path.Combine(Path.GetTempPath(), "eql_test_epics.json");
+                    try { File.Delete(epPath); } catch { /* fresh */ }
+                    var eq = new QuestLines(new ConfigService(), null, epPath);
+                    var shd = eq.Quests.First(q => q.Key == "epic-shd");
+                    var shm = eq.Quests.First(q => q.Key == "epic-shm");
+                    var enc = eq.Quests.First(q => q.Key == "epic-enc");
+                    QuestLines.Step St(QuestLines.Quest q, string id) => q.Steps.First(x => x.Id == id);
+                    var e0 = new DateTime(2026, 12, 9, 20, 0, 0);
+                    string EL(int sec, string body) => $"[{e0.AddSeconds(sec).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+                    Check("epics: three epics load as their own pack beside the three notable lines; the shadow knight's 33 steps count 20 — 13 are optional",
+                        eq.QuestsIn("epics").Count == 3 && eq.QuestsIn("").Count == 3 && shd.Pack == "epics" && shd.Steps.Count == 33
+                        && eq.RequiredCount(shd) == 20 && eq.NextStep(shd) == St(shd, "ghoulbane")
+                        && eq.NoticeOf("epics").StartsWith("Before Kunark", StringComparison.Ordinal) && eq.NoticeOf("") == ""
+                        && eq.FooterOf("epics").Contains("Still to come", StringComparison.Ordinal)
+                        && shd.Steps.Select(x => x.Part).Distinct().Count() == 5 && shd.Warning.Length > 0 && shd.Start == "Kurron Ni · The Overthere");
+
+                    // Any one of the three golems, and the sword — but a kill and a drop start nothing.
+                    eq.ProcessLine(EL(0, "You have slain Dread!"));
+                    eq.ProcessLine(EL(1, "--You have looted a Soul Leech, Dark Sword of Blood from Dread's corpse.--"));
+                    bool waits = !eq.IsDone(shd, St(shd, "soul-leech")) && eq.PartialOf(shd, St(shd, "soul-leech")).Contains("kill:dread") && !eq.Started(shd);
+                    // The Teydar hand-in is intent. It vouches for the three steps that made its items —
+                    // not for the Ghoulbane or the Blade of Abrogation, which merely stand earlier in the part.
+                    eq.ProcessLine(EL(10, "You offered 1 Drake Spine to Teydar."));
+                    eq.ProcessLine(EL(10, "You offered 1 Decrepit Hide to Teydar."));
+                    eq.ProcessLine(EL(10, "You offered 1 Enchanted Platinum Bar to Teydar."));
+                    eq.ProcessLine(EL(12, "You complete the trade with Teydar."));
+                    Check("epics: any one of Fright, Dread or Terror serves; the hand-in starts the quest, proves the waiting kill and vouches only for the steps that made its items",
+                        waits && eq.IsDone(shd, St(shd, "sheath")) && eq.MarkOf(shd, St(shd, "soul-leech"))!.How == "auto"
+                        && eq.MarkOf(shd, St(shd, "drake-spine"))!.How == "implied" && eq.MarkOf(shd, St(shd, "hide"))!.How == "implied" && eq.MarkOf(shd, St(shd, "bar"))!.How == "implied"
+                        && !eq.IsDone(shd, St(shd, "ghoulbane")) && !eq.IsDone(shd, St(shd, "abrogation")) && !eq.IsDone(shd, St(shd, "soulcase"))
+                        && !eq.IsDone(shd, St(shd, "kurron-hail")) && eq.DoneCount(shd) == 5 && eq.NextStep(shd) == St(shd, "ghoulbane"));
+
+                    // A combine that names its product proves itself on the game's line — and vouches for the kill and the talk behind its two inputs.
+                    eq.ProcessLine(EL(20, "You have fashioned the items together to create something new: Heart of the Innocent."));
+                    Check("epics: the combine line proves a combine that names what it makes, and the steps behind its inputs",
+                        eq.MarkOf(shd, St(shd, "heart"))!.How == "auto" && eq.IsDone(shd, St(shd, "kyrenna")) && eq.IsDone(shd, St(shd, "soulcase"))
+                        && !eq.IsDone(shd, St(shd, "caradon")) && !eq.IsDone(shd, St(shd, "will")) && eq.DoneCount(shd) == 8);
+
+                    // An optional step can be ticked; it never moves the count.
+                    eq.Tick(shd, St(shd, "kurron-hail"));
+                    Check("epics: an optional step ticks without counting", eq.IsDone(shd, St(shd, "kurron-hail")) && eq.DoneCount(shd) == 8 && !eq.IsComplete(shd));
+
+                    // An unnamed hand-in (the wiki names no item): a trade with no quest offers proves ONE such step, in order —
+                    // and a trade that carried named quest items is some other step's.
+                    eq.ProcessLine(EL(30, "You say, 'I wish to know more'"));
+                    bool started = eq.IsDone(shm, St(shm, "tiny-gem")) && eq.Started(shm);
+                    eq.ProcessLine(EL(40, "You offered 1 Sparkling Gem to Spirit Sentinel."));
+                    eq.ProcessLine(EL(41, "You complete the trade with Spirit Sentinel."));
+                    bool named = eq.IsDone(shm, St(shm, "sentinel")) && !eq.IsDone(shm, St(shm, "report"));
+                    eq.ProcessLine(EL(50, "You complete the trade with Spirit Sentinel."));
+                    bool first = eq.IsDone(shm, St(shm, "report")) && !eq.IsDone(shm, St(shm, "books")) && !eq.IsDone(shm, St(shm, "diary"));
+                    eq.ProcessLine(EL(60, "You complete the trade with Spirit Sentinel."));
+                    Check("epics: an unnamed hand-in ticks on a trade that carried no named quest item — one step per trade, in the quest's order",
+                        started && named && first && eq.IsDone(shm, St(shm, "books")) && !eq.IsDone(shm, St(shm, "diary")));
+
+                    // The last step vouches for the whole quest; an unstarted quest ignores a stray trade.
+                    Check("epics: a trade proves nothing on a quest never started", !eq.IsDone(enc, St(enc, "piece3")) && !eq.Started(enc));
+                    eq.ProcessLine(EL(70, "You offered 1 Bundle of Staves to a sarnak imitator."));
+                    eq.ProcessLine(EL(71, "You complete the trade with a sarnak imitator."));
+                    var eq2 = new QuestLines(new ConfigService(), null, epPath);
+                    var enc2 = eq2.Quests.First(q => q.Key == "epic-enc");
+                    Check("epics: the final hand-in completes the quest — every one of its 41 steps — and the progress survives a reload",
+                        eq.IsComplete(enc) && eq.DoneCount(enc) == 41 && eq.NextStep(enc) is null && eq2.IsComplete(enc2)
+                        && eq2.DoneCount(eq2.Quests.First(q => q.Key == "epic-shd")) == 8);
+                    try { File.Delete(epPath); } catch { /* temp */ }
+
+                    // The Quests window: the Epics tab is real, opens on your combo's epics and folds the rest.
+                    string vwPath = Path.Combine(Path.GetTempPath(), "eql_test_epics_view.json");
+                    try { File.Delete(vwPath); } catch { /* fresh */ }
+                    var csE = new ConfigService();
+                    var skyE = new Views.SkyWindow(new SkyQuests(csE, new LootTracker(csE)), null, () => "SHD/SHM/NEC", new QuestLines(csE, null, vwPath))
+                    {
+                        WindowStartupLocation = WindowStartupLocation.Manual, Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+                    };
+                    skyE.Show();
+                    skyE.ShowPack("epics");
+                    var epicView = skyE.LinesViewForTest;
+                    var listTexts = epicView.ListTextsForTest.ToList();
+                    var detail = epicView.DetailTextsForTest.ToList();
+                    Check("epics view: the tab shows the pack — notice up, your two epics as cards, the third folded under \"1 other class\", the shadow knight selected",
+                        skyE.Pack == "epics" && epicView.Pack == "epics" && epicView.NoticeForTest.StartsWith("Before Kunark", StringComparison.Ordinal)
+                        && listTexts.Contains("Shadow Knight Epic") && listTexts.Contains("Shaman Epic") && !listTexts.Contains("Enchanter Epic")
+                        && listTexts.Any(t => t.Contains("1 other class", StringComparison.Ordinal)) && epicView.SelectedKey == "epic-shd");
+                    Check("epics view: parts head the steps — five of them, the two optional ones tagged, only the part holding the next step open; the whole-quest warning shows",
+                        detail.Count(t => t.StartsWith("PART ", StringComparison.Ordinal)) == 5 && detail.Count(t => t == "OPTIONAL") == 2
+                        && detail.Any(t => t.StartsWith("Whole quest: Con INDIFFERENT", StringComparison.Ordinal))
+                        && detail.Contains("Kill the froglok shin lord for the Ghoulbane") && detail.Contains("Any one of".ToUpperInvariant())
+                        && !detail.Contains("Hail Kurron Ni") && !detail.Contains("Combine the Heart of Kyrenna in the Soulcase"));
+                    epicView.FlipPartForTest("epic-shd", "Lhranc's Coin");
+                    epicView.SetLensForTest("all");
+                    var allTexts = epicView.ListTextsForTest.ToList();
+                    Check("epics view: a click opens a folded part (the combine card and its MAKES chip); the All lens shows the third epic as a card",
+                        epicView.DetailTextsForTest.Contains("Combine the Heart of Kyrenna in the Soulcase") && epicView.DetailTextsForTest.Contains("MAKES")
+                        && allTexts.Contains("Enchanter Epic") && !allTexts.Any(t => t.Contains("other class", StringComparison.Ordinal)));
+                    skyE.ShowPack("lines");
+                    Check("epics view: the Notable quests tab still shows its three lines and no notice",
+                        epicView.Pack == "" && epicView.NoticeForTest == "" && epicView.ListTextsForTest.Contains("Zimel's Blades") && !epicView.ListTextsForTest.Contains("Shadow Knight Epic"));
+                    skyE.Close();
+                    try { File.Delete(vwPath); } catch { /* temp */ }
+                }
+
             // Notable quest lines (7 Sep): the Torrid Corruptor walked
                 // through the log — kills, loot, hand-ins, a said keyword;
                 // right-clicks are ticks; later steps imply earlier ones;
@@ -3096,7 +3201,7 @@ public partial class App : Application
                     var hayle = torrid.Steps[0]; var reaver = torrid.Steps[1]; var grimIn = torrid.Steps[2];
                     var grimKill = torrid.Steps[3]; var dason = torrid.Steps[4]; var luxio = torrid.Steps[6];
                     Check("lines: three lines load, Torrid Corruptor has seven steps",
-                        ql.Quests.Count == 3 && torrid.Steps.Count == 7 && ql.NextStep(torrid) == hayle);
+                        ql.QuestsIn("").Count == 3 && torrid.Steps.Count == 7 && ql.NextStep(torrid) == hayle);
                     int fired = 0;
                     ql.StepDone += (_, _) => fired++;
                     ql.ProcessLine("[Tue Sep 01 22:40:00 2026] You have slain Brother Hayle!");
@@ -6592,6 +6697,37 @@ public partial class App : Application
             };
             win.Show(at15 ? 15 : 44, classes, lib.UnlocksAt(at15 ? 15 : 44, classes));
             mgr = win;
+        }
+        else if (page.Equals("quests:epics", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:epics:open", StringComparison.OrdinalIgnoreCase))
+        {
+            // The Epics pack mid-quest on a scratch progress file: a shadow knight who has handed Teydar the
+            // sheath's three pieces and killed Dread for the sword (quests:epics:open unfolds two more parts).
+            string ePath = Path.Combine(Path.GetTempPath(), "eql_render_epics.json");
+            try { File.Delete(ePath); } catch { /* fresh */ }
+            var cse = new ConfigService();
+            var el = new QuestLines(cse, null, ePath);
+            var t0 = DateTime.Now.AddHours(-3);
+            string RL(int sec, string body) => $"[{t0.AddSeconds(sec).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
+            el.ProcessLine(RL(0, "You have slain Dread!"));
+            el.ProcessLine(RL(1, "--You have looted a Soul Leech, Dark Sword of Blood from Dread's corpse.--"));
+            el.ProcessLine(RL(600, "You have slain The froglok shin lord!"));
+            el.ProcessLine(RL(601, "--You have looted a Ghoulbane from The froglok shin lord's corpse.--"));
+            foreach (var it in new[] { "Drake Spine", "Decrepit Hide", "Enchanted Platinum Bar" }) el.ProcessLine(RL(1200, $"You offered 1 {it} to Teydar."));
+            el.ProcessLine(RL(1202, "You complete the trade with Teydar."));
+            var swE = new Views.SkyWindow(new SkyQuests(cse, new LootTracker(cse)), null, () => "SHD/SHM/ENC", el)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            swE.Show();
+            swE.ShowPack("epics");
+            if (page.EndsWith(":open", StringComparison.OrdinalIgnoreCase))
+            {
+                swE.LinesViewForTest.FlipPartForTest("epic-shd", "The Corrupted Ghoulbane"); // fold the current part…
+                swE.LinesViewForTest.FlipPartForTest("epic-shd", "The Dark Shroud");          // …to show the next two
+                swE.LinesViewForTest.FlipPartForTest("epic-shd", "Lhranc's Coin");
+            }
+            mgr = swE;
         }
         else if (page.Equals("quests:lines", StringComparison.OrdinalIgnoreCase) || page.Equals("quests:sky", StringComparison.OrdinalIgnoreCase)
                  || page.Equals("quests:sky:all", StringComparison.OrdinalIgnoreCase))
