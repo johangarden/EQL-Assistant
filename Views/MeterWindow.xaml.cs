@@ -277,6 +277,17 @@ public partial class MeterWindow : Window
 
     // ---- refresh ----------------------------------------------------------------
 
+    /// <summary>The subline's countdown (owner, 25 Nov): once the fight has been quiet for two
+    /// seconds, " · ends in 7s" — the whole seconds left before the meter freezes it. Nothing
+    /// while the hits keep coming, so it never flickers mid-fight.</summary>
+    internal static string EndsInText(double quietSeconds, double idleSeconds)
+    {
+        double left = idleSeconds - quietSeconds;
+        return quietSeconds >= 2 && left > 0 ? $" · ends in {Math.Ceiling(left):0}s" : "";
+    }
+
+    internal string SummaryForTest => SummaryText.Text;
+
     private void Refresh()
     {
         RefreshCap();
@@ -298,7 +309,7 @@ public partial class MeterWindow : Window
         string target = _parser.TargetLabel;
         TitleText.Text = string.IsNullOrEmpty(target) ? $"{metric} meter" : $"{metric} — {target}";
 
-        string state = _parser.InCombat ? "" : " · ended";
+        string state = _parser.InCombat ? EndsInText(_parser.QuietSeconds(DateTime.Now), _parser.IdleSeconds) : " · ended";
         SummaryText.Text =
             $"{FormatDuration(_parser.DurationSeconds)} · total {FormatDps(_parser.TotalPerSecond(_showHealing))} {metric.ToLowerInvariant()}{state}";
 

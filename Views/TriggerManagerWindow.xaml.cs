@@ -1483,6 +1483,8 @@ public partial class TriggerManagerWindow : Window
         StartWithWindowsCheck.IsChecked = IsAutoStartEnabled();
         TimerVisibleCheck.IsChecked = _config.Overlay.TimerVisible;
         MeterVisibleCheck.IsChecked = _config.Overlay.MeterVisible;
+        _meterIdle = CombatParser.NormalizeIdle(_config.Overlay.MeterIdleSeconds);
+        PaintMeterIdle();
         SkillsVisibleCheck.IsChecked = _config.Overlay.SkillTrackerVisible;
         ProcsVisibleCheck.IsChecked = _config.Overlay.ProcWatcherVisible;
         SkillListBox.Text = string.Join(", ", _config.Overlay.SkillTrackerSkills);
@@ -1825,6 +1827,30 @@ public partial class TriggerManagerWindow : Window
         return loadouts;
     }
 
+    // ---- DPS page: a fight ends after 5 · 10 · 15 quiet seconds ----
+    private int _meterIdle = 10;
+    private static readonly Brush IdleOnBg = new SolidColorBrush(Color.FromRgb(0x16, 0x28, 0x3E));
+    private static readonly Brush IdleOnFg = new SolidColorBrush(Color.FromRgb(0x4F, 0xC3, 0xF7));
+    private static readonly Brush IdleOffFg = new SolidColorBrush(Color.FromRgb(0x7F, 0x93, 0xAD));
+
+    private void PaintMeterIdle()
+    {
+        foreach (var pill in new[] { MeterIdle5, MeterIdle10, MeterIdle15 })
+        {
+            bool on = (string)pill.Tag == _meterIdle.ToString(CultureInfo.InvariantCulture);
+            pill.Background = on ? IdleOnBg : Brushes.Transparent;
+            ((TextBlock)pill.Child).Foreground = on ? IdleOnFg : IdleOffFg;
+        }
+    }
+
+    private void MeterIdle_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        _meterIdle = int.Parse((string)((Border)sender).Tag, CultureInfo.InvariantCulture);
+        PaintMeterIdle();
+    }
+
+    internal int MeterIdleForTest => _meterIdle;
+
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         // Validate every trigger in every loadout.
@@ -1976,9 +2002,12 @@ public partial class TriggerManagerWindow : Window
                 SessionStatsSlice = _config.Overlay.SessionStatsSlice,           // panel-toggled
                 SessionStatsExactTier = _config.Overlay.SessionStatsExactTier,   // panel-toggled
                 SessionStatsActiveBasis = _config.Overlay.SessionStatsActiveBasis, // panel-toggled
+                SessionStatsResetAt = _config.Overlay.SessionStatsResetAt,         // the panel's RESET key
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,
+                MeterIdleSeconds = _meterIdle,
+                MeterSelfFolded = _config.Overlay.MeterSelfFolded,       // meter-toggled — carried through (a save used to re-fold it)
                 SkillTrackerVisible = SkillsVisibleCheck.IsChecked == true,
                 ProcWatcherVisible = ProcsVisibleCheck.IsChecked == true,
                 SkillTrackerSkills = SkillListBox.Text

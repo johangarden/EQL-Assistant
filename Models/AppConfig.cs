@@ -97,6 +97,10 @@ public sealed class OverlayConfig
     /// opens (owner, 16 Oct: "start in collapsed mode") and how you left it; a click flips it.</summary>
     public bool MeterSelfFolded { get; set; } = true;
 
+    /// <summary>Seconds without a hit before the meter ends the fight — 5, 10 or 15
+    /// (the Manager's DPS page; owner, 25 Nov). The meter counts them down once it goes quiet.</summary>
+    public int MeterIdleSeconds { get; set; } = 10;
+
     /// <summary>Your pet's name — enables the pet line in the DPS meter's incoming footer.</summary>
     public string PetName { get; set; } = "";
 
@@ -269,6 +273,10 @@ public sealed class OverlayConfig
     /// <summary>Session stats rate denominator: elapsed (default — your evening)
     /// vs active (minus 5+ minute silences — the camp's pace).</summary>
     public bool SessionStatsActiveBasis { get; set; } = false;
+
+    /// <summary>When the owner last pressed the session panel's RESET key — the session views
+    /// count from here until the game's next login (25 Nov). Null = never.</summary>
+    public DateTime? SessionStatsResetAt { get; set; }
 
     /// <summary>Panels-menu master toggles: every panel that can appear gets
     /// one. Matrices still need cells, reminders still need a missing buff.</summary>

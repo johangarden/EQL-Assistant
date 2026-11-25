@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -30,6 +30,10 @@ public partial class SessionStatsWindow : Window
     private static readonly Brush SegOnBg = Freeze("#16283E");
     private static readonly Brush SegOnFg = Freeze("#4FC3F7");
     private static readonly Brush SegOffFg = Freeze("#7F93AD");
+    private static readonly Brush PillLine = Freeze("#3A4560");
+    private static readonly Brush ArmedFg = Freeze("#FF6B6B");   // RESET? — the second click does it
+    private static readonly Brush ClockFg = Freeze("#C9D4E4");
+    private static readonly Brush PausedFg = Freeze("#E8C15A");  // the clock stands still while A.F.K.
 
     private readonly SessionStats _stats;
     private readonly PanelPlacement _placement;
@@ -45,6 +49,12 @@ public partial class SessionStatsWindow : Window
 
     /// <summary>Raised when the user changes slice / tier / basis — the host persists.</summary>
     public event Action<SessionStats.Slice, bool, SessionStats.Basis>? SettingsChanged;
+
+    /// <summary>Raised when the user resets the session (RESET, twice) — the host persists the mark.</summary>
+    public event Action<DateTime>? SessionResetRequested;
+
+    private readonly DispatcherTimer _clock;      // the running clock ticks every second; the rows every five
+    private DateTime _resetArmedUntil;            // RESET clicked once: the second click within this confirms
 
     public SessionStatsWindow(SessionStats stats, ConfigService configService, double opacity,
         SessionStats.Slice slice, bool exactTier, SessionStats.Basis basis)
@@ -69,14 +79,16 @@ public partial class SessionStatsWindow : Window
             Interval = TimeSpan.FromSeconds(5)
         };
         _tick.Tick += (_, _) => Refresh();
+        _clock = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
+        _clock.Tick += (_, _) => RefreshClock();
 
-        Loaded += (_, _) => { _placement.Attach(); Refresh(); _tick.Start(); };
+        Loaded += (_, _) => { _placement.Attach(); Refresh(); _tick.Start(); _clock.Start(); };
         SourceInitialized += (_, _) =>
         {
             _hwnd = new WindowInteropHelper(this).Handle;
             ApplyClickThrough();
         };
-        Closed += (_, _) => _tick.Stop();
+        Closed += (_, _) => { _tick.Stop(); _clock.Stop(); };
     }
 
     public void SetHidden(bool hidden)
@@ -122,7 +134,55 @@ public partial class SessionStatsWindow : Window
         BasisBtn.ToolTip = _basis == SessionStats.Basis.Active
             ? "Active time: the stretch minus every 5+ minute silence and every logout — how fast the camp pays while you work it."
             : "Elapsed time: the whole stretch minus only logouts — medding, banking and travel stay in, because you spent them.";
+        RefreshClock();
     }
+
+    /// <summary>The session's running clock and the RESET key's state — cheap, so it ticks every second.</summary>
+    private void RefreshClock()
+    {
+        if (_hidden) return;
+        var now = DateTime.Now;
+        ClockText.Text = SessionStats.FmtClock(_stats.SessionClockSeconds(now));
+        bool paused = _stats.AfkSince is not null;
+        ClockText.Foreground = paused ? PausedFg : ClockFg;
+        if (paused)
+            PausedText.Text = $"PAUSED · AFK since {_stats.AfkSince:HH:mm} — the clock and the rates wait for you";
+        PausedText.Visibility = paused ? Visibility.Visible : Visibility.Collapsed;
+        ClockText.ToolTip = _stats.SessionStart is DateTime start
+            ? _stats.SessionIsManual
+                ? $"This session's clock — running since you reset it at {start:HH:mm}."
+                : $"This session's clock — running since the game's login at {start:HH:mm}. RESET starts a fresh session from now."
+            : "No session yet — the clock starts with the game's login line, or with RESET.";
+        bool armed = now < _resetArmedUntil;
+        ResetBtnText.Text = armed ? "RESET?" : "RESET";
+        ResetBtnText.Foreground = armed ? ArmedFg : SegOffFg;
+        ResetBtn.BorderBrush = armed ? ArmedFg : PillLine;
+    }
+
+    /// <summary>RESET asks once: the first click arms it (red "RESET?" for four seconds), the second
+    /// starts a fresh session from now. One stray click costs nothing.</summary>
+    private void Reset_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (_locked) return;
+        var now = DateTime.Now;
+        if (now < _resetArmedUntil)
+        {
+            _resetArmedUntil = default;
+            _stats.SessionMark = now;
+            SessionResetRequested?.Invoke(now);
+            Refresh();
+        }
+        else
+        {
+            _resetArmedUntil = now.AddSeconds(4);
+            RefreshClock();
+        }
+    }
+
+    internal string ClockForTest => ClockText.Text;
+    internal string PausedForTest => PausedText.Visibility == Visibility.Visible ? PausedText.Text : "";
+    internal string ResetKeyForTest => ResetBtnText.Text;
+    internal void ClickResetForTest() => Reset_Click(this, null!);
 
     private static void PaintPill(Border pill, TextBlock text, string label, bool on)
     {

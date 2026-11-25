@@ -244,6 +244,31 @@ public partial class App : Application
                 SessionStats.Slice.ZoneSession, exactTier: true, SessionStats.Basis.Elapsed);
             statsWin.Show();
             statsWin.Refresh();
+            // The running clock + RESET (25 Nov): the demo evening began 42 minutes ago; the first click only
+            // arms the key, the second starts a fresh session and the clock is back at zero.
+            {
+                DateTime? resetAt = null;
+                statsWin.SessionResetRequested += at => resetAt = at;
+                if (!statsWin.ClockForTest.StartsWith("0:42:", StringComparison.Ordinal) || statsWin.ResetKeyForTest != "RESET")
+                    throw new Exception($"session panel: the clock should read the demo's 42 minutes (got {statsWin.ClockForTest})");
+                statsWin.ClickResetForTest();
+                if (statsWin.ResetKeyForTest != "RESET?" || resetAt is not null || demoStats.SessionMark is not null)
+                    throw new Exception("session panel: the first RESET click only arms the key");
+                statsWin.ClickResetForTest();
+                if (resetAt is null || demoStats.SessionMark != resetAt || !demoStats.SessionIsManual
+                    || !statsWin.ClockForTest.StartsWith("0:00:0", StringComparison.Ordinal) || statsWin.ResetKeyForTest != "RESET")
+                    throw new Exception($"session panel: the second RESET click starts a fresh session (clock {statsWin.ClockForTest})");
+                // A.F.K. pauses the panel: the amber line shows, and your next cast takes it away again.
+                string AfkTs(int sec) => DateTime.Now.AddSeconds(sec).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                demoStats.ProcessLine($"[{AfkTs(-2)}] You are now A.F.K. (Away From Keyboard).");
+                statsWin.Refresh();
+                if (!statsWin.PausedForTest.StartsWith("PAUSED · AFK since ", StringComparison.Ordinal))
+                    throw new Exception("session panel: an A.F.K. line should show the paused note");
+                demoStats.ProcessLine($"[{AfkTs(-1)}] You begin casting Spirit of Wolf.");
+                statsWin.Refresh();
+                if (statsWin.PausedForTest.Length > 0)
+                    throw new Exception("session panel: your own cast should end the pause");
+            }
             statsWin.Close();
 
             // Inventory window renders the ledger from a real-format dump —
@@ -1077,6 +1102,56 @@ public partial class App : Application
                 by.History.Count == 1);
             Check("fight: your heal spells get their own drill-down rows",
                 by.History[0].SelfHealAbilities.Any(a => a.Name == "Superior Heal"));
+            // Heals never hold a fight open (owner, 25 Nov): a heal over time cast at the end ticks every 6 s
+            // for 42 s. The fight still ends 10 s after the last HIT; the ticks inside it count, the later ones
+            // only float; a heal before the pull opens nothing; the next hit starts a fresh fight.
+            {
+                var hot = new CombatParser { SelfName = "Johan" };
+                var hotSct = new List<CombatParser.SctHit>();
+                hot.SctEvent += h => hotSct.Add(h);
+                hot.Replay($"[{FT(700)}] Johan healed Johan for 50 hit points by Chloroplast.");
+                bool quiet = !hot.HasData;
+                hot.Replay($"[{FT(702)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                hot.Replay($"[{FT(708)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                for (int t = 706; t <= 748; t += 6)
+                    hot.Replay($"[{FT(t)}] Johan healed Johan for 30 hit points by Sprouting Heal.");
+                bool closed = hot.History.Count == 1; // frozen by the tick at 718, not at 758
+                hot.Replay($"[{FT(760)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                hot.Tick(fb.AddSeconds(800));
+                Check("fight: heals never start a fight or hold it open — it ends 10 s after the last hit, the ticks inside count, the rest only float",
+                    quiet && closed && hot.History.Count == 2
+                    && hot.History[1].DurationSeconds == 6
+                    && hot.History[1].SelfHealAbilities.Sum(a => a.Total) == 60
+                    && hot.History[0].SelfHealAbilities.Count == 0
+                    && hotSct.Count(h => h.Kind == CombatParser.SctKind.HealOut) == 9);
+            }
+            // The fight's end is a setting — 5 · 10 · 15 (owner, 25 Nov) — and the meter counts it down.
+            {
+                var quickP = new CombatParser { SelfName = "Johan", IdleSeconds = 5 };
+                quickP.Replay($"[{FT(900)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                double quiet3 = quickP.QuietSeconds(fb.AddSeconds(903));
+                quickP.Tick(fb.AddSeconds(904));
+                bool open = quickP.InCombat;
+                quickP.Tick(fb.AddSeconds(905));
+                var lull = new CombatParser { SelfName = "Johan", IdleSeconds = 15 };
+                lull.Replay($"[{FT(900)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                lull.Replay($"[{FT(912)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                lull.Tick(fb.AddSeconds(926));
+                bool lullOpen = lull.InCombat;
+                lull.Tick(fb.AddSeconds(927));
+                Check("fight: the end is a setting — at 5 s the fight freezes five quiet seconds after the hit, at 15 s a twelve-second lull stays one fight",
+                    quiet3 == 3 && open && !quickP.InCombat && quickP.History.Count == 1
+                    && lullOpen && !lull.InCombat && lull.History.Count == 1 && lull.History[0].DurationSeconds == 12
+                    && new CombatParser().IdleSeconds == 10 && new Models.AppConfig().Overlay.MeterIdleSeconds == 10
+                    && CombatParser.NormalizeIdle(5) == 5 && CombatParser.NormalizeIdle(10) == 10 && CombatParser.NormalizeIdle(15) == 15
+                    && CombatParser.NormalizeIdle(0) == 5 && CombatParser.NormalizeIdle(12) == 10 && CombatParser.NormalizeIdle(60) == 15);
+                Check("meter: the subline counts the end down once the fight has been quiet two seconds — never mid-hit, never past zero",
+                    Views.MeterWindow.EndsInText(0, 10) == "" && Views.MeterWindow.EndsInText(1.9, 10) == ""
+                    && Views.MeterWindow.EndsInText(2, 10) == " · ends in 8s" && Views.MeterWindow.EndsInText(3.4, 10) == " · ends in 7s"
+                    && Views.MeterWindow.EndsInText(9.6, 10) == " · ends in 1s" && Views.MeterWindow.EndsInText(10, 10) == ""
+                    && Views.MeterWindow.EndsInText(2, 5) == " · ends in 3s" && Views.MeterWindow.EndsInText(4, 15) == " · ends in 11s"
+                    && Views.MeterWindow.EndsInText(400, 10) == "");
+            }
 
             // Allies vs bystanders: "group" means someone joined YOUR fight —
             // a neighbour farming their own camp in logging range is scenery.
@@ -2309,6 +2384,83 @@ public partial class App : Application
                     !youngV.Measurable
                     && youngV.Rows.First(r => r.Label == "XP").Value == "–"
                     && youngV.Rows.First(r => r.Unit == "drops/hr") is { Value: "–", Detail: "1×" });
+
+                // The RESET key (25 Nov): a session started by hand counts from the mark; All keeps everything;
+                // the catch-up rebuild leaves the mark alone; the game's next login supersedes it.
+                {
+                    var rs = new SessionStats();
+                    void Feed()
+                    {
+                        rs.ProcessLine($"[{S(0)}] Welcome to EverQuest Legends!");
+                        for (int i = 0; i < 12; i++) rs.ProcessLine($"[{S(10 + i * 100)}] You gain experience! (1.000%)");
+                    }
+                    Feed();
+                    double fromLogin = rs.SessionClockSeconds(N(1210));
+                    bool loginRun = !rs.SessionIsManual && rs.SessionStart == N(0);
+                    rs.SessionMark = N(600);
+                    var marked = rs.Snapshot(N(1210), SessionStats.Slice.Session, true, SessionStats.Basis.Elapsed);
+                    var whole = rs.Snapshot(N(1210), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed);
+                    bool manual = rs.SessionIsManual && rs.SessionClockSeconds(N(1210)) == 610;
+                    rs.Reset(); Feed(); // the catch-up rebuild
+                    bool kept = rs.SessionMark == N(600) && rs.SessionIsManual;
+                    rs.ProcessLine($"[{S(2000)}] Welcome to EverQuest Legends!");
+                    Check("stats: RESET starts the session at the mark — 10 of the 20 minutes; All keeps the evening; a rebuild keeps the mark; the next login supersedes it",
+                        fromLogin == 1210 && loginRun && manual
+                        && marked.Span == "over 10m elapsed" && whole.Span == "over 20m elapsed"
+                        && kept && !rs.SessionIsManual && rs.SessionStart == N(2000));
+                    Check("stats: the running clock reads h:mm:ss, and a dash before any session",
+                        SessionStats.FmtClock(610) == "0:10:10" && SessionStats.FmtClock(3725.9) == "1:02:05"
+                        && SessionStats.FmtClock(0) == "0:00:00" && SessionStats.FmtClock(-1) == "–"
+                        && new SessionStats().SessionClockSeconds(N(0)) == -1 && new SessionStats().SessionStart is null
+                        && new SessionStats { SessionMark = N(5) }.SessionClockSeconds(N(65)) == 60);
+                }
+
+                // A.F.K. (25 Nov): the game's own line pauses the session — clock and rates — until its end line,
+                // or, since the rig logs print that only half the time, until your own next action.
+                {
+                    var af = new SessionStats { SelfName = "Thorrak" };
+                    af.ProcessLine($"[{S(0)}] Welcome to EverQuest Legends!");
+                    for (int i = 0; i < 6; i++) af.ProcessLine($"[{S(10 + i * 100)}] You gain experience! (1.000%)");
+                    af.ProcessLine($"[{S(600)}] You are now A.F.K. (Away From Keyboard).");
+                    bool paused = af.AfkSince == N(600) && af.SessionClockSeconds(N(900)) == 600; // the clock stands at 10:00
+                    af.ProcessLine($"[{S(1200)}] You are no longer A.F.K. (Away From Keyboard).");
+                    for (int i = 0; i < 6; i++) af.ProcessLine($"[{S(1210 + i * 100)}] You gain experience! (1.000%)");
+                    var afSes = af.Snapshot(N(1800), SessionStats.Slice.Session, true, SessionStats.Basis.Elapsed);
+                    Check("stats: an A.F.K. stretch pauses the session — the clock stands still, ten of the thirty minutes leave the elapsed rate",
+                        paused && af.AfkSince is null && af.SessionClockSeconds(N(1800)) == 1200 && afSes.Span == "over 20m elapsed");
+
+                    // No end line: a mob hitting you ends nothing, your own cast does.
+                    af.ProcessLine($"[{S(1800)}] You are now A.F.K. (Away From Keyboard).");
+                    af.ProcessLine($"[{S(1850)}] You are now A.F.K. (Away From Keyboard)."); // the same stretch
+                    af.ProcessLine($"[{S(1900)}] A gnoll pup hits YOU for 5 points of damage.");
+                    af.ProcessLine($"[{S(1950)}] You were hit by non-melee for 5 points of damage.");
+                    bool still = af.AfkSince == N(1800);
+                    af.ProcessLine($"[{S(2100)}] You begin casting Spirit of Wolf.");
+                    bool castEnds = af.AfkSince is null && af.SessionClockSeconds(N(2100)) == 1200;
+                    // …and so do a swing, your spell's hit, something you said, and experience (a pet kill pays you).
+                    bool Ends(string line)
+                    {
+                        var x = new SessionStats { SelfName = "Thorrak" };
+                        x.ProcessLine($"[{S(0)}] You are now A.F.K. (Away From Keyboard).");
+                        x.ProcessLine($"[{S(50)}] {line}");
+                        return x.AfkSince is null;
+                    }
+                    Check("stats: with no end line, your own next action ends the pause — a cast, a swing, a spell hit, a word, experience — and a mob's hit on you never does",
+                        still && castEnds
+                        && Ends("You slash a gnoll pup for 15 points of damage.") && Ends("Thorrak hit a gnoll pup for 55 points of magic damage by Sanity Warp.")
+                        && Ends("You say, 'back'") && Ends("You gain experience! (1.000%)") && Ends("You have entered Befallen.")
+                        && !Ends("A gnoll pup hits YOU for 5 points of damage.") && !Ends("Garn bites a gnoll pup for 9 points of damage.")
+                        && !Ends("A gnoll pup has taken 40 damage from Ignite by Thorrak.") && !Ends("Yungtung tells General:1, 'ya'"));
+
+                    // Logged out while A.F.K.: the logout and the pause are ONE cut. 4000 s of evening minus
+                    // 600 (the first pause), 300 (the second) and 1800 (2200 → the login) = 1300 s.
+                    af.ProcessLine($"[{S(2200)}] You are now A.F.K. (Away From Keyboard).");
+                    af.ProcessLine($"[{S(4000)}] Welcome to EverQuest Legends!");
+                    var afAll = af.Snapshot(N(4000), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed);
+                    af.Reset();
+                    Check("stats: an A.F.K. you logged out of is cut once, the login ends it, and a rebuild forgets the pauses",
+                        afAll.Span == "over 21m elapsed" && af.AfkSince is null && !af.HasData);
+                }
 
                 // Reset + refeed (the catch-up path) lands on the same numbers.
                 var again = new SessionStats { SelfName = "Thorrak" };
@@ -5553,7 +5705,9 @@ public partial class App : Application
 
             Check("procs: swings = your melee hits + misses", pw.SessionSwings == 1);
             double liveActive = pw.SessionActiveSeconds;
-            Check("procs: active time accrues while fighting", liveActive is > 70 and < 85); // last line at +75s
+            // The last HIT is the slash at +34 s; the heal ticks at +60 s and +75 s no longer stretch the
+            // fight (25 Nov), so the proc rates' active time stops with the fighting.
+            Check("procs: active time accrues while fighting — to the last hit, not the last heal tick", liveActive is > 30 and < 40);
             pw.Tick(new DateTime(2026, 8, 10, 21, 2, 0)); // idle out -> Archive
             Check("procs: an archived fight keeps its active time exactly once",
                 Math.Abs(pw.SessionActiveSeconds - liveActive) < 0.5);
@@ -6123,17 +6277,23 @@ public partial class App : Application
             mgr = recap;
         }
         else if (page.Equals("meter:incoming", StringComparison.OrdinalIgnoreCase)
-                 || page.Equals("meter:incoming:quiet", StringComparison.OrdinalIgnoreCase))
+                 || page.Equals("meter:incoming:quiet", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("meter:ending", StringComparison.OrdinalIgnoreCase))
         {
             // The DPS meter with the incoming chart docked as its cap: a
             // spell-heavy window mid-fight, or folded to the header while quiet.
+            // meter:ending — the same fight gone quiet three seconds ago, so the
+            // subline counts its end down ("· ends in 7s").
             var mp = new CombatParser { SelfName = "Thorrak", PetName = "Garn" };
+            bool ending = page.Equals("meter:ending", StringComparison.OrdinalIgnoreCase);
+            var mBase = ending ? DateTime.Now.AddSeconds(-14) : new DateTime(2026, 9, 8, 20, 0, 0);
+            string MT(int sec) => mBase.AddSeconds(sec).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
             for (int i = 0; i < 6; i++)
             {
-                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2:00} 2026] Thorrak slashes a thunder spirit princess for {280 + i * 15} points of damage.");
-                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] Garn bites a thunder spirit princess for {90 + i * 5} points of damage.");
-                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] Thorrak hit a thunder spirit princess for {160 + i * 10} points of disease damage by Spear of Disease.");
-                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] a thunder spirit princess hit YOU for {300 + i * 20} points of cold damage by Frost Spear.");
+                mp.ProcessLine($"[{MT(i * 2)}] Thorrak slashes a thunder spirit princess for {280 + i * 15} points of damage.");
+                mp.ProcessLine($"[{MT(i * 2 + 1)}] Garn bites a thunder spirit princess for {90 + i * 5} points of damage.");
+                mp.ProcessLine($"[{MT(i * 2 + 1)}] Thorrak hit a thunder spirit princess for {160 + i * 10} points of disease damage by Spear of Disease.");
+                mp.ProcessLine($"[{MT(i * 2 + 1)}] a thunder spirit princess hit YOU for {300 + i * 20} points of cold damage by Frost Spear.");
             }
             var iw = new IncomingWatch();
             if (!page.EndsWith(":quiet", StringComparison.OrdinalIgnoreCase))
@@ -6266,6 +6426,26 @@ public partial class App : Application
             if (win is Views.CharmWindow cw) { cw.SetLocked(true); cw.Show(); cw.Refresh(); }
             else if (win is Views.MezWindow mw) { mw.SetLocked(true); mw.Show(); mw.Refresh(); }
             mgr = win;
+        }
+        else if (page.Equals("session", StringComparison.OrdinalIgnoreCase) || page.Equals("session:armed", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("session:afk", StringComparison.OrdinalIgnoreCase))
+        {
+            // The session stats panel on its demo evening: the running clock and the RESET key
+            // (session:armed — after the first click, "RESET?" in red; session:afk — paused six minutes ago).
+            var demo = new SessionStats();
+            demo.AddDemo(DateTime.Now.AddMinutes(page.EndsWith(":afk", StringComparison.OrdinalIgnoreCase) ? -6 : 0));
+            if (page.EndsWith(":afk", StringComparison.OrdinalIgnoreCase))
+                demo.ProcessLine($"[{DateTime.Now.AddMinutes(-6).AddSeconds(5).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] You are now A.F.K. (Away From Keyboard).");
+            var sw = new Views.SessionStatsWindow(demo, new ConfigService(), 1.0,
+                SessionStats.Slice.ZoneSession, exactTier: false, SessionStats.Basis.Active)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            sw.Show();
+            sw.Refresh();
+            if (page.EndsWith(":armed", StringComparison.OrdinalIgnoreCase)) sw.ClickResetForTest();
+            mgr = sw;
         }
         else if (page.Equals("sct", StringComparison.OrdinalIgnoreCase))
         {

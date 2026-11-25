@@ -1238,6 +1238,28 @@
                                 <ComboBoxItem Content="Bottom-right" Tag="BottomRight"/>
                             </ComboBox>
 
+                            <!-- A fight ends after 5 · 10 · 15 quiet seconds (owner, 25 Nov) — the app's segment look. -->
+                            <TextBlock Text="A fight ends after" Style="{StaticResource FieldLabel}"/>
+                            <Border Background="#111723" BorderBrush="#2A3550" BorderThickness="1" CornerRadius="7" Padding="2"
+                                    HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border x:Name="MeterIdle5" Tag="5" CornerRadius="5" Padding="14,4" Cursor="Hand" Background="Transparent"
+                                            MouseLeftButtonDown="MeterIdle_Click" ToolTip="Back-to-back pulls stay separate fights; a short lull splits one">
+                                        <TextBlock Text="5 s" FontSize="12" FontWeight="SemiBold" Foreground="#7F93AD"/>
+                                    </Border>
+                                    <Border x:Name="MeterIdle10" Tag="10" CornerRadius="5" Padding="14,4" Cursor="Hand" Background="Transparent"
+                                            MouseLeftButtonDown="MeterIdle_Click" ToolTip="The default">
+                                        <TextBlock Text="10 s" FontSize="12" FontWeight="SemiBold" Foreground="#7F93AD"/>
+                                    </Border>
+                                    <Border x:Name="MeterIdle15" Tag="15" CornerRadius="5" Padding="14,4" Cursor="Hand" Background="Transparent"
+                                            MouseLeftButtonDown="MeterIdle_Click" ToolTip="A messy pull stays one fight; chain pulls merge">
+                                        <TextBlock Text="15 s" FontSize="12" FontWeight="SemiBold" Foreground="#7F93AD"/>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="Seconds without a hit, miss or resist before the meter freezes the fight. Once a fight goes quiet the meter counts them down (&quot;ends in 7s&quot;). Heals never hold a fight open."/>
+
                             <Border Style="{StaticResource PageSep}"/>
                             <TextBlock Text="Pet" Style="{StaticResource SectionTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
