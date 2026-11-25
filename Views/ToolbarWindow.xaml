@@ -17,9 +17,10 @@
 
         <!-- The card chrome (owner, 21 Sep — "redo the entire toolbar like the
              bar in the tradeskill mock"): one dark track, every button a KEY
-             in its own hairline frame, and STATE in the frame's colour — gold
-             when a toggle is on (locked, panels shown, card open), red when
-             something wants attention (muted, panels hidden). Labels under
+             in its own hairline frame, and STATE in the frame's colour — a
+             state key is neutral like every other key while things are as
+             you play (sound on, panels shown, locked) and RED when they are
+             not (muted, panels hidden, unlocked — owner, 25 Nov). Labels under
              the keys are a General-page toggle (ToolbarLabels): 34×32 keys. -->
         <Style x:Key="Key" TargetType="Button">
             <Setter Property="Width" Value="22"/>
@@ -54,13 +55,6 @@
             </Style.Triggers>
         </Style>
 
-        <!-- gold: a toggle that is on -->
-        <Style x:Key="KeyOn" TargetType="Button" BasedOn="{StaticResource Key}">
-            <Setter Property="Background" Value="#2A2210"/>
-            <Setter Property="BorderBrush" Value="#7A5B22"/>
-            <Setter Property="Foreground" Value="#E8C15A"/>
-        </Style>
-
         <!-- the five-letter word under a key (labels mode) -->
         <Style x:Key="KeyLabel" TargetType="TextBlock">
             <Setter Property="FontSize" Value="7.5"/>
@@ -70,10 +64,8 @@
             <Setter Property="Foreground" Value="#5C6B82"/>
             <Setter Property="Visibility" Value="{Binding ToolbarLabels, Converter={StaticResource BoolToVis}}"/>
         </Style>
-        <!-- a state key's label says the state, in the key's own colour -->
-        <Style x:Key="StateLabel" TargetType="TextBlock" BasedOn="{StaticResource KeyLabel}">
-            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-        </Style>
+        <!-- a state key's label says the state: quiet like every other label, red with its key -->
+        <Style x:Key="StateLabel" TargetType="TextBlock" BasedOn="{StaticResource KeyLabel}"/>
         <Style x:Key="Glyph" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
             <Setter Property="FontSize" Value="12"/>
@@ -284,7 +276,7 @@
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource StateLabel}">
                                     <Setter Property="Text" Value="SOUND"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Muted}" Value="True"><Setter Property="Text" Value="MUTED"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding Muted}" Value="True"><Setter Property="Text" Value="MUTED"/><Setter Property="Foreground" Value="#FF8A80"/></DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
@@ -292,10 +284,10 @@
                     </StackPanel>
                 </Button>
 
-                <!-- eye: gold while panels show, red struck when every panel is hidden -->
+                <!-- eye: neutral while panels show, red struck when every panel is hidden -->
                 <Button Click="OnPanels" AutomationProperties.AutomationId="PanelsBtn" ToolTip="Hide / show every panel — the toolbar stays (Ctrl+Alt+P)">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource KeyOn}">
+                        <Style TargetType="Button" BasedOn="{StaticResource Key}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding PanelsHidden}" Value="True">
                                     <Setter Property="Background" Value="#3A1B1E"/>
@@ -321,7 +313,7 @@
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource StateLabel}">
                                     <Setter Property="Text" Value="SHOWN"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding PanelsHidden}" Value="True"><Setter Property="Text" Value="HIDDEN"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding PanelsHidden}" Value="True"><Setter Property="Text" Value="HIDDEN"/><Setter Property="Foreground" Value="#FF8A80"/></DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
@@ -329,15 +321,15 @@
                     </StackPanel>
                 </Button>
 
-                <!-- padlock: gold when locked (game-ready), quiet when open -->
+                <!-- padlock: neutral when locked (game-ready), red while open — panels left movable -->
                 <Button Click="OnLock" AutomationProperties.AutomationId="LockBtn" ToolTip="Lock / unlock all panels (Ctrl+Alt+L)">
                     <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource KeyOn}">
+                        <Style TargetType="Button" BasedOn="{StaticResource Key}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsUnlocked}" Value="True">
-                                    <Setter Property="Background" Value="#232B3D"/>
-                                    <Setter Property="BorderBrush" Value="#3A4560"/>
-                                    <Setter Property="Foreground" Value="#9FB0C6"/>
+                                    <Setter Property="Background" Value="#3A1B1E"/>
+                                    <Setter Property="BorderBrush" Value="#7A2E33"/>
+                                    <Setter Property="Foreground" Value="#FF8A80"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -358,7 +350,7 @@
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource StateLabel}">
                                     <Setter Property="Text" Value="LOCKED"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsUnlocked}" Value="True"><Setter Property="Text" Value="OPEN"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding IsUnlocked}" Value="True"><Setter Property="Text" Value="OPEN"/><Setter Property="Foreground" Value="#FF8A80"/></DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>

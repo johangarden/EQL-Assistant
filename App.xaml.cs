@@ -249,6 +249,7 @@ public partial class App : Application
             {
                 DateTime? resetAt = null;
                 statsWin.SessionResetRequested += at => resetAt = at;
+                statsWin.SetLocked(true); // locked is how it is played: RESET answers all the same (25 Nov)
                 if (!statsWin.ClockForTest.StartsWith("0:42:", StringComparison.Ordinal) || statsWin.ResetKeyForTest != "RESET")
                     throw new Exception($"session panel: the clock should read the demo's 42 minutes (got {statsWin.ClockForTest})");
                 statsWin.ClickResetForTest();
@@ -6406,17 +6407,19 @@ public partial class App : Application
             var cs0 = new ConfigService();
             var cfg0 = cs0.LoadSettings();
             bool working = page.EndsWith(":working", StringComparison.OrdinalIgnoreCase) || page.EndsWith(":labels", StringComparison.OrdinalIgnoreCase);
+            bool playing = page.EndsWith(":playing", StringComparison.OrdinalIgnoreCase); // sound on, shown, locked: every state key neutral
+            bool open = page.EndsWith(":open", StringComparison.OrdinalIgnoreCase);       // muted, hidden, unlocked: all three red
             var vm = new ViewModels.OverlayViewModel(new TriggerEngine(cfg0, new AlertService()), cfg0)
             {
-                PanelsHidden = page.EndsWith(":hidden", StringComparison.OrdinalIgnoreCase),
+                PanelsHidden = page.EndsWith(":hidden", StringComparison.OrdinalIgnoreCase) || open,
                 Progress = page.EndsWith(":catchup", StringComparison.OrdinalIgnoreCase)
                     ? new ReparseProgress("eqlog_Thorrak_paineel.txt", 1, 1, 61_300_000, 142_000_000, 41_200, Verb: "Catching up")
                     : null,
                 LogStatus = "Following eqlog_Thorrak_paineel.txt",
                 LoadoutName = working ? "Charm ENC" : "Default",
-                ToolbarLabels = page.EndsWith(":labels", StringComparison.OrdinalIgnoreCase),
-                Locked = working,
-                Muted = working,
+                ToolbarLabels = page.EndsWith(":labels", StringComparison.OrdinalIgnoreCase) || playing || open,
+                Locked = working || playing,
+                Muted = working || open,
                 TradeskillOpen = working,
                 QuestBadge = working ? 2 : 0,
                 LootBadge = working ? 5 : 0,
