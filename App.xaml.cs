@@ -1100,6 +1100,33 @@ public partial class App : Application
                     && hot.History[0].SelfHealAbilities.Count == 0
                     && hotSct.Count(h => h.Kind == CombatParser.SctKind.HealOut) == 9);
             }
+            // The fight's end is a setting — 5 · 10 · 15 (owner, 25 Nov) — and the meter counts it down.
+            {
+                var quickP = new CombatParser { SelfName = "Johan", IdleSeconds = 5 };
+                quickP.Replay($"[{FT(900)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                double quiet3 = quickP.QuietSeconds(fb.AddSeconds(903));
+                quickP.Tick(fb.AddSeconds(904));
+                bool open = quickP.InCombat;
+                quickP.Tick(fb.AddSeconds(905));
+                var lull = new CombatParser { SelfName = "Johan", IdleSeconds = 15 };
+                lull.Replay($"[{FT(900)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                lull.Replay($"[{FT(912)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                lull.Tick(fb.AddSeconds(926));
+                bool lullOpen = lull.InCombat;
+                lull.Tick(fb.AddSeconds(927));
+                Check("fight: the end is a setting — at 5 s the fight freezes five quiet seconds after the hit, at 15 s a twelve-second lull stays one fight",
+                    quiet3 == 3 && open && !quickP.InCombat && quickP.History.Count == 1
+                    && lullOpen && !lull.InCombat && lull.History.Count == 1 && lull.History[0].DurationSeconds == 12
+                    && new CombatParser().IdleSeconds == 10 && new Models.AppConfig().Overlay.MeterIdleSeconds == 10
+                    && CombatParser.NormalizeIdle(5) == 5 && CombatParser.NormalizeIdle(10) == 10 && CombatParser.NormalizeIdle(15) == 15
+                    && CombatParser.NormalizeIdle(0) == 5 && CombatParser.NormalizeIdle(12) == 10 && CombatParser.NormalizeIdle(60) == 15);
+                Check("meter: the subline counts the end down once the fight has been quiet two seconds — never mid-hit, never past zero",
+                    Views.MeterWindow.EndsInText(0, 10) == "" && Views.MeterWindow.EndsInText(1.9, 10) == ""
+                    && Views.MeterWindow.EndsInText(2, 10) == " · ends in 8s" && Views.MeterWindow.EndsInText(3.4, 10) == " · ends in 7s"
+                    && Views.MeterWindow.EndsInText(9.6, 10) == " · ends in 1s" && Views.MeterWindow.EndsInText(10, 10) == ""
+                    && Views.MeterWindow.EndsInText(2, 5) == " · ends in 3s" && Views.MeterWindow.EndsInText(4, 15) == " · ends in 11s"
+                    && Views.MeterWindow.EndsInText(400, 10) == "");
+            }
 
             // Allies vs bystanders: "group" means someone joined YOUR fight —
             // a neighbour farming their own camp in logging range is scenery.
@@ -6148,17 +6175,23 @@ public partial class App : Application
             mgr = recap;
         }
         else if (page.Equals("meter:incoming", StringComparison.OrdinalIgnoreCase)
-                 || page.Equals("meter:incoming:quiet", StringComparison.OrdinalIgnoreCase))
+                 || page.Equals("meter:incoming:quiet", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("meter:ending", StringComparison.OrdinalIgnoreCase))
         {
             // The DPS meter with the incoming chart docked as its cap: a
             // spell-heavy window mid-fight, or folded to the header while quiet.
+            // meter:ending — the same fight gone quiet three seconds ago, so the
+            // subline counts its end down ("· ends in 7s").
             var mp = new CombatParser { SelfName = "Thorrak", PetName = "Garn" };
+            bool ending = page.Equals("meter:ending", StringComparison.OrdinalIgnoreCase);
+            var mBase = ending ? DateTime.Now.AddSeconds(-14) : new DateTime(2026, 9, 8, 20, 0, 0);
+            string MT(int sec) => mBase.AddSeconds(sec).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
             for (int i = 0; i < 6; i++)
             {
-                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2:00} 2026] Thorrak slashes a thunder spirit princess for {280 + i * 15} points of damage.");
-                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] Garn bites a thunder spirit princess for {90 + i * 5} points of damage.");
-                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] Thorrak hit a thunder spirit princess for {160 + i * 10} points of disease damage by Spear of Disease.");
-                mp.ProcessLine($"[Tue Sep 08 20:00:{i * 2 + 1:00} 2026] a thunder spirit princess hit YOU for {300 + i * 20} points of cold damage by Frost Spear.");
+                mp.ProcessLine($"[{MT(i * 2)}] Thorrak slashes a thunder spirit princess for {280 + i * 15} points of damage.");
+                mp.ProcessLine($"[{MT(i * 2 + 1)}] Garn bites a thunder spirit princess for {90 + i * 5} points of damage.");
+                mp.ProcessLine($"[{MT(i * 2 + 1)}] Thorrak hit a thunder spirit princess for {160 + i * 10} points of disease damage by Spear of Disease.");
+                mp.ProcessLine($"[{MT(i * 2 + 1)}] a thunder spirit princess hit YOU for {300 + i * 20} points of cold damage by Frost Spear.");
             }
             var iw = new IncomingWatch();
             if (!page.EndsWith(":quiet", StringComparison.OrdinalIgnoreCase))

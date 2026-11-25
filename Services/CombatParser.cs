@@ -8,14 +8,23 @@ namespace EQLOverlay.Services;
 /// ACT-style combat parser: accumulates damage and healing per source for the
 /// current fight, plus incoming damage taken by the player (and their pet).
 /// A fight starts on the first damage line (a hit, a miss, a resist) and freezes
-/// after ~10s without one; the next such line then starts a fresh fight. Heals
+/// after IdleSeconds without one (5 / 10 / 15, the owner's pick); the next such line then starts a fresh fight. Heals
 /// are counted in a running fight but never start one or keep it open.
 /// UI-thread only (fed from the same dispatcher callback as the trigger engine).
 /// </summary>
 public sealed class CombatParser
 {
-    /// <summary>Seconds of silence after which the current fight is considered over.</summary>
-    public const double IdleSeconds = 10;
+    public const double DefaultIdleSeconds = 10;
+
+    /// <summary>Seconds without a hit, miss or resist after which the current fight is over —
+    /// 5, 10 or 15 from the Manager's DPS page (owner, 25 Nov); the meter counts them down.</summary>
+    public double IdleSeconds { get; set; } = DefaultIdleSeconds;
+
+    /// <summary>Any stored value → one of the three the selector offers (5 · 10 · 15).</summary>
+    public static int NormalizeIdle(int seconds) => seconds <= 7 ? 5 : seconds >= 13 ? 15 : 10;
+
+    /// <summary>Seconds since the fight's last hit, miss or resist (0 when no fight runs).</summary>
+    public double QuietSeconds(DateTime now) => _active ? Math.Max(0, (now - _last).TotalSeconds) : 0;
 
     /// <summary>The logging character's name; "You"/"YOU" in lines maps to this.</summary>
     public string SelfName { get; set; } = "You";

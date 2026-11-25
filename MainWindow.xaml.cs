@@ -253,6 +253,7 @@ public partial class MainWindow : Window
         _barsHidden = !_config.Overlay.BarsVisible;
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
+        _combat.IdleSeconds = CombatParser.NormalizeIdle(_config.Overlay.MeterIdleSeconds);
         // The pet names itself on any /pet order — remember it so the meter's
         // pet lanes work without ever typing the name into the Manager.
         _combat.PetDetected += pet => Dispatcher.BeginInvoke(() =>
@@ -2149,6 +2150,7 @@ public partial class MainWindow : Window
         _toolbarHidden = !cfg.Overlay.ToolbarVisible;
         _barsHidden = !cfg.Overlay.BarsVisible;
         _combat.PetName = cfg.Overlay.PetName;
+        _combat.IdleSeconds = CombatParser.NormalizeIdle(cfg.Overlay.MeterIdleSeconds);
         ApplySelfName();
 
         bool wasLocked = _vm.Locked;

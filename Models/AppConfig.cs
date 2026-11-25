@@ -97,6 +97,10 @@ public sealed class OverlayConfig
     /// opens (owner, 16 Oct: "start in collapsed mode") and how you left it; a click flips it.</summary>
     public bool MeterSelfFolded { get; set; } = true;
 
+    /// <summary>Seconds without a hit before the meter ends the fight — 5, 10 or 15
+    /// (the Manager's DPS page; owner, 25 Nov). The meter counts them down once it goes quiet.</summary>
+    public int MeterIdleSeconds { get; set; } = 10;
+
     /// <summary>Your pet's name — enables the pet line in the DPS meter's incoming footer.</summary>
     public string PetName { get; set; } = "";
 
