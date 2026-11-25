@@ -277,6 +277,217 @@ def shm():
                caution="MAX ally, not just ally, or the scale is eaten — wait for \"Your faction with True Spirit can not get any better\".")]
     return S
 
+# ---- Druid -----------------------------------------------------------------------------
+def dru():
+    S = []
+    part("A Shiny Tin Bowl")
+    S += [say("telin", "Tell Telin Darkforest you will take action", "Telin Darkforest", "Burning Woods", "I will take action", get=["Worn note"]),
+          give("faelin", "Hand Faelin Bloodbriar the Worn note", "Faelin Bloodbriar", "Greater Faydark", ["Worn note"], get=["Faelin`s Ring"],
+               note="She has to be spawned."),
+          give("giz", "Hand Giz X`Tin Faelin`s Ring", "Giz X`Tin", "Kithicor Forest", ["Faelin`s Ring"], get=["Dark Metal Coin"]),
+          give("telin-coin", "Hand Telin Darkforest the Dark Metal Coin", "Telin Darkforest", "Burning Woods", ["Dark Metal Coin"], get=["Worn Dark Metal Coin"]),
+          give("althele", "Hand Althele the Worn Dark Metal Coin", "Althele", "East Karana", ["Worn Dark Metal Coin"], get=["Braided Grass Amulet"]),
+          give("sionae", "Show Sionae the Braided Grass Amulet", "Sionae", "East Karana, -2300, -930", ["Braided Grass Amulet"], note="The amulet comes back."),
+          give("nuien", "Show Nuien the Braided Grass Amulet", "Nuien", "East Karana, -3650, 300", ["Braided Grass Amulet"], note="The amulet comes back."),
+          give("teloa", "Show Teloa the Braided Grass Amulet", "Teloa", "East Karana, -3800, -2860", ["Braided Grass Amulet"],
+               caution="This spawns the Dark Elf Corruptor and two Dark Elf Reavers at -700, -1450. They run fast — be ready to intercept them."),
+          kill("corruptor", "Kill the Dark Elf Corruptor for the Fleshbound Tome", ["Dark Elf Corruptor"], "East Karana", ["Fleshbound Tome"]),
+          give("althele-tome", "Hand Althele the Fleshbound Tome", "Althele", "East Karana", ["Fleshbound Tome"], get=["Earth Stained Note"]),
+          give("ella-note", "Hand Ella Foodcrafter the Earth Stained Note", "Ella Foodcrafter", "Misty Thicket", ["Earth Stained Note"], get=["Shiny Tin Bowl"])]
+    part("The Hardened Mixture")
+    S += [by_hand("forage", "Forage the four ingredients", "forage", "", "Everfrost · Greater Faydark · Innothule Swamp · Misty Thicket",
+                  get=["Chilled Tundra Root", "Ripened Heartfruit", "Speckled Molded Mushroom", "Sweetened Mudroot"],
+                  note="One from each zone, in that order."),
+          combine("mixture", "Combine the four ingredients in the Shiny Tin Bowl", "In the Shiny Tin Bowl",
+                  ["Chilled Tundra Root", "Ripened Heartfruit", "Speckled Molded Mushroom", "Sweetened Mudroot"], ["Hardened Mixture"])]
+    part("The Runecrested Bowl")
+    S += [say("alrik", "Tell Alrik Farsight you will take the artifact", "Alrik Farsight", "Timorous Deep", "I will take the artifact", get=["Crushed Pot"]),
+          give("farios", "Hand Farios Elianos the Crushed Pot", "Farios Elianos", "Southern Felwithe", ["Crushed Pot"], get=["Grocery List"]),
+          give("nora", "Hand Merchant Nora the Grocery List", "Merchant Nora", "Northern Felwithe", ["Grocery List"], get=["Bag of Provisions"]),
+          give("farios-bag", "Hand Farios Elianos the Bag of Provisions", "Farios Elianos", "Southern Felwithe", ["Bag of Provisions"], get=["Receipt"]),
+          give("pattern", "Hand Alrik Farsight the Receipt", "Alrik Farsight", "Timorous Deep", ["Receipt"], get=["Ancient Pattern"]),
+          by_hand("rose", "Forage a Rose of Firiona", "forage", "", "Firiona Vie", get=["Rose of Firiona"]),
+          give("merdan", "Hand Merdan Fleetfoot the Rose of Firiona", "Merdan Fleetfoot", "Surefall Glade", ["Rose of Firiona"], get=["Wood Painting"],
+               note="Ask him \"Who is Niera?\" first."),
+          give("skeleton", "Hand a human skeleton the Wood Painting", "a human skeleton", "Frontier Mountains, behind the giant fort", ["Wood Painting"],
+               get=["Silver Chained Locket"]),
+          give("niera", "Hand Niera Farbreeze the Silver Chained Locket", "Niera Farbreeze", "Surefall Glade", ["Silver Chained Locket"],
+               get=["Platinum Speckled Powder"]),
+          kill("reaver", "Kill a black reaver for a Jade Reaver", ["a black reaver"], "City of Mist", ["Jade Reaver"]),
+          give("kinlo", "Hand Kinlo Strongarm the Jade Reaver", "Kinlo Strongarm", "North Kaladim", ["Jade Reaver"], get=["Enchanted Clay"]),
+          combine("bowl", "Combine the pattern, the powder and the clay on a Pottery Wheel", "On a Pottery Wheel",
+                  ["Ancient Pattern", "Platinum Speckled Powder", "Enchanted Clay"], ["Runecrested Bowl"])]
+    part("The Elaborate Scimitar")
+    S += [give("stone", "Hand Ella Foodcrafter the mixture and the bowl", "Ella Foodcrafter", "Misty Thicket", ["Hardened Mixture", "Runecrested Bowl"],
+               get=["Softly Glowing Stone"]),
+          by_hand("globe", "Cast a Summoned: Firefly Globe", "cast", "", "anywhere, at night", get=["Summoned: Firefly Globe"],
+                  note="A level 1 druid spell, castable only at night (7pm to 4am); the globe does not last."),
+          by_hand("res", "Buy a scroll of Resurrection", "buy", "A cleric spell vendor", "", get=["Spell: Resurrection"], note="The level 49 cleric spell."),
+          give("remains", "Hand Venril Sathir Remains the Firefly Globe", "Venril Sathir Remains", "Karnor's Castle", ["Summoned: Firefly Globe"],
+               note="This spawns the Spirit of Venril Sathir."),
+          give("vs-spirit", "Hand the Spirit of Venril Sathir the Resurrection scroll", "Spirit of Venril Sathir", "Karnor's Castle", ["Spell: Resurrection"],
+               note="This spawns Venril Sathir."),
+          kill("vs", "Kill Venril Sathir for a Pulsing Green Stone", ["Venril Sathir"], "Karnor's Castle", ["Pulsing Green Stone"]),
+          give("foloal", "Hand Foloal Stormforest the two stones", "Foloal Stormforest", "Firiona Vie", ["Pulsing Green Stone", "Softly Glowing Stone"],
+               get=["Warmly Glowing Stone"]),
+          give("scimitar", "Hand Ella Foodcrafter the Warmly Glowing Stone", "Ella Foodcrafter", "Misty Thicket", ["Warmly Glowing Stone"], get=["Elaborate Scimitar"])]
+    part("The Cleansed Spirits")
+    S += [kill("mammoth", "Kill a corrupted wooly mammoth for a Chunk of Tundra", ["corrupted wooly mammoth"], "Everfrost Peaks", ["Chunk of Tundra"]),
+          kill("c-shaman", "Kill a corrupted shaman for Clean Lakewater", ["corrupted shaman"], "Lake Rathetear", ["Clean Lakewater"]),
+          kill("c-giant", "Kill a corrupted hill giant for an Ancient Rock", ["corrupted hill giant"], "Rathe Mountains", ["Ancient Rock"]),
+          give("treant", "Hand the Withered treant the tundra, the water and the rock", "Withered treant", "Northern Karana",
+               ["Chunk of Tundra", "Clean Lakewater", "Ancient Rock"], get=["Warm Pulsing Treant Heart"]),
+          give("yeka", "Hand Yeka Ias the Warm Pulsing Treant Heart", "Yeka Ias", "Southern Karana", ["Warm Pulsing Treant Heart"], get=["Cleansed Spirit of Antonica"]),
+          kill("seahorse", "Kill the Corrupted Seahorse for Kedge Cave Crystals", ["Corrupted Seahorse"], "Kedge Keep", ["Kedge Cave Crystals"]),
+          kill("cyclops", "Kill the Corrupted seafury cyclops for Ocean of Tears Seavines", ["Corrupted seafury cyclops"], "Ocean of Tears", ["Ocean of Tears Seavines"]),
+          kill("brownie", "Kill the Corrupted brownie for a Green Heartwood Branch", ["Corrupted brownie"], "Lesser Faydark", ["Green Heartwood Branch"]),
+          give("unicorn", "Hand the Pained Unicorn the crystals, the seavines and the branch", "Pained Unicorn", "Lesser Faydark",
+               ["Kedge Cave Crystals", "Ocean of Tears Seavines", "Green Heartwood Branch"], get=["Gleaming Unicorn Horn"]),
+          give("silox", "Hand Silox Azrix the Gleaming Unicorn Horn", "Silox Azrix", "Ak'Anon", ["Gleaming Unicorn Horn"], get=["Cleansed Spirit of Faydwer"]),
+          kill("ulump", "Kill Ulump Pujluk for Froglok Essence", ["Ulump Pujluk"], "Swamp of No Hope", ["Froglok Essence"]),
+          kill("gorilla", "Kill the Corrupted Gorilla for Green Tree Bark", ["Corrupted Gorilla"], "Emerald Jungle", ["Green Tree Bark"]),
+          kill("barracuda", "Kill the Corrupted barracuda for Pure Lakewater", ["Corrupted barracuda"], "Lake of Ill Omen", ["Pure Lakewater"]),
+          give("dolgin", "Show Dolgin Codslayer the Froglok Essence", "Dolgin Codslayer", "Timorous Deep", ["Froglok Essence"],
+               note="He hands it back and leaves (a 14-hour respawn); this spawns Faydedar."),
+          kill("faydedar", "Kill Faydedar for a Pod of Seawater", ["Faydedar"], "Timorous Deep", ["Pod of Seawater"]),
+          give("nekexin", "Hand Nekexin Virulence the essence, the pod, the bark and the lakewater", "Nekexin Virulence", "The Overthere",
+               ["Froglok Essence", "Pod of Seawater", "Green Tree Bark", "Pure Lakewater"], get=["Cleansed Spirit of Kunark"])]
+    part("Nature Walkers Scimitar")
+    S += [give("xanuusus", "Hand Xanuusus the Elaborate Scimitar and the three cleansed spirits", "Xanuusus", "North Karana",
+               ["Elaborate Scimitar", "Cleansed Spirit of Antonica", "Cleansed Spirit of Faydwer", "Cleansed Spirit of Kunark"], get=["Nature Walkers Scimitar"])]
+    return S
+
+# ---- Bard ------------------------------------------------------------------------------
+def brd():
+    S = []
+    part("Maestro's Symphony Page 24 Top")
+    S += [by_hand("konia", "Talk to Konia Swiftfoot for a Torch of Misty", "talk", "Konia Swiftfoot", "Western Karana, guard tower 4", get=["Torch of Misty"]),
+          give("fajio", "Hand Fajio Knejo the Torch of Misty", "Fajio Knejo", "Misty Thicket", ["Torch of Misty"], get=["Torch of Ro"]),
+          give("andad", "Hand Andad Filla the Torch of Ro", "Andad Filla", "Southern Desert of Ro", ["Torch of Ro"], get=["Torch of Rathe"]),
+          give("misty", "Hand Misty Tekcihta the Torch of Rathe", "Misty Tekcihta", "Lake Rathetear", ["Torch of Rathe"], get=["Proof of Speed"]),
+          give("top", "Hand Konia Swiftfoot the Proof of Speed", "Konia Swiftfoot", "Western Karana, guard tower 4", ["Proof of Speed"],
+               get=["Maestro's Symphony Page 24 Top"])]
+    part("Maestro's Symphony Page 24 Bottom")
+    S += [say("doll", "Ask Baenar Swiftsong about the doll", "Baenar Swiftsong", "South Karana", "What doll", get=["Solusek Mining Company Invoice"]),
+          give("marfen", "Hand Marfen Binkdirple the invoice", "Marfen Binkdirple", "Solusek's Eye", ["Solusek Mining Company Invoice"], get=["Mechanical Doll"]),
+          give("serra", "Hand Serra the Mechanical Doll", "Serra", "Estate of Unrest", ["Mechanical Doll"], get=["Note for Baenar"]),
+          give("baenar-note", "Hand Baenar Swiftsong the Note for Baenar", "Baenar Swiftsong", "South Karana", ["Note for Baenar"], get=["Note to Maligar"]),
+          give("maligar", "Hand Maligar the Note to Maligar", "Maligar", "Western Plains of Karana", ["Note to Maligar"]),
+          kill("doppel", "Kill Maligar's Enraged Doppleganger for his head", ["Maligar's Enraged Doppleganger"], "Western Plains of Karana", ["Maligar's Head"]),
+          give("bongos", "Hand Baenar Swiftsong Maligar's Head", "Baenar Swiftsong", "South Karana", ["Maligar's Head"], get=["Mahlin's Mystical Bongos"]),
+          give("bottom", "Hand Konia Swiftfoot Mahlin's Mystical Bongos", "Konia Swiftfoot", "Western Karana, guard tower 4", ["Mahlin's Mystical Bongos"],
+               get=["Maestro's Symphony Page 24 Bottom"])]
+    part("Maestro's Symphony Page 25")
+    S += [kill("onyx", "Kill Blackwing for an Onyx Drake Gut", ["Blackwing"], "Rathe Mountains", ["Onyx Drake Gut"]),
+          kill_any("wurm", "Kill Nezekezena or Phurzikon for a Red Wurm Gut", ["Nezekezena", "Phurzikon"], "Burning Woods", ["Red Wurm Gut"]),
+          kill("chromodrac", "Kill Eldrig the Old for a Chromodrac Gut", ["Eldrig the Old"], "Skyfire Mountains", ["Chromodrac Gut"]),
+          give("page25", "Hand Kelkim Menkia the three guts", "Kelkim Menkia", "South Karana", ["Onyx Drake Gut", "Red Wurm Gut", "Chromodrac Gut"],
+               get=["Maestro's Symphony Page 25"])]
+    part("Mystical Lute Head")
+    S += [kill("horn", "Kill Quag Maelstrom for the Alluring Horn", ["Quag Maelstrom"], "Ocean of Tears", ["Alluring Horn"], optional=True),
+          give("vedico", "Hand Vedico Windwhisper the Alluring Horn", "Vedico Windwhisper", "Butcherblock Mountains", ["Alluring Horn"],
+               get=["Note to Forpar Fizfla"], optional=True),
+          give("forpar-note", "Hand Forpar Fizfla the note", "Forpar Fizfla", "Steamfont Mountains", ["Note to Forpar Fizfla"], optional=True),
+          kill("backbone", "Kill Phinigel Autropos for a Kedge Backbone", ["Phinigel Autropos"], "Kedge Keep", ["Kedge Backbone"]),
+          kill("tendril", "Kill an Amygdalan warrior for an Amygdalan Tendril", ["Amygdalan warrior"], "Plane of Fear", ["Amygdalan Tendril"]),
+          kill("skull", "Kill the Drolvarg Warlord for a Petrified Werewolf Skull", ["Drolvarg Warlord"], "Karnor's Castle", ["Petrified Werewolf Skull"]),
+          say("components", "Ask Forpar Fizfla about the components", "Forpar Fizfla", "Steamfont Mountains", "What components", get=["Forpar's Note to Himself"]),
+          give("lute-head", "Hand Forpar his note, the backbone, the tendril and the skull", "Forpar Fizfla", "Steamfont Mountains",
+               ["Forpar's Note to Himself", "Kedge Backbone", "Amygdalan Tendril", "Petrified Werewolf Skull"], get=["Mystical Lute Head"])]
+    part("Mystical Lute Body")
+    S += [kill_any("red-scales", "Kill a red dragon for Red Dragon Scales", ["Lord Nagafen", "Zordakalicus Ragefire", "Talendor", "Nortlav the Scalekeeper"],
+                   "Nagafen's Lair · Skyfire Mountains · The Hole", ["Red Dragon Scales"]),
+          kill_any("white-scales", "Kill a white dragon for White Dragon Scales", ["Lady Vox", "Gorenaire"], "Permafrost Caverns · Dreadlands", ["White Dragon Scales"]),
+          give("lute-body", "Hand Forpar the metal bits and both sets of scales", "Forpar Fizfla", "Steamfont Mountains",
+               ["Metal Bits", "Red Dragon Scales", "White Dragon Scales"], get=["Mystical Lute Body"], note="The Metal Bits are smithed.")]
+    part("Undead Dragongut Strings")
+    S += [give("undead-bard", "Hand An Undead Bard your Mystical Lute Body", "An Undead Bard", "", ["Mystical Lute Body"]),
+          kill("trakanon", "Kill An Undead Bard, then the Trakanon he calls, for the strings", ["An Undead Bard", "Trakanon"], "", ["Undead Dragongut Strings"])]
+    part("Mystical Lute")
+    S += [give("lute", "Hand Forpar the head, the body and the strings", "Forpar Fizfla", "Steamfont Mountains",
+               ["Mystical Lute Head", "Mystical Lute Body", "Undead Dragongut Strings"], get=["Mystical Lute"])]
+    part("Singing Short Sword")
+    S += [give("sword", "Hand Baldric Slezaf the three pages and the Mystical Lute", "Baldric Slezaf", "Dreadlands",
+               ["Maestro's Symphony Page 24 Top", "Maestro's Symphony Page 24 Bottom", "Maestro's Symphony Page 25", "Mystical Lute"], get=["Singing Short Sword"])]
+    return S
+
+# ---- Wizard ----------------------------------------------------------------------------
+def wiz():
+    S = []
+    part("Camin")
+    S += [by_hand("solomen", "Talk to Solomen for his note", "talk", "Solomen", "Temple of Solusek Ro"),
+          step("camin", "Hand Camin the note, hail him, then hand him 1000 platinum", "handin", "Camin", "Erudin, the Vasty Deep Inn",
+               coins="1000 platinum", trade=True, note="Doing this twice is still not enough faction for indifferent.")]
+    part("Arantir Karondor")
+    S += [by_hand("potion", "Buy Ro's Breath from Dargon", "buy", "Dargon", "Halas, outside the shaman guild", get=["Ro's Breath"],
+                  note="It costs 900 to 1100 platinum."),
+          give("camin-potion", "Hand Camin the potion", "Camin", "Erudin, the Vasty Deep Inn", ["Ro's Breath"], note="It comes back with its charge spent."),
+          give("dargon-potion", "Hand Dargon the spent potion, then hail Arantir Karondor", "Dargon", "Halas", ["Ro's Breath"], get=["Arantir's Ring"],
+               npcs=["Dargon", "Arantir Karondor"], note="Dargon turns into Arantir Karondor; any wizard may hail him for a ring."),
+          give("challice", "Hand Challice the ring", "Challice", "Felwithe, under the paladin guild", ["Arantir's Ring"], note="She hands back another ring."),
+          unnamed("arantir-ring", "Hand Arantir Karondor the second ring and hear him out", "Dargon", "Halas", get=["Note from Arantir"],
+                  npcs=["Dargon", "Arantir Karondor"], note="\"Who is the gnome?\" skips to the end of his story."),
+          give("kandin-note", "Hand Kandin Firepot the Note from Arantir and ask about the oil", "Kandin Firepot", "Butcherblock Mountains", ["Note from Arantir"],
+               get=["Golem Sprocket"], note="Say \"what oil?\".")]
+    part("The Three Staves")
+    S += [kill("blue", "Kill Phinigel Autropos for the Blue Crystal Staff", ["Phinigel Autropos"], "Kedge Keep", ["Blue Crystal Staff"]),
+          kill("gnarled", "Kill Venril Sathir for the Gnarled Staff", ["Venril Sathir"], "Karnor's Castle", ["Gnarled Staff"]),
+          give("sprocket", "Hand a broken golem the Golem Sprocket", "a broken golem", "Plane of Fear", ["Golem Sprocket"], note="This spawns an enraged golem."),
+          kill("oil", "Kill the enraged golem for Green Oil", ["an enraged golem"], "Plane of Fear", ["Green Oil"]),
+          give("gabstik", "Hand Kandin Firepot the Green Oil", "Kandin Firepot", "Butcherblock Mountains", ["Green Oil"], get=["Staff of Gabstik", "Note to Arantir"])]
+    part("Staff of the Four")
+    S += [give("arantir-note", "Hand Dargon the Note to Arantir, then hail Arantir Karondor", "Dargon", "Halas", ["Note to Arantir"], npcs=["Dargon", "Arantir Karondor"]),
+          give("staves", "Hand Arantir Karondor the three staves", "Arantir Karondor", "Halas", ["Blue Crystal Staff", "Gnarled Staff", "Staff of Gabstik"],
+               npcs=["Arantir Karondor", "Dargon"], note="He hands you a bag."),
+          unnamed("staff", "Hand Solomen the bag", "Solomen", "Temple of Solusek Ro", get=["Staff of the Four"])]
+    return S
+
+# ---- Warrior ---------------------------------------------------------------------------
+def war():
+    S = []
+    part("Jeweled Dragon Head Hilt")
+    S += [hail("kargek", "Kargek Redblade", "East Freeport", note="Hail Wenden Blackhammer as well."),
+          by_hand("unjeweled", "Fetch the Unjeweled Dragon Head Hilt from the lake bottom", "ground", "", "Lake Rathetear", get=["Unjeweled Dragon Head Hilt"]),
+          give("jeweled", "Hand Wenden Blackhammer the hilt and the three gems", "Wenden Blackhammer", "East Freeport",
+               ["Unjeweled Dragon Head Hilt", "Diamond", "Jacinth", "Black Sapphire"], get=["Jeweled Dragon Head Hilt"])]
+    part("Finely Crafted Dragon Head Hilt")
+    S += [by_hand("damaged", "Fetch the Severely Damaged Dragon Head Hilt from the chessboard", "ground", "", "Timorous Deep", get=["Severely Damaged Dragon Head Hilt"]),
+          kill("monocle", "Kill a mountain giant patriarch for a Giant Sized Monocle", ["A mountain giant patriarch"], "Dreadlands", ["Giant Sized Monocle"]),
+          give("ore", "Hand Mentrax Mountainbone the Giant Sized Monocle", "Mentrax Mountainbone", "Frontier Mountains", ["Giant Sized Monocle"], get=["Rejesiam Ore"]),
+          kill_any("golem", "Kill a Fear golem for a Ball of Everliving Golem", ["Fright", "Dread", "Terror"], "Plane of Fear", ["Ball of Everliving Golem"]),
+          give("crafted", "Hand Wenden Blackhammer the damaged hilt, the ore and the ball", "Wenden Blackhammer", "East Freeport",
+               ["Severely Damaged Dragon Head Hilt", "Rejesiam Ore", "Ball of Everliving Golem"], get=["Finely Crafted Dragon Head Hilt"])]
+    part("The Blades")
+    S += [by_hand("ale", "Buy a Keg of Vox Tail Ale", "buy", "Various merchants", "", get=["Keg of Vox Tail Ale"]),
+          by_hand("rebreathers", "Get two Rebreathers", "buy", "Other players, or a gnome tinker", "", get=["Rebreather"], note="Tinkering, trivial at 175."),
+          step("permafrost", "Loot a Block of Permafrost from the ice giants", "loot", "", "Permafrost Caverns", loot=["Block of Permafrost"]),
+          give("denken", "Hand Denken Strongpick the block, the keg and the two rebreathers", "Denken Strongpick", "Ocean of Tears",
+               ["Block of Permafrost", "Keg of Vox Tail Ale", ("Rebreather", 2)], get=["Ancient Sword Blade"]),
+          kill("velazul", "Kill Queen Velazul Di`zok for the Ancient Blade", ["Queen Velazul Di`zok"], "Chardok", ["Ancient Blade"])]
+    part("The Red Scabbard")
+    S += [say("favor", "Ask Kargek Redblade about the favor", "Kargek Redblade", "East Freeport", "What favor", get=["Wax Sealed Note"]),
+          give("oknoggin", "Hand Oknoggin Stonesmacker the Wax Sealed Note", "Oknoggin Stonesmacker", "The Feerrott", ["Wax Sealed Note"], get=["Tiny Lute"]),
+          give("legacy", "Hand Kargek Redblade the Tiny Lute", "Kargek Redblade", "East Freeport", ["Tiny Lute"], get=["Redblade's Legacy"]),
+          give("tenal-book", "Hand Tenal Redblade the book", "Tenal Redblade", "East Karana", ["Redblade's Legacy"], get=["Totem of the Freezing War"]),
+          kill("frost", "Kill goblin wizards for a Heart of Frost", ["a goblin wizard"], "Permafrost Caverns", ["Heart of Frost"]),
+          give("fiery-war", "Hand Tenal the totem and the Heart of Frost", "Tenal Redblade", "East Karana", ["Totem of the Freezing War", "Heart of Frost"],
+               get=["Totem of Fiery War"]),
+          kill_any("red-scales", "Kill a red dragon for Red Dragon Scales", ["Lord Nagafen", "Ragefire", "Zordakalicus Ragefire", "Nortlav the Scalekeeper", "Talendor"],
+                   "Nagafen's Lair · The Hole · Skyfire Mountains", ["Red Dragon Scales"]),
+          kill_any("green-scales", "Kill a green dragon for Green Dragon Scales", ["Severilous", "Hoshkar"], "Emerald Jungle · Veeshan's Peak", ["Green Dragon Scales"]),
+          give("mark", "Hand Tenal the fiery totem and both sets of scales", "Tenal Redblade", "East Karana",
+               ["Totem of Fiery War", "Red Dragon Scales", "Green Dragon Scales"], get=["Mark of the Sword"]),
+          kill("maestro", "Kill the Maestro for his hand", ["Maestro"], "Plane of Hate", ["Hand of the Maestro"]),
+          give("tenal-note", "Hand Tenal the mark and the hand", "Tenal Redblade", "East Karana", ["Mark of the Sword", "Hand of the Maestro"],
+               get=["Tenal`s note to Kargek"]),
+          kill("wingblade", "Kill the Spiroc Lord for a Spiroc Wingblade", ["Spiroc Lord"], "Plane of Sky", ["Spiroc Wingblade"]),
+          give("scabbard", "Hand Kargek Redblade Tenal's note and the wingblade", "Kargek Redblade", "East Freeport",
+               ["Tenal`s note to Kargek", "Spiroc Wingblade"], get=["Red Scabbard"])]
+    part("Jagged Blade of War")
+    S += [combine("blade", "Combine both hilts and both blades in the Red Scabbard", "In the Red Scabbard",
+                  ["Jeweled Dragon Head Hilt", "Finely Crafted Dragon Head Hilt", "Ancient Sword Blade", "Ancient Blade"], ["Jagged Blade of War"])]
+    return S
+
 QUESTS = [
     quest("epic-shd", "Shadow Knight Epic", "SHD", "Innoruuk's Curse", 46, "Kurron Ni · The Overthere", "Shadow Knight Epic Quest", shd,
           warning="Con INDIFFERENT to every hand-in NPC before you press Trade: items in the window, then Hide or invisibility, then check the con. A hand-in at a worse con is eaten.",
@@ -286,15 +497,24 @@ QUESTS = [
           note="The wiki's page does not name the three books, Kirn's ring or the diary; those steps tick on the trade or by hand."),
     quest("epic-enc", "Enchanter Epic", "ENC", "Staff of the Serpent", 50, "Stofo Olan · Erudin", "Enchanter Epic Quest", enc,
           warning="One Enchanters Sack does every combine: hand any of the four masters Jeb's Seal (it comes back), then say \"I need a sack\"."),
+    quest("epic-dru", "Druid Epic", "DRU", "Nature Walkers Scimitar", 46, "Telin Darkforest · Burning Woods", "Druid Epic Quest", dru,
+          warning="The East Karana steps end in a fight: Nuien triggers Teloa, and Teloa calls the dark elves. Be ready for them before you start."),
+    quest("epic-brd", "Bard Epic", "BRD", "Singing Short Sword", 46, "Baldric Slezaf · Dreadlands", "Bard Epic Quest", brd,
+          note="The Alluring Horn chain under the lute head is optional."),
+    quest("epic-wiz", "Wizard Epic", "WIZ", "Staff of the Four", 46, "Solomen · Temple of Solusek Ro", "Wizard Epic Quest", wiz,
+          warning="An Ornate Velium Pendant lets you skip straight to the Golem Sprocket — but then it must be used on EVERY hand-in after that, or the hand-in is eaten.",
+          note="The wiki's page does not name Solomen's note, Challice's ring or Arantir's bag; those steps tick on the trade or by hand."),
+    quest("epic-war", "Warrior Epic", "WAR", "Jagged Blade of War", 46, "Kargek Redblade · East Freeport", "Warrior Epic Quest", war,
+          note="The same combine can make the Blade of Strategy and the Blade of Tactics instead."),
 ]
 
 DOC = OrderedDict(
-    credit="Epic quest steps transcribed from eqlwiki.com's class epic pages (Shadow Knight, Shaman, Enchanter); step-tracking design EQL Assistant.",
+    credit="Epic quest steps transcribed from eqlwiki.com's class epic pages; step-tracking design EQL Assistant.",
     pack="epics",
     notice="Before Kunark (8 Dec): these steps come from eqlwiki's classic-era walkthroughs and are unverified in EQ Legends. "
            "A name the game spells differently will not tick by itself — tick the step by hand; the steps get corrected once the epics are live.",
-    footer="3 of 15 class epics so far: Shadow Knight, Shaman, Enchanter. Still to come: Bard, Berserker, Cleric, Druid, Magician, Monk, "
-           "Necromancer, Paladin, Ranger, Rogue, Warrior, Wizard. eqlwiki has no Beastlord epic page yet.",
+    footer="7 of 15 class epics so far. Still to come: Berserker, Cleric, Magician, Monk, Necromancer, Paladin, Ranger, Rogue. "
+           "eqlwiki has no Beastlord epic page yet.",
     quests=QUESTS)
 
 OUT = os.path.join(ROOT, "data", "epic-quests.json")

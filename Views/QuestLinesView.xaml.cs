@@ -628,7 +628,7 @@ public partial class QuestLinesView : UserControl
             bring.Children.Add(Label("Any one of"));
             foreach (var k in s.KillAny)
             {
-                bool slain = partial.Contains("kill:" + QuestLines.Who(k));
+                bool slain = QuestLines.KillSeen(partial, k);
                 bring.Children.Add(ItemChip(k, slain ? "slain" : "", slain ? Green : Dim, slain ? GreenLine : Line));
             }
         }

@@ -445,7 +445,7 @@ public sealed class QuestLines
         else if (_clickOpeners.Any(o => body.StartsWith(o, StringComparison.Ordinal)))
             changed = Satisfy("click", body, body, when, MatchClick);
         else if (body.StartsWith("You say, '", StringComparison.Ordinal) && SayRx.Match(body) is { Success: true } saym)
-            changed = Satisfy("say", saym.Groups["t"].Value.Trim().TrimEnd('.', '!'), body, when, MatchSay);
+            changed = Satisfy("say", saym.Groups["t"].Value.Trim().TrimEnd('.', '!', '?'), body, when, MatchSay);
         else if (body.StartsWith("You offered ", StringComparison.Ordinal) && OfferRx.Match(body) is { Success: true } om)
         {
             string itemKey = Key(om.Groups["item"].Value);
@@ -484,7 +484,20 @@ public sealed class QuestLines
     }
 
     private static bool MatchKill(Step s, string mob) =>
-        s.KillNames.Any(k => Who(k) == Who(mob));
+        s.KillNames.Any(k => Bare(Who(k)) == Bare(Who(mob)));
+
+    /// <summary>A mob's name without its leading article: the wiki's "Spiroc Lord" is the game's
+    /// "The Spiroc Lord", its "Amygdalan warrior" the log's "an amygdalan warrior" (25 Nov).</summary>
+    private static string Bare(string who) => Regex.Replace(who, @"^(?:a|an|the) ", "");
+
+    /// <summary>Has the log seen this mob die for the step? (Article-blind; the stored key keeps the log's own spelling.)</summary>
+    public static bool KillSeen(IEnumerable<string> partial, string mob)
+    {
+        string want = Bare(Who(mob));
+        foreach (var c in partial)
+            if (c.StartsWith("kill:", StringComparison.OrdinalIgnoreCase) && Bare(c[5..]) == want) return true;
+        return false;
+    }
     private static bool MatchMake(Step s, string itemKey) =>
         s.Make.Any(m => Key(m) == itemKey);
     private static bool MatchLoot(Step s, string itemKey) =>
@@ -492,7 +505,7 @@ public sealed class QuestLines
     private static bool MatchClick(Step s, string line) =>
         s.ClickText.Length > 0 && line.StartsWith(s.ClickText, StringComparison.OrdinalIgnoreCase);
     private static bool MatchSay(Step s, string said) =>
-        s.Say.Length > 0 && s.Say.Trim().TrimEnd('.', '!').Equals(said, StringComparison.OrdinalIgnoreCase);
+        s.Say.Length > 0 && s.Say.Trim().TrimEnd('.', '!', '?').Equals(said, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Record one satisfied condition on every unfinished step it
     /// fits, then see whether the step is now proven.</summary>
@@ -570,8 +583,8 @@ public sealed class QuestLines
         string key = StepKey(q, s);
         var set = _partial.GetValueOrDefault(key);
         if (set is null) return;
-        foreach (var k in s.Kill) if (!set.Contains("kill:" + Who(k))) return;
-        if (s.KillAny.Count > 0 && !s.KillAny.Any(k => set.Contains("kill:" + Who(k)))) return; // any one of them
+        foreach (var k in s.Kill) if (!KillSeen(set, k)) return;
+        if (s.KillAny.Count > 0 && !s.KillAny.Any(k => KillSeen(set, k))) return; // any one of them
         foreach (var l in s.Loot) if (!set.Contains("loot:" + Key(l))) return;
         foreach (var mk in s.Make) if (!set.Contains("make:" + Key(mk))) return;
         if (s.Say.Length > 0 && !set.Contains("say")) return;
@@ -588,7 +601,8 @@ public sealed class QuestLines
         bool intent = Anchors(s) || s.Click.Length > 0;
         if (!intent && !Started(q)) return;
         _marks[key] = new Mark(when, "auto", string.Join(" · ", _evidence.GetValueOrDefault(key) ?? new List<string>()));
-        if (intent) ImplyEarlier(q, s, when); // only intent vouches for the chain before it
+        bool last = s.Part.Length > 0 && ReferenceEquals(s, q.Steps.LastOrDefault(x => !x.Optional));
+        if (intent || last) ImplyEarlier(q, s, when); // only intent vouches for the chain before it — or an epic's final step
         StepDone?.Invoke(q, s);
         if (intent) ReproveWaiting(q, when);
     }
@@ -619,7 +633,8 @@ public sealed class QuestLines
                 if (!mm.Success || !int.TryParse(mm.Groups[1].Value, out int n) || n < 1 || n > q.Steps.Count) continue;
                 var src = q.Steps[n - 1];
                 bool byTick = _marks.GetValueOrDefault(StepKey(q, src)) is { How: "you" };
-                if (!Anchors(src) && src.Click.Length == 0 && !byTick) { _marks.Remove(key); removed++; }
+                bool lastOfEpic = src.Part.Length > 0 && ReferenceEquals(src, q.Steps.LastOrDefault(x => !x.Optional));
+                if (!Anchors(src) && src.Click.Length == 0 && !byTick && !lastOfEpic) { _marks.Remove(key); removed++; }
             }
             if (Started(q)) continue;
             foreach (var s in q.Steps)
@@ -677,8 +692,8 @@ public sealed class QuestLines
         if (s.Click.Length == 0 || IsDone(q, s)) return false;
         var set = _partial.GetValueOrDefault(StepKey(q, s));
         if (set is null) return false;
-        return s.Kill.All(k => set.Contains("kill:" + Who(k)))
-            && (s.KillAny.Count == 0 || s.KillAny.Any(k => set.Contains("kill:" + Who(k))))
+        return s.Kill.All(k => KillSeen(set, k))
+            && (s.KillAny.Count == 0 || s.KillAny.Any(k => KillSeen(set, k)))
             && s.Loot.All(l => set.Contains("loot:" + Key(l)));
     }
 

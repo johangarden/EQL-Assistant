@@ -3097,8 +3097,8 @@ public partial class App : Application
                     QuestLines.Step St(QuestLines.Quest q, string id) => q.Steps.First(x => x.Id == id);
                     var e0 = new DateTime(2026, 12, 9, 20, 0, 0);
                     string EL(int sec, string body) => $"[{e0.AddSeconds(sec).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] {body}";
-                    Check("epics: three epics load as their own pack beside the three notable lines; the shadow knight's 33 steps count 20 — 13 are optional",
-                        eq.QuestsIn("epics").Count == 3 && eq.QuestsIn("").Count == 3 && shd.Pack == "epics" && shd.Steps.Count == 33
+                    Check("epics: the epics load as their own pack beside the three notable lines; the shadow knight's 33 steps count 20 — 13 are optional",
+                        eq.QuestsIn("epics").Count >= 7 && eq.QuestsIn("epics").All(q => q.Classes.Count == 1 && q.Steps.All(x => x.Part.Length > 0)) && eq.QuestsIn("").Count == 3 && shd.Pack == "epics" && shd.Steps.Count == 33
                         && eq.RequiredCount(shd) == 20 && eq.NextStep(shd) == St(shd, "ghoulbane")
                         && eq.NoticeOf("epics").StartsWith("Before Kunark", StringComparison.Ordinal) && eq.NoticeOf("") == ""
                         && eq.FooterOf("epics").Contains("Still to come", StringComparison.Ordinal)
@@ -3152,6 +3152,25 @@ public partial class App : Application
                     Check("epics: the final hand-in completes the quest — every one of its 41 steps — and the progress survives a reload",
                         eq.IsComplete(enc) && eq.DoneCount(enc) == 41 && eq.NextStep(enc) is null && eq2.IsComplete(enc2)
                         && eq2.DoneCount(eq2.Quests.First(q => q.Key == "epic-shd")) == 8);
+                    // Names the game may spell its own way: a mob's leading article and a question mark never matter.
+                    var war = eq.Quests.First(q => q.Key == "epic-war");
+                    var brd = eq.Quests.First(q => q.Key == "epic-brd");
+                    var wiz = eq.Quests.First(q => q.Key == "epic-wiz");
+                    eq.ProcessLine(EL(80, "You say, 'What favor?'"));
+                    eq.ProcessLine(EL(81, "You have slain The Spiroc Lord!"));
+                    eq.ProcessLine(EL(82, "--You have looted a Spiroc Wingblade from The Spiroc Lord's corpse.--"));
+                    eq.ProcessLine(EL(83, "An amygdalan warrior has been slain by Thorrak!"));
+                    Check("epics: the wiki's \"Spiroc Lord\" is the game's \"The Spiroc Lord\", and \"What favor\" is said with or without its question mark",
+                        eq.IsDone(war, St(war, "favor")) && eq.IsDone(war, St(war, "wingblade"))
+                        && QuestLines.KillSeen(eq.PartialOf(brd, St(brd, "tendril")), "Amygdalan warrior") && !eq.IsDone(brd, St(brd, "tendril")));
+                    // The wizard's last step is an unnamed hand-in: proven by the trade, it still vouches for the whole quest.
+                    eq.ProcessLine(EL(90, "You offered 1 Ro's Breath to Camin."));
+                    eq.ProcessLine(EL(91, "You complete the trade with Camin."));
+                    bool wizStarted = eq.IsDone(wiz, St(wiz, "camin-potion")) && !eq.IsComplete(wiz);
+                    eq.ProcessLine(EL(95, "You complete the trade with Solomen."));
+                    Check("epics: an epic's last step vouches for the whole quest even when it is an unnamed hand-in",
+                        wizStarted && eq.IsComplete(wiz) && eq.DoneCount(wiz) == eq.RequiredCount(wiz) && eq.MarkOf(wiz, St(wiz, "staff"))!.How == "auto"
+                        && new QuestLines(new ConfigService(), null, epPath) is var eq3 && eq3.IsComplete(eq3.Quests.First(q => q.Key == "epic-wiz")));
                     try { File.Delete(epPath); } catch { /* temp */ }
 
                     // The Quests window: the Epics tab is real, opens on your combo's epics and folds the rest.
@@ -3167,10 +3186,10 @@ public partial class App : Application
                     var epicView = skyE.LinesViewForTest;
                     var listTexts = epicView.ListTextsForTest.ToList();
                     var detail = epicView.DetailTextsForTest.ToList();
-                    Check("epics view: the tab shows the pack — notice up, your two epics as cards, the third folded under \"1 other class\", the shadow knight selected",
+                    Check("epics view: the tab shows the pack — notice up, your two epics as cards, the rest folded under \"N other classes\", the shadow knight selected",
                         skyE.Pack == "epics" && epicView.Pack == "epics" && epicView.NoticeForTest.StartsWith("Before Kunark", StringComparison.Ordinal)
                         && listTexts.Contains("Shadow Knight Epic") && listTexts.Contains("Shaman Epic") && !listTexts.Contains("Enchanter Epic")
-                        && listTexts.Any(t => t.Contains("1 other class", StringComparison.Ordinal)) && epicView.SelectedKey == "epic-shd");
+                        && !listTexts.Contains("Druid Epic") && listTexts.Any(t => t.Contains(" other classes", StringComparison.Ordinal)) && epicView.SelectedKey == "epic-shd");
                     Check("epics view: parts head the steps — five of them, the two optional ones tagged, only the part holding the next step open; the whole-quest warning shows",
                         detail.Count(t => t.StartsWith("PART ", StringComparison.Ordinal)) == 5 && detail.Count(t => t == "OPTIONAL") == 2
                         && detail.Any(t => t.StartsWith("Whole quest: Con INDIFFERENT", StringComparison.Ordinal))
