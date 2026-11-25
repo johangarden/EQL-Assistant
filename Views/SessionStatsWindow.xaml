@@ -124,6 +124,10 @@
                        Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="260"/>
 
             <!-- Scope pills: tier scoping + rate basis (RaidKills segment look). -->
+            <!-- The game put you A.F.K.: the clock and the rates wait (owner, 25 Nov). -->
+            <TextBlock x:Name="PausedText" Visibility="Collapsed" Foreground="#E8C15A" FontSize="10"
+                       FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="260"/>
+
             <!-- …and, on the right, the session's running clock with its RESET key (owner, 25 Nov). -->
             <DockPanel Margin="0,5,0,0" LastChildFill="False">
                 <Border x:Name="TierBtn" DockPanel.Dock="Left" CornerRadius="9" Padding="8,2" Margin="0,0,5,0"

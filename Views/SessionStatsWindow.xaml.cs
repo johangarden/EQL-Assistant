@@ -32,6 +32,8 @@ public partial class SessionStatsWindow : Window
     private static readonly Brush SegOffFg = Freeze("#7F93AD");
     private static readonly Brush PillLine = Freeze("#3A4560");
     private static readonly Brush ArmedFg = Freeze("#FF6B6B");   // RESET? — the second click does it
+    private static readonly Brush ClockFg = Freeze("#C9D4E4");
+    private static readonly Brush PausedFg = Freeze("#E8C15A");  // the clock stands still while A.F.K.
 
     private readonly SessionStats _stats;
     private readonly PanelPlacement _placement;
@@ -141,6 +143,11 @@ public partial class SessionStatsWindow : Window
         if (_hidden) return;
         var now = DateTime.Now;
         ClockText.Text = SessionStats.FmtClock(_stats.SessionClockSeconds(now));
+        bool paused = _stats.AfkSince is not null;
+        ClockText.Foreground = paused ? PausedFg : ClockFg;
+        if (paused)
+            PausedText.Text = $"PAUSED · AFK since {_stats.AfkSince:HH:mm} — the clock and the rates wait for you";
+        PausedText.Visibility = paused ? Visibility.Visible : Visibility.Collapsed;
         ClockText.ToolTip = _stats.SessionStart is DateTime start
             ? _stats.SessionIsManual
                 ? $"This session's clock — running since you reset it at {start:HH:mm}."
@@ -173,6 +180,7 @@ public partial class SessionStatsWindow : Window
     }
 
     internal string ClockForTest => ClockText.Text;
+    internal string PausedForTest => PausedText.Visibility == Visibility.Visible ? PausedText.Text : "";
     internal string ResetKeyForTest => ResetBtnText.Text;
     internal void ClickResetForTest() => Reset_Click(this, null!);
 

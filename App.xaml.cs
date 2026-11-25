@@ -258,6 +258,16 @@ public partial class App : Application
                 if (resetAt is null || demoStats.SessionMark != resetAt || !demoStats.SessionIsManual
                     || !statsWin.ClockForTest.StartsWith("0:00:0", StringComparison.Ordinal) || statsWin.ResetKeyForTest != "RESET")
                     throw new Exception($"session panel: the second RESET click starts a fresh session (clock {statsWin.ClockForTest})");
+                // A.F.K. pauses the panel: the amber line shows, and your next cast takes it away again.
+                string AfkTs(int sec) => DateTime.Now.AddSeconds(sec).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                demoStats.ProcessLine($"[{AfkTs(-2)}] You are now A.F.K. (Away From Keyboard).");
+                statsWin.Refresh();
+                if (!statsWin.PausedForTest.StartsWith("PAUSED · AFK since ", StringComparison.Ordinal))
+                    throw new Exception("session panel: an A.F.K. line should show the paused note");
+                demoStats.ProcessLine($"[{AfkTs(-1)}] You begin casting Spirit of Wolf.");
+                statsWin.Refresh();
+                if (statsWin.PausedForTest.Length > 0)
+                    throw new Exception("session panel: your own cast should end the pause");
             }
             statsWin.Close();
 
@@ -2403,6 +2413,53 @@ public partial class App : Application
                         && SessionStats.FmtClock(0) == "0:00:00" && SessionStats.FmtClock(-1) == "–"
                         && new SessionStats().SessionClockSeconds(N(0)) == -1 && new SessionStats().SessionStart is null
                         && new SessionStats { SessionMark = N(5) }.SessionClockSeconds(N(65)) == 60);
+                }
+
+                // A.F.K. (25 Nov): the game's own line pauses the session — clock and rates — until its end line,
+                // or, since the rig logs print that only half the time, until your own next action.
+                {
+                    var af = new SessionStats { SelfName = "Thorrak" };
+                    af.ProcessLine($"[{S(0)}] Welcome to EverQuest Legends!");
+                    for (int i = 0; i < 6; i++) af.ProcessLine($"[{S(10 + i * 100)}] You gain experience! (1.000%)");
+                    af.ProcessLine($"[{S(600)}] You are now A.F.K. (Away From Keyboard).");
+                    bool paused = af.AfkSince == N(600) && af.SessionClockSeconds(N(900)) == 600; // the clock stands at 10:00
+                    af.ProcessLine($"[{S(1200)}] You are no longer A.F.K. (Away From Keyboard).");
+                    for (int i = 0; i < 6; i++) af.ProcessLine($"[{S(1210 + i * 100)}] You gain experience! (1.000%)");
+                    var afSes = af.Snapshot(N(1800), SessionStats.Slice.Session, true, SessionStats.Basis.Elapsed);
+                    Check("stats: an A.F.K. stretch pauses the session — the clock stands still, ten of the thirty minutes leave the elapsed rate",
+                        paused && af.AfkSince is null && af.SessionClockSeconds(N(1800)) == 1200 && afSes.Span == "over 20m elapsed");
+
+                    // No end line: a mob hitting you ends nothing, your own cast does.
+                    af.ProcessLine($"[{S(1800)}] You are now A.F.K. (Away From Keyboard).");
+                    af.ProcessLine($"[{S(1850)}] You are now A.F.K. (Away From Keyboard)."); // the same stretch
+                    af.ProcessLine($"[{S(1900)}] A gnoll pup hits YOU for 5 points of damage.");
+                    af.ProcessLine($"[{S(1950)}] You were hit by non-melee for 5 points of damage.");
+                    bool still = af.AfkSince == N(1800);
+                    af.ProcessLine($"[{S(2100)}] You begin casting Spirit of Wolf.");
+                    bool castEnds = af.AfkSince is null && af.SessionClockSeconds(N(2100)) == 1200;
+                    // …and so do a swing, your spell's hit, something you said, and experience (a pet kill pays you).
+                    bool Ends(string line)
+                    {
+                        var x = new SessionStats { SelfName = "Thorrak" };
+                        x.ProcessLine($"[{S(0)}] You are now A.F.K. (Away From Keyboard).");
+                        x.ProcessLine($"[{S(50)}] {line}");
+                        return x.AfkSince is null;
+                    }
+                    Check("stats: with no end line, your own next action ends the pause — a cast, a swing, a spell hit, a word, experience — and a mob's hit on you never does",
+                        still && castEnds
+                        && Ends("You slash a gnoll pup for 15 points of damage.") && Ends("Thorrak hit a gnoll pup for 55 points of magic damage by Sanity Warp.")
+                        && Ends("You say, 'back'") && Ends("You gain experience! (1.000%)") && Ends("You have entered Befallen.")
+                        && !Ends("A gnoll pup hits YOU for 5 points of damage.") && !Ends("Garn bites a gnoll pup for 9 points of damage.")
+                        && !Ends("A gnoll pup has taken 40 damage from Ignite by Thorrak.") && !Ends("Yungtung tells General:1, 'ya'"));
+
+                    // Logged out while A.F.K.: the logout and the pause are ONE cut. 4000 s of evening minus
+                    // 600 (the first pause), 300 (the second) and 1800 (2200 → the login) = 1300 s.
+                    af.ProcessLine($"[{S(2200)}] You are now A.F.K. (Away From Keyboard).");
+                    af.ProcessLine($"[{S(4000)}] Welcome to EverQuest Legends!");
+                    var afAll = af.Snapshot(N(4000), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed);
+                    af.Reset();
+                    Check("stats: an A.F.K. you logged out of is cut once, the login ends it, and a rebuild forgets the pauses",
+                        afAll.Span == "over 21m elapsed" && af.AfkSince is null && !af.HasData);
                 }
 
                 // Reset + refeed (the catch-up path) lands on the same numbers.
@@ -6370,12 +6427,15 @@ public partial class App : Application
             else if (win is Views.MezWindow mw) { mw.SetLocked(true); mw.Show(); mw.Refresh(); }
             mgr = win;
         }
-        else if (page.Equals("session", StringComparison.OrdinalIgnoreCase) || page.Equals("session:armed", StringComparison.OrdinalIgnoreCase))
+        else if (page.Equals("session", StringComparison.OrdinalIgnoreCase) || page.Equals("session:armed", StringComparison.OrdinalIgnoreCase)
+                 || page.Equals("session:afk", StringComparison.OrdinalIgnoreCase))
         {
             // The session stats panel on its demo evening: the running clock and the RESET key
-            // (session:armed — after the first click, "RESET?" in red).
+            // (session:armed — after the first click, "RESET?" in red; session:afk — paused six minutes ago).
             var demo = new SessionStats();
-            demo.AddDemo(DateTime.Now);
+            demo.AddDemo(DateTime.Now.AddMinutes(page.EndsWith(":afk", StringComparison.OrdinalIgnoreCase) ? -6 : 0));
+            if (page.EndsWith(":afk", StringComparison.OrdinalIgnoreCase))
+                demo.ProcessLine($"[{DateTime.Now.AddMinutes(-6).AddSeconds(5).ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture)}] You are now A.F.K. (Away From Keyboard).");
             var sw = new Views.SessionStatsWindow(demo, new ConfigService(), 1.0,
                 SessionStats.Slice.ZoneSession, exactTier: false, SessionStats.Basis.Active)
             {

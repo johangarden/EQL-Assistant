@@ -24,6 +24,12 @@ namespace EQLOverlay.Services;
 ///    remaining time without an exp/kill/loot line (medding, banking, AFK —
 ///    the log cannot see a chair, so it is called idle, nothing more).
 ///    ELAPSED basis = duration − offline; ACTIVE basis = elapsed − idle.
+///  • AFK is the one absence the game STATES (owner, 25 Nov): "You are now
+///    A.F.K. (Away From Keyboard)." pauses the session — clock and rates, on
+///    both bases — until "You are no longer A.F.K. …". The rig logs print the
+///    end line only about half the time (42 starts, 22 ends), so your own
+///    next action ends the pause too: experience, a kill, loot, a ding, a
+///    zone line, /who, a login, a cast, a swing or something you said.
 ///  • "This tier": EQL spells difficulty into the zone name ("Befallen 3
 ///    (Fused)"). Exact-tier scoping admits only visits spelled exactly like
 ///    the current zone; every-tier folds the tier and instance away. The
@@ -87,6 +93,12 @@ public sealed class SessionStats
 
     private const string ZonePrefix = "You have entered ";
     private const string WelcomeLine = "Welcome to EverQuest Legends!";
+    private const string AfkOnLine = "You are now A.F.K. (Away From Keyboard).";
+    private const string AfkOffLine = "You are no longer A.F.K. (Away From Keyboard).";
+    // Your own swing: "You slash a gnoll pup for 15 points of damage." — never "You were hit by …".
+    private static readonly Regex OwnHitRx = new(
+        @"^You (?!were )[a-z]+ .+ for \d+ points? of (?:[a-z]+ )?damage",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private const string SlainPrefix = "You have slain ";
     private const string LootedDashPrefix = "--You have looted ";
 
@@ -107,6 +119,8 @@ public sealed class SessionStats
     private readonly List<(DateTime Ts, string Tier, int Count)> _motes = new();
     private readonly List<(DateTime Ts, string Zone)> _zones = new();
     private readonly List<(DateTime Start, DateTime End)> _offline = new();
+    private readonly List<(DateTime Start, DateTime End)> _afk = new();   // closed AFK stretches
+    private DateTime? _afkSince;                                          // the one still running
     private readonly List<DateTime> _welcomes = new();
     private readonly List<DateTime> _activity = new(); // exp ∪ own kills ∪ loot
     private (DateTime Ts, int Level, bool FromWho)? _levelStatement;
@@ -140,8 +154,13 @@ public sealed class SessionStats
     public bool SessionIsManual => SessionMark is DateTime mark && SessionStart == mark;
 
     /// <summary>The session's running clock: seconds since SessionStart (−1 when there is none).</summary>
-    public double SessionClockSeconds(DateTime now) =>
-        SessionStart is DateTime start ? Math.Max(0, (now - start).TotalSeconds) : -1;
+    public double SessionClockSeconds(DateTime now)
+    {
+        if (SessionStart is not DateTime start) return -1;
+        if (now <= start) return 0;
+        double paused = OverlapSec(PauseCuts(now), new List<Span> { new(start, now) });
+        return Math.Max(0, (now - start).TotalSeconds - paused);
+    }
 
     /// <summary>"0:29:14" — the running clock's face; "–" when no session runs.</summary>
     public static string FmtClock(double seconds)
@@ -156,9 +175,34 @@ public sealed class SessionStats
     {
         _exp.Clear(); _dings.Clear(); _aa.Clear(); _motes.Clear();
         _zones.Clear(); _offline.Clear(); _welcomes.Clear(); _activity.Clear();
+        _afk.Clear(); _afkSince = null;
         _levelStatement = null;
         _first = _last = _lastInWorld = null;
     }
+
+    /// <summary>When the game put you A.F.K. and nothing has ended it yet — the session is paused.</summary>
+    public DateTime? AfkSince => _afkSince;
+
+    private void EndAfk(DateTime ts)
+    {
+        if (_afkSince is not DateTime since) return;
+        _afkSince = null;
+        if (ts > since) _afk.Add((since, ts));
+    }
+
+    /// <summary>Something only a present player does — it ends a pause the game never closed.</summary>
+    private bool IsOwnAction(string body) =>
+        body.StartsWith("You begin casting ", StringComparison.Ordinal)
+        || body.StartsWith("You begin singing ", StringComparison.Ordinal)
+        || body.StartsWith("You activate ", StringComparison.Ordinal)
+        || body.StartsWith("You try to ", StringComparison.Ordinal)
+        || body.StartsWith("You say", StringComparison.Ordinal)
+        || body.StartsWith("You tell ", StringComparison.Ordinal)
+        || body.StartsWith("You told ", StringComparison.Ordinal)
+        || body.StartsWith("You shout", StringComparison.Ordinal)
+        || body.StartsWith("You auction", StringComparison.Ordinal)
+        || (SelfName.Length > 0 && body.StartsWith(SelfName + " hit ", StringComparison.OrdinalIgnoreCase))
+        || OwnHitRx.IsMatch(body);
 
     public void ProcessLine(string rawLine)
     {
@@ -174,7 +218,22 @@ public sealed class SessionStats
             if (_lastInWorld is DateTime prev && (ts - prev).TotalSeconds >= OfflineGapMinSec)
                 _offline.Add((prev, ts));
             _welcomes.Add(ts);
+            EndAfk(ts); // a login ends a pause the logout left open (the two cuts are unioned, never doubled)
             Note(ts);
+            return;
+        }
+
+        if (body == AfkOnLine)
+        {
+            _afkSince ??= ts;     // a second "now A.F.K." with no end between is the same stretch
+            Note(ts);             // in the world, but not an action: it must not end the pause it opens
+            if (_lastInWorld is null || ts > _lastInWorld) _lastInWorld = ts;
+            return;
+        }
+        if (body == AfkOffLine)
+        {
+            EndAfk(ts);
+            NoteInWorld(ts);
             return;
         }
 
@@ -251,7 +310,11 @@ public sealed class SessionStats
             WhoClasses = m.Groups["cls"].Value;
             StateLevel(ts, int.Parse(m.Groups["lvl"].Value, CultureInfo.InvariantCulture), fromWho: true);
             NoteInWorld(ts);
+            return;
         }
+
+        // The game often never prints the end of an A.F.K. — your next own action is the end.
+        if (_afkSince is not null && IsOwnAction(body)) EndAfk(ts);
     }
 
     private void StateLevel(DateTime ts, int level, bool fromWho)
@@ -271,6 +334,7 @@ public sealed class SessionStats
 
     private void NoteInWorld(DateTime ts)
     {
+        if (_afkSince is DateTime since && ts > since) EndAfk(ts); // experience, a kill, loot, a zone: you are back
         Note(ts);
         if (_lastInWorld is null || ts > _lastInWorld) _lastInWorld = ts;
     }
@@ -331,8 +395,9 @@ public sealed class SessionStats
 
         var spans = AdmittedSpans(t0, t1, zoneFiltered ? zoneName : null, exactTier);
         double durationSec = spans.Sum(s => (s.End - s.Start).TotalSeconds);
-        double offlineSec = OverlapSec(_offline, spans);
-        var onlineSpans = SubtractOffline(spans);
+        var cuts = PauseCuts(t1);                       // logouts ∪ A.F.K. stretches
+        double offlineSec = OverlapSec(cuts, spans);
+        var onlineSpans = SubtractCuts(spans, cuts);
         double idleSec = IdleSec(onlineSpans, t1);
         double elapsedSec = Math.Max(0, durationSec - offlineSec);
         double activeSec = Math.Max(0, elapsedSec - idleSec);
@@ -566,13 +631,37 @@ public sealed class SessionStats
         return sum;
     }
 
-    private List<Span> SubtractOffline(List<Span> spans)
+    /// <summary>Every stretch that is not session time: the logouts and the A.F.K. pauses (the one
+    /// still running reaches to <paramref name="t1"/>), merged so that an A.F.K. you logged out of
+    /// is cut once, not twice.</summary>
+    private List<(DateTime Start, DateTime End)> PauseCuts(DateTime t1)
+    {
+        var all = new List<(DateTime Start, DateTime End)>(_offline.Count + _afk.Count + 1);
+        all.AddRange(_offline);
+        all.AddRange(_afk);
+        if (_afkSince is DateTime since && t1 > since) all.Add((since, t1));
+        if (all.Count < 2) return all;
+        all.Sort((a, b) => a.Start.CompareTo(b.Start));
+        var merged = new List<(DateTime Start, DateTime End)> { all[0] };
+        for (int i = 1; i < all.Count; i++)
+        {
+            var last = merged[^1];
+            if (all[i].Start <= last.End)
+            {
+                if (all[i].End > last.End) merged[^1] = (last.Start, all[i].End);
+            }
+            else merged.Add(all[i]);
+        }
+        return merged;
+    }
+
+    private static List<Span> SubtractCuts(List<Span> spans, List<(DateTime Start, DateTime End)> cuts)
     {
         var result = new List<Span>();
         foreach (var s in spans)
         {
             var pieces = new List<Span> { s };
-            foreach (var c in _offline)
+            foreach (var c in cuts)
             {
                 var next = new List<Span>();
                 foreach (var p in pieces)
