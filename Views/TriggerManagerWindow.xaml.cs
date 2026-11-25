@@ -2002,6 +2002,7 @@ public partial class TriggerManagerWindow : Window
                 SessionStatsSlice = _config.Overlay.SessionStatsSlice,           // panel-toggled
                 SessionStatsExactTier = _config.Overlay.SessionStatsExactTier,   // panel-toggled
                 SessionStatsActiveBasis = _config.Overlay.SessionStatsActiveBasis, // panel-toggled
+                SessionStatsResetAt = _config.Overlay.SessionStatsResetAt,         // the panel's RESET key
                 TimerSeconds = _config.Overlay.TimerSeconds, // not edited here — carried through
                 TimerVisible = TimerVisibleCheck.IsChecked == true,
                 MeterVisible = MeterVisibleCheck.IsChecked == true,

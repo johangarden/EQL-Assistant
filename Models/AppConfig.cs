@@ -274,6 +274,10 @@ public sealed class OverlayConfig
     /// vs active (minus 5+ minute silences — the camp's pace).</summary>
     public bool SessionStatsActiveBasis { get; set; } = false;
 
+    /// <summary>When the owner last pressed the session panel's RESET key — the session views
+    /// count from here until the game's next login (25 Nov). Null = never.</summary>
+    public DateTime? SessionStatsResetAt { get; set; }
+
     /// <summary>Panels-menu master toggles: every panel that can appear gets
     /// one. Matrices still need cells, reminders still need a missing buff.</summary>
     public bool SelfMatrixVisible { get; set; } = true;

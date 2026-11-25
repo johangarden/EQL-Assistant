@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace EQLOverlay.Services;
@@ -117,6 +117,39 @@ public sealed class SessionStats
 
     /// <summary>True once any tracked event has been recorded.</summary>
     public bool HasData => _first is not null;
+
+    /// <summary>A session the owner started BY HAND (the panel's RESET key, 25 Nov): the session
+    /// slices count from here whenever it is later than the game's last login. It is not part of
+    /// the record — Reset() (the catch-up rebuild) leaves it alone, the host persists it, and the
+    /// next login supersedes it by being later.</summary>
+    public DateTime? SessionMark { get; set; }
+
+    /// <summary>Where "this session" starts: the game's last login (else the first line seen), or the
+    /// owner's reset when that is later. Null while the log has said nothing and nobody reset.</summary>
+    public DateTime? SessionStart
+    {
+        get
+        {
+            DateTime? start = _welcomes.Count > 0 ? _welcomes[^1] : _first;
+            if (SessionMark is DateTime mark && (start is null || mark > start)) start = mark;
+            return start;
+        }
+    }
+
+    /// <summary>True while the session runs from the owner's reset, not from a login.</summary>
+    public bool SessionIsManual => SessionMark is DateTime mark && SessionStart == mark;
+
+    /// <summary>The session's running clock: seconds since SessionStart (−1 when there is none).</summary>
+    public double SessionClockSeconds(DateTime now) =>
+        SessionStart is DateTime start ? Math.Max(0, (now - start).TotalSeconds) : -1;
+
+    /// <summary>"0:29:14" — the running clock's face; "–" when no session runs.</summary>
+    public static string FmtClock(double seconds)
+    {
+        if (seconds < 0) return "–";
+        long total = (long)Math.Floor(seconds);
+        return $"{total / 3600}:{total % 3600 / 60:00}:{total % 60:00}";
+    }
 
     /// <summary>Wipe the record (catch-up rebuilds it from the log).</summary>
     public void Reset()
@@ -287,7 +320,7 @@ public sealed class SessionStats
             return new View(Array.Empty<StatRow>(), "no data yet", "", "", "", false);
 
         DateTime t1 = now > _last!.Value ? now : _last.Value;
-        DateTime sessionStart = _welcomes.Count > 0 ? _welcomes[^1] : first;
+        DateTime sessionStart = SessionStart ?? first; // the last login, or the owner's reset when later
         DateTime t0 = slice is Slice.Session or Slice.ZoneSession ? sessionStart : first;
         if (t0 > t1) t0 = t1;
 

@@ -244,6 +244,21 @@ public partial class App : Application
                 SessionStats.Slice.ZoneSession, exactTier: true, SessionStats.Basis.Elapsed);
             statsWin.Show();
             statsWin.Refresh();
+            // The running clock + RESET (25 Nov): the demo evening began 42 minutes ago; the first click only
+            // arms the key, the second starts a fresh session and the clock is back at zero.
+            {
+                DateTime? resetAt = null;
+                statsWin.SessionResetRequested += at => resetAt = at;
+                if (!statsWin.ClockForTest.StartsWith("0:42:", StringComparison.Ordinal) || statsWin.ResetKeyForTest != "RESET")
+                    throw new Exception($"session panel: the clock should read the demo's 42 minutes (got {statsWin.ClockForTest})");
+                statsWin.ClickResetForTest();
+                if (statsWin.ResetKeyForTest != "RESET?" || resetAt is not null || demoStats.SessionMark is not null)
+                    throw new Exception("session panel: the first RESET click only arms the key");
+                statsWin.ClickResetForTest();
+                if (resetAt is null || demoStats.SessionMark != resetAt || !demoStats.SessionIsManual
+                    || !statsWin.ClockForTest.StartsWith("0:00:0", StringComparison.Ordinal) || statsWin.ResetKeyForTest != "RESET")
+                    throw new Exception($"session panel: the second RESET click starts a fresh session (clock {statsWin.ClockForTest})");
+            }
             statsWin.Close();
 
             // Inventory window renders the ledger from a real-format dump —
@@ -2359,6 +2374,36 @@ public partial class App : Application
                     !youngV.Measurable
                     && youngV.Rows.First(r => r.Label == "XP").Value == "–"
                     && youngV.Rows.First(r => r.Unit == "drops/hr") is { Value: "–", Detail: "1×" });
+
+                // The RESET key (25 Nov): a session started by hand counts from the mark; All keeps everything;
+                // the catch-up rebuild leaves the mark alone; the game's next login supersedes it.
+                {
+                    var rs = new SessionStats();
+                    void Feed()
+                    {
+                        rs.ProcessLine($"[{S(0)}] Welcome to EverQuest Legends!");
+                        for (int i = 0; i < 12; i++) rs.ProcessLine($"[{S(10 + i * 100)}] You gain experience! (1.000%)");
+                    }
+                    Feed();
+                    double fromLogin = rs.SessionClockSeconds(N(1210));
+                    bool loginRun = !rs.SessionIsManual && rs.SessionStart == N(0);
+                    rs.SessionMark = N(600);
+                    var marked = rs.Snapshot(N(1210), SessionStats.Slice.Session, true, SessionStats.Basis.Elapsed);
+                    var whole = rs.Snapshot(N(1210), SessionStats.Slice.All, true, SessionStats.Basis.Elapsed);
+                    bool manual = rs.SessionIsManual && rs.SessionClockSeconds(N(1210)) == 610;
+                    rs.Reset(); Feed(); // the catch-up rebuild
+                    bool kept = rs.SessionMark == N(600) && rs.SessionIsManual;
+                    rs.ProcessLine($"[{S(2000)}] Welcome to EverQuest Legends!");
+                    Check("stats: RESET starts the session at the mark — 10 of the 20 minutes; All keeps the evening; a rebuild keeps the mark; the next login supersedes it",
+                        fromLogin == 1210 && loginRun && manual
+                        && marked.Span == "over 10m elapsed" && whole.Span == "over 20m elapsed"
+                        && kept && !rs.SessionIsManual && rs.SessionStart == N(2000));
+                    Check("stats: the running clock reads h:mm:ss, and a dash before any session",
+                        SessionStats.FmtClock(610) == "0:10:10" && SessionStats.FmtClock(3725.9) == "1:02:05"
+                        && SessionStats.FmtClock(0) == "0:00:00" && SessionStats.FmtClock(-1) == "–"
+                        && new SessionStats().SessionClockSeconds(N(0)) == -1 && new SessionStats().SessionStart is null
+                        && new SessionStats { SessionMark = N(5) }.SessionClockSeconds(N(65)) == 60);
+                }
 
                 // Reset + refeed (the catch-up path) lands on the same numbers.
                 var again = new SessionStats { SelfName = "Thorrak" };
@@ -6324,6 +6369,23 @@ public partial class App : Application
             if (win is Views.CharmWindow cw) { cw.SetLocked(true); cw.Show(); cw.Refresh(); }
             else if (win is Views.MezWindow mw) { mw.SetLocked(true); mw.Show(); mw.Refresh(); }
             mgr = win;
+        }
+        else if (page.Equals("session", StringComparison.OrdinalIgnoreCase) || page.Equals("session:armed", StringComparison.OrdinalIgnoreCase))
+        {
+            // The session stats panel on its demo evening: the running clock and the RESET key
+            // (session:armed — after the first click, "RESET?" in red).
+            var demo = new SessionStats();
+            demo.AddDemo(DateTime.Now);
+            var sw = new Views.SessionStatsWindow(demo, new ConfigService(), 1.0,
+                SessionStats.Slice.ZoneSession, exactTier: false, SessionStats.Basis.Active)
+            {
+                WindowStartupLocation = WindowStartupLocation.Manual,
+                Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            sw.Show();
+            sw.Refresh();
+            if (page.EndsWith(":armed", StringComparison.OrdinalIgnoreCase)) sw.ClickResetForTest();
+            mgr = sw;
         }
         else if (page.Equals("sct", StringComparison.OrdinalIgnoreCase))
         {

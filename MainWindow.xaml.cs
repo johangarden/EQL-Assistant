@@ -254,6 +254,7 @@ public partial class MainWindow : Window
         ApplySelfName();
         _combat.PetName = _config.Overlay.PetName;
         _combat.IdleSeconds = CombatParser.NormalizeIdle(_config.Overlay.MeterIdleSeconds);
+        _session.SessionMark = _config.Overlay.SessionStatsResetAt; // a session reset by hand survives a restart
         // The pet names itself on any /pet order — remember it so the meter's
         // pet lanes work without ever typing the name into the Manager.
         _combat.PetDetected += pet => Dispatcher.BeginInvoke(() =>
@@ -1540,6 +1541,12 @@ public partial class MainWindow : Window
             _config.Overlay.SessionStatsExactTier = exactTier;
             _config.Overlay.SessionStatsActiveBasis = basis == SessionStats.Basis.Active;
             _configService.SaveSettings(_config);
+        };
+        _sessionWin.SessionResetRequested += at =>
+        {
+            _config.Overlay.SessionStatsResetAt = at;
+            _configService.SaveSettings(_config);
+            _vm.Flash("Session reset — counting from now.");
         };
         _sessionWin.Show();
         _sessionWin.SetLocked(_vm.Locked);
