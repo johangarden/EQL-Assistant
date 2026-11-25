@@ -7,8 +7,9 @@ namespace EQLOverlay.Services;
 /// <summary>
 /// ACT-style combat parser: accumulates damage and healing per source for the
 /// current fight, plus incoming damage taken by the player (and their pet).
-/// A fight starts on the first damage/heal line and freezes after ~10s with no
-/// combat activity; the next combat line then starts a fresh fight.
+/// A fight starts on the first damage line (a hit, a miss, a resist) and freezes
+/// after ~10s without one; the next such line then starts a fresh fight. Heals
+/// are counted in a running fight but never start one or keep it open.
 /// UI-thread only (fed from the same dispatcher callback as the trigger engine).
 /// </summary>
 public sealed class CombatParser
@@ -1931,33 +1932,40 @@ public sealed class CombatParser
         healer = Normalize(healer);
         target = Normalize(target);
         if (IsReflexive(target)) target = healer;
-        Touch(time);
-        // Someone else healing ME (or my pet) joined my fight — someone
-        // PLAYER-shaped: a mob "healing" you (a fully mitigated drain prints
-        // a 0-heal, and Innoruuk once made the allies chip this way) is not
-        // a friend.
-        if (!IsSelf(healer) && !IsPet(healer) && !_knownPets.Contains(healer)
-            && !IsEnemyName(healer)
-            && (IsSelf(target) || IsPet(target)))
-            _myAllies.Add(healer);
-        Bump(_healing, healer, amount);
+        // A heal is COUNTED in a running fight but never starts one or keeps it open (owner, 25 Nov:
+        // a 40 s heal over time cast at the end ticked every 6 s and held the fight open for its whole
+        // run, dragging the DPS down with it). The fight's clock belongs to hits, misses and resists.
+        // Outside a fight a heal still floats as combat text and still feeds the death recap.
+        bool inFight = _active && (time - _last).TotalSeconds < IdleSeconds;
+        if (inFight)
+        {
+            // Someone else healing ME (or my pet) joined my fight — someone
+            // PLAYER-shaped: a mob "healing" you (a fully mitigated drain prints
+            // a 0-heal, and Innoruuk once made the allies chip this way) is not
+            // a friend.
+            if (!IsSelf(healer) && !IsPet(healer) && !_knownPets.Contains(healer)
+                && !IsEnemyName(healer)
+                && (IsSelf(target) || IsPet(target)))
+                _myAllies.Add(healer);
+            Bump(_healing, healer, amount);
 
-        // Per-spell split for the solo HPS view (bare heals have no spell name).
-        if (!_healAbilities.TryGetValue(healer, out var bySpell))
-            _healAbilities[healer] = bySpell = new Dictionary<string, AbilityStat>(StringComparer.OrdinalIgnoreCase);
-        StatIn(bySpell, string.IsNullOrWhiteSpace(spell) ? "heal" : spell).Land(amount, crit);
+            // Per-spell split for the solo HPS view (bare heals have no spell name).
+            if (!_healAbilities.TryGetValue(healer, out var bySpell))
+                _healAbilities[healer] = bySpell = new Dictionary<string, AbilityStat>(StringComparer.OrdinalIgnoreCase);
+            StatIn(bySpell, string.IsNullOrWhiteSpace(spell) ? "heal" : spell).Land(amount, crit);
+        }
 
         if (IsSelf(target)) RecapNote(time, healer, spell, amount, heal: true, crit);
 
         if (IsSelf(healer))
         {
             if (procCandidate) NoteProc(spell, amount, heal: true, time, crit);
-            Note(time, spell, amount, FightStream.HealOut, crit);
+            if (inFight) Note(time, spell, amount, FightStream.HealOut, crit);
             SctEvent?.Invoke(new SctHit(SctKind.HealOut, spell, amount, SctFlavor.Heal, crit));
         }
         else if (IsSelf(target))
         {
-            Note(time, spell, amount, FightStream.HealIn, crit);
+            if (inFight) Note(time, spell, amount, FightStream.HealIn, crit);
             SctEvent?.Invoke(new SctHit(SctKind.HealIn, spell, amount, SctFlavor.Heal, crit));
         }
     }

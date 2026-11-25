@@ -206,7 +206,11 @@ the affected suites (with `-Wait`) before committing.
   one-word name that hit you/your pet or took your hits (learned per zone —
   Dread, Fright, Terror, 30 Sep) OR a raid target (`KnownEnemy`), which also
   names the pull over its adds; your own spell on yourself (Cannibalize) is
-  no fight. PETS: a one-word name that spoke a pet phrase ("Jobaner told
+  no fight. THE FIGHT CLOCK (25 Nov): hits, misses and resists start a fight
+  and keep it open, 10 s of silence (`IdleSeconds`) freezes it; HEALS are
+  counted in a running fight but never start one or extend it (a 40 s HoT
+  cast at the end once held the fight open for its whole run) — outside a
+  fight they still float as combat text and feed the death recap. PETS: a one-word name that spoke a pet phrase ("Jobaner told
   you, 'Attacking X Master.'"), the charmed mob, or YOUR POSSESSIVE —
   "Thorrak`s warder" / "Thorrak`s pet" is your pet by construction, two
   words or not, and names the pet on first sight (27 Oct: the beastlord's

@@ -1077,6 +1077,29 @@ public partial class App : Application
                 by.History.Count == 1);
             Check("fight: your heal spells get their own drill-down rows",
                 by.History[0].SelfHealAbilities.Any(a => a.Name == "Superior Heal"));
+            // Heals never hold a fight open (owner, 25 Nov): a heal over time cast at the end ticks every 6 s
+            // for 42 s. The fight still ends 10 s after the last HIT; the ticks inside it count, the later ones
+            // only float; a heal before the pull opens nothing; the next hit starts a fresh fight.
+            {
+                var hot = new CombatParser { SelfName = "Johan" };
+                var hotSct = new List<CombatParser.SctHit>();
+                hot.SctEvent += h => hotSct.Add(h);
+                hot.Replay($"[{FT(700)}] Johan healed Johan for 50 hit points by Chloroplast.");
+                bool quiet = !hot.HasData;
+                hot.Replay($"[{FT(702)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                hot.Replay($"[{FT(708)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                for (int t = 706; t <= 748; t += 6)
+                    hot.Replay($"[{FT(t)}] Johan healed Johan for 30 hit points by Sprouting Heal.");
+                bool closed = hot.History.Count == 1; // frozen by the tick at 718, not at 758
+                hot.Replay($"[{FT(760)}] Johan slashes a fire giant warrior for 100 points of damage.");
+                hot.Tick(fb.AddSeconds(800));
+                Check("fight: heals never start a fight or hold it open — it ends 10 s after the last hit, the ticks inside count, the rest only float",
+                    quiet && closed && hot.History.Count == 2
+                    && hot.History[1].DurationSeconds == 6
+                    && hot.History[1].SelfHealAbilities.Sum(a => a.Total) == 60
+                    && hot.History[0].SelfHealAbilities.Count == 0
+                    && hotSct.Count(h => h.Kind == CombatParser.SctKind.HealOut) == 9);
+            }
 
             // Allies vs bystanders: "group" means someone joined YOUR fight —
             // a neighbour farming their own camp in logging range is scenery.
@@ -5553,7 +5576,9 @@ public partial class App : Application
 
             Check("procs: swings = your melee hits + misses", pw.SessionSwings == 1);
             double liveActive = pw.SessionActiveSeconds;
-            Check("procs: active time accrues while fighting", liveActive is > 70 and < 85); // last line at +75s
+            // The last HIT is the slash at +34 s; the heal ticks at +60 s and +75 s no longer stretch the
+            // fight (25 Nov), so the proc rates' active time stops with the fighting.
+            Check("procs: active time accrues while fighting — to the last hit, not the last heal tick", liveActive is > 30 and < 40);
             pw.Tick(new DateTime(2026, 8, 10, 21, 2, 0)); // idle out -> Archive
             Check("procs: an archived fight keeps its active time exactly once",
                 Math.Abs(pw.SessionActiveSeconds - liveActive) < 0.5);
