@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 namespace EQLOverlay.Services;
 
@@ -48,10 +48,7 @@ public sealed class SkyHelper
     private readonly List<MobWatch> _mobs = new();
 
     // Same melee grammar the respawn learner trusts (both tenses).
-    private const string Verbs =
-        "hits?|slash(?:es)?|pierces?|crush(?:es)?|bash(?:es)?|bites?|kicks?|mauls?"
-        + "|gores?|stings?|claws?|slams?|rends?|cleaves?|punch(?:es)?|strikes?"
-        + "|backstabs?|reaves?";
+    private const string Verbs = CombatParser.MeleeVerbPattern;
 
     // The regard verbs a /con prints; "(Lvl:" anchors the tail.
     private const string ConVerbs =
@@ -94,7 +91,7 @@ public sealed class SkyHelper
                     $@"^{n} (?:(?:{Verbs}) |tr(?:y|ies) to \w+ |begins? (?:casting|singing)"
                     + $@"|activates |has taken \d|resisted |healed )", opts),
                 TargetRx = new Regex(
-                    $@"(?:(?:{Verbs}|healed) {n} for \d|tr(?:y|ies) to \w+ {n}, but| by {n}[.!]$)",
+                    $@"(?:(?:{Verbs}|healed) {n} for \d|tr(?:y|ies) to \w+(?: on)? {n}, but| by {n}[.!]$)",
                     opts),
             });
         }

@@ -495,7 +495,13 @@ Timestamps: `[ddd MMM d(d) HH:mm:ss yyyy] `. Key bodies (see
 - Spell dmg: `<att> hit <tgt> for N points of <school> damage by <Spell>.`
 - DoT tick: `<tgt> has taken N damage from <Spell> by <att>.` (+ short own
   form `... from your <Spell>.`)
-- Melee: `<att> <verb(s)> <tgt> for N points of damage.` (misses: `tries to`)
+- Melee: `<att> <verb(s)> <tgt> for N points of damage.` (misses: `tries to`).
+  The verbs are a WHITELIST — `CombatParser.MeleeVerbPattern`, the one list
+  (respawn learner, quest-dropper sightings and round stats read it too): a
+  verb missing there is damage nobody sees. 25 Nov: the bow's "You shoot …"
+  was missing, and the rig logs held slices, smashes, smites and "frenzies
+  on" / "frenzy on" (the one verb with a preposition). When a class or mob
+  type is new, scan a log for `for N points of damage.` lines MeleeRx misses.
 - Heal: `<att> healed <tgt> for N hit points by <Spell>.` (spell optional)
 - Thorns DS: `<tgt> is pierced by YOUR thorns for N points of non-melee damage.`
 - Casts: `You begin casting <Spell> <rank>.` · deaths: `You have slain <mob>!`
