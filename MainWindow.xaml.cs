@@ -148,10 +148,11 @@ public partial class MainWindow : Window
         _questLines.StepDone += (q, s) =>
         {
             if (_suppressSct) return; // replay/reparse re-proofs shouldn't flash-spam
-            int done = _questLines.DoneCount(q);
-            OnFlashRequested(done == q.Steps.Count
+            int done = _questLines.DoneCount(q), total = _questLines.RequiredCount(q);
+            OnFlashRequested(_questLines.IsComplete(q)
                 ? $"{q.Name} complete — {q.Reward}!"
-                : $"{q.Name} — step {done} of {q.Steps.Count} done", "#FFD54F");
+                : s.Optional ? $"{q.Name} — optional step done: {s.Title}"
+                : $"{q.Name} — step {done} of {total} done", "#FFD54F");
         };
         _skyHelper = new SkyHelper(_skyQuests, _questLines); // never class-locked (owner ruling); the lines' droppers too (17 Sep)
         // A quest line's item dropping — or being destroyed — gets a shout,

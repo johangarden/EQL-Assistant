@@ -9,7 +9,7 @@ Run with: python -I -X utf8 sweep-items-2026-10-29.py
 import io, json, re, sys, time, urllib.request, urllib.parse
 from collections import OrderedDict
 
-UA = "EQL-Assistant-data-sweep/1.0 (johan@thegardencph.com)"
+UA = "EQL-Assistant-data-sweep/1.0"
 TMP = r"C:\Users\JohanSehested\AppData\Local\Temp\eqlwiki-focus"
 OUT = r"C:\Repos\EQL_Assistant\data\item-stats.json"
 

@@ -47,6 +47,11 @@ public partial class QuestLinesView : UserControl
     private string? _selected;
     private string _lens = "all";   // all · mine · tracked
     private bool _leftOnly;         // "What's left"
+    private string _pack = "";      // "" = Notable quests · "epics" = the class epics (25 Nov)
+    private bool _othersOpen;       // the folded list of classes outside your combo
+    private readonly HashSet<string> _partFlips = new(StringComparer.Ordinal); // parts toggled away from their default fold
+    private static readonly Brush Rule = Freeze("#2A3346");
+    private static readonly Brush AmberBg = Freeze("#2A2414");
     private Segmented? _showSeg;
     private (string Path, DateTime Stamp, List<InventoryStore.CarryRow> Rows)? _dumpCache;
 
@@ -54,6 +59,24 @@ public partial class QuestLinesView : UserControl
     {
         InitializeComponent();
     }
+
+    /// <summary>Which pack the view shows: "" = Notable quests, "epics" = the class epics. The epics
+    /// open on "Fits my combo" — fifteen classes, three of them yours. Set it before Attach.</summary>
+    public string Pack
+    {
+        get => _pack;
+        set
+        {
+            if (_pack.Equals(value, StringComparison.OrdinalIgnoreCase)) return;
+            _pack = value;
+            _selected = null;
+            _lens = value == "epics" ? "mine" : "all";
+            _othersOpen = false;
+            _partFlips.Clear();
+        }
+    }
+
+    private IReadOnlyList<QuestLines.Quest> PackQuests() => _lines!.QuestsIn(_pack);
 
     public void Attach(QuestLines lines, Func<string?>? dumpFile, Func<string>? classesProvider)
     {
@@ -80,7 +103,7 @@ public partial class QuestLinesView : UserControl
         Pills.Children.Clear();
         foreach (var (id, label, tip) in new[]
         {
-            ("all", "All", "Every quest line in the pack"),
+            ("all", _pack == "epics" && _lines is not null ? $"All {PackQuests().Count}" : "All", "Every quest line in the pack"),
             ("mine", "Fits my combo", "Lines a class in your /who combo can do (any-class lines always fit)"),
             ("tracked", "★ Tracked", "Lines you starred"),
         })
@@ -133,34 +156,38 @@ public partial class QuestLinesView : UserControl
         if (_lines is null) return;
         PaintPills();
         var mine = MyClasses();
-        var quests = _lines.Quests.Where(q => _lens switch
+        var all = PackQuests();
+        string notice = _lines.NoticeOf(_pack);
+        NoticeText.Text = notice;
+        NoticeBox.Visibility = notice.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var quests = all.Where(q => _lens switch
         {
             "mine" => Fits(q, mine),
             "tracked" => _lines.IsTracked(q),
             _ => true,
         }).ToList();
 
-        if (_selected is null || _lines.Quests.All(q => q.Key != _selected))
-            _selected = (_lines.Quests.FirstOrDefault(q => _lines.IsTracked(q) && !_lines.IsComplete(q))
-                         ?? _lines.Quests.FirstOrDefault(q => Fits(q, mine) && !_lines.IsComplete(q))
-                         ?? _lines.Quests.FirstOrDefault())?.Key;
+        if (_selected is null || all.All(q => q.Key != _selected))
+            _selected = (all.FirstOrDefault(q => _lines.IsTracked(q) && !_lines.IsComplete(q))
+                         ?? all.FirstOrDefault(q => Fits(q, mine) && !_lines.IsComplete(q))
+                         ?? all.FirstOrDefault())?.Key;
 
-        BuildList(quests, mine);
-        var sel = _lines.Quests.FirstOrDefault(q => q.Key == _selected);
+        BuildList(quests, mine, all);
+        var sel = all.FirstOrDefault(q => q.Key == _selected);
         DetailHost.Children.Clear();
         if (sel is not null) BuildDetail(sel, mine);
     }
 
     // ---------------------------------------------------------------- the list
 
-    private void BuildList(List<QuestLines.Quest> quests, HashSet<string> mine)
+    private void BuildList(List<QuestLines.Quest> quests, HashSet<string> mine, IReadOnlyList<QuestLines.Quest> all)
     {
         ListHost.Children.Clear();
         foreach (var q in quests)
         {
             bool sel = q.Key == _selected;
-            int done = _lines!.DoneCount(q), total = q.Steps.Count;
-            bool complete = done == total;
+            int done = _lines!.DoneCount(q), total = _lines.RequiredCount(q);
+            bool complete = _lines.IsComplete(q);
 
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -195,6 +222,8 @@ public partial class QuestLinesView : UserControl
                 bool have = (pq is not null && _lines.IsComplete(pq)) || Holds(p.Item).Held;
                 chips.Children.Add(Badge($"needs {p.Item}" + (have ? " ✓" : ""), have ? Green : Cyan, have ? GreenLine : PreLine));
             }
+            int partCount = q.Steps.Select(x => x.Part).Where(x => x.Length > 0).Distinct().Count();
+            if (partCount > 1) chips.Children.Add(Badge($"{partCount} parts", Hint, Line));
             grid.Children.Add(chips);
 
             // progress ring
@@ -220,12 +249,45 @@ public partial class QuestLinesView : UserControl
             card.MouseLeftButtonDown += (_, _) => { _selected = key; Refresh(); };
             ListHost.Children.Add(card);
         }
+        // The classes outside your combo, folded to one line each (epics: fifteen classes, three yours).
+        var others = _lens == "mine" ? all.Where(q => !quests.Contains(q)).ToList() : new List<QuestLines.Quest>();
+        if (others.Count > 0)
+        {
+            bool open = _othersOpen || quests.Count == 0 || others.Any(q => q.Key == _selected);
+            var head = new TextBlock
+            {
+                Text = $"{(open ? "▾" : "▸")}  {others.Count} other class{(others.Count == 1 ? "" : "es")}",
+                Foreground = Hint, FontSize = 11.5, Cursor = Cursors.Hand, Margin = new Thickness(2, 2, 0, 6),
+                ToolTip = "Epics for classes outside your /who combo",
+            };
+            head.MouseLeftButtonDown += (_, _) => { _othersOpen = !open; Refresh(); };
+            ListHost.Children.Add(head);
+            if (open)
+                foreach (var q in others)
+                {
+                    bool sel = q.Key == _selected;
+                    var row = new DockPanel { Background = Brushes.Transparent, Cursor = Cursors.Hand, Margin = new Thickness(2, 0, 0, 0) };
+                    var count = new TextBlock { Text = $"{_lines!.DoneCount(q)}/{_lines.RequiredCount(q)}", Foreground = Faint, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+                    DockPanel.SetDock(count, Dock.Right);
+                    row.Children.Add(count);
+                    row.Children.Add(new TextBlock
+                    {
+                        Text = $"{q.Name.Replace(" Epic", "")} · {q.Reward}", Foreground = sel ? Gold : Dim, FontSize = 12,
+                        FontWeight = sel ? FontWeights.SemiBold : FontWeights.Normal, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 3, 8, 3),
+                    });
+                    string key = q.Key;
+                    row.MouseLeftButtonDown += (_, _) => { _selected = key; Refresh(); };
+                    ListHost.Children.Add(row);
+                }
+        }
+        string foot = _lines!.FooterOf(_pack);
         ListHost.Children.Add(new TextBlock
         {
-            Text = quests.Count == 0
+            Text = quests.Count == 0 && others.Count == 0
                 ? "Nothing under this lens — try All."
-                : $"{_lines!.Quests.Count} quest line{(_lines.Quests.Count == 1 ? "" : "s")} from eqlwiki so far. More join as they're written up.",
-            Foreground = Faint, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 2, 0, 0),
+                : foot.Length > 0 ? foot
+                : $"{all.Count} quest line{(all.Count == 1 ? "" : "s")} from eqlwiki so far. More join as they're written up.",
+            Foreground = Faint, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 6, 0, 0),
         });
     }
 
@@ -284,7 +346,7 @@ public partial class QuestLinesView : UserControl
 
     private void BuildDetail(QuestLines.Quest q, HashSet<string> mine)
     {
-        int done = _lines!.DoneCount(q), total = q.Steps.Count;
+        int done = _lines!.DoneCount(q), total = _lines.RequiredCount(q);
 
         // header
         var head = new Grid();
@@ -322,7 +384,7 @@ public partial class QuestLinesView : UserControl
 
         var stats = new TextBlock { Foreground = Hint, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
         stats.Inlines.Add(RewardLink(q.Reward));
-        stats.Inlines.Add(new System.Windows.Documents.Run(" · " + StatsLine(q.RewardStats)));
+        if (q.RewardStats.Length > 0) stats.Inlines.Add(new System.Windows.Documents.Run(" · " + StatsLine(q.RewardStats))); // the Beastlord claw has no stats line yet
         Grid.SetRow(stats, 1);
         head.Children.Add(stats);
 
@@ -342,9 +404,10 @@ public partial class QuestLinesView : UserControl
             req.Children.Add(Badge($"{p.Item} in hand" + (have ? " ✓" : " — " + (pq?.Name ?? "quest")), have ? Green : Amber, have ? GreenLine : AmberLine));
         }
         foreach (var r in q.Requires) req.Children.Add(Badge(r, Hint, Line));
+        if (q.Start.Length > 0) req.Children.Add(Badge("starts with " + q.Start, Hint, Line));
         if (q.Wiki.Length > 0)
         {
-            var wiki = Badge("eqlwiki ↗", Cyan, PreLine);
+            var wiki = Badge((q.Wiki.Contains("eqprogression", StringComparison.OrdinalIgnoreCase) ? "eqprogression" : "eqlwiki") + " ↗", Cyan, PreLine);
             wiki.Cursor = Cursors.Hand;
             wiki.ToolTip = q.Wiki;
             string url = q.Wiki;
@@ -356,6 +419,14 @@ public partial class QuestLinesView : UserControl
         DetailHost.Children.Add(new Border { Background = Card, CornerRadius = new CornerRadius(6), Padding = new Thickness(14, 12, 14, 12), Child = head });
         if (q.Note.Length > 0)
             DetailHost.Children.Add(new TextBlock { Text = q.Note, Foreground = Hint, FontSize = 11, Margin = new Thickness(2, 6, 0, 0), TextWrapping = TextWrapping.Wrap });
+        if (q.Warning.Length > 0)
+        {
+            // The one thing that ruins the whole quest (the shadow knight's cons, the shaman's faction).
+            var w = new TextBlock { Foreground = Amber, FontSize = 11.5, TextWrapping = TextWrapping.Wrap };
+            w.Inlines.Add(new System.Windows.Documents.Run("Whole quest: ") { FontWeight = FontWeights.SemiBold });
+            w.Inlines.Add(new System.Windows.Documents.Run(q.Warning));
+            DetailHost.Children.Add(new Border { Background = AmberBg, BorderBrush = AmberLine, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 7, 12, 8), Margin = new Thickness(0, 10, 0, 0), Child = w });
+        }
 
         // up next
         var next = _lines.NextStep(q);
@@ -369,7 +440,8 @@ public partial class QuestLinesView : UserControl
             var k = new TextBlock { Text = _lines.AwaitsClick(q, next) ? "TICK IT" : "UP NEXT", FontSize = 10.5, FontWeight = FontWeights.Bold, Foreground = Green, Margin = new Thickness(0, 2, 14, 0) };
             g.Children.Add(k);
             var t = new TextBlock { Foreground = Brushes.White, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap };
-            t.Text = $"{next.Title} — {next.Npc}" + (next.Zone.Length > 0 ? $" · {next.Zone}" : "");
+            string whereNext = string.Join(" · ", new[] { next.Npc, next.Zone }.Where(x => x.Length > 0));
+            t.Text = whereNext.Length > 0 ? $"{next.Title} — {whereNext}" : next.Title;
             Grid.SetColumn(t, 1);
             g.Children.Add(t);
             var d = new TextBlock { Foreground = Dim, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
@@ -391,12 +463,29 @@ public partial class QuestLinesView : UserControl
         // steps
         var steps = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
         int hidden = 0;
+        // An epic's steps come in named PARTS: a header each (its own count, OPTIONAL when nothing in
+        // it is required), folded unless it holds the next step — a click flips it.
+        bool parted = q.Steps.Any(x => x.Part.Length > 0);
+        string? curPart = null;
+        bool partOpen = true;
+        int partNo = 0;
         for (int i = 0; i < q.Steps.Count; i++)
         {
             var s = q.Steps[i];
             bool isDone = _lines.IsDone(q, s);
+            if (parted && s.Part != curPart)
+            {
+                curPart = s.Part;
+                partNo++;
+                var inPart = q.Steps.Where(x => x.Part == curPart).ToList();
+                if (_leftOnly && inPart.All(x => _lines.IsDone(q, x))) { partOpen = false; hidden += inPart.Count; continue; }
+                string flipKey = q.Key + "|" + curPart;
+                partOpen = (next is not null && inPart.Contains(next)) ^ _partFlips.Contains(flipKey);
+                steps.Children.Add(PartHeader(q, curPart, partNo, inPart, partOpen, flipKey));
+            }
+            if (parted && !partOpen) continue;
             if (_leftOnly && isDone) { hidden++; continue; }
-            steps.Children.Add(StepCard(q, s, i + 1, isDone, ReferenceEquals(s, next), steps.Children.Count > 0));
+            steps.Children.Add(StepCard(q, s, i + 1, isDone, ReferenceEquals(s, next), !parted && steps.Children.Count > 0));
         }
         if (hidden > 0)
             steps.Children.Insert(0, new TextBlock { Text = $"{hidden} step{(hidden == 1 ? "" : "s")} done — hidden by What's left", Foreground = Faint, FontSize = 11, Margin = new Thickness(44, 0, 0, 6) });
@@ -404,20 +493,60 @@ public partial class QuestLinesView : UserControl
 
         DetailHost.Children.Add(new TextBlock
         {
-            Text = "Steps are read from your log the way the Sky quests are: loot lines, \"You have slain\", \"You offered … / You complete the trade with …\" and \"You say, '…'\". Reparsing or merging a log never double-counts. A later step proving itself marks the earlier ones done, so a quest you started before EQL Assistant still fills in.",
+            Text = "Steps are read from your log the way the Sky quests are: loot lines, \"You have slain\", \"You offered … / You complete the trade with …\" and \"You say, '…'\". Reparsing or merging a log never double-counts. " + (q.Steps.Any(x => x.Part.Length > 0)
+                ? "The parts run side by side: a hand-in or a combine marks the steps that made its items, and the last step marks the whole quest. Steps the log cannot see — a purchase, a ground spawn, an item the wiki does not name — wait for your tick."
+                : "A later step proving itself marks the earlier ones done, so a quest you started before EQL Assistant still fills in."),
             Foreground = Faint, FontSize = 11, TextWrapping = TextWrapping.Wrap, MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 14, 0, 8),
         });
+    }
+
+    /// <summary>A part's header line: chevron · PART n · its name · OPTIONAL · a rule · the count.</summary>
+    private FrameworkElement PartHeader(QuestLines.Quest q, string part, int no, List<QuestLines.Step> inPart, bool open, string flipKey)
+    {
+        var required = inPart.Where(x => !x.Optional).ToList();
+        bool optionalPart = required.Count == 0;
+        var counted = optionalPart ? inPart : required;
+        int done = counted.Count(x => _lines!.IsDone(q, x));
+        bool complete = !optionalPart && done == counted.Count;
+
+        var dock = new DockPanel { Margin = new Thickness(0, no == 1 ? 0 : 6, 0, 8), Cursor = Cursors.Hand, Background = Brushes.Transparent, ToolTip = open ? "Fold this part" : "Show this part's steps" };
+        var count = new TextBlock
+        {
+            Text = (complete ? "✓ " : "") + $"{done} of {counted.Count}" + (!optionalPart && inPart.Count > required.Count ? $" · {inPart.Count - required.Count} optional" : ""),
+            Foreground = complete ? Green : Hint, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0),
+        };
+        DockPanel.SetDock(count, Dock.Right);
+        dock.Children.Add(count);
+        var left = new StackPanel { Orientation = Orientation.Horizontal };
+        DockPanel.SetDock(left, Dock.Left);
+        left.Children.Add(new TextBlock { Text = open ? "▾" : "▸", Foreground = Hint, FontSize = 11, Width = 14, VerticalAlignment = VerticalAlignment.Center });
+        left.Children.Add(new TextBlock { Text = $"PART {no}", Foreground = complete ? Green : Dim, FontSize = 11, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center });
+        left.Children.Add(new TextBlock { Text = part, Foreground = Hint, FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(9, 0, 8, 0) });
+        if (optionalPart)
+        {
+            var opt = Badge("OPTIONAL", Hint, Line);
+            opt.Margin = new Thickness(0);
+            opt.VerticalAlignment = VerticalAlignment.Center;
+            left.Children.Add(opt);
+        }
+        dock.Children.Add(left);
+        dock.Children.Add(new Border { Height = 1, Background = Rule, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 1, 0, 0) });
+        dock.MouseLeftButtonDown += (_, _) => { if (!_partFlips.Add(flipKey)) _partFlips.Remove(flipKey); Refresh(); };
+        return dock;
     }
 
     private string NextAdvice(QuestLines.Quest q, QuestLines.Step s)
     {
         var parts = new List<string>();
+        if (s.Part.Length > 0) parts.Add(s.Part + ".");
         if (_lines!.AwaitsClick(q, s)) parts.Add(s.ClickText.Length > 0
             ? $"The log saw the kill and the loot — right-click {s.Click}; its own line checks the step off (or flip the switch)."
             : $"The log saw the kill and the loot — right-click {s.Click}, then flip the switch on the step.");
         else
         {
             if (s.Kill.Count > 0) parts.Add("Kill " + string.Join(" / ", s.Kill) + ".");
+            if (s.KillAny.Count > 0) parts.Add("Kill any one of " + JoinOr(s.KillAny) + ".");
+            if (s.Make.Count > 0) parts.Add("Combine for " + Join(s.Make) + ".");
             if (s.Loot.Count > 0) parts.Add("Loot " + Join(s.Loot) + ".");
             if (s.Say.Length > 0) parts.Add($"Say \"{s.Say}\".");
             if (s.Handin.Count > 0)
@@ -437,6 +566,8 @@ public partial class QuestLinesView : UserControl
 
     private static string Join(IReadOnlyList<string> items) =>
         items.Count <= 1 ? string.Join("", items) : string.Join(", ", items.Take(items.Count - 1)) + " and " + items[^1];
+    private static string JoinOr(IReadOnlyList<string> items) =>
+        items.Count <= 1 ? string.Join("", items) : string.Join(", ", items.Take(items.Count - 1)) + " or " + items[^1];
 
     private FrameworkElement StepCard(QuestLines.Quest q, QuestLines.Step s, int no, bool done, bool current, bool connect)
     {
@@ -471,8 +602,8 @@ public partial class QuestLinesView : UserControl
         body.Children.Add(h);
         // where
         var where = new TextBlock { Foreground = Hint, FontSize = 11.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 0) };
-        where.Inlines.Add(new System.Windows.Documents.Run(s.Npc) { Foreground = Dim, FontWeight = FontWeights.SemiBold });
-        if (s.Zone.Length > 0) where.Inlines.Add(new System.Windows.Documents.Run(" · " + s.Zone));
+        if (s.Npc.Length > 0) where.Inlines.Add(new System.Windows.Documents.Run(s.Npc) { Foreground = Dim, FontWeight = FontWeights.SemiBold });
+        if (s.Zone.Length > 0) where.Inlines.Add(new System.Windows.Documents.Run((s.Npc.Length > 0 ? " · " : "") + s.Zone));
         if (s.Faction.Length > 0) where.Inlines.Add(new System.Windows.Documents.Run(" · " + s.Faction));
         body.Children.Add(where);
         // bring / yields / get
@@ -480,7 +611,7 @@ public partial class QuestLinesView : UserControl
         var partial = _lines.PartialOf(q, s);
         if (s.Handin.Count > 0 || s.Bring.Count > 0 || s.Coins.Length > 0)
         {
-            bring.Children.Add(Label("Bring"));
+            bring.Children.Add(Label(s.Kind == "combine" ? "Use" : "Bring"));
             foreach (var n in s.Handin.Concat(s.Bring))
             {
                 bool sealedOff = partial.Contains("offer:" + LootTracker.ItemKey(n.Name)) || done;
@@ -491,6 +622,15 @@ public partial class QuestLinesView : UserControl
                 else bring.Children.Add(ItemChip(text, "not in your bags", Amber, AmberLine));
             }
             if (s.Coins.Length > 0) bring.Children.Add(ItemChip(s.Coins, "", Dim, Line));
+        }
+        if (s.KillAny.Count > 0)
+        {
+            bring.Children.Add(Label("Any one of"));
+            foreach (var k in s.KillAny)
+            {
+                bool slain = QuestLines.KillSeen(partial, k);
+                bring.Children.Add(ItemChip(k, slain ? "slain" : "", slain ? Green : Dim, slain ? GreenLine : Line));
+            }
         }
         if (s.Loot.Count > 0)
         {
@@ -513,6 +653,15 @@ public partial class QuestLinesView : UserControl
                 bring.Children.Add(hold.Held ? ItemChip(g, hold.Where, Green, GreenLine) : ItemChip(g, "", Dim, Line));
             }
         }
+        if (s.Make.Count > 0)
+        {
+            bring.Children.Add(Label("Makes"));
+            foreach (var mk in s.Make)
+            {
+                var hold = Holds(mk);
+                bring.Children.Add(hold.Held ? ItemChip(mk, hold.Where, Green, GreenLine) : ItemChip(mk, "", Dim, Line));
+            }
+        }
         if (bring.Children.Count > 0) body.Children.Add(bring);
         // say / reply
         if (s.Say.Length > 0 || s.Reply.Length > 0)
@@ -531,8 +680,10 @@ public partial class QuestLinesView : UserControl
             }
             body.Children.Add(say);
         }
-        if (s.Note.Length > 0 && s.Say.Length == 0)
+        if (s.Note.Length > 0 && (s.Say.Length == 0 || s.Reply.Length == 0))
             body.Children.Add(new TextBlock { Text = s.Note, Foreground = Hint, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
+        if (s.Caution.Length > 0)
+            body.Children.Add(new TextBlock { Text = "⚠ " + s.Caution, Foreground = Amber, FontSize = 11.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
         // evidence + switch
         var ev = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
         var sw = new CheckBox
@@ -585,26 +736,69 @@ public partial class QuestLinesView : UserControl
     {
         var bits = new List<string>();
         foreach (var k in s.Kill) bits.Add($"\"You have slain {k}!\"");
+        if (s.KillAny.Count > 0) bits.Add("the death of " + JoinOr(s.KillAny));
         if (s.Loot.Count > 0) bits.Add("the loot line");
+        if (s.Make.Count > 0) bits.Add($"the game's combine line naming {Join(s.Make)}");
         if (s.Say.Length > 0) bits.Add($"\"You say, '{s.Say}'\"");
         if (s.HasTrade) bits.Add($"\"You complete the trade with {s.NpcNames.First()}\"");
         if (s.Click.Length > 0) bits.Add("your switch for the right-click");
-        return bits.Count == 0 ? "tick it yourself" : "checks itself off on " + Join(bits);
+        if (bits.Count == 0)
+            return s.Kind switch
+            {
+                "combine" => "the wiki does not name what this makes — tick it once the combine is done",
+                "buy" or "forage" or "ground" or "pickpocket" or "talk" or "cast" => "the log prints nothing it could be told by — tick it yourself",
+                "give" => "the wiki does not name who takes it — tick it yourself",
+                "quest" => "a quest of its own — tick it once you hold the reward",
+                _ => "tick it yourself",
+            };
+        return "checks itself off on " + Join(bits);
     }
 
     private static string KindLabel(QuestLines.Step s)
     {
         var bits = new List<string>();
+        if (s.Optional) bits.Add("OPTIONAL");
         if (s.Say.Length > 0) bits.Add("SAY");
-        if (s.Kill.Count > 0) bits.Add("KILL");
+        if (s.Kill.Count > 0 || s.KillAny.Count > 0) bits.Add("KILL");
         if (s.Loot.Count > 0) bits.Add("LOOT");
         if (s.HasTrade) bits.Add("HAND IN");
         if (s.Click.Length > 0) bits.Add("CLICK");
-        return bits.Count == 0 ? s.Kind.ToUpperInvariant() : string.Join(" · ", bits);
+        if (bits.Count == (s.Optional ? 1 : 0))
+            bits.Add(s.Kind switch
+            {
+                "combine" => "COMBINE", "buy" => "BUY", "forage" => "FORAGE", "ground" => "PICK UP",
+                "pickpocket" => "PICKPOCKET", "talk" => "TALK", "give" => "HAND IN", var k => k.ToUpperInvariant(),
+            });
+        return string.Join(" · ", bits);
     }
 
     private static Brush KindBrush(QuestLines.Step s) =>
-        s.Kill.Count > 0 ? Red : s.Say.Length > 0 ? Violet : s.HasTrade ? Cyan : s.Loot.Count > 0 ? Amber : Hint;
+        s.Kill.Count > 0 || s.KillAny.Count > 0 ? Red : s.Say.Length > 0 ? Violet : s.HasTrade ? Cyan : s.Loot.Count > 0 ? Amber
+        : s.Kind == "combine" ? Violet : s.Kind is "buy" or "forage" or "ground" or "pickpocket" ? Amber : Hint;
+
+    // ---- test hooks ----
+    internal IEnumerable<string> ListTextsForTest => ListHost.Children.OfType<FrameworkElement>().SelectMany(TextsOf);
+    internal IEnumerable<string> DetailTextsForTest => DetailHost.Children.OfType<FrameworkElement>().SelectMany(TextsOf);
+    internal string NoticeForTest => NoticeBox.Visibility == Visibility.Visible ? NoticeText.Text : "";
+    internal void SetLensForTest(string lens) { _lens = lens; Refresh(); }
+    internal void FlipPartForTest(string questKey, string part) { if (!_partFlips.Add(questKey + "|" + part)) _partFlips.Remove(questKey + "|" + part); Refresh(); }
+    private static IEnumerable<string> TextsOf(DependencyObject root)
+    {
+        if (root is TextBlock tb)
+        {
+            yield return tb.Inlines.Count > 0 ? string.Concat(tb.Inlines.OfType<System.Windows.Documents.Run>().Select(r => r.Text)) : tb.Text;
+            yield break;
+        }
+        int n = VisualTreeHelper.GetChildrenCount(root);
+        if (n == 0)
+        {
+            foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+                foreach (var t in TextsOf(child)) yield return t;
+            yield break;
+        }
+        for (int i = 0; i < n; i++)
+            foreach (var t in TextsOf(VisualTreeHelper.GetChild(root, i))) yield return t;
+    }
 
     private static string FirstName(string npc) =>
         npc.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => !w.Equals("Lord", StringComparison.OrdinalIgnoreCase) && !w.Equals("Brother", StringComparison.OrdinalIgnoreCase)).FirstOrDefault() ?? npc;

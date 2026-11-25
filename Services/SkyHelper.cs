@@ -74,7 +74,7 @@ public sealed class SkyHelper
         var names = _sky.Quests
             .SelectMany(q => q.Items)
             .SelectMany(i => i.Mobs)
-            .Concat(_lines?.Quests.SelectMany(q => q.Steps).Where(s => s.Loot.Count > 0).SelectMany(s => s.Kill)
+            .Concat(_lines?.Quests.SelectMany(q => q.Steps).Where(s => s.Loot.Count > 0).SelectMany(s => s.KillNames)
                     ?? Enumerable.Empty<string>())
             .Where(m => m.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase);
@@ -151,7 +151,7 @@ public sealed class SkyHelper
                 for (int i = 0; i < q.Steps.Count; i++)
                 {
                     var s = q.Steps[i];
-                    if (s.Loot.Count == 0 || !s.Kill.Contains(mob, StringComparer.OrdinalIgnoreCase)) continue;
+                    if (s.Loot.Count == 0 || !s.KillNames.Contains(mob, StringComparer.OrdinalIgnoreCase)) continue;
                     bool stepDone = _lines.IsDone(q, s);
                     if (stepDone && !ShowCompleted) continue;
                     string cls = q.Classes.Count > 0 ? string.Join("/", q.Classes) : "any";

@@ -188,9 +188,12 @@ public partial class SkyWindow : Window
     private void RenderMenu()
     {
         var items = new List<MenuTabs.Item> { new("sky", "Plane of Sky · class quests") };
-        if (_lines is not null && _lines.Quests.Count > 0)
+        if (_lines is not null && _lines.QuestsIn("").Count > 0)
             items.Add(new MenuTabs.Item("lines", "Notable quests", Tip: "Multi-step weapon quests from eqlwiki, tracked from your log"));
-        items.Add(new MenuTabs.Item("epics", "Epics · when the game gets them", Soon: true, Tip: "EQ Legends has no epic quests yet"));
+        if (_lines is not null && _lines.QuestsIn("epics").Count > 0)
+            items.Add(new MenuTabs.Item("epics", "Epics", Tip: "The class epics, part by part — from eqlwiki's walkthroughs, tracked from your log"));
+        else
+            items.Add(new MenuTabs.Item("epics", "Epics · when the game gets them", Soon: true, Tip: "EQ Legends has no epic quests yet"));
         MenuTabs.Render(MenuRow, items, _pack, ShowPack);
     }
 
@@ -214,7 +217,8 @@ public partial class SkyWindow : Window
 
     public void ShowPack(string pack)
     {
-        if (pack == "lines" && _lines is null) return;
+        if ((pack == "lines" || pack == "epics") && _lines is null) return;
+        if (pack == "epics" && _lines!.QuestsIn("epics").Count == 0) return;
         _pack = pack;
         RenderMenu();
         bool sky = pack == "sky";
@@ -232,13 +236,25 @@ public partial class SkyWindow : Window
         {
             QuestsScroll.Visibility = IsleScroll.Visibility = HouseScroll.Visibility = Visibility.Collapsed;
             LinesView.Visibility = Visibility.Visible;
+            bool epics = pack == "epics";
+            LinesView.Pack = epics ? "epics" : "";
             LinesView.Attach(_lines!, _dumpFile, _classesProvider);
-            int active = _lines!.Quests.Count(q => !_lines.IsComplete(q) && _lines.DoneCount(q) > 0);
-            SummaryText.Text = active > 0 ? $"{active} line{(active == 1 ? "" : "s")} in progress" : $"{_lines.Quests.Count} quest lines";
+            var inPack = _lines!.QuestsIn(LinesView.Pack);
+            int active = inPack.Count(q => !_lines.IsComplete(q) && _lines.DoneCount(q) > 0);
+            if (epics)
+            {
+                var mine = (_classesProvider?.Invoke() ?? "").Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                int fit = inPack.Count(q => q.Classes.Any(c => mine.Contains(c, StringComparer.OrdinalIgnoreCase)));
+                SummaryText.Text = active > 0 ? $"{active} epic{(active == 1 ? "" : "s")} in progress"
+                    : fit > 0 ? $"{fit} epic{(fit == 1 ? "" : "s")} fit{(fit == 1 ? "s" : "")} your combo" : $"{inPack.Count} class epics";
+            }
+            else
+                SummaryText.Text = active > 0 ? $"{active} line{(active == 1 ? "" : "s")} in progress" : $"{inPack.Count} quest lines";
         }
     }
 
     public string Pack => _pack;
+    internal QuestLinesView LinesViewForTest => LinesView;
 
     private void Filters_Changed(object sender, RoutedEventArgs e) => Refresh();
 
