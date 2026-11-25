@@ -1152,6 +1152,37 @@ public partial class App : Application
                     && Views.MeterWindow.EndsInText(2, 5) == " · ends in 3s" && Views.MeterWindow.EndsInText(4, 15) == " · ends in 11s"
                     && Views.MeterWindow.EndsInText(400, 10) == "");
             }
+            // The bow (owner, 25 Nov: "You shoot …" reached neither the meter nor the combat text) — and the four
+            // verbs the rig logs held that the list never knew: slices, smashes, smites, frenzy on.
+            {
+                var bow = new CombatParser { SelfName = "Johan", PetName = "Jabber" };
+                var bowSct = new List<CombatParser.SctHit>();
+                bow.SctEvent += h => bowSct.Add(h);
+                bow.Replay($"[{FT(1000)}] You shoot a gnoll elite for 120 points of damage.");
+                bow.Replay($"[{FT(1001)}] You shoot a gnoll elite for 80 points of damage. (Double Bow Shot)");
+                bow.Replay($"[{FT(1002)}] You try to shoot a gnoll elite, but miss!");
+                bow.Replay($"[{FT(1003)}] A gnoll elite slices YOU for 103 points of damage.");
+                bow.Replay($"[{FT(1004)}] A gnoll elite smashes YOU for 29 points of damage.");
+                bow.Replay($"[{FT(1005)}] A gnoll elite frenzies on YOU for 3 points of damage.");
+                bow.Replay($"[{FT(1006)}] A gnoll elite tries to frenzy on YOU, but misses!");
+                bow.Replay($"[{FT(1007)}] You frenzy on a gnoll elite for 20 points of damage.");
+                bow.Replay($"[{FT(1008)}] Jabber smites a gnoll elite for 24 points of damage.");
+                bow.Replay($"[{FT(1009)}] A gnoll elite shoots YOU for 7 points of damage.");
+                var mine = bow.GetAbilityRows("Johan");
+                var pets = bow.GetAbilityRows("Jabber");
+                int swings = bow.SessionSwings;
+                bow.Tick(fb.AddSeconds(1100));
+                var bowRec = bow.History[0];
+                Check("fight: the bow's \"You shoot\" is your damage — 200 on the meter, floated as combat text, the miss a swing; the double-shot tag rides along",
+                    mine.First(r => r.Name == "shoot").Total == 200 && mine.First(r => r.Name == "frenzy").Total == 20
+                    && bowSct.Any(h => h is { Kind: CombatParser.SctKind.OutgoingSelf, Ability: "shoot", Amount: 120 })
+                    && swings == 4 && bowRec.Events.Any(e => e is { Ability: "shoot", Stream: CombatParser.FightStream.SelfOut, Tag: "double bow shot" }));
+                Check("fight: slices, smashes, frenzies on and a mob's own arrow all land on you — 142 taken; the pet's smite is the pet's; a missed frenzy is a miss ON you",
+                    bowRec.IncomingSelfTotal == 142 && pets.First(r => r.Name == "smite").Total == 24
+                    && bowRec.Events.Any(e => e is { Ability: "frenzy", Stream: CombatParser.FightStream.SelfIn, Miss: true })
+                    && CombatParser.IsMeleeAbility("shoot") && CombatParser.IsMeleeAbility("slice") && CombatParser.IsMeleeAbility("smash")
+                    && CombatParser.IsMeleeAbility("smite") && CombatParser.IsMeleeAbility("frenzy") && !CombatParser.IsMeleeAbility("Flame Shock"));
+            }
 
             // Allies vs bystanders: "group" means someone joined YOUR fight —
             // a neighbour farming their own camp in logging range is scenery.

@@ -1,4 +1,4 @@
-namespace EQLOverlay.Services;
+﻿namespace EQLOverlay.Services;
 
 /// <summary>
 /// Attack-round stats for one fight (owner pick, 8 Sep; Companion's plan,
@@ -29,11 +29,11 @@ public static class RoundStats
         public bool HasAnything => SwingsOnYou > 0 || Skills.Count > 0 || YourRipostes > 0 || Flurries > 0;
     }
 
-    private static readonly HashSet<string> MeleeAbilities = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>The parser's own list of weapon swings — one list, so a new verb reaches the rounds too.</summary>
+    private static class MeleeAbilities
     {
-        "slash", "bash", "crush", "pierce", "kick", "hit", "bite", "claw", "backstab", "cleave",
-        "punch", "gore", "maul", "sting", "rend", "slam", "reave", "strike",
-    };
+        public static bool Contains(string ability) => CombatParser.IsMeleeAbility(ability);
+    }
 
     /// <summary>Only skills with this many rounds get a multi-swing line.</summary>
     public const int RoundFloor = 5;

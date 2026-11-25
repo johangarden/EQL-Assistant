@@ -1078,8 +1078,18 @@ public sealed class CombatParser
         @"^(?<att>.+?) (?:healed|heals?) (?<tgt>.+?)(?: over time)? for (?<amt>\d+)(?: \(\d+\))? hit points?(?: by (?<spell>.+?))?\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    /// <summary>The melee grammar, both tenses — THE one list (the respawn learner, the quest-dropper
+    /// sightings and the round statistics read it from here). A verb missing here is damage that never
+    /// reaches the meter, the combat text or the death recap: the bow's "You shoot …" was (owner,
+    /// 25 Nov), and the rig logs held four more — slices (6,531 lines), smashes (4,993), frenzies on /
+    /// frenzy on (2,937, the one verb with a preposition) and smites (152).</summary>
+    public const string MeleeVerbPattern =
+        "slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?"
+        + "|gores?|mauls?|stings?|rends?|slams?|reaves?|strikes?"
+        + "|shoots?|slices?|smash(?:es)?|smites?|frenz(?:y|ies) on";
+
     private static readonly Regex MeleeRx = new(
-        @"^(?<att>.+?) (?<verb>slash(?:es)?|bash(?:es)?|crush(?:es)?|pierces?|kicks?|hits?|bites?|claws?|backstabs?|cleaves?|punch(?:es)?|gores?|mauls?|stings?|rends?|slams?|reaves?|strikes?) (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of damage\.",
+        @"^(?<att>.+?) (?<verb>" + MeleeVerbPattern + @") (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of damage\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // Damage shields: "Orc slaver is pierced by YOUR thorns for 8 points of
@@ -1113,6 +1123,9 @@ public sealed class CombatParser
         ["mauls"] = "maul", ["stings"] = "sting", ["rends"] = "rend", ["slams"] = "slam",
         ["reaves"] = "reave", // EQL shadowknight skill; rider damage logs separately as "Reaving Strike"
         ["strikes"] = "strike", // observed on hardened skeletons (2026-08-16)
+        ["shoots"] = "shoot",   // archery: "You shoot a gnoll for 120 points of damage." (25 Nov)
+        ["slices"] = "slice", ["smashes"] = "smash", ["smites"] = "smite",
+        ["frenzies on"] = "frenzy", ["frenzy on"] = "frenzy", // "You frenzy on X" / "X frenzies on YOU"
     };
 
     private static readonly HashSet<string> MeleeAbilities =
@@ -1126,7 +1139,7 @@ public sealed class CombatParser
     // YOU, but misses!" / "..., but a rat dodges!" (dodge/parry/riposte/block all
     // count as a miss for hit-rate purposes).
     private static readonly Regex MissRx = new(
-        @"^(?<att>.+?) tr(?:y|ies) to (?<verb>\w+) (?<tgt>.+?), but .+!",
+        @"^(?<att>.+?) tr(?:y|ies) to (?:(?<verb>frenzy) on|(?<verb>\w+)) (?<tgt>.+?), but .+!", // "tries to frenzy on YOU"
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // Spell resists: yours going out, and ones you shrug off.

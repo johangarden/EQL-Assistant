@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.RegularExpressions;
 using EQLOverlay.Models;
 
@@ -75,10 +75,7 @@ public sealed class RespawnLearner
         .FirstOrDefault(w => w.Entry.Name.Equals(name, StringComparison.OrdinalIgnoreCase))?.DeathAt;
 
     // Both melee tenses: "hits" (a mob swings) and "hit" (you swing / spell damage).
-    private const string Verbs =
-        "hits?|slash(?:es)?|pierces?|crush(?:es)?|bash(?:es)?|bites?|kicks?|mauls?"
-        + "|gores?|stings?|claws?|slams?|rends?|cleaves?|punch(?:es)?|strikes?"
-        + "|backstabs?|reaves?";
+    private const string Verbs = CombatParser.MeleeVerbPattern; // the one list (it once lacked shoot, slice, smash…)
 
     /// <summary>Rebuild the watch list from the respawn entries. Pending
     /// cycles survive by name — a gap mid-measure isn't lost to a Manager save.</summary>
@@ -122,7 +119,7 @@ public sealed class RespawnLearner
             // Things done TO the mob: your swings and spells landing on it,
             // your misses, and damage attributed to it ("… by <mob>.").
             TargetRx = new Regex(
-                $@"(?:(?:{Verbs}|healed) {n} for \d|tr(?:y|ies) to \w+ {n}, but| by {n}[.!]$)",
+                $@"(?:(?:{Verbs}|healed) {n} for \d|tr(?:y|ies) to \w+(?: on)? {n}, but| by {n}[.!]$)",
                 opts),
         };
     }
