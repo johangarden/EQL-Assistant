@@ -15,7 +15,7 @@ from collections import OrderedDict, Counter
 HERE = os.path.dirname(os.path.abspath(__file__))
 TMP = r"C:\Users\JohanSehested\AppData\Local\Temp\eqlwiki-focus"
 OUT = r"C:\Repos\EQL_Assistant\data\item-stats.json"
-UA = "EQL-Assistant-data-sweep/1.0 (johan@thegardencph.com)"
+UA = "EQL-Assistant-data-sweep/1.0"
 ALL = TMP + r"\all-wikitext.json"
 
 spec = importlib.util.spec_from_file_location("sw", os.path.join(HERE, "sweep-items.py"))
