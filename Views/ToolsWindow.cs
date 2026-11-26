@@ -30,6 +30,8 @@ public sealed class ToolsWindow : Window
         public Func<string?> LogPath { get; init; } = () => null;
         public string? ViewStatePath { get; init; }
         public RaceBook? Races { get; init; }
+        /// <summary>reincarnation.json — the reincarnation planner's ticks and priorities, per character.</summary>
+        public string? ReincarnationPath { get; init; }
         public ResistBook? Resists { get; init; }
         public Func<string> Zone { get; init; } = () => "";
         public required TradeskillData TsData { get; init; }
@@ -66,6 +68,7 @@ public sealed class ToolsWindow : Window
         ("slots", "Slot finder", "M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M16 14 H18 V16.5 H20.5 V18.5 H18 V21 H16 V18.5 H13.5 V16.5 H16 Z"),
         ("focus", "Focus planner", "M12 2.5 L14.7 8.4 L21 9.2 L16.4 13.6 L17.6 20 L12 16.9 L6.4 20 L7.6 13.6 L3 9.2 L9.3 8.4 Z"),
         ("races", "Race unlocks", "M9 5 A3.5 3.5 0 1 0 9.01 5 Z M3 20 C3 15 6 13 9 13 C12 13 15 15 15 20 Z M16.5 7 A2.8 2.8 0 1 0 16.51 7 Z M16 20 C16 16 17 14.5 18.5 14.5 C20 14.5 21.5 16 21.5 20 Z"),
+        ("reinc", "Reincarnation", "M12 4 A8 8 0 1 1 4.5 9.2 L6.4 9.9 A6 6 0 1 0 12 6 L12 8.5 L7.5 5 L12 1.5 Z"),
         ("fx", "Focus effects", "M12 3 L21 12 L12 21 L3 12 Z M12 8.2 L15.8 12 L12 15.8 L8.2 12 Z"),
         ("charms", "Charmed pets", "M12 21 C7 16.5 3 13.5 3 9 A4.5 4.5 0 0 1 12 6.5 A4.5 4.5 0 0 1 21 9 C21 13.5 17 16.5 12 21 Z"),
         ("res", "Resists", "M12 3 C15 7 18 9 18 13 A6 6 0 0 1 6 13 C6 9 9 7 12 3 Z"),
@@ -82,6 +85,8 @@ public sealed class ToolsWindow : Window
     private SpellLibraryPanel? _library;
     private BisFinderView? _bis;
     private RacesView? _races;
+    private ReincarnationView? _reinc;
+    private Reincarnation? _reincStore;
     private ResistsView? _resists;
     private SlotFinderView? _slots;
     private FocusPlannerView? _focus;
@@ -145,6 +150,7 @@ public sealed class ToolsWindow : Window
             "focus" => FocusPage(),
             "stats" => StatsPage(),
             "races" => RacesPage(),
+            "reinc" => ReincarnationPage(),
             "fx" => FocusEffectsPage(),
             "charms" => CharmsPage(),
             "res" => ResistsPage(),
@@ -276,6 +282,17 @@ public sealed class ToolsWindow : Window
                         views.Count == 0 ? "Type /outputfile achievements and /outputfile faction in game."
                         : tracked.Count > 0 ? string.Join(" · ", tracked.Select(t => $"★ {t.Name} {t.DoneCount}/{t.Factions.Count}"))
                         : $"{views.Count(v => v.Done)} of {views.Count} races unlocked — ★ one to follow it");
+                }
+                case "reinc":
+                {
+                    const string purpose = "All 48 class ranks and 48 race ranks — the order that costs least, with what matters to you first.";
+                    var store = _reincStore ??= new Reincarnation(_c.ReincarnationPath);
+                    var (lockedRaces, unlockedRaces) = Reincarnation.RacesFrom(_c.Races);
+                    var road = Reincarnation.Build(store.For(_c.CharKey(), combo, unlockedRaces), lockedRaces);
+                    int ticked = road.Runs.Count(r => r.Done);
+                    return (purpose, road.Next is { } nx
+                        ? $"{ticked} of {road.Runs.Count} runs done · next: {nx.Race} · {string.Join(" / ", nx.Classes)} at +{nx.Penalty}% XP"
+                        : "Every class and race at rank 3.");
                 }
                 case "fx":
                 {
@@ -549,6 +566,17 @@ public sealed class ToolsWindow : Window
 
     /// <summary>Selftest: the races tab once built.</summary>
     internal RacesView? RacesForTest => _races;
+
+    /// <summary>The reincarnation planner (26 Nov, ahead of Kunark): priorities in, the 48-run road out.</summary>
+    private UIElement ReincarnationPage()
+    {
+        _reincStore ??= new Reincarnation(_c.ReincarnationPath);
+        _reinc ??= new ReincarnationView();
+        _reinc.Init(_reincStore, _c.CharKey(), _c.Classes().Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), _c.Races);
+        return Framed("Reincarnation", "All 48 class ranks and 48 race ranks take 48 runs. The order barely changes the XP bill — it decides which ranks come first.", _reinc);
+    }
+
+    internal ReincarnationView? ReincForTest => _reinc;
 
     /// <summary>The focus audit board (moved from the Character window, 3 Oct): the Character
     /// window's own panel, attached to its focus tab alone, header and tab row hidden. It

@@ -4179,8 +4179,19 @@ public partial class App : Application
         string invDir = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_inv");
         Directory.CreateDirectory(invDir);
         File.WriteAllText(Path.Combine(invDir, "Demo_paineel-Inventory.txt"), dumpText);
+        // The reincarnation planner on a scratch file: an Ogre SHD/SHM/ENC two runs in.
+        string reincPath = Path.Combine(Path.GetTempPath(), "eql_selftest_tools_reinc.json");
+        try { File.Delete(reincPath); } catch { /* fresh */ }
+        {
+            var seed = new Reincarnation(reincPath);
+            var st = seed.For("demo_paineel", new[] { "SHD", "SHM", "ENC" });
+            Reincarnation.Move(st.RaceOrder, "OGR", 0);
+            for (int i = 0; i < 2; i++) st.Done.Add(new Reincarnation.DoneRun { Race = "OGR", Classes = new List<string> { "SHD", "SHM", "ENC" }, At = DateTime.Now.AddDays(i - 9) });
+            seed.Save();
+        }
         return new Views.ToolsWindow(new Views.ToolsWindow.Context
         {
+            ReincarnationPath = reincPath,
             Stats = stats,
             Raids = raidsDemo,
             Charms = charmsDemo,
@@ -4290,17 +4301,18 @@ public partial class App : Application
         var tw = ToolsDemo(out var shown);
         tw.Left = -9000; tw.Top = -9000; tw.ShowActivated = false; tw.ShowInTaskbar = false;
         tw.Show();
-        Check("tools: home opens first, with a live line for each of the ten tools",
-            tw.PageShown == "home" && tw.HomeLines.Count == 10 && tw.HomeLines.All(l => l.Length > 0)
+        Check("tools: home opens first, with a live line for each of the eleven tools",
+            tw.PageShown == "home" && tw.HomeLines.Count == 11 && tw.HomeLines.All(l => l.Length > 0)
             && tw.HomeLines[0].StartsWith("Best per mana at 41–50", StringComparison.Ordinal)
             && tw.HomeLines[3].StartsWith("Wrist is the fullest: 5 items, 3 your combo can wear", StringComparison.Ordinal)
             && tw.HomeLines[4].StartsWith("2 moves would socket 3 of 4 needs", StringComparison.Ordinal)
             && tw.HomeLines[5].Contains("★ High Elf", StringComparison.Ordinal)
-            && tw.HomeLines[6].Contains("focus families worn at their best", StringComparison.Ordinal)
-            && tw.HomeLines[7] == "3 charms on 2 mobs · last: a wan ghoul knight (Beguile)"
-            && tw.HomeLines[8].Contains("sphinx", StringComparison.Ordinal)
+            && tw.HomeLines[6].StartsWith("2 of 48 runs done · next: ", StringComparison.Ordinal) && tw.HomeLines[6].EndsWith("at +0% XP", StringComparison.Ordinal)
+            && tw.HomeLines[7].Contains("focus families worn at their best", StringComparison.Ordinal)
+            && tw.HomeLines[8] == "3 charms on 2 mobs · last: a wan ghoul knight (Beguile)"
+            && tw.HomeLines[9].Contains("sphinx", StringComparison.Ordinal)
             // Statistics sits last on the rail and the home grid (4 Oct).
-            && tw.HomeLines[9].StartsWith("30 kills · 93 casts", StringComparison.Ordinal) && tw.HomeLines[9].Contains("most killed: a zol ghoul knight", StringComparison.Ordinal)
+            && tw.HomeLines[10].StartsWith("30 kills · 93 casts", StringComparison.Ordinal) && tw.HomeLines[10].Contains("most killed: a zol ghoul knight", StringComparison.Ordinal)
             && Views.ToolsWindow.Pages[^1].Id == "stats" && tw.HasPinForTest);
         // Focus effects and Charmed pets (3 Oct): the Character window's audit board hosted on its own, the charm ledger as a page.
         tw.ShowPage("charms");
@@ -4566,10 +4578,144 @@ public partial class App : Application
             Check("resists: 60 mobs paint one page of 30 heads, the newest 5 open with their tables; This zone is the default and falls back to all zones until one is known",
                 rv.MobCountForTest == Views.ResistsView.PageSize && rv.TableCountForTest == Views.ResistsView.AutoOpen);
         }
+        // The reincarnation planner (26 Nov, ahead of Kunark): the rule, the road, the priorities, the page.
+        {
+            string[] trio = { "SHD", "SHM", "ENC" };
+            Check("reincarnation: the rule — ten per finished reincarnation of the most-used of the four, never the sum, capped at +300%",
+                Reincarnation.Penalty(0, 0, 0, 0) == 0 && Reincarnation.Penalty(3, 2, 1, 0) == 30 && Reincarnation.Penalty(1, 1, 1, 4) == 40 && Reincarnation.Penalty(40, 0, 0, 0) == 300);
+            var fresh = new Reincarnation(null).For("t", trio);
+            var bal = Reincarnation.Build(fresh);
+            var sheet = Reincarnation.SheetOrder();
+            Check($"reincarnation: from scratch the road is 48 runs — every race three times, every class nine, peak +80%, no dearer than the community sheet (avg {bal.Average:0.0} vs {sheet.Average:0.0})",
+                bal.Runs.Count == 48 && Reincarnation.Races.All(r => bal.Runs.Count(x => x.Race == r) == 3)
+                && Reincarnation.Classes.All(c => bal.Runs.Count(x => x.Classes.Contains(c)) == 9)
+                && bal.Peak == 80 && sheet.Peak == 80 && bal.Average <= sheet.Average + 0.5
+                && bal.RankThreeAt.Count == 32 && bal.AllClassesAt > 0 && bal.AllClassesAt <= 20);
+            fresh.Mode = "mine";
+            var mine = Reincarnation.Build(fresh);
+            fresh.Mode = "low";
+            var low = Reincarnation.Build(fresh);
+            Check($"reincarnation: my picks first stays on the priority trio to its third rank (run 3, +20%); lowest XP opens with five free runs; (trio at rank 3: mine run {mine.TrioAt}, balanced {bal.TrioAt}, lowest {low.TrioAt})",
+                mine.TrioAt == 3 && mine.Runs[2].Penalty == 20 && mine.Runs.Take(3).All(r => r.Classes.SequenceEqual(trio))
+                && low.Runs.Take(5).All(r => r.Penalty == 0) && low.Runs[5].Penalty == 10 && low.Runs.Count == 48
+                && bal.TrioAt >= 3 && low.TrioAt >= 3);
+            // History: two ticked runs and a class finished before tracking; locked races wait for the others.
+            var hist = new Reincarnation(null).For("h", trio);
+            hist.Done.Add(new Reincarnation.DoneRun { Race = "OGR", Classes = trio.ToList() });
+            hist.Done.Add(new Reincarnation.DoneRun { Race = "OGR", Classes = trio.ToList() });
+            hist.SetCount("WAR", 2); // two finished before the tracking began
+            var locked = new HashSet<string> { "FRG", "HDE" };
+            var hp = Reincarnation.Build(hist, locked);
+            var todo = hp.Runs.Where(r => !r.Done).ToList();
+            Check("reincarnation: ticked runs lead the road with the penalties they had (+0%, +10%), hand-set counts move the rest, and locked races come last, flagged",
+                hp.Runs[0] is { Done: true, Penalty: 0 } && hp.Runs[1] is { Done: true, Penalty: 10 } && hp.Runs[1].SetBy.Count == 4
+                && hist.Count("WAR") == 2 && hist.Base["WAR"] == 2 && hist.Count("SHD") == 2 && !hist.Base.ContainsKey("SHD") && hp.Runs.Count == 48
+                && todo.Skip(todo.Count - 6).All(r => r.Locked && locked.Contains(r.Race)) && todo.Take(todo.Count - 6).All(r => !r.Locked)
+                && todo.Count(r => r.Classes.Contains("WAR") && r.ClassUse[r.Classes.ToList().IndexOf("WAR")] <= 3) == 1);
+            var order = new List<string> { "A", "B", "C", "D" };
+            Reincarnation.Move(order, "D", 1);
+            Reincarnation.LeadWith(fresh.ClassOrder, new[] { "WIZ", "MAG", "NEC" });
+            string rtPath = Path.Combine(Path.GetTempPath(), "eql_selftest_reinc_roundtrip.json");
+            try { File.Delete(rtPath); } catch { /* fresh */ }
+            var w1 = new Reincarnation(rtPath);
+            var ws = w1.For("thorrak_paineel", trio);
+            ws.Mode = "mine"; ws.Done.Add(new Reincarnation.DoneRun { Race = "TRL", Classes = trio.ToList() }); ws.SetCount("BRD", 1);
+            ws.Done.Add(new Reincarnation.DoneRun { Race = "TRL", Classes = new List<string> { "SHD", "SHD", "ENC" } }); // never happened
+            w1.Save();
+            var back = new Reincarnation(rtPath).For("thorrak_paineel");
+            Check("reincarnation: a drag takes the target's place, a picked trio leads the order, and the plan survives a restart — a run that is not three classes is dropped",
+                string.Join("", order) == "ADBC" && fresh.ClassOrder.Take(3).SequenceEqual(new[] { "WIZ", "MAG", "NEC" }) && fresh.ClassOrder.Count == 16
+                && back.Mode == "mine" && back.Done.Count == 1 && back.Done[0].Race == "TRL" && back.Count("BRD") == 1 && back.ClassOrder.Take(3).SequenceEqual(trio));
+
+            tw.ShowPage("reinc");
+            var rv = tw.ReincForTest!;
+            var p0 = rv.PlanForTest!;
+            bool page = tw.PageShown == "reinc" && p0.Runs.Count == 48 && rv.RowCountForTest == 48 && p0.Runs.Count(r => r.Done) == 2
+                && rv.TileLines.Count == 5 && rv.TileLines[0].StartsWith("RUNS DONE: 2 / 48", StringComparison.Ordinal) && rv.TileLines[1].StartsWith("CLASS RANKS: 6 / 48", StringComparison.Ordinal)
+                && rv.TileLines[3].StartsWith("NEXT RUN: +0% XP", StringComparison.Ordinal);
+            var lockedRuns = p0.Runs.Where(r => r.Locked).ToList();
+            bool waits = lockedRuns.Count > 0 && lockedRuns.Min(r => r.Number) > p0.Runs.Where(r => !r.Done && !r.Locked).Max(r => r.Number);
+            rv.ClickRunForTest(p0.Next!.Number);
+            bool ticked = rv.PlanForTest!.Runs.Count(r => r.Done) == 3 && rv.TileLines[0].StartsWith("RUNS DONE: 3 / 48", StringComparison.Ordinal);
+            rv.ClickRunForTest(3);
+            bool unticked = rv.PlanForTest!.Runs.Count(r => r.Done) == 2;
+            rv.SetModeForTest("mine");
+            bool mineNext = rv.PlanForTest!.Next!.Classes.SequenceEqual(trio) && rv.PlanForTest.TrioAt == 3;
+            rv.ClickPipForTest("WAR", 2);
+            bool pip = rv.TileLines[1].StartsWith("CLASS RANKS: 8 / 48", StringComparison.Ordinal);
+            rv.ClickPipForTest("WAR", 2); // the same pip again takes it back
+            pip &= rv.TileLines[1].StartsWith("CLASS RANKS: 7 / 48", StringComparison.Ordinal);
+            rv.PickTrioForTest("WIZ", "MAG", "NEC");
+            bool led = rv.PlanForTest!.Next!.Classes.SequenceEqual(new[] { "WIZ", "MAG", "NEC" });
+            rv.MoveForTest("BRD", 0);
+            led &= rv.PlanForTest!.Next!.Classes[0] == "BRD";
+            Check("reincarnation: the page lays out the 48 runs on the demo (two ticked), ticks and unticks a run, follows the mode, the pips, a picked trio and a drag — unlocked races first",
+                page && waits && ticked && unticked && mineNext && pip && led);
+            // What the ranks are worth (owner, 26 Nov: "mouse over information for each class and race"): eqlwiki's Special AAs.
+            var gains = Reincarnation.Abilities;
+            Check("reincarnation: the gains table knows all 16 classes (a passive per rank + the third rank's activated ability) and all 16 races (a passive only), on one shared 90 s timer",
+                gains.ByCode.Count == 32 && Reincarnation.Classes.All(c => Reincarnation.AbilityOf(c) is { IsClass: true, Ranks.Count: 3, Active.Length: > 0, Passive.Length: > 0 })
+                && Reincarnation.Races.All(r => Reincarnation.AbilityOf(r) is { IsClass: false, Ranks.Count: 3, Active.Length: 0, Passive.Length: > 0 })
+                && Reincarnation.AbilityOf("SHD") is { Name: "Shadow Knight", Active: "Drain Touch" } shdGain && string.Join("/", shdGain.Ranks) == "3/6/9"
+                && Reincarnation.AbilityOf("OGR") is { Name: "Ogre" } ogrGain && ogrGain.Ranks[2] == "30%" && ogrGain.Passive.Contains("resist any stun", StringComparison.Ordinal)
+                && gains.SharedCooldownSec == 90 && gains.Completionist.Length > 0 && gains.CompletionistRanks.Count == 3);
+            string shdTip = rv.TipTextForTest("SHD", "Run 6 earns its rank 3 — the activated ability."), ogrTip = rv.TipTextForTest("OGR"), hieTip = rv.TipTextForTest("HIE");
+            Check("reincarnation: a chip's mouse-over says what the class or race gains — the passive, its three ranks with the earned ones marked, the activated ability and the shared timer; a locked race says so",
+                shdTip.StartsWith("Shadow Knight", StringComparison.Ordinal) && shdTip.Contains("Run 6 earns its rank 3", StringComparison.Ordinal)
+                && shdTip.Contains("lifetap", StringComparison.Ordinal) && shdTip.Contains("Rank I: 3 (earned)", StringComparison.Ordinal) && shdTip.Contains("Rank III: 9", StringComparison.Ordinal) && !shdTip.Contains("Rank III: 9 (earned)", StringComparison.Ordinal)
+                && shdTip.Contains("★ Drain Touch", StringComparison.Ordinal) && shdTip.Contains("share one 90 s timer", StringComparison.Ordinal) && shdTip.Contains("You have 2 of its 3 ranks.", StringComparison.Ordinal)
+                && ogrTip.StartsWith("Ogre", StringComparison.Ordinal) && ogrTip.Contains("Rank II: 20% (earned)", StringComparison.Ordinal) && ogrTip.Contains("no activated ability", StringComparison.Ordinal) && !ogrTip.Contains("★", StringComparison.Ordinal)
+                && hieTip.Contains("Not unlocked yet", StringComparison.Ordinal) && hieTip.Contains("magic damage", StringComparison.Ordinal));
+            // What you have now (owner, 26 Nov: "the sum of bonus for the completed reincarnations").
+            string At(string code, int rank) => Reincarnation.EffectAt(Reincarnation.AbilityOf(code)!, rank);
+            Check($"reincarnation: a passive at its rank reads as one sentence — the wiki's rank-I figure swapped for yours; a value that says what it is stands alone (WEF II: {At("WEF", 2)})",
+                At("SHD", 2) == "Increases the damage of your casted instant duration lifetap spells by 6%" && At("SHD", 1).EndsWith("by 3%", StringComparison.Ordinal)
+                && At("OGR", 3) == "Increases your chance to resist any stun by 30%" && At("DEF", 2) == "Reduces incoming fire damage by 6%" && At("BAR", 2) == "Reduces incoming cold damage by 6%"
+                && At("GNM", 2) == "Grants you an additional 20% chance to resist charm and mesmerization spells"
+                && At("WEF", 2) == "Increases the range of your spells and ranged attacks by 20 units" && At("HFL", 3).EndsWith("by 45%", StringComparison.Ordinal)
+                && At("IKS", 2) == "+4 HP Gen +10 AC" && At("ERU", 3) == "+6 Mana gen" && At("FRG", 1) == "+1 HP gen + 10% Jump Power"
+                && At("ROG", 1) == "Increases the damage of activated skill abilities by 3%" && At("HUM", 2) == "Increases your base stat caps by 10"
+                && Reincarnation.Classes.Concat(Reincarnation.Races).All(c => Enumerable.Range(1, 3).All(r => At(c, r).Length > 0 && !At(c, r).Contains("This passive", StringComparison.Ordinal))));
+            var nowState = new Reincarnation(null).For("n", trio);
+            var none = Reincarnation.Summarize(nowState);
+            nowState.SetCount("SHD", 3); nowState.SetCount("WAR", 1); nowState.SetCount("IKS", 2); nowState.SetCount("TRL", 1); nowState.SetCount("FRG", 3); nowState.SetCount("HUM", 1); nowState.SetCount("HEF", 2);
+            var some = Reincarnation.Summarize(nowState);
+            foreach (string c in Reincarnation.Classes) if (nowState.Count(c) == 0) nowState.SetCount(c, 1);
+            nowState.SetCount("WAR", 5); // a fourth and fifth run earn no fourth rank
+            var all = Reincarnation.Summarize(nowState);
+            Check($"reincarnation: what you have now — nothing at first; then each finished line at its rank, the third rank's activated ability, HP regen and stat caps added up over the races that give them; Completionist once every class has a rank ({string.Join(" | ", some.Totals)})",
+                none.Passives.Count == 0 && none.Activated.Count == 0 && none.Totals.Count == 0 && none.CompletionistRank == 0
+                && some.Passives.Count == 7 && some.Passives[0] is { Code: "SHD", Rank: 3 } && some.Activated.Count == 1 && some.Activated[0].Active == "Drain Touch"
+                && some.Totals.Count == 2 && some.Totals[0].StartsWith("Hit point regeneration +10 in all", StringComparison.Ordinal) && some.Totals[0].Contains("Iksar +4", StringComparison.Ordinal)
+                && some.Totals[1].StartsWith("Base stat caps +11 in all", StringComparison.Ordinal) && some.CompletionistRank == 0
+                && all.CompletionistRank == 1 && all.Completionist == "Increases the damage of your melee by 1%"
+                && all.Passives.First(x => x.Code == "WAR") is { Rank: 3, Effect: "Reduces incoming melee damage by 6%" } && all.Activated.Count == 2);
+            Check($"reincarnation: the page knows what you have now — the demo's five lines at their ranks ({string.Join(" | ", rv.NowLines)})",
+                rv.NowLines.Count == 5 && rv.NowLines.Contains("SHD II: Increases the damage of your casted instant duration lifetap spells by 6%")
+                && rv.NowLines.Contains("OGR II: Increases your chance to resist any stun by 20%") && rv.NowLines.Any(l => l.StartsWith("WAR I: ", StringComparison.Ordinal))
+                && !rv.NowLines.Any(l => l.StartsWith("★", StringComparison.Ordinal)));
+            // Where it sits (owner, 26 Nov: on top of the progress it would push the pips down): a fourth column when
+            // the page is wide, the right card's second face when it is not.
+            bool narrow = rv.LayoutForTest == "tabs" && rv.RightShownForTest == "progress";
+            rv.ShowRightForTest("now");
+            narrow &= rv.RightShownForTest == "now" && rv.NowLines.Count == 5 && rv.RowCountForTest == 48;
+            rv.ShowRightForTest("progress");
+            rv.SetWideForTest(true);
+            bool four = rv.LayoutForTest == "four" && rv.RightShownForTest == "both" && rv.NowLines.Count == 5 && rv.RowCountForTest == 48;
+            rv.SetWideForTest(false);
+            Check("reincarnation: what you have now sits beside the progress — a fourth column from 1380 px of page, a Progress | Have now switch in the right card below that",
+                narrow && four && rv.LayoutForTest == "tabs" && !Views.ReincarnationView.IsWide(1379) && Views.ReincarnationView.IsWide(1380));
+            var spill = Reincarnation.Classes.Concat(Reincarnation.Races).Where(c => !rv.GainsFitForTest(c)).ToList();
+            Check($"reincarnation: no mouse-over runs off its card — long rank values (Iksar, Kerran, Froglok) wrap onto rows of their own{(spill.Count > 0 ? " — spilling: " + string.Join(", ", spill) : "")}",
+                spill.Count == 0);
+            double trioNeeds = rv.TrioNeedsForTest, wideNeeds = Views.ReincarnationView.NeedsAcross(new Views.ClassPicker("X"));
+            Check($"reincarnation: the priority trio's chips fit their column whole even with the card's scrollbar showing ({trioNeeds:0} of {Views.ReincarnationView.TrioRoom:0}) — the stock 58-wide chips would not ({wideNeeds:0})",
+                trioNeeds > 200 && trioNeeds <= Views.ReincarnationView.TrioRoom && wideNeeds > Views.ReincarnationView.TrioRoom);
+        }
         // Every page twice, in and out of order (owner, 29 Sep: the second Resists visit threw
         // "Specified element is already the logical child of another element").
         bool twice = true;
-        try { foreach (var pg in new[] { "res", "races", "res", "eff", "races", "inv", "eff", "home", "res", "ts", "races", "fx", "charms", "fx", "home", "charms", "fx" }) tw.ShowPage(pg); }
+        try { foreach (var pg in new[] { "res", "races", "res", "eff", "races", "inv", "eff", "home", "res", "ts", "races", "fx", "charms", "fx", "home", "charms", "fx", "reinc", "races", "reinc" }) tw.ShowPage(pg); }
         catch (Exception ex) { twice = false; Log.Warn("tools revisit: " + ex.Message); }
         Check("tools: every page opens again after another — the cached tools move between frames", twice && tw.RacesForTest is { RowCount: 6 });
         tw.Close();
@@ -6717,14 +6863,42 @@ public partial class App : Application
             if (page.EndsWith(":fire", StringComparison.OrdinalIgnoreCase)) lw.EffSetForTest(resist: "Fire", classes: "WIZ");
             mgr = lw;
         }
+        else if (page.Equals("tools:reinc:tip", StringComparison.OrdinalIgnoreCase))
+        {
+            // The reincarnation page's mouse-over cards, laid side by side: a class two ranks in, then the three races with the longest rank values (they wrap).
+            var twT = ToolsDemo(out _);
+            twT.WindowStartupLocation = WindowStartupLocation.Manual;
+            twT.Left = -10000; twT.Top = -10000; twT.ShowInTaskbar = false; twT.ShowActivated = false;
+            twT.Show();
+            twT.ShowPage("reinc");
+            static System.Windows.Media.Brush B(string hex) => new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+            var cards = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            foreach (var (code, lead) in new[] { ("SHD", "Run 6 earns its rank 3 — the activated ability."), ("IKS", "Priority 10 of 16 — drag onto another to take its place."), ("KRN", ""), ("FRG", "") })
+                cards.Children.Add(new System.Windows.Controls.Border
+                {
+                    Background = B("#232B3D"), BorderBrush = B("#3A4560"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(9, 7, 9, 8), Margin = new Thickness(6),
+                    VerticalAlignment = VerticalAlignment.Top, Child = twT.ReincForTest!.GainsCardForTest(code, lead),
+                });
+            var tipWin = new Window
+            {
+                Content = new System.Windows.Controls.Border { Background = B("#10151E"), Padding = new Thickness(10), Child = cards },
+                SizeToContent = SizeToContent.WidthAndHeight, WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.Manual, Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            tipWin.Show();
+            mgr = tipWin;
+        }
         else if (page.Equals("tools", StringComparison.OrdinalIgnoreCase) || page.StartsWith("tools:", StringComparison.OrdinalIgnoreCase))
         {
-            // The Tools window on demo data: "tools" = home, "tools:<page>" = eff · inv · bis · slots · focus · stats · races · fx · charms · res · ts.
+            // The Tools window on demo data: "tools" = home, "tools:<page>" = eff · inv · bis · slots · focus · stats · races · reinc · fx · charms · res · ts.
             var tw = ToolsDemo(out _);
             tw.WindowStartupLocation = WindowStartupLocation.Manual;
             tw.Left = -10000; tw.Top = -10000; tw.ShowInTaskbar = false; tw.ShowActivated = false;
             tw.Show();
-            if (page.Contains(':')) tw.ShowPage(page[(page.IndexOf(':') + 1)..]);
+            string sub = page.Contains(':') ? page[(page.IndexOf(':') + 1)..] : "";
+            if (sub.Equals("reinc:wide", StringComparison.OrdinalIgnoreCase)) { tw.Width = 1720; tw.ShowPage("reinc"); }          // four columns
+            else if (sub.Equals("reinc:now", StringComparison.OrdinalIgnoreCase)) { tw.ShowPage("reinc"); tw.ReincForTest?.ShowRightForTest("now"); } // the right card's other face
+            else if (sub.Length > 0) tw.ShowPage(sub);
             if (Environment.GetEnvironmentVariable("EQL_FOCUS_OPEN") is { Length: > 0 }) tw.FocusForTest?.OpenWantsForTest(); // the marks unfolded
             if (Environment.GetEnvironmentVariable("EQL_BIS_OPEN") is { Length: > 0 } bisOpen) tw.BisForTest?.OpenForTest(bisOpen); // a BiS slot unfolded ("WRIST2")
             mgr = tw;

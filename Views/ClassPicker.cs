@@ -31,7 +31,10 @@ public sealed class ClassPicker : Border
     public IReadOnlyList<string> Combo => _combo;
 
     /// <param name="accent">Text and edge of a lit chip; the fill is a dark tint of it.</param>
-    public ClassPicker(string title, string accent = "#E8C15A")
+    /// <param name="chipWidth">A chip's width — narrower where the picker sits in a slim column (the
+    /// reincarnation page: at 58 the four columns were two pixels wider than their cells and every
+    /// chip lost its right edge, owner's screenshot 26 Nov).</param>
+    public ClassPicker(string title, string accent = "#E8C15A", double chipWidth = 58)
     {
         _onFg = F(accent); _onLine = F(accent);
         var c = (Color)ColorConverter.ConvertFromString(accent);
@@ -44,7 +47,7 @@ public sealed class ClassPicker : Border
         {
             var chip = new Border
             {
-                Tag = cls, Width = 58, CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1), Padding = new Thickness(0, 2, 0, 3), Margin = new Thickness(0, 0, 5, 5),
+                Tag = cls, Width = chipWidth, CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1), Padding = new Thickness(0, 2, 0, 3), Margin = new Thickness(0, 0, 5, 5),
                 Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left,
                 Child = new TextBlock { Text = cls, FontSize = 11, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center },
             };
@@ -74,6 +77,12 @@ public sealed class ClassPicker : Border
 
     /// <summary>The line under the chips ("Prefilled from /who at 21:31", "No /who yet — pick your classes").</summary>
     public string Hint { get => _hint.Text; set { _hint.Text = value; _hint.Visibility = value.Length > 0 ? Visibility.Visible : Visibility.Collapsed; } }
+
+    /// <summary>Let the page hang something on every chip — a tooltip that knows the class.</summary>
+    public void ForEachChip(Action<FrameworkElement, string> attach)
+    {
+        foreach (var chip in _grid.Children.OfType<Border>()) if (chip.Tag is string cls) attach(chip, cls);
+    }
 
     /// <summary>Selftest: click a chip the way the mouse would.</summary>
     internal void ClickForTest(string cls)

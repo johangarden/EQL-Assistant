@@ -1,0 +1,400 @@
+{
+  "source": "https://eqlwiki.com/Alternate_Advancement",
+  "credit": "eqlwiki — Alternate Advancement, Special AAs",
+  "notice": "From eqlwiki's Special AAs table; parts are datamined and unverified until Kunark is live.",
+  "sharedCooldownSec": 90,
+  "completionist": {
+    "ranks": [
+      "1",
+      "2",
+      "3"
+    ],
+    "passive": "This passive ability increases the damage of your melee by 1%. You can raise your rank in this ability by completing all Class Reincarnations."
+  },
+  "entries": [
+    {
+      "code": "WAR",
+      "kind": "class",
+      "name": "Warrior",
+      "ranks": [
+        "2",
+        "4",
+        "6"
+      ],
+      "passive": "This passive ability reduces incoming melee damage by 2%.",
+      "active": "Thrash",
+      "activeText": "4 primary-hand combat rounds on everything within 40 ft"
+    },
+    {
+      "code": "PAL",
+      "kind": "class",
+      "name": "Paladin",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability increases the effectiveness of incoming instant duration healing spells by 3%.",
+      "active": "Healing Touch",
+      "activeText": "Heals a friendly target, or an enemy's target, for 50% of max HP (range 100). Not in the description: a recourse that appears to give you 10% of your mana, capped at 1M"
+    },
+    {
+      "code": "SHD",
+      "kind": "class",
+      "name": "Shadow Knight",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability increases the damage of your casted instant duration lifetap spells by 3%.",
+      "active": "Drain Touch",
+      "activeText": "Spends 50% of current HP and deals 100% of it as damage (range 200)"
+    },
+    {
+      "code": "MNK",
+      "kind": "class",
+      "name": "Monk",
+      "ranks": [
+        "2",
+        "4",
+        "6"
+      ],
+      "passive": "This passive ability increases your chance to dodge by 2%.",
+      "active": "Perfect Self",
+      "activeText": "Cures all detrimental effects and heals 50% of max HP"
+    },
+    {
+      "code": "ROG",
+      "kind": "class",
+      "name": "Rogue",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability increases the damage of activated skill abilities by 3%. This applies to Backstab, Bash, Cleave, Dragon Punch, Eagle Strike, Flying Kick, Frenzy, Kick, Reave, Round Kick, Smite, and Tiger Claw.",
+      "active": "Preparation",
+      "activeText": "Instantly restores 20% HP and endurance."
+    },
+    {
+      "code": "RNG",
+      "kind": "class",
+      "name": "Ranger",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability increases your chance to hit by 3%.",
+      "active": "Perfect Technique",
+      "activeText": "Double hit chance and 100% strikethrough for 24s"
+    },
+    {
+      "code": "BRD",
+      "kind": "class",
+      "name": "Bard",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability increases your movement speed by 3%.",
+      "active": "Fading Memories",
+      "activeText": "Escape from NPCs up to 5 levels above you, become last on rampage lists, and gain permanent invisibility (Evader's Invisibility)"
+    },
+    {
+      "code": "BST",
+      "kind": "class",
+      "name": "Beastlord",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability reduces your pet's attack delay by 3%",
+      "active": "Bestial Fury",
+      "activeText": "+100% pet proc rate for 30s"
+    },
+    {
+      "code": "BER",
+      "kind": "class",
+      "name": "Berserker",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability reduces your endurance costs by 3%.",
+      "active": "Blood Scar",
+      "activeText": "Gives a Blood Rune equal to 66% of your missing HP, which can go over your cap"
+    },
+    {
+      "code": "CLR",
+      "kind": "class",
+      "name": "Cleric",
+      "ranks": [
+        "2",
+        "4",
+        "6"
+      ],
+      "passive": "This passive ability reduces the mana cost of all healing spells by 2%.",
+      "active": "Divine Wrath",
+      "activeText": "+50% damage and -50% cast time on any Cleric/Paladin-usable DD"
+    },
+    {
+      "code": "DRU",
+      "kind": "class",
+      "name": "Druid",
+      "ranks": [
+        "2",
+        "4",
+        "6"
+      ],
+      "passive": "This passive ability reduces the cast time of all spells by 2%.",
+      "active": "Nature's Revenge",
+      "activeText": "+100% damage on your thorn damage shields for 30s"
+    },
+    {
+      "code": "SHM",
+      "kind": "class",
+      "name": "Shaman",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability reduces the mana cost of all beneficial spells that do not contain a heal component by 3%.",
+      "active": "Judgement",
+      "activeText": "If your DoTs left on the target would deal more than its remaining HP, they all land at once (range 200)"
+    },
+    {
+      "code": "ENC",
+      "kind": "class",
+      "name": "Enchanter",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability reduces the mana cost of any non-damaging detrimental spell by 3%.",
+      "active": "Rune of Acceleration",
+      "activeText": "Next 2 spells cast instantly (2 min)"
+    },
+    {
+      "code": "WIZ",
+      "kind": "class",
+      "name": "Wizard",
+      "ranks": [
+        "2",
+        "4",
+        "6"
+      ],
+      "passive": "This passive ability reduces the mana cost of direct damage spells by 2%.",
+      "active": "Rune of Twincast",
+      "activeText": "Twincasts your next 2 DD spells (2 min window)"
+    },
+    {
+      "code": "MAG",
+      "kind": "class",
+      "name": "Magician",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability increases the damage of your pets by 3%",
+      "active": "Summoner's Rune",
+      "activeText": "Fully restores pet HP, mana and endurance and cures it (range 300)"
+    },
+    {
+      "code": "NEC",
+      "kind": "class",
+      "name": "Necromancer",
+      "ranks": [
+        "2",
+        "4",
+        "6"
+      ],
+      "passive": "This passive ability reduces the cost of damage over time spells by 2%.",
+      "active": "Defiled Rune",
+      "activeText": "Spells cost HP instead of mana for 30s"
+    },
+    {
+      "code": "BAR",
+      "kind": "race",
+      "name": "Barbarian",
+      "ranks": [
+        "3%",
+        "6%",
+        "9%"
+      ],
+      "passive": "This passive ability reduces incoming cold damage by 3%."
+    },
+    {
+      "code": "DEF",
+      "kind": "race",
+      "name": "Dark Elf",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability reduces incoming fire damage by 3%."
+    },
+    {
+      "code": "DWF",
+      "kind": "race",
+      "name": "Dwarf",
+      "ranks": [
+        "10",
+        "20",
+        "30"
+      ],
+      "passive": "This passive ability increases your chance to resist fear spells by 10%."
+    },
+    {
+      "code": "ERU",
+      "kind": "race",
+      "name": "Erudite",
+      "ranks": [
+        "+2 Mana gen",
+        "+4 Mana gen",
+        "+6 Mana gen"
+      ],
+      "passive": "This passive ability increases your mana regeneration by 2."
+    },
+    {
+      "code": "FRG",
+      "kind": "race",
+      "name": "Froglok",
+      "ranks": [
+        "+1 HP gen + 10% Jump Power",
+        "+2 HP gen + 20% Jump Power",
+        "+3 HP gen + 30% Jump Power"
+      ],
+      "passive": "This passive ability will increase your jump power by 10% and your hitpoint regeneration by 1."
+    },
+    {
+      "code": "GNM",
+      "kind": "race",
+      "name": "Gnome",
+      "ranks": [
+        "10%",
+        "20",
+        "30"
+      ],
+      "passive": "This passive ability grants you an additional 10% chance to resist charm and mesmerization spells."
+    },
+    {
+      "code": "HDE",
+      "kind": "race",
+      "name": "Half Dark Elf",
+      "ranks": [
+        "10%",
+        "20",
+        "30"
+      ],
+      "passive": "This passive ability will increase the range of your tracking and map awareness by 10%."
+    },
+    {
+      "code": "HEF",
+      "kind": "race",
+      "name": "Half Elf",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability increases your base stat caps and all resists by 3."
+    },
+    {
+      "code": "HFL",
+      "kind": "race",
+      "name": "Halfling",
+      "ranks": [
+        "15%",
+        "30",
+        "45"
+      ],
+      "passive": "This passive ability will mitigate the effects of any negative movement speed effect by 15%."
+    },
+    {
+      "code": "HIE",
+      "kind": "race",
+      "name": "High Elf",
+      "ranks": [
+        "3",
+        "6",
+        "9"
+      ],
+      "passive": "This passive ability reduces incoming magic damage by 3%."
+    },
+    {
+      "code": "HUM",
+      "kind": "race",
+      "name": "Human",
+      "ranks": [
+        "5",
+        "10",
+        "15"
+      ],
+      "passive": "This passive ability increases your base stat caps by 5."
+    },
+    {
+      "code": "IKS",
+      "kind": "race",
+      "name": "Iksar",
+      "ranks": [
+        "+2 HP Gen +5 AC",
+        "+4 HP Gen +10 AC",
+        "+6 HP Gen +15 AC"
+      ],
+      "passive": "This passive ability increases your hitpoint regeneration by 2 and your base armor class by 5."
+    },
+    {
+      "code": "KRN",
+      "kind": "race",
+      "name": "Kerran",
+      "ranks": [
+        "+2 END gen +10 Safe Fall",
+        "+4 END gen +20 Safe Fall",
+        "+6 END gen +30 Safe Fall"
+      ],
+      "passive": "This passive ability will increase your endurance regeneration by 2 and grants an additional 10 points to your Safe Fall skill."
+    },
+    {
+      "code": "OGR",
+      "kind": "race",
+      "name": "Ogre",
+      "ranks": [
+        "10%",
+        "20%",
+        "30%"
+      ],
+      "passive": "This passive ability increases your chance to resist any stun by 10%."
+    },
+    {
+      "code": "TRL",
+      "kind": "race",
+      "name": "Troll",
+      "ranks": [
+        "+3 HP gen",
+        "+6 HP gen",
+        "+9 HP gen"
+      ],
+      "passive": "This passive ability increases your hitpoint regeneration by 3."
+    },
+    {
+      "code": "WEF",
+      "kind": "race",
+      "name": "Wood Elf",
+      "ranks": [
+        "10",
+        "20",
+        "30"
+      ],
+      "passive": "This passive ability will increase the range of your spells and ranged attacks by 10 units."
+    }
+  ]
+}
