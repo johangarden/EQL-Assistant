@@ -4651,6 +4651,9 @@ public partial class App : Application
             led &= rv.PlanForTest!.Next!.Classes[0] == "BRD";
             Check("reincarnation: the page lays out the 48 runs on the demo (two ticked), ticks and unticks a run, follows the mode, the pips, a picked trio and a drag — unlocked races first",
                 page && waits && ticked && unticked && mineNext && pip && led);
+            double trioNeeds = rv.TrioNeedsForTest, wideNeeds = Views.ReincarnationView.NeedsAcross(new Views.ClassPicker("X"));
+            Check($"reincarnation: the priority trio's chips fit their column whole even with the card's scrollbar showing ({trioNeeds:0} of {Views.ReincarnationView.TrioRoom:0}) — the stock 58-wide chips would not ({wideNeeds:0})",
+                trioNeeds > 200 && trioNeeds <= Views.ReincarnationView.TrioRoom && wideNeeds > Views.ReincarnationView.TrioRoom);
         }
         // Every page twice, in and out of order (owner, 29 Sep: the second Resists visit threw
         // "Specified element is already the logical child of another element").

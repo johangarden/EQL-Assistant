@@ -24,6 +24,10 @@ public sealed class ReincarnationView : DockPanel
         Gold = F("#E8C15A"), GoldEdge = F("#7A5B22"), GoldBg = F("#2A2210"), Teal = F("#4FC3F7"), TealBg = F("#16283E"), TealEdge = F("#2B5C7C"),
         Green = F("#7BD88F"), GreenEdge = F("#2C5A3A"), Amber = F("#E8A75A"), AmberEdge = F("#7A4E22"), Red = F("#FF8A80"), RedEdge = F("#7A2E33"), NoteFg = F("#E3CF9A");
     private const string DragFormat = "eql-reincarnation-rank";
+    // The left card's width is the picker's: four chips and their gaps, the picker's own frame, the
+    // card's frame and gap, and room for the card's scrollbar when the window is short.
+    private const double TrioChip = 54, ScrollbarRoom = 18;
+    internal const double LeftWidth = 4 * (TrioChip + 5) + 22 + 26 + 10 + ScrollbarRoom;
 
     private Reincarnation? _store;
     private Reincarnation.State? _s;
@@ -39,7 +43,7 @@ public sealed class ReincarnationView : DockPanel
     {
         SetDock(_top, Dock.Top);
         Children.Add(_top);
-        _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(302) });
+        _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LeftWidth) });
         _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 380 });
         _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(338) });
         Children.Add(_cols);
@@ -66,6 +70,11 @@ public sealed class ReincarnationView : DockPanel
     internal void MoveForTest(string code, int toIndex) => MoveRank(code, toIndex);
     internal void PickTrioForTest(params string[] trio) { if (_s is null) return; Reincarnation.LeadWith(_s.ClassOrder, trio); Changed(); }
     internal void ClickPipForTest(string code, int n) => Pip(code, n);
+    /// <summary>What a picker needs across, and the room the left card leaves it with its scrollbar showing
+    /// (card gap 10, frame 2, padding 24, the themed scrollbar 11).</summary>
+    internal static double TrioRoom => LeftWidth - 10 - 2 - 24 - 11;
+    internal static double NeedsAcross(ClassPicker picker) { picker.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity)); return picker.DesiredSize.Width - picker.Margin.Left - picker.Margin.Right; }
+    internal double TrioNeedsForTest => _trio is null ? double.MaxValue : NeedsAcross(_trio);
 
     private void Changed() { _store?.Save(); Build(); }
 
@@ -179,7 +188,7 @@ public sealed class ReincarnationView : DockPanel
             _ => "Balanced: your top picks get their ranks early, unless staying on them costs clearly more than the cheapest run.",
         }));
 
-        _trio = new ClassPicker("PRIORITY TRIO") { Margin = new Thickness(0, 0, 0, 10) };
+        _trio = new ClassPicker("PRIORITY TRIO", chipWidth: TrioChip) { Margin = new Thickness(0, 0, 0, 10) };
         _trio.Set(s.ClassOrder.Take(3));
         _trio.Hint = _who.Count == 3 && s.ClassOrder.Take(3).All(_who.Contains) ? "Your /who trio leads." : "The first three of the list below.";
         _trio.Changed += combo => { if (combo.Count == 3) { Reincarnation.LeadWith(s.ClassOrder, combo); Changed(); } };
