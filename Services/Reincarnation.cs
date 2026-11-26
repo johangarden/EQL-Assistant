@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 
 namespace EQLOverlay.Services;
@@ -85,6 +86,64 @@ public sealed class Reincarnation
         int AllClassesAt, int TrioAt)
     {
         public PlanRun? Next => Runs.FirstOrDefault(r => !r.Done);
+    }
+
+    // ---- what the ranks are worth (eqlwiki's Special AAs table, data/reincarnation.json) ----
+
+    /// <summary>A class's or race's reincarnation line: a passive that grows over the three ranks
+    /// and — classes only — the activated ability the third rank grants.</summary>
+    public sealed record Ability(string Code, string Kind, string Name, IReadOnlyList<string> Ranks, string Passive, string Active, string ActiveText)
+    {
+        public bool IsClass => Kind == "class";
+    }
+
+    public sealed record AbilityData(IReadOnlyDictionary<string, Ability> ByCode, int SharedCooldownSec, string Notice,
+        IReadOnlyList<string> CompletionistRanks, string Completionist);
+
+    private static readonly Lazy<AbilityData> AbilitiesLazy = new(LoadAbilities);
+    public static AbilityData Abilities => AbilitiesLazy.Value;
+    public static Ability? AbilityOf(string code) => Abilities.ByCode.GetValueOrDefault(code);
+
+    private static AbilityData LoadAbilities()
+    {
+        var by = new Dictionary<string, Ability>(StringComparer.OrdinalIgnoreCase);
+        int shared = 0; string notice = "", comp = ""; var compRanks = new List<string>();
+        try
+        {
+            const string name = "reincarnation.json";
+            string disk = Path.Combine(AppContext.BaseDirectory, "data", name);
+            string? json = null;
+            if (File.Exists(disk)) json = File.ReadAllText(disk);
+            else
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                if (asm.GetManifestResourceNames().FirstOrDefault(n => n.EndsWith("data." + name, StringComparison.OrdinalIgnoreCase)) is { } res)
+                {
+                    using var stream = asm.GetManifestResourceStream(res)!;
+                    using var reader = new StreamReader(stream);
+                    json = reader.ReadToEnd();
+                }
+            }
+            if (json is not null)
+            {
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                string Str(JsonElement e, string prop) => e.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+                List<string> Arr(JsonElement e, string prop) => e.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Array
+                    ? v.EnumerateArray().Select(x => x.GetString() ?? "").ToList() : new List<string>();
+                if (root.TryGetProperty("sharedCooldownSec", out var cd) && cd.ValueKind == JsonValueKind.Number) shared = cd.GetInt32();
+                notice = Str(root, "notice");
+                if (root.TryGetProperty("completionist", out var c) && c.ValueKind == JsonValueKind.Object) { comp = Str(c, "passive"); compRanks = Arr(c, "ranks"); }
+                if (root.TryGetProperty("entries", out var entries))
+                    foreach (var e in entries.EnumerateArray())
+                    {
+                        string code = Str(e, "code");
+                        if (code.Length > 0) by[code] = new Ability(code, Str(e, "kind"), Str(e, "name"), Arr(e, "ranks"), Str(e, "passive"), Str(e, "active"), Str(e, "activeText"));
+                    }
+            }
+        }
+        catch (Exception ex) { Log.Warn("reincarnation abilities: " + ex.Message); }
+        return new AbilityData(by, shared, notice, compRanks, comp);
     }
 
     private readonly string? _path;

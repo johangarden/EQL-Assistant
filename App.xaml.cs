@@ -4651,6 +4651,21 @@ public partial class App : Application
             led &= rv.PlanForTest!.Next!.Classes[0] == "BRD";
             Check("reincarnation: the page lays out the 48 runs on the demo (two ticked), ticks and unticks a run, follows the mode, the pips, a picked trio and a drag — unlocked races first",
                 page && waits && ticked && unticked && mineNext && pip && led);
+            // What the ranks are worth (owner, 26 Nov: "mouse over information for each class and race"): eqlwiki's Special AAs.
+            var gains = Reincarnation.Abilities;
+            Check("reincarnation: the gains table knows all 16 classes (a passive per rank + the third rank's activated ability) and all 16 races (a passive only), on one shared 90 s timer",
+                gains.ByCode.Count == 32 && Reincarnation.Classes.All(c => Reincarnation.AbilityOf(c) is { IsClass: true, Ranks.Count: 3, Active.Length: > 0, Passive.Length: > 0 })
+                && Reincarnation.Races.All(r => Reincarnation.AbilityOf(r) is { IsClass: false, Ranks.Count: 3, Active.Length: 0, Passive.Length: > 0 })
+                && Reincarnation.AbilityOf("SHD") is { Name: "Shadow Knight", Active: "Drain Touch" } shdGain && string.Join("/", shdGain.Ranks) == "3/6/9"
+                && Reincarnation.AbilityOf("OGR") is { Name: "Ogre" } ogrGain && ogrGain.Ranks[2] == "30%" && ogrGain.Passive.Contains("resist any stun", StringComparison.Ordinal)
+                && gains.SharedCooldownSec == 90 && gains.Completionist.Length > 0 && gains.CompletionistRanks.Count == 3);
+            string shdTip = rv.TipTextForTest("SHD", "Run 6 earns its rank 3 — the activated ability."), ogrTip = rv.TipTextForTest("OGR"), hieTip = rv.TipTextForTest("HIE");
+            Check("reincarnation: a chip's mouse-over says what the class or race gains — the passive, its three ranks with the earned ones marked, the activated ability and the shared timer; a locked race says so",
+                shdTip.StartsWith("Shadow Knight", StringComparison.Ordinal) && shdTip.Contains("Run 6 earns its rank 3", StringComparison.Ordinal)
+                && shdTip.Contains("lifetap", StringComparison.Ordinal) && shdTip.Contains("Rank I: 3 (earned)", StringComparison.Ordinal) && shdTip.Contains("Rank III: 9", StringComparison.Ordinal) && !shdTip.Contains("Rank III: 9 (earned)", StringComparison.Ordinal)
+                && shdTip.Contains("★ Drain Touch", StringComparison.Ordinal) && shdTip.Contains("share one 90 s timer", StringComparison.Ordinal) && shdTip.Contains("You have 2 of its 3 ranks.", StringComparison.Ordinal)
+                && ogrTip.StartsWith("Ogre", StringComparison.Ordinal) && ogrTip.Contains("Rank II: 20% (earned)", StringComparison.Ordinal) && ogrTip.Contains("no activated ability", StringComparison.Ordinal) && !ogrTip.Contains("★", StringComparison.Ordinal)
+                && hieTip.Contains("Not unlocked yet", StringComparison.Ordinal) && hieTip.Contains("magic damage", StringComparison.Ordinal));
             double trioNeeds = rv.TrioNeedsForTest, wideNeeds = Views.ReincarnationView.NeedsAcross(new Views.ClassPicker("X"));
             Check($"reincarnation: the priority trio's chips fit their column whole even with the card's scrollbar showing ({trioNeeds:0} of {Views.ReincarnationView.TrioRoom:0}) — the stock 58-wide chips would not ({wideNeeds:0})",
                 trioNeeds > 200 && trioNeeds <= Views.ReincarnationView.TrioRoom && wideNeeds > Views.ReincarnationView.TrioRoom);
@@ -6805,6 +6820,31 @@ public partial class App : Application
             if (page.EndsWith(":heal", StringComparison.OrdinalIgnoreCase)) lw.EffSetForTest(healing: true);
             if (page.EndsWith(":fire", StringComparison.OrdinalIgnoreCase)) lw.EffSetForTest(resist: "Fire", classes: "WIZ");
             mgr = lw;
+        }
+        else if (page.Equals("tools:reinc:tip", StringComparison.OrdinalIgnoreCase))
+        {
+            // The reincarnation page's mouse-over cards, laid side by side: a class two ranks in, your race, a locked race.
+            var twT = ToolsDemo(out _);
+            twT.WindowStartupLocation = WindowStartupLocation.Manual;
+            twT.Left = -10000; twT.Top = -10000; twT.ShowInTaskbar = false; twT.ShowActivated = false;
+            twT.Show();
+            twT.ShowPage("reinc");
+            static System.Windows.Media.Brush B(string hex) => new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+            var cards = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            foreach (var (code, lead) in new[] { ("SHD", "Run 6 earns its rank 3 — the activated ability."), ("OGR", "Priority 1 of 16 — drag onto another to take its place."), ("HIE", "") })
+                cards.Children.Add(new System.Windows.Controls.Border
+                {
+                    Background = B("#232B3D"), BorderBrush = B("#3A4560"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(9, 7, 9, 8), Margin = new Thickness(6),
+                    VerticalAlignment = VerticalAlignment.Top, Child = twT.ReincForTest!.GainsCardForTest(code, lead),
+                });
+            var tipWin = new Window
+            {
+                Content = new System.Windows.Controls.Border { Background = B("#10151E"), Padding = new Thickness(10), Child = cards },
+                SizeToContent = SizeToContent.WidthAndHeight, WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.Manual, Left = -10000, Top = -10000, ShowInTaskbar = false, ShowActivated = false,
+            };
+            tipWin.Show();
+            mgr = tipWin;
         }
         else if (page.Equals("tools", StringComparison.OrdinalIgnoreCase) || page.StartsWith("tools:", StringComparison.OrdinalIgnoreCase))
         {

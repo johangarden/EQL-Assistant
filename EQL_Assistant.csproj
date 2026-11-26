@@ -60,6 +60,8 @@
     </None>
     <EmbeddedResource Include="data\quest-lines.json" />
     <EmbeddedResource Include="data\epic-quests.json" />
+    <!-- What each class and race gains from its three reincarnation ranks (eqlwiki, Alternate Advancement → Special AAs). -->
+    <EmbeddedResource Include="data\reincarnation.json" />
     <!-- Focus-effect families (eqlwiki Category:Focus_Effects + Companion items.json, MIT). -->
     <None Update="data\focus-effects.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -78,6 +78,12 @@ public sealed class ClassPicker : Border
     /// <summary>The line under the chips ("Prefilled from /who at 21:31", "No /who yet — pick your classes").</summary>
     public string Hint { get => _hint.Text; set { _hint.Text = value; _hint.Visibility = value.Length > 0 ? Visibility.Visible : Visibility.Collapsed; } }
 
+    /// <summary>Let the page hang something on every chip — a tooltip that knows the class.</summary>
+    public void ForEachChip(Action<FrameworkElement, string> attach)
+    {
+        foreach (var chip in _grid.Children.OfType<Border>()) if (chip.Tag is string cls) attach(chip, cls);
+    }
+
     /// <summary>Selftest: click a chip the way the mouse would.</summary>
     internal void ClickForTest(string cls)
     {

@@ -78,6 +78,73 @@ public sealed class ReincarnationView : DockPanel
 
     private void Changed() { _store?.Save(); Build(); }
 
+    // ---- what a class or race gains: the mouse-over on every chip (owner, 26 Nov) -------
+    /// <summary>Hang the gains card on a chip. Built when it opens — a page holds a few hundred chips.</summary>
+    private void Gains(FrameworkElement el, string code, Func<string>? lead = null)
+    {
+        el.ToolTip = " "; // something to open; the card replaces it on the way up
+        ToolTipService.SetShowDuration(el, 60000);
+        ToolTipService.SetInitialShowDelay(el, 250);
+        el.ToolTipOpening += (_, _) => el.ToolTip = GainsCard(code, lead?.Invoke() ?? "", out _);
+    }
+
+    /// <summary>Selftest: the card's words for a class or race, top to bottom.</summary>
+    internal string TipTextForTest(string code, string lead = "") { GainsCard(code, lead, out string text); return text; }
+    internal UIElement GainsCardForTest(string code, string lead = "") => GainsCard(code, lead, out _);
+
+    private UIElement GainsCard(string code, string lead, out string text)
+    {
+        var said = new System.Text.StringBuilder();
+        var sp = new StackPanel { MaxWidth = 340 };
+        TextBlock Line(string t, Brush fg, double size = 11.5, bool bold = false, double top = 0)
+        {
+            said.AppendLine(t);
+            var tb = new TextBlock { Text = t, Foreground = fg, FontSize = size, FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, top, 0, 0) };
+            sp.Children.Add(tb);
+            return tb;
+        }
+        var a = Reincarnation.AbilityOf(code);
+        bool isRace = Reincarnation.Races.Contains(code, StringComparer.OrdinalIgnoreCase);
+        int have = _s?.Count(code) ?? 0;
+        Line(a?.Name ?? (isRace ? Reincarnation.RaceName(code) : code), Text, 13, bold: true);
+        if (lead.Length > 0) Line(lead, Dim, 11.5, top: 1);
+        if (isRace && _locked.Contains(code)) Line("Not unlocked yet — see Race unlocks.", Red, 11, top: 1);
+        if (a is null)
+        {
+            Line("What its reincarnation ranks give is not in the data yet.", Hint, 11, top: 6);
+            text = said.ToString();
+            return sp;
+        }
+        Line("PASSIVE — GROWS WITH EACH RANK", Faint, 9.5, bold: true, top: 8);
+        Line(a.Passive, Dim, top: 2);
+        // the three ranks side by side, the ones you have in gold
+        var ranks = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 0) };
+        string[] roman = { "I", "II", "III" };
+        for (int i = 0; i < Math.Min(Reincarnation.Ranks, a.Ranks.Count); i++)
+        {
+            bool got = have > i;
+            said.AppendLine($"Rank {roman[i]}: {a.Ranks[i]}{(got ? " (earned)" : "")}");
+            var cell = new TextBlock { FontSize = 11 };
+            cell.Inlines.Add(new Run(roman[i] + "  ") { Foreground = got ? Gold : Faint, FontSize = 9.5, FontWeight = FontWeights.Bold });
+            cell.Inlines.Add(new Run(a.Ranks[i]) { Foreground = got ? Gold : Dim, FontWeight = FontWeights.SemiBold });
+            ranks.Children.Add(new Border { Child = cell, Padding = new Thickness(7, 2, 7, 3), Margin = new Thickness(0, 0, 5, 0), CornerRadius = new CornerRadius(5), BorderThickness = new Thickness(1), BorderBrush = got ? GoldEdge : Edge, Background = got ? GoldBg : Brushes.Transparent });
+        }
+        sp.Children.Add(ranks);
+        if (a.IsClass && a.Active.Length > 0)
+        {
+            Line("RANK III ALSO GRANTS — ACTIVATED", Faint, 9.5, bold: true, top: 9);
+            Line("★ " + a.Active, Gold, 12, bold: true, top: 2);
+            if (a.ActiveText.Length > 0) Line(a.ActiveText, Dim, top: 1);
+            if (Reincarnation.Abilities.SharedCooldownSec > 0)
+                Line($"All activated reincarnation abilities share one {Reincarnation.Abilities.SharedCooldownSec} s timer.", Hint, 11, top: 3);
+        }
+        else if (!a.IsClass) Line("Races have no activated ability — the passive is the whole gain.", Hint, 11, top: 7);
+        Line(have == 0 ? "You have none of its ranks yet." : have >= Reincarnation.Ranks ? "You have all three ranks." : $"You have {have} of its 3 ranks.", have >= Reincarnation.Ranks ? Gold : Hint, 11, top: 7);
+        if (Reincarnation.Abilities.Notice.Length > 0) Line(Reincarnation.Abilities.Notice, Faint, 10.5, top: 2);
+        text = said.ToString();
+        return sp;
+    }
+
     private void Toggle(Reincarnation.PlanRun run)
     {
         if (_s is null) return;
@@ -192,6 +259,7 @@ public sealed class ReincarnationView : DockPanel
         _trio.Set(s.ClassOrder.Take(3));
         _trio.Hint = _who.Count == 3 && s.ClassOrder.Take(3).All(_who.Contains) ? "Your /who trio leads." : "The first three of the list below.";
         _trio.Changed += combo => { if (combo.Count == 3) { Reincarnation.LeadWith(s.ClassOrder, combo); Changed(); } };
+        _trio.ForEachChip((chip, cls) => Gains(chip, cls));
         sp.Children.Add(_trio);
 
         sp.Children.Add(Head("CLASSES, MOST → LEAST", "drag to reorder"));
@@ -222,8 +290,9 @@ public sealed class ReincarnationView : DockPanel
             {
                 Child = tb, Padding = new Thickness(5, 1, 7, 2), Margin = new Thickness(0, 0, 4, 4), CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1),
                 Background = lead ? GoldBg : ChipBg, BorderBrush = locked ? RedEdge : lead ? GoldEdge : Edge, Cursor = Cursors.SizeAll, AllowDrop = true,
-                ToolTip = (isRace ? Reincarnation.RaceName(code) + (locked ? " — not unlocked yet" : "") : code) + " · drag onto another to take its place",
             };
+            int place = i + 1;
+            Gains(chip, code, () => $"Priority {place} of {order.Count} — drag onto another to take its place.");
             Point? down = null;
             chip.PreviewMouseLeftButtonDown += (_, e) => down = e.GetPosition(this);
             chip.PreviewMouseLeftButtonUp += (_, _) => down = null;
@@ -307,7 +376,7 @@ public sealed class ReincarnationView : DockPanel
             g.Children.Add(At(new TextBlock { Text = run.Number.ToString(), Foreground = Faint, FontSize = 11, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center }, 1));
 
             var race = Chip(run.Race, run.RaceUse <= Reincarnation.Ranks ? run.RaceUse.ToString() : "×" + run.RaceUse, run.Locked ? 3 : run.RaceUse <= Reincarnation.Ranks ? 1 : 0);
-            race.ToolTip = Reincarnation.RaceName(run.Race);
+            Gains(race, run.Race, () => r.RaceUse <= Reincarnation.Ranks ? $"Run {r.Number} earns its rank {r.RaceUse}." : $"Run {r.Number} is a repeat: use {r.RaceUse}, no new rank.");
             race.Margin = new Thickness(4, 0, 0, 0);
             g.Children.Add(At(race, 2));
 
@@ -316,7 +385,7 @@ public sealed class ReincarnationView : DockPanel
             {
                 int n = run.ClassUse[i];
                 var c = Chip(run.Classes[i], n < Reincarnation.Ranks ? n.ToString() : n == Reincarnation.Ranks ? "★" : "×" + n, n <= Reincarnation.Ranks ? 1 : 0);
-                c.ToolTip = n < Reincarnation.Ranks ? $"Earns {run.Classes[i]} rank {n}" : n == Reincarnation.Ranks ? $"Earns {run.Classes[i]} rank 3 — its activated ability" : $"A repeat: {run.Classes[i]} has its three ranks, this is use {n}";
+                Gains(c, run.Classes[i], () => n < Reincarnation.Ranks ? $"Run {r.Number} earns its rank {n}." : n == Reincarnation.Ranks ? $"Run {r.Number} earns its rank 3 — the activated ability." : $"Run {r.Number} is a repeat: use {n}, no new rank.");
                 c.Margin = new Thickness(0, 0, 4, 0);
                 trio.Children.Add(c);
             }
@@ -369,7 +438,7 @@ public sealed class ReincarnationView : DockPanel
     {
         var s = _s!;
         var sp = new StackPanel();
-        sp.Children.Add(Head("PROGRESS", "★ n = the run that earns rank 3"));
+        sp.Children.Add(Head("PROGRESS", "★ n = the run that earns rank 3 · hover for the gains"));
         sp.Children.Add(Note("Click a pip to set what a class or race had finished before you started tracking."));
         int classRanks = Reincarnation.Classes.Sum(c => Math.Min(Reincarnation.Ranks, s.Count(c))), raceRanks = Reincarnation.Races.Sum(r => Math.Min(Reincarnation.Ranks, s.Count(r)));
         sp.Children.Add(Head("CLASSES", $"{classRanks} / 48 ranks"));
@@ -381,8 +450,10 @@ public sealed class ReincarnationView : DockPanel
         foreach (string r in s.RaceOrder) rg.Children.Add(ProgressRow(r, plan, isRace: true));
         sp.Children.Add(rg);
 
+        if (Reincarnation.Abilities.Completionist.Length > 0)
+            sp.Children.Add(Note("Completionist (" + string.Join(" / ", Reincarnation.Abilities.CompletionistRanks) + "): " + Reincarnation.Abilities.Completionist.Replace("This passive ability i", "I"), Hint));
         var src = new TextBlock { FontSize = 10.5, Foreground = Faint, TextWrapping = TextWrapping.Wrap };
-        src.Inlines.Add(new Run("Rules: "));
+        src.Inlines.Add(new Run("Hover a class or race for what its ranks give (eqlwiki). Rules: "));
         var link = new Run("Witty Waypoint's reincarnation planner ↗") { Foreground = Teal, Cursor = Cursors.Hand };
         link.MouseLeftButtonDown += (_, e) =>
         {
@@ -403,7 +474,7 @@ public sealed class ReincarnationView : DockPanel
         var dp = new DockPanel { LastChildFill = true };
         var chip = Chip(code, "", locked ? 3 : 2);
         chip.Width = 42; chip.Padding = new Thickness(0, 1, 0, 2);
-        chip.ToolTip = isRace ? Reincarnation.RaceName(code) + (locked ? " — not unlocked yet" : "") : code;
+        Gains(chip, code, () => plan.RankThreeAt.TryGetValue(code, out int at) && have < Reincarnation.Ranks ? $"Rank 3 comes with run {at} of this plan." : "");
         dp.Children.Add(chip);
 
         var pips = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
