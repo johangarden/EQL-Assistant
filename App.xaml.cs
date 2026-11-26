@@ -1185,6 +1185,37 @@ public partial class App : Application
                     && CombatParser.IsMeleeAbility("smite") && CombatParser.IsMeleeAbility("frenzy") && !CombatParser.IsMeleeAbility("Flame Shock"));
             }
 
+            // Damage shields of every kind and direction (owner, 26 Nov: "damage shield is gone" — a frost
+            // shield's "tormented by YOUR frost" and a fire shield's "burned by YOUR flames" were never read,
+            // nor any shield of the pet's): the kind is the ability, each side gets its own.
+            {
+                var ds = new CombatParser { SelfName = "Johan", PetName = "Jabber" };
+                var dsSct = new List<CombatParser.SctHit>();
+                ds.SctEvent += h => dsSct.Add(h);
+                ds.Replay($"[{FT(1200)}] You slash a gnoll elite for 30 points of damage.");
+                ds.Replay($"[{FT(1201)}] A gnoll elite is tormented by YOUR frost for 11 points of non-melee damage.");
+                ds.Replay($"[{FT(1202)}] A gnoll elite is burned by YOUR flames for 5 points of non-melee damage.");
+                ds.Replay($"[{FT(1202)}] A gnoll elite is burned by YOUR flames for 1 point of non-melee damage.");
+                ds.Replay($"[{FT(1203)}] A gnoll elite is pierced by YOUR thorns for 8 points of non-melee damage.");
+                ds.Replay($"[{FT(1204)}] A gnoll elite is burned by Jabber's flames for 7 points of non-melee damage.");
+                ds.Replay($"[{FT(1205)}] YOU are tormented by a gnoll elite's frost for 9 points of non-melee damage!");
+                ds.Replay($"[{FT(1206)}] YOU are burned by a gnoll elite's flames for 6 points of non-melee damage!");
+                ds.Replay($"[{FT(1207)}] Jabber is pierced by a gnoll elite's thorns for 4 points of non-melee damage.");
+                var mineDs = ds.GetAbilityRows("Johan");
+                var petDs = ds.GetAbilityRows("Jabber");
+                var onMe = ds.GetIncomingAbilityRows(pet: false);
+                var onPet = ds.GetIncomingAbilityRows(pet: true);
+                Check("fight: your frost and fire shields count like thorns — 11 + 6 + 8 on the meter, each floated as combat text under its own name",
+                    mineDs.First(r => r.Name == "frost") is { Total: 11, Hits: 1 } && mineDs.First(r => r.Name == "flames") is { Total: 6, Hits: 2 }
+                    && mineDs.First(r => r.Name == "thorns") is { Total: 8 }
+                    && dsSct.Any(h => h is { Kind: CombatParser.SctKind.OutgoingSelf, Ability: "frost", Amount: 11, Flavor: CombatParser.SctFlavor.Proc })
+                    && dsSct.Any(h => h is { Kind: CombatParser.SctKind.OutgoingSelf, Ability: "flames", Amount: 5, Flavor: CombatParser.SctFlavor.Proc }));
+                Check("fight: the pet's shield is the pet's (7); a mob's frost and flames land on you (15), its thorns on the pet (4)",
+                    petDs.First(r => r.Name == "flames") is { Total: 7 }
+                    && onMe.First(r => r.Name == "frost") is { Total: 9 } && onMe.First(r => r.Name == "flames") is { Total: 6 }
+                    && onPet.First(r => r.Name == "thorns") is { Total: 4 });
+            }
+
             // Allies vs bystanders: "group" means someone joined YOUR fight —
             // a neighbour farming their own camp in logging range is scenery.
             var al = new CombatParser { SelfName = "Johan" };
