@@ -36,6 +36,15 @@ public sealed class ReincarnationView : DockPanel
     private readonly StackPanel _top = new();
     private readonly Grid _cols = new();
     private ScrollViewer? _planScroll;
+    // WHAT YOU HAVE NOW grows to some fifty rows (32 lines + 16 abilities) — on top of the progress it
+    // pushed the pips out of sight (owner, 26 Nov: "it needs to be next to the summary"). Wide enough,
+    // it is a fourth column; narrower, the right card switches between the two so the plan keeps its width.
+    internal const double WideAt = 1380, NowWidth = 300;
+    internal static bool IsWide(double pageWidth) => pageWidth >= WideAt;
+    private bool _wide;
+    private bool? _wideForced;
+    private string _right = "progress";
+    private int _nowCount;
     private Segmented? _seg;
     private ClassPicker? _trio;
 
@@ -46,7 +55,13 @@ public sealed class ReincarnationView : DockPanel
         _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LeftWidth) });
         _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 380 });
         _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(338) });
+        _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0) }); // "what you have now", when the page is wide
         Children.Add(_cols);
+        SizeChanged += (_, e) =>
+        {
+            bool wide = IsWide(e.NewSize.Width);
+            if (_wideForced is null && wide != _wide) { _wide = wide; Build(); }
+        };
     }
 
     /// <summary>Attach the character's plan: /who's classes lead a first visit, Race unlocks says
@@ -70,6 +85,11 @@ public sealed class ReincarnationView : DockPanel
     internal void MoveForTest(string code, int toIndex) => MoveRank(code, toIndex);
     internal void PickTrioForTest(params string[] trio) { if (_s is null) return; Reincarnation.LeadWith(_s.ClassOrder, trio); Changed(); }
     internal void ClickPipForTest(string code, int n) => Pip(code, n);
+    /// <summary>"four" columns side by side, or "tabs" in the right card.</summary>
+    internal string LayoutForTest => _wide ? "four" : "tabs";
+    internal string RightShownForTest => _wide ? "both" : _right;
+    internal void SetWideForTest(bool wide) { _wideForced = wide; _wide = wide; Build(); }
+    internal void ShowRightForTest(string id) { _right = id; Build(); }
     /// <summary>What a picker needs across, and the room the left card leaves it with its scrollbar showing
     /// (card gap 10, frame 2, padding 24, the themed scrollbar 11).</summary>
     internal static double TrioRoom => LeftWidth - 10 - 2 - 24 - 11;
@@ -218,7 +238,27 @@ public sealed class ReincarnationView : DockPanel
 
         var left = LeftCard(); Grid.SetColumn(left, 0); _cols.Children.Add(left);
         var mid = PlanCard(plan); Grid.SetColumn(mid, 1); _cols.Children.Add(mid);
-        var right = ProgressCard(plan); Grid.SetColumn(right, 2); _cols.Children.Add(right);
+        var now = new StackPanel();
+        NowBlock(now);
+        _cols.ColumnDefinitions[3].Width = new GridLength(_wide ? NowWidth : 0);
+        if (_wide)
+        {
+            var right = CardOf(Scroller(ProgressPanel(plan)), new Thickness(0, 0, 10, 0)); Grid.SetColumn(right, 2); _cols.Children.Add(right);
+            var have = CardOf(Scroller(now), new Thickness(0)); Grid.SetColumn(have, 3); _cols.Children.Add(have);
+        }
+        else
+        {
+            var dp = new DockPanel();
+            var seg = new Segmented(new[]
+            {
+                new Segmented.Option("progress", "Progress", "The rank pips of every class and race."),
+                new Segmented.Option("now", _nowCount > 0 ? $"Have now · {_nowCount}" : "Have now", "What your finished reincarnations give you right now. Widen the window to see both side by side."),
+            }, _right, "#E8C15A") { Margin = new Thickness(0, 0, 0, 8) };
+            seg.Changed += id => { _right = id; Build(); };
+            SetDock(seg, Dock.Top); dp.Children.Add(seg);
+            dp.Children.Add(Scroller(_right == "now" ? now : ProgressPanel(plan)));
+            var right = CardOf(dp, new Thickness(0)); Grid.SetColumn(right, 2); _cols.Children.Add(right);
+        }
         if (keep > 0) Dispatcher.BeginInvoke(new Action(() => _planScroll?.ScrollToVerticalOffset(keep)), System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
@@ -237,6 +277,9 @@ public sealed class ReincarnationView : DockPanel
 
     private static Border CardOf(UIElement child, Thickness margin) =>
         new() { Background = Surface, BorderBrush = Line, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(7), Padding = new Thickness(12, 10, 12, 10), Margin = margin, Child = child };
+
+    private static ScrollViewer Scroller(UIElement content) =>
+        new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = content };
 
     private static TextBlock Head(string caps, string tail = "")
     {
@@ -449,11 +492,10 @@ public sealed class ReincarnationView : DockPanel
         new() { Child = new TextBlock { Text = text, Foreground = fg, FontSize = 9, FontWeight = FontWeights.Bold }, Padding = new Thickness(5, 0, 5, 1), CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), BorderBrush = edge, VerticalAlignment = VerticalAlignment.Center };
 
     // ---- progress ---------------------------------------------------------------------
-    private UIElement ProgressCard(Reincarnation.Plan plan)
+    private StackPanel ProgressPanel(Reincarnation.Plan plan)
     {
         var s = _s!;
         var sp = new StackPanel();
-        NowBlock(sp);
         sp.Children.Add(Head("PROGRESS", "★ n = the run that earns rank 3 · hover for the gains"));
         sp.Children.Add(Note("Click a pip to set what a class or race had finished before you started tracking."));
         int classRanks = Reincarnation.Classes.Sum(c => Math.Min(Reincarnation.Ranks, s.Count(c))), raceRanks = Reincarnation.Races.Sum(r => Math.Min(Reincarnation.Ranks, s.Count(r)));
@@ -479,19 +521,21 @@ public sealed class ReincarnationView : DockPanel
         src.Inlines.Add(link);
         src.Inlines.Add(new Run(" (checked against the Kunark FAQ). The comparison is the community's 48-run sheet."));
         sp.Children.Add(src);
-        return CardOf(new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = sp }, new Thickness(0));
+        return sp;
     }
 
     /// <summary>Selftest: the "what you have now" block, line by line.</summary>
     internal List<string> NowLines { get; } = new();
 
     /// <summary>WHAT YOU HAVE NOW: every finished rank's passive at its current value, the activated
-    /// abilities unlocked, the stats several races share added up — it moves with every tick and pip.</summary>
+    /// abilities unlocked, the stats several races share added up — it moves with every tick and pip.
+    /// Its own column on a wide page, the right card's second face on a narrow one.</summary>
     private void NowBlock(StackPanel sp)
     {
         NowLines.Clear();
         var sum = Reincarnation.Summarize(_s!);
         int extras = sum.Activated.Count;
+        _nowCount = sum.Passives.Count;
         string count = sum.Passives.Count == 0 ? "" : $"{sum.Passives.Count} passive{(sum.Passives.Count == 1 ? "" : "s")}" + (extras > 0 ? $" · {extras} activated" : "");
         sp.Children.Add(Head("WHAT YOU HAVE NOW", count));
         if (sum.Passives.Count == 0)
@@ -542,7 +586,6 @@ public sealed class ReincarnationView : DockPanel
                 sp.Children.Add(tb);
             }
         }
-        sp.Children.Add(new Border { Height = 1, Background = Line, Margin = new Thickness(0, 4, 0, 10) });
     }
 
     private UIElement ProgressRow(string code, Reincarnation.Plan plan, bool isRace)

@@ -4690,10 +4690,21 @@ public partial class App : Application
                 && some.Totals[1].StartsWith("Base stat caps +11 in all", StringComparison.Ordinal) && some.CompletionistRank == 0
                 && all.CompletionistRank == 1 && all.Completionist == "Increases the damage of your melee by 1%"
                 && all.Passives.First(x => x.Code == "WAR") is { Rank: 3, Effect: "Reduces incoming melee damage by 6%" } && all.Activated.Count == 2);
-            Check($"reincarnation: the page leads its progress with what you have now — the demo's five lines at their ranks ({string.Join(" | ", rv.NowLines)})",
+            Check($"reincarnation: the page knows what you have now — the demo's five lines at their ranks ({string.Join(" | ", rv.NowLines)})",
                 rv.NowLines.Count == 5 && rv.NowLines.Contains("SHD II: Increases the damage of your casted instant duration lifetap spells by 6%")
                 && rv.NowLines.Contains("OGR II: Increases your chance to resist any stun by 20%") && rv.NowLines.Any(l => l.StartsWith("WAR I: ", StringComparison.Ordinal))
                 && !rv.NowLines.Any(l => l.StartsWith("★", StringComparison.Ordinal)));
+            // Where it sits (owner, 26 Nov: on top of the progress it would push the pips down): a fourth column when
+            // the page is wide, the right card's second face when it is not.
+            bool narrow = rv.LayoutForTest == "tabs" && rv.RightShownForTest == "progress";
+            rv.ShowRightForTest("now");
+            narrow &= rv.RightShownForTest == "now" && rv.NowLines.Count == 5 && rv.RowCountForTest == 48;
+            rv.ShowRightForTest("progress");
+            rv.SetWideForTest(true);
+            bool four = rv.LayoutForTest == "four" && rv.RightShownForTest == "both" && rv.NowLines.Count == 5 && rv.RowCountForTest == 48;
+            rv.SetWideForTest(false);
+            Check("reincarnation: what you have now sits beside the progress — a fourth column from 1380 px of page, a Progress | Have now switch in the right card below that",
+                narrow && four && rv.LayoutForTest == "tabs" && !Views.ReincarnationView.IsWide(1379) && Views.ReincarnationView.IsWide(1380));
             var spill = Reincarnation.Classes.Concat(Reincarnation.Races).Where(c => !rv.GainsFitForTest(c)).ToList();
             Check($"reincarnation: no mouse-over runs off its card — long rank values (Iksar, Kerran, Froglok) wrap onto rows of their own{(spill.Count > 0 ? " — spilling: " + string.Join(", ", spill) : "")}",
                 spill.Count == 0);
@@ -6884,7 +6895,10 @@ public partial class App : Application
             tw.WindowStartupLocation = WindowStartupLocation.Manual;
             tw.Left = -10000; tw.Top = -10000; tw.ShowInTaskbar = false; tw.ShowActivated = false;
             tw.Show();
-            if (page.Contains(':')) tw.ShowPage(page[(page.IndexOf(':') + 1)..]);
+            string sub = page.Contains(':') ? page[(page.IndexOf(':') + 1)..] : "";
+            if (sub.Equals("reinc:wide", StringComparison.OrdinalIgnoreCase)) { tw.Width = 1720; tw.ShowPage("reinc"); }          // four columns
+            else if (sub.Equals("reinc:now", StringComparison.OrdinalIgnoreCase)) { tw.ShowPage("reinc"); tw.ReincForTest?.ShowRightForTest("now"); } // the right card's other face
+            else if (sub.Length > 0) tw.ShowPage(sub);
             if (Environment.GetEnvironmentVariable("EQL_FOCUS_OPEN") is { Length: > 0 }) tw.FocusForTest?.OpenWantsForTest(); // the marks unfolded
             if (Environment.GetEnvironmentVariable("EQL_BIS_OPEN") is { Length: > 0 } bisOpen) tw.BisForTest?.OpenForTest(bisOpen); // a BiS slot unfolded ("WRIST2")
             mgr = tw;
