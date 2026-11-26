@@ -4666,6 +4666,9 @@ public partial class App : Application
                 && shdTip.Contains("★ Drain Touch", StringComparison.Ordinal) && shdTip.Contains("share one 90 s timer", StringComparison.Ordinal) && shdTip.Contains("You have 2 of its 3 ranks.", StringComparison.Ordinal)
                 && ogrTip.StartsWith("Ogre", StringComparison.Ordinal) && ogrTip.Contains("Rank II: 20% (earned)", StringComparison.Ordinal) && ogrTip.Contains("no activated ability", StringComparison.Ordinal) && !ogrTip.Contains("★", StringComparison.Ordinal)
                 && hieTip.Contains("Not unlocked yet", StringComparison.Ordinal) && hieTip.Contains("magic damage", StringComparison.Ordinal));
+            var spill = Reincarnation.Classes.Concat(Reincarnation.Races).Where(c => !rv.GainsFitForTest(c)).ToList();
+            Check($"reincarnation: no mouse-over runs off its card — long rank values (Iksar, Kerran, Froglok) wrap onto rows of their own{(spill.Count > 0 ? " — spilling: " + string.Join(", ", spill) : "")}",
+                spill.Count == 0);
             double trioNeeds = rv.TrioNeedsForTest, wideNeeds = Views.ReincarnationView.NeedsAcross(new Views.ClassPicker("X"));
             Check($"reincarnation: the priority trio's chips fit their column whole even with the card's scrollbar showing ({trioNeeds:0} of {Views.ReincarnationView.TrioRoom:0}) — the stock 58-wide chips would not ({wideNeeds:0})",
                 trioNeeds > 200 && trioNeeds <= Views.ReincarnationView.TrioRoom && wideNeeds > Views.ReincarnationView.TrioRoom);
@@ -6823,7 +6826,7 @@ public partial class App : Application
         }
         else if (page.Equals("tools:reinc:tip", StringComparison.OrdinalIgnoreCase))
         {
-            // The reincarnation page's mouse-over cards, laid side by side: a class two ranks in, your race, a locked race.
+            // The reincarnation page's mouse-over cards, laid side by side: a class two ranks in, then the three races with the longest rank values (they wrap).
             var twT = ToolsDemo(out _);
             twT.WindowStartupLocation = WindowStartupLocation.Manual;
             twT.Left = -10000; twT.Top = -10000; twT.ShowInTaskbar = false; twT.ShowActivated = false;
@@ -6831,7 +6834,7 @@ public partial class App : Application
             twT.ShowPage("reinc");
             static System.Windows.Media.Brush B(string hex) => new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
             var cards = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
-            foreach (var (code, lead) in new[] { ("SHD", "Run 6 earns its rank 3 — the activated ability."), ("OGR", "Priority 1 of 16 — drag onto another to take its place."), ("HIE", "") })
+            foreach (var (code, lead) in new[] { ("SHD", "Run 6 earns its rank 3 — the activated ability."), ("IKS", "Priority 10 of 16 — drag onto another to take its place."), ("KRN", ""), ("FRG", "") })
                 cards.Children.Add(new System.Windows.Controls.Border
                 {
                     Background = B("#232B3D"), BorderBrush = B("#3A4560"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(9, 7, 9, 8), Margin = new Thickness(6),

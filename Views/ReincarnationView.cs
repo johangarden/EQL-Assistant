@@ -91,11 +91,25 @@ public sealed class ReincarnationView : DockPanel
     /// <summary>Selftest: the card's words for a class or race, top to bottom.</summary>
     internal string TipTextForTest(string code, string lead = "") { GainsCard(code, lead, out string text); return text; }
     internal UIElement GainsCardForTest(string code, string lead = "") => GainsCard(code, lead, out _);
+    private const double CardWidth = 340;
+
+    /// <summary>Selftest: laid out at the card's width, nothing on the card is wider than the card —
+    /// every line wraps and every rank cell sits whole on a row of its own if it must.</summary>
+    internal bool GainsFitForTest(string code)
+    {
+        if (GainsCard(code, "", out _) is not StackPanel card) return false;
+        card.Measure(new Size(CardWidth, double.PositiveInfinity));
+        card.Arrange(new Rect(0, 0, CardWidth, card.DesiredSize.Height));
+        bool Fits(UIElement el) => el.DesiredSize.Width <= CardWidth + 0.5;
+        return card.Children.OfType<UIElement>().All(Fits)
+            && card.Children.OfType<WrapPanel>().SelectMany(w => w.Children.OfType<FrameworkElement>())
+                .All(c => c.DesiredSize.Width <= CardWidth + 0.5 && c.TranslatePoint(new Point(c.ActualWidth, 0), card).X <= CardWidth + 0.5);
+    }
 
     private UIElement GainsCard(string code, string lead, out string text)
     {
         var said = new System.Text.StringBuilder();
-        var sp = new StackPanel { MaxWidth = 340 };
+        var sp = new StackPanel { MaxWidth = CardWidth };
         TextBlock Line(string t, Brush fg, double size = 11.5, bool bold = false, double top = 0)
         {
             said.AppendLine(t);
@@ -117,8 +131,9 @@ public sealed class ReincarnationView : DockPanel
         }
         Line("PASSIVE — GROWS WITH EACH RANK", Faint, 9.5, bold: true, top: 8);
         Line(a.Passive, Dim, top: 2);
-        // the three ranks side by side, the ones you have in gold
-        var ranks = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 0) };
+        // the three ranks side by side, the ones you have in gold — WRAPPING: a race's ranks can be long
+        // ("+2 HP Gen +5 AC"), and three of those in one row ran off the card (owner's screenshots, 26 Nov)
+        var ranks = new WrapPanel { Margin = new Thickness(0, 5, 0, -4) };
         string[] roman = { "I", "II", "III" };
         for (int i = 0; i < Math.Min(Reincarnation.Ranks, a.Ranks.Count); i++)
         {
@@ -127,7 +142,7 @@ public sealed class ReincarnationView : DockPanel
             var cell = new TextBlock { FontSize = 11 };
             cell.Inlines.Add(new Run(roman[i] + "  ") { Foreground = got ? Gold : Faint, FontSize = 9.5, FontWeight = FontWeights.Bold });
             cell.Inlines.Add(new Run(a.Ranks[i]) { Foreground = got ? Gold : Dim, FontWeight = FontWeights.SemiBold });
-            ranks.Children.Add(new Border { Child = cell, Padding = new Thickness(7, 2, 7, 3), Margin = new Thickness(0, 0, 5, 0), CornerRadius = new CornerRadius(5), BorderThickness = new Thickness(1), BorderBrush = got ? GoldEdge : Edge, Background = got ? GoldBg : Brushes.Transparent });
+            ranks.Children.Add(new Border { Child = cell, Padding = new Thickness(7, 2, 7, 3), Margin = new Thickness(0, 0, 5, 4), CornerRadius = new CornerRadius(5), BorderThickness = new Thickness(1), BorderBrush = got ? GoldEdge : Edge, Background = got ? GoldBg : Brushes.Transparent });
         }
         sp.Children.Add(ranks);
         if (a.IsClass && a.Active.Length > 0)
