@@ -352,7 +352,16 @@ WHAT YOU HAVE NOW (owner, 26 Nov: "the sum of bonus for the completed reincarnat
 progress, never on top of it (it grows to ~50 rows and pushed the pips out of sight — owner, same day):
 a FOURTH COLUMN when the page is ≥ 1380 px wide (`ReincarnationView.WideAt`, a Tools window of about
 1630), and below that the right card's second face behind a Progress | Have now switch, so the plan
-keeps its width. `Reincarnation.Summarize`: every finished line at its rank (`EffectAt`: the wiki words
+keeps its width. IT IS A STAT SHEET (owner, 26 Nov: "list all the bonuses … highlight (gold) once
+gained … remove the class pill, maybe replace with mouse over … more like a stat sheet than text"):
+`Reincarnation.StatSheet` — 34 stats in six groups (offense · defense · resist chances · spells &
+costs · regen & stats · utility), one line per STAT with every giver added up (hit point regeneration
+= Froglok + Iksar + Troll; base stat caps = Human + Half Elf), "+6% of +9%" — gold once gained, a dash
+until then, "max" at the top; then all 16 activated abilities ("yours" or how far the class is). The
+labels are ours, the figures never typed: `RankNumbers(code, index)` reads the index-th number of each
+of the wiki's rank values ("+4 HP Gen +10 AC" → 4, 10). No class pill — a line's mouse-over stacks the
+gains card of each giver (`SourcesCard`). The earlier sentence form still exists as
+`Reincarnation.Summarize`: every finished line at its rank (`EffectAt`: the wiki words
 a passive for rank I, so a bare figure takes the place of the sentence's ONE number — "by 3%" → "by
 6%" — and a value that says what it is, "+4 HP Gen +10 AC", stands alone), the activated abilities of
 classes at rank III, the two stats several races share ADDED UP (hit point regeneration: Froglok ·
