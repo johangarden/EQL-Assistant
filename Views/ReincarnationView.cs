@@ -54,7 +54,7 @@ public sealed class ReincarnationView : DockPanel
         Children.Add(_top);
         _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LeftWidth) });
         _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MinWidth = 380 });
-        _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(338) });
+        _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(338 + ScrollGap) });
         _cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0) }); // "what you have now", when the page is wide
         Children.Add(_cols);
         SizeChanged += (_, e) =>
@@ -238,7 +238,7 @@ public sealed class ReincarnationView : DockPanel
 
         var left = LeftCard(); Grid.SetColumn(left, 0); _cols.Children.Add(left);
         var mid = PlanCard(plan); Grid.SetColumn(mid, 1); _cols.Children.Add(mid);
-        var now = new StackPanel();
+        var now = new StackPanel { Margin = new Thickness(0, 0, ScrollGap, 0) }; // the figures stand clear of the scrollbar (owner, 26 Nov)
         NowBlock(now);
         _cols.ColumnDefinitions[3].Width = new GridLength(_wide ? NowWidth : 0);
         if (_wide)
@@ -277,6 +277,9 @@ public sealed class ReincarnationView : DockPanel
 
     private static Border CardOf(UIElement child, Thickness margin) =>
         new() { Background = Surface, BorderBrush = Line, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(7), Padding = new Thickness(12, 10, 12, 10), Margin = margin, Child = child };
+
+    /// <summary>Room between a scrolling card's content and its scrollbar.</summary>
+    private const double ScrollGap = 10;
 
     private static ScrollViewer Scroller(UIElement content) =>
         new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = content };
@@ -495,7 +498,7 @@ public sealed class ReincarnationView : DockPanel
     private StackPanel ProgressPanel(Reincarnation.Plan plan)
     {
         var s = _s!;
-        var sp = new StackPanel();
+        var sp = new StackPanel { Margin = new Thickness(0, 0, ScrollGap, 0) };
         sp.Children.Add(Head("PROGRESS", "★ n = the run that earns rank 3 · hover for the gains"));
         sp.Children.Add(Note("Click a pip to set what a class or race had finished before you started tracking."));
         int classRanks = Reincarnation.Classes.Sum(c => Math.Min(Reincarnation.Ranks, s.Count(c))), raceRanks = Reincarnation.Races.Sum(r => Math.Min(Reincarnation.Ranks, s.Count(r)));
@@ -663,7 +666,7 @@ public sealed class ReincarnationView : DockPanel
         dp.Children.Add(pips);
 
         var tail = new TextBlock { FontSize = 10.5, Foreground = Hint, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-        if (have > 0) { tail.Inlines.Add(new Run($"+{Math.Min(Reincarnation.CapPercent, have * Reincarnation.StepPercent)}%") { Foreground = Dim, FontWeight = FontWeights.SemiBold }); tail.Inlines.Add(new Run(" · ")); }
+        if (have > 0) { tail.Inlines.Add(new Run($"+{Math.Min(Reincarnation.CapPercent, have * Reincarnation.StepPercent)}%") { Foreground = Dim, FontWeight = FontWeights.SemiBold }); tail.Inlines.Add(new Run("  ")); }
         if (have >= Reincarnation.Ranks) tail.Inlines.Add(new Run(have > Reincarnation.Ranks ? $"done ×{have}" : "done") { Foreground = Gold });
         else if (plan.RankThreeAt.TryGetValue(code, out int run)) { tail.Inlines.Add(new Run("★ ")); tail.Inlines.Add(new Run(run.ToString()) { Foreground = Dim, FontWeight = FontWeights.SemiBold }); }
         tail.ToolTip = (plan.RankThreeAt.TryGetValue(code, out int r3) && have < Reincarnation.Ranks ? $"Rank 3 comes with run {r3}. " : "") + (have > 0 ? $"{have} finished: +{Math.Min(Reincarnation.CapPercent, have * Reincarnation.StepPercent)}% XP needed whenever {code} is in the run" : "Untouched: no XP penalty from this one");
