@@ -4690,18 +4690,38 @@ public partial class App : Application
                 && some.Totals[1].StartsWith("Base stat caps +11 in all", StringComparison.Ordinal) && some.CompletionistRank == 0
                 && all.CompletionistRank == 1 && all.Completionist == "Increases the damage of your melee by 1%"
                 && all.Passives.First(x => x.Code == "WAR") is { Rank: 3, Effect: "Reduces incoming melee damage by 6%" } && all.Activated.Count == 2);
-            Check($"reincarnation: the page knows what you have now — the demo's five lines at their ranks ({string.Join(" | ", rv.NowLines)})",
-                rv.NowLines.Count == 5 && rv.NowLines.Contains("SHD II: Increases the damage of your casted instant duration lifetap spells by 6%")
-                && rv.NowLines.Contains("OGR II: Increases your chance to resist any stun by 20%") && rv.NowLines.Any(l => l.StartsWith("WAR I: ", StringComparison.Ordinal))
-                && !rv.NowLines.Any(l => l.StartsWith("★", StringComparison.Ordinal)));
+            // The stat sheet (owner, 26 Nov: "list all the bonuses … highlight (gold) once gained … more like a stat sheet").
+            var sheetDefs = Reincarnation.StatSheet;
+            var givers = sheetDefs.SelectMany(d => d.Sources.Select(x => x.Code)).ToHashSet();
+            var blank = Reincarnation.Sheet(new Reincarnation(null).For("blank", trio));
+            var mixed = Reincarnation.Sheet(nowState); // every class a rank, SHD 3, WAR 5, IKS 2, TRL 1, FRG 3, HUM 1, HEF 2
+            Reincarnation.StatRow Row(IReadOnlyList<Reincarnation.StatRow> rows, string label) => rows.First(r => r.Def.Label == label);
+            Check($"reincarnation: the stat sheet has a line for every bonus — {sheetDefs.Count} stats from all 16 classes, all 16 races and Completionist, each with a figure at every rank; nothing gained reads as nothing",
+                sheetDefs.Count == 34 && Reincarnation.Classes.All(givers.Contains) && Reincarnation.Races.All(givers.Contains) && givers.Contains(Reincarnation.EveryClass) && givers.Count == 33
+                && sheetDefs.All(d => d.Sources.All(x => Reincarnation.RankNumbers(x.Code, x.Index) is { Length: 3 } f && f[0] > 0 && f[1] > f[0] && f[2] > f[1]))
+                && blank.Count == 34 && blank.All(r => r.Have == 0 && r.Max > 0) && string.Join("/", Reincarnation.RankNumbers("IKS", 1)) == "5/10/15" && string.Join("/", Reincarnation.RankNumbers("KRN", 1)) == "10/20/30");
+            Check($"reincarnation: a stat adds up its givers — HP regen {Row(mixed, "Hit point regeneration").HaveText} of {Row(mixed, "Hit point regeneration").MaxText}, stat caps {Row(mixed, "Base stat caps").HaveText} of {Row(mixed, "Base stat caps").MaxText}; what goes down wears a minus",
+                Row(mixed, "Hit point regeneration") is { Have: 10, Max: 18, Parts.Count: 3 } && Row(mixed, "Base stat caps") is { Have: 11, Max: 24 }
+                && Row(mixed, "Lifetap spell damage") is { HaveText: "+9%", MaxText: "+9%" } && Row(mixed, "Melee damage taken") is { HaveText: "−6%", MaxText: "−6%" }
+                && Row(mixed, "Armor class") is { HaveText: "+10", MaxText: "+15" } && Row(mixed, "Jump power") is { HaveText: "+30%" } && Row(mixed, "All resists") is { Have: 6, Max: 9 }
+                && Row(mixed, "Melee damage") is { HaveText: "+1%", MaxText: "+3%" } && Row(mixed, "Dodge chance") is { Have: 2, Max: 6 } && Row(mixed, "Spell & ranged range") is { Have: 0, MaxText: "+30 units" });
+            string regenTip = rv.SourcesTextForTest("Hit point regeneration"), stunTip = rv.SourcesTextForTest("Stun resist chance"), compTip = rv.SourcesTextForTest("Melee damage");
+            Check($"reincarnation: the page shows the whole sheet — every stat and all 16 abilities, the gained ones with their figure — and a line's mouse-over names its givers ({rv.NowLines.Count} lines)",
+                rv.NowLines.Count == 50 && rv.NowLines.Contains("Lifetap spell damage: +6% of +9%") && rv.NowLines.Contains("Stun resist chance: +20% of +30%")
+                && rv.NowLines.Contains("Melee damage taken: −2% of −6%") && rv.NowLines.Contains("Dodge chance: — of +6%") && rv.NowLines.Contains("Hit point regeneration: — of +18")
+                && rv.NowLines.Contains("★ Drain Touch: 2 / 3") && rv.NowLines.Contains("★ Thrash: 1 / 3") && rv.NowLines.Count(l => l.StartsWith("★", StringComparison.Ordinal)) == 16
+                && regenTip.StartsWith("Hit point regeneration: nothing yet of +18", StringComparison.Ordinal) && regenTip.Contains("Froglok", StringComparison.Ordinal) && regenTip.Contains("Iksar", StringComparison.Ordinal) && regenTip.Contains("Troll", StringComparison.Ordinal)
+                && regenTip.Contains("Gives +0 of its +9 to this line.", StringComparison.Ordinal)
+                && stunTip.StartsWith("Stun resist chance: +20% of +30%", StringComparison.Ordinal) && stunTip.Contains("Ogre", StringComparison.Ordinal) && !stunTip.Contains("to this line", StringComparison.Ordinal)
+                && compTip.Contains("Completionist — not yet", StringComparison.Ordinal) && compTip.Contains("+1% / +2% / +3%", StringComparison.Ordinal));
             // Where it sits (owner, 26 Nov: on top of the progress it would push the pips down): a fourth column when
             // the page is wide, the right card's second face when it is not.
             bool narrow = rv.LayoutForTest == "tabs" && rv.RightShownForTest == "progress";
             rv.ShowRightForTest("now");
-            narrow &= rv.RightShownForTest == "now" && rv.NowLines.Count == 5 && rv.RowCountForTest == 48;
+            narrow &= rv.RightShownForTest == "now" && rv.NowLines.Count == 50 && rv.RowCountForTest == 48;
             rv.ShowRightForTest("progress");
             rv.SetWideForTest(true);
-            bool four = rv.LayoutForTest == "four" && rv.RightShownForTest == "both" && rv.NowLines.Count == 5 && rv.RowCountForTest == 48;
+            bool four = rv.LayoutForTest == "four" && rv.RightShownForTest == "both" && rv.NowLines.Count == 50 && rv.RowCountForTest == 48;
             rv.SetWideForTest(false);
             Check("reincarnation: what you have now sits beside the progress — a fourth column from 1380 px of page, a Progress | Have now switch in the right card below that",
                 narrow && four && rv.LayoutForTest == "tabs" && !Views.ReincarnationView.IsWide(1379) && Views.ReincarnationView.IsWide(1380));

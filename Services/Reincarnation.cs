@@ -213,6 +213,109 @@ public sealed class Reincarnation
         return new Summary(passives, activated, totals, compText.Length > 0 ? comp : 0, compText);
     }
 
+    // ---- the stat sheet (owner, 26 Nov: "list all the bonuses … highlight once gained … more like a stat
+    // sheet than text") — one row per STAT, every giver added up, the figures read from the wiki's table ----
+
+    /// <summary>The Completionist line's "source": every class together.</summary>
+    public const string EveryClass = "ALL";
+
+    /// <summary>A stat the reincarnation ranks move, and who gives it: a class or race code and which
+    /// number of its rank value is this stat (Iksar's "+2 HP Gen +5 AC": 0 = HP regen, 1 = armor class).
+    /// <paramref name="Less"/> = the stat goes DOWN (damage taken, costs, delays) — shown with a minus.</summary>
+    public sealed record StatDef(string Group, string Label, string Unit, bool Less, IReadOnlyList<(string Code, int Index)> Sources)
+    {
+        public string Format(int n) => (Less ? "−" : "+") + n + Unit;
+    }
+
+    public sealed record StatPart(string Code, int Rank, int Have, int Max);
+
+    public sealed record StatRow(StatDef Def, int Have, int Max, IReadOnlyList<StatPart> Parts)
+    {
+        public string HaveText => Def.Format(Have);
+        public string MaxText => Def.Format(Max);
+    }
+
+    private static StatDef Up(string group, string label, string unit, params (string, int)[] from) => new(group, label, unit, false, from);
+    private static StatDef Down(string group, string label, string unit, params (string, int)[] from) => new(group, label, unit, true, from);
+
+    /// <summary>The sheet's rows, in reading order. The labels are ours — short names for what eqlwiki's
+    /// sentences say; the figures are never typed here, they come from the table (<see cref="RankNumbers"/>).</summary>
+    public static readonly IReadOnlyList<StatDef> StatSheet = new[]
+    {
+        Up("OFFENSE", "Melee damage", "%", (EveryClass, 0)),
+        Up("OFFENSE", "Chance to hit", "%", ("RNG", 0)),
+        Up("OFFENSE", "Skill ability damage", "%", ("ROG", 0)),
+        Up("OFFENSE", "Lifetap spell damage", "%", ("SHD", 0)),
+        Up("OFFENSE", "Pet damage", "%", ("MAG", 0)),
+        Down("OFFENSE", "Pet attack delay", "%", ("BST", 0)),
+
+        Down("DEFENSE", "Melee damage taken", "%", ("WAR", 0)),
+        Up("DEFENSE", "Dodge chance", "%", ("MNK", 0)),
+        Up("DEFENSE", "Incoming instant heals", "%", ("PAL", 0)),
+        Up("DEFENSE", "Armor class", "", ("IKS", 1)),
+        Down("DEFENSE", "Cold damage taken", "%", ("BAR", 0)),
+        Down("DEFENSE", "Fire damage taken", "%", ("DEF", 0)),
+        Down("DEFENSE", "Magic damage taken", "%", ("HIE", 0)),
+        Up("DEFENSE", "All resists", "", ("HEF", 0)),
+
+        Up("RESIST CHANCES", "Stun resist chance", "%", ("OGR", 0)),
+        Up("RESIST CHANCES", "Fear resist chance", "%", ("DWF", 0)),
+        Up("RESIST CHANCES", "Charm & mez resist chance", "%", ("GNM", 0)),
+        Down("RESIST CHANCES", "Snares & movement slows", "%", ("HFL", 0)),
+
+        Down("SPELLS & COSTS", "Spell cast time", "%", ("DRU", 0)),
+        Down("SPELLS & COSTS", "Healing spell mana cost", "%", ("CLR", 0)),
+        Down("SPELLS & COSTS", "Direct damage mana cost", "%", ("WIZ", 0)),
+        Down("SPELLS & COSTS", "DoT spell cost", "%", ("NEC", 0)),
+        Down("SPELLS & COSTS", "Buff mana cost (no heal)", "%", ("SHM", 0)),
+        Down("SPELLS & COSTS", "Debuff mana cost (no damage)", "%", ("ENC", 0)),
+        Down("SPELLS & COSTS", "Endurance costs", "%", ("BER", 0)),
+        Up("SPELLS & COSTS", "Spell & ranged range", " units", ("WEF", 0)),
+
+        Up("REGEN & STATS", "Hit point regeneration", "", ("FRG", 0), ("IKS", 0), ("TRL", 0)),
+        Up("REGEN & STATS", "Mana regeneration", "", ("ERU", 0)),
+        Up("REGEN & STATS", "Endurance regeneration", "", ("KRN", 0)),
+        Up("REGEN & STATS", "Base stat caps", "", ("HUM", 0), ("HEF", 0)),
+
+        Up("UTILITY", "Movement speed", "%", ("BRD", 0)),
+        Up("UTILITY", "Jump power", "%", ("FRG", 1)),
+        Up("UTILITY", "Safe Fall skill", "", ("KRN", 1)),
+        Up("UTILITY", "Tracking & map range", "%", ("HDE", 0)),
+    };
+
+    /// <summary>The figure at rank I, II and III: the <paramref name="index"/>-th number in each of the
+    /// wiki's three rank values ("+4 HP Gen +10 AC" → 4, 10). Zero where the table has none.</summary>
+    public static int[] RankNumbers(string code, int index)
+    {
+        IReadOnlyList<string> ranks = code == EveryClass ? Abilities.CompletionistRanks : AbilityOf(code)?.Ranks ?? Array.Empty<string>();
+        var figures = new int[Ranks];
+        for (int i = 0; i < Ranks && i < ranks.Count; i++)
+        {
+            var m = Regex.Matches(ranks[i], @"\d+");
+            if (m.Count > index && int.TryParse(m[index].Value, out int n)) figures[i] = n;
+        }
+        return figures;
+    }
+
+    /// <summary>The whole sheet for a character: every stat with what its givers add up to now and at
+    /// most. Completionist stands at the rank every class has reached.</summary>
+    public static IReadOnlyList<StatRow> Sheet(State s)
+    {
+        var rows = new List<StatRow>();
+        foreach (var def in StatSheet)
+        {
+            var parts = new List<StatPart>();
+            foreach (var (code, index) in def.Sources)
+            {
+                int rank = code == EveryClass ? Classes.Min(c => Math.Min(Ranks, s.Count(c))) : Math.Min(Ranks, s.Count(code));
+                var figures = RankNumbers(code, index);
+                parts.Add(new StatPart(code, rank, rank > 0 ? figures[rank - 1] : 0, figures[Ranks - 1]));
+            }
+            rows.Add(new StatRow(def, parts.Sum(x => x.Have), parts.Sum(x => x.Max), parts));
+        }
+        return rows;
+    }
+
     private readonly string? _path;
     private readonly Dictionary<string, State> _all = new(StringComparer.OrdinalIgnoreCase);
 
