@@ -1,6 +1,7 @@
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace EQLOverlay.Services;
 
@@ -144,6 +145,72 @@ public sealed class Reincarnation
         }
         catch (Exception ex) { Log.Warn("reincarnation abilities: " + ex.Message); }
         return new AbilityData(by, shared, notice, compRanks, comp);
+    }
+
+    // ---- what you have now (owner, 26 Nov: "the sum of bonus for the completed reincarnations") ----
+
+    /// <summary>One earned passive at its current rank: "Increases … lifetap spells by 6%".</summary>
+    public sealed record Earned(string Code, string Name, int Rank, string Value, string Effect, bool IsClass);
+
+    /// <summary>Everything the finished reincarnations give right now: the passives at their rank,
+    /// the activated abilities of classes at rank three, the few stats several races share added
+    /// up, and the Completionist rank (every class at that rank or better).</summary>
+    public sealed record Summary(IReadOnlyList<Earned> Passives, IReadOnlyList<Ability> Activated, IReadOnlyList<string> Totals, int CompletionistRank, string Completionist);
+
+    /// <summary>A passive at a rank. The wiki words each one for rank I ("by 3%") and gives the three
+    /// values beside it: a value that says what it is ("+4 HP Gen +10 AC") stands alone; a bare
+    /// figure ("6", "20%") takes the place of the ONE number in the sentence — two numbers and a
+    /// bare figure cannot be matched up, so the value is shown beside the wiki's words instead.</summary>
+    public static string EffectAt(Ability a, int rank)
+    {
+        if (a.Ranks.Count == 0) return a.Passive;
+        string value = a.Ranks[Math.Clamp(rank, 1, a.Ranks.Count) - 1].Trim();
+        if (Regex.IsMatch(value, "[A-Za-z]")) return value;
+        string sentence = a.Passive;
+        int stop = sentence.IndexOf(". ", StringComparison.Ordinal);
+        if (stop >= 0) sentence = sentence[..stop];
+        sentence = sentence.Trim().TrimEnd('.');
+        var lead = Regex.Match(sentence, @"^This passive ability (will )?(\w+)");
+        if (lead.Success)
+        {
+            string verb = lead.Groups[2].Value;
+            if (lead.Groups[1].Success && !verb.EndsWith('s')) verb += "s"; // "will increase" reads "Increases", like the rest
+            sentence = char.ToUpperInvariant(verb[0]) + verb[1..] + sentence[lead.Length..];
+        }
+        var numbers = Regex.Matches(sentence, @"\d+%?");
+        string figure = Regex.Match(value, @"\d+").Value;
+        if (numbers.Count != 1 || figure.Length == 0) return $"{value} — {sentence}";
+        var at = numbers[0];
+        return sentence[..at.Index] + figure + (at.Value.EndsWith('%') ? "%" : "") + sentence[(at.Index + at.Length)..];
+    }
+
+    public static Summary Summarize(State s)
+    {
+        var passives = new List<Earned>();
+        var activated = new List<Ability>();
+        foreach (string code in s.ClassOrder.Concat(s.RaceOrder))
+        {
+            int have = Math.Min(Ranks, s.Count(code));
+            if (have == 0 || AbilityOf(code) is not { } a) continue;
+            passives.Add(new Earned(code, a.Name, have, a.Ranks.Count >= have ? a.Ranks[have - 1].Trim() : "", EffectAt(a, have), a.IsClass));
+            if (a.IsClass && have >= Ranks && a.Active.Length > 0) activated.Add(a);
+        }
+        // The few gains that are the same stat from several races: worth one figure.
+        var totals = new List<string>();
+        void Total(string label, string pattern)
+        {
+            var parts = new List<(string Name, int N)>();
+            foreach (var e in passives.Where(x => !x.IsClass))
+                if (Regex.Match(e.Value + " | " + e.Effect, pattern, RegexOptions.IgnoreCase) is { Success: true } m && int.TryParse(m.Groups[1].Value, out int n)) parts.Add((e.Name, n));
+            if (parts.Count >= 2) totals.Add($"{label} +{parts.Sum(x => x.N)} in all ({string.Join(" · ", parts.Select(x => $"{x.Name} +{x.N}"))})");
+        }
+        Total("Hit point regeneration", @"\+(\d+) HP gen");
+        Total("Base stat caps", @"base stat caps(?: and all resists)? by (\d+)");
+        int comp = Classes.Min(c => Math.Min(Ranks, s.Count(c)));
+        var data = Abilities;
+        string compText = comp > 0 && data.CompletionistRanks.Count >= comp && data.Completionist.Length > 0
+            ? EffectAt(new Ability("", "class", "Completionist", data.CompletionistRanks, data.Completionist, "", ""), comp) : "";
+        return new Summary(passives, activated, totals, compText.Length > 0 ? comp : 0, compText);
     }
 
     private readonly string? _path;

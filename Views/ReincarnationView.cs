@@ -435,10 +435,10 @@ public sealed class ReincarnationView : DockPanel
         return CardOf(dp, new Thickness(0, 0, 10, 0));
     }
 
-    /// <summary>A code with a small raised figure: 1 teal (earns a rank), 0 quiet (a repeat), 3 red (locked race), 2 plain.</summary>
+    /// <summary>A code with a small raised figure: 1 teal (earns a rank), 0 quiet (a repeat), 3 red (locked race), 2 plain, 4 gold (all three ranks).</summary>
     private static Border Chip(string code, string sup, int kind)
     {
-        var (fg, edge, bg) = kind switch { 1 => (Teal, TealEdge, TealBg), 3 => (Red, RedEdge, (Brush)Brushes.Transparent), 2 => (Dim, Edge, ChipBg), _ => (Faint, Line, (Brush)Brushes.Transparent) };
+        var (fg, edge, bg) = kind switch { 1 => (Teal, TealEdge, TealBg), 3 => (Red, RedEdge, (Brush)Brushes.Transparent), 2 => (Dim, Edge, ChipBg), 4 => (Gold, GoldEdge, GoldBg), _ => (Faint, Line, (Brush)Brushes.Transparent) };
         var tb = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
         tb.Children.Add(new TextBlock { Text = code, FontSize = 10.5, Foreground = fg, FontWeight = FontWeights.SemiBold });
         if (sup.Length > 0) tb.Children.Add(new TextBlock { Text = sup, FontSize = 8.5, Foreground = fg, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, -1, 0, 0), VerticalAlignment = VerticalAlignment.Top });
@@ -453,6 +453,7 @@ public sealed class ReincarnationView : DockPanel
     {
         var s = _s!;
         var sp = new StackPanel();
+        NowBlock(sp);
         sp.Children.Add(Head("PROGRESS", "★ n = the run that earns rank 3 · hover for the gains"));
         sp.Children.Add(Note("Click a pip to set what a class or race had finished before you started tracking."));
         int classRanks = Reincarnation.Classes.Sum(c => Math.Min(Reincarnation.Ranks, s.Count(c))), raceRanks = Reincarnation.Races.Sum(r => Math.Min(Reincarnation.Ranks, s.Count(r)));
@@ -479,6 +480,69 @@ public sealed class ReincarnationView : DockPanel
         src.Inlines.Add(new Run(" (checked against the Kunark FAQ). The comparison is the community's 48-run sheet."));
         sp.Children.Add(src);
         return CardOf(new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = sp }, new Thickness(0));
+    }
+
+    /// <summary>Selftest: the "what you have now" block, line by line.</summary>
+    internal List<string> NowLines { get; } = new();
+
+    /// <summary>WHAT YOU HAVE NOW: every finished rank's passive at its current value, the activated
+    /// abilities unlocked, the stats several races share added up — it moves with every tick and pip.</summary>
+    private void NowBlock(StackPanel sp)
+    {
+        NowLines.Clear();
+        var sum = Reincarnation.Summarize(_s!);
+        int extras = sum.Activated.Count;
+        string count = sum.Passives.Count == 0 ? "" : $"{sum.Passives.Count} passive{(sum.Passives.Count == 1 ? "" : "s")}" + (extras > 0 ? $" · {extras} activated" : "");
+        sp.Children.Add(Head("WHAT YOU HAVE NOW", count));
+        if (sum.Passives.Count == 0)
+        {
+            NowLines.Add("Nothing finished yet");
+            sp.Children.Add(Note("Nothing finished yet — tick a run, or click a pip for what you had before."));
+        }
+        string[] roman = { "I", "II", "III" };
+        foreach (var e in sum.Passives)
+        {
+            NowLines.Add($"{e.Code} {roman[e.Rank - 1]}: {e.Effect}");
+            var row = new DockPanel { Margin = new Thickness(0, 0, 0, 5) };
+            var chip = Chip(e.Code, roman[e.Rank - 1], e.Rank >= Reincarnation.Ranks ? 4 : 2);
+            chip.Width = 50; chip.Padding = new Thickness(0, 1, 0, 2); chip.VerticalAlignment = VerticalAlignment.Top;
+            Gains(chip, e.Code);
+            row.Children.Add(chip);
+            row.Children.Add(new TextBlock { Text = e.Effect, Foreground = Dim, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(7, 1, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+            sp.Children.Add(row);
+        }
+        foreach (string t in sum.Totals)
+        {
+            NowLines.Add("Total: " + t);
+            var tb = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 1, 0, 5) };
+            tb.Inlines.Add(new Run("Σ  ") { Foreground = Gold, FontWeight = FontWeights.Bold });
+            tb.Inlines.Add(new Run(t) { Foreground = Dim });
+            sp.Children.Add(tb);
+        }
+        if (sum.CompletionistRank > 0)
+        {
+            NowLines.Add($"Completionist {roman[sum.CompletionistRank - 1]}: {sum.Completionist}");
+            var tb = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 1, 0, 5) };
+            tb.Inlines.Add(new Run($"Completionist {roman[sum.CompletionistRank - 1]}  ") { Foreground = Gold, FontWeight = FontWeights.SemiBold });
+            tb.Inlines.Add(new Run(sum.Completionist + " — every class at that rank.") { Foreground = Dim });
+            sp.Children.Add(tb);
+        }
+        if (extras > 0)
+        {
+            int cd = Reincarnation.Abilities.SharedCooldownSec;
+            sp.Children.Add(Head("ACTIVATED", cd > 0 ? $"one shared {cd} s timer" : ""));
+            foreach (var a in sum.Activated)
+            {
+                NowLines.Add($"★ {a.Active} ({a.Code})");
+                var tb = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 5) };
+                tb.Inlines.Add(new Run("★ " + a.Active) { Foreground = Gold, FontWeight = FontWeights.SemiBold });
+                tb.Inlines.Add(new Run($"  {a.Code}  ") { Foreground = Faint, FontSize = 10 });
+                tb.Inlines.Add(new Run(a.ActiveText) { Foreground = Hint });
+                Gains(tb, a.Code);
+                sp.Children.Add(tb);
+            }
+        }
+        sp.Children.Add(new Border { Height = 1, Background = Line, Margin = new Thickness(0, 4, 0, 10) });
     }
 
     private UIElement ProgressRow(string code, Reincarnation.Plan plan, bool isRace)

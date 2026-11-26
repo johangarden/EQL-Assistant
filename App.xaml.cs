@@ -4666,6 +4666,34 @@ public partial class App : Application
                 && shdTip.Contains("★ Drain Touch", StringComparison.Ordinal) && shdTip.Contains("share one 90 s timer", StringComparison.Ordinal) && shdTip.Contains("You have 2 of its 3 ranks.", StringComparison.Ordinal)
                 && ogrTip.StartsWith("Ogre", StringComparison.Ordinal) && ogrTip.Contains("Rank II: 20% (earned)", StringComparison.Ordinal) && ogrTip.Contains("no activated ability", StringComparison.Ordinal) && !ogrTip.Contains("★", StringComparison.Ordinal)
                 && hieTip.Contains("Not unlocked yet", StringComparison.Ordinal) && hieTip.Contains("magic damage", StringComparison.Ordinal));
+            // What you have now (owner, 26 Nov: "the sum of bonus for the completed reincarnations").
+            string At(string code, int rank) => Reincarnation.EffectAt(Reincarnation.AbilityOf(code)!, rank);
+            Check($"reincarnation: a passive at its rank reads as one sentence — the wiki's rank-I figure swapped for yours; a value that says what it is stands alone (WEF II: {At("WEF", 2)})",
+                At("SHD", 2) == "Increases the damage of your casted instant duration lifetap spells by 6%" && At("SHD", 1).EndsWith("by 3%", StringComparison.Ordinal)
+                && At("OGR", 3) == "Increases your chance to resist any stun by 30%" && At("DEF", 2) == "Reduces incoming fire damage by 6%" && At("BAR", 2) == "Reduces incoming cold damage by 6%"
+                && At("GNM", 2) == "Grants you an additional 20% chance to resist charm and mesmerization spells"
+                && At("WEF", 2) == "Increases the range of your spells and ranged attacks by 20 units" && At("HFL", 3).EndsWith("by 45%", StringComparison.Ordinal)
+                && At("IKS", 2) == "+4 HP Gen +10 AC" && At("ERU", 3) == "+6 Mana gen" && At("FRG", 1) == "+1 HP gen + 10% Jump Power"
+                && At("ROG", 1) == "Increases the damage of activated skill abilities by 3%" && At("HUM", 2) == "Increases your base stat caps by 10"
+                && Reincarnation.Classes.Concat(Reincarnation.Races).All(c => Enumerable.Range(1, 3).All(r => At(c, r).Length > 0 && !At(c, r).Contains("This passive", StringComparison.Ordinal))));
+            var nowState = new Reincarnation(null).For("n", trio);
+            var none = Reincarnation.Summarize(nowState);
+            nowState.SetCount("SHD", 3); nowState.SetCount("WAR", 1); nowState.SetCount("IKS", 2); nowState.SetCount("TRL", 1); nowState.SetCount("FRG", 3); nowState.SetCount("HUM", 1); nowState.SetCount("HEF", 2);
+            var some = Reincarnation.Summarize(nowState);
+            foreach (string c in Reincarnation.Classes) if (nowState.Count(c) == 0) nowState.SetCount(c, 1);
+            nowState.SetCount("WAR", 5); // a fourth and fifth run earn no fourth rank
+            var all = Reincarnation.Summarize(nowState);
+            Check($"reincarnation: what you have now — nothing at first; then each finished line at its rank, the third rank's activated ability, HP regen and stat caps added up over the races that give them; Completionist once every class has a rank ({string.Join(" | ", some.Totals)})",
+                none.Passives.Count == 0 && none.Activated.Count == 0 && none.Totals.Count == 0 && none.CompletionistRank == 0
+                && some.Passives.Count == 7 && some.Passives[0] is { Code: "SHD", Rank: 3 } && some.Activated.Count == 1 && some.Activated[0].Active == "Drain Touch"
+                && some.Totals.Count == 2 && some.Totals[0].StartsWith("Hit point regeneration +10 in all", StringComparison.Ordinal) && some.Totals[0].Contains("Iksar +4", StringComparison.Ordinal)
+                && some.Totals[1].StartsWith("Base stat caps +11 in all", StringComparison.Ordinal) && some.CompletionistRank == 0
+                && all.CompletionistRank == 1 && all.Completionist == "Increases the damage of your melee by 1%"
+                && all.Passives.First(x => x.Code == "WAR") is { Rank: 3, Effect: "Reduces incoming melee damage by 6%" } && all.Activated.Count == 2);
+            Check($"reincarnation: the page leads its progress with what you have now — the demo's five lines at their ranks ({string.Join(" | ", rv.NowLines)})",
+                rv.NowLines.Count == 5 && rv.NowLines.Contains("SHD II: Increases the damage of your casted instant duration lifetap spells by 6%")
+                && rv.NowLines.Contains("OGR II: Increases your chance to resist any stun by 20%") && rv.NowLines.Any(l => l.StartsWith("WAR I: ", StringComparison.Ordinal))
+                && !rv.NowLines.Any(l => l.StartsWith("★", StringComparison.Ordinal)));
             var spill = Reincarnation.Classes.Concat(Reincarnation.Races).Where(c => !rv.GainsFitForTest(c)).ToList();
             Check($"reincarnation: no mouse-over runs off its card — long rank values (Iksar, Kerran, Froglok) wrap onto rows of their own{(spill.Count > 0 ? " — spilling: " + string.Join(", ", spill) : "")}",
                 spill.Count == 0);

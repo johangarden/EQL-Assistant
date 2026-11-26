@@ -348,6 +348,13 @@ share one 90 s timer. Data: embedded `data/reincarnation.json`, built by
 `tools/data-sweeps/build-reincarnation.py` from eqlwiki's Alternate Advancement → Special AAs table
 ("Class Reincarnation: <name>" rows, the races too); cells kept as the wiki writes them; partly
 datamined, re-run it after Kunark. The card is built on `ToolTipOpening`, not per chip per rebuild.
+WHAT YOU HAVE NOW (owner, 26 Nov: "the sum of bonus for the completed reincarnations") leads the
+progress card — `Reincarnation.Summarize`: every finished line at its rank (`EffectAt`: the wiki words
+a passive for rank I, so a bare figure takes the place of the sentence's ONE number — "by 3%" → "by
+6%" — and a value that says what it is, "+4 HP Gen +10 AC", stands alone), the activated abilities of
+classes at rank III, the two stats several races share ADDED UP (hit point regeneration: Froglok ·
+Iksar · Troll; base stat caps: Human · Half Elf — only with two or more givers), and Completionist
+at the rank every class has reached (our reading of "completing all Class Reincarnations").
 Race unlocks, resists (`ResistsView`, also in Fight history — LIGHT ON OPEN,
 30 Sep: a head per mob, tables only for open heads (the newest 5 open by
 themselves, a search opens its hits), 30 heads a page, search and live lines
