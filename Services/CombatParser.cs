@@ -1092,21 +1092,19 @@ public sealed class CombatParser
         @"^(?<att>.+?) (?<verb>" + MeleeVerbPattern + @") (?<tgt>.+?) for (?<dmg>\d+)(?: \(\d+\))? points? of damage\.",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    // Damage shields: "Orc slaver is pierced by YOUR thorns for 8 points of
-    // non-melee damage." / "YOU are pierced by an orc's thorns for 6 points of
-    // non-melee damage!"
-    private static readonly Regex ThornsOutRx = new(
-        @"^(?<tgt>.+?) is pierced by YOUR thorns for (?<dmg>\d+)(?: \(\d+\))? points? of non-melee damage\.",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-    private static readonly Regex ThornsInRx = new(
-        @"^YOU are pierced by (?<att>.+?)'s thorns for (?<dmg>\d+)(?: \(\d+\))? points? of non-melee damage!",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
-    // The fire variant of the same shield: "YOU are burned by a hardened
-    // skeleton's flames for 6 points of non-melee damage!" (observed 2026-08-16).
-    private static readonly Regex FlamesInRx = new(
-        @"^YOU are burned by (?<att>.+?)'s flames for (?<dmg>\d+)(?: \(\d+\))? points? of non-melee damage!",
+    // Damage shields — ONE line shape, three kinds, every direction (26 Nov: only "pierced by YOUR
+    // thorns" and the two shapes on YOU were read, so a frost or fire shield of yours and every shield
+    // of a pet or groupmate never reached the meter or the combat text). Counted in the rig logs:
+    //   "Orc slaver is pierced by YOUR thorns for 8 points of non-melee damage."
+    //   "A vis ghoul knight is tormented by YOUR frost for 11 points of non-melee damage."
+    //   "A gnoll is burned by YOUR flames for 5 points of non-melee damage."
+    //   "A gnoll is burned by Jobaner's flames for 5 points of non-melee damage."   (a pet's, a groupmate's)
+    //   "YOU are pierced by an orc's thorns for 6 points of non-melee damage!"
+    //   "YOU are burned by a hardened skeleton's flames for 6 points of non-melee damage!"
+    // The kind (thorns · flames · frost) is the ability's name.
+    private static readonly Regex ShieldRx = new(
+        @"^(?:(?<you>YOU) are|(?<tgt>.+?) is) (?:pierced|burned|tormented) by (?:(?<your>YOUR)|(?<att>.+?)'s) (?<kind>thorns|flames|frost)"
+        + @" for (?<dmg>\d+)(?: \(\d+\))? points? of non-melee damage[.!]",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // Unattributed spell damage on you: "You were hit by non-melee for 100 damage."
@@ -1499,14 +1497,14 @@ public sealed class CombatParser
             return;
         }
 
-        m = ThornsOutRx.Match(body);
-        if (m.Success) { AddDamage(Self(), m.Groups["tgt"].Value, "thorns", Amount(m, "dmg"), time, SctFlavor.Proc, crit); return; }
-
-        m = ThornsInRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, Self(), "thorns", Amount(m, "dmg"), time, SctFlavor.Proc, crit); return; }
-
-        m = FlamesInRx.Match(body);
-        if (m.Success) { AddDamage(m.Groups["att"].Value, Self(), "flames", Amount(m, "dmg"), time, SctFlavor.Proc, crit); return; }
+        m = ShieldRx.Match(body);
+        if (m.Success)
+        {
+            string shieldOf = m.Groups["your"].Success ? Self() : m.Groups["att"].Value;
+            string shieldOn = m.Groups["you"].Success ? Self() : m.Groups["tgt"].Value;
+            AddDamage(shieldOf, shieldOn, m.Groups["kind"].Value, Amount(m, "dmg"), time, SctFlavor.Proc, crit);
+            return;
+        }
 
         m = NonMeleeYouRx.Match(body);
         if (m.Success) { AddIncomingOnly("non-melee", Amount(m, "dmg"), time, crit); return; }

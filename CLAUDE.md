@@ -531,7 +531,9 @@ Timestamps: `[ddd MMM d(d) HH:mm:ss yyyy] `. Key bodies (see
   on" / "frenzy on" (the one verb with a preposition). When a class or mob
   type is new, scan a log for `for N points of damage.` lines MeleeRx misses.
 - Heal: `<att> healed <tgt> for N hit points by <Spell>.` (spell optional)
-- Thorns DS: `<tgt> is pierced by YOUR thorns for N points of non-melee damage.`
+- Damage shields (ONE regex, `ShieldRx`, 26 Nov — frost and fire shields and every pet/groupmate
+  shield had been unread): `<tgt> is pierced|burned|tormented by YOUR|<att>'s thorns|flames|frost for
+  N points of non-melee damage.` and `YOU are … by <att>'s … damage!`; the kind is the ability name.
 - Casts: `You begin casting <Spell> <rank>.` · deaths: `You have slain <mob>!`
   / `<mob> has been slain by <who>!` · zone: `You have entered <zone>.` ·
   crits: ` (Critical)` suffix · loot: `You looted a <item> from <mob>'s corpse...`
