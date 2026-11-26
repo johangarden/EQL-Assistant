@@ -1234,6 +1234,7 @@ public partial class MainWindow : Window
                 LogPath = () => _watcher?.CurrentPath,
                 ViewStatePath = Path.Combine(_configService.ConfigDirectory, "tools-view.json"),
                 ToolPrefsPath = Path.Combine(_configService.ConfigDirectory, "tools-prefs.json"),
+                ReincarnationPath = Path.Combine(_configService.ConfigDirectory, "reincarnation.json"),
                 Stats = _stats,
                 Raids = _raids,
                 Races = _races,
