@@ -4626,6 +4626,38 @@ public partial class App : Application
                 mine.TrioAt == 3 && mine.Runs[2].Penalty == 20 && mine.Runs.Take(3).All(r => r.Classes.SequenceEqual(trio))
                 && low.Runs.Take(5).All(r => r.Penalty == 0) && low.Runs[5].Penalty == 10 && low.Runs.Count == 48
                 && bal.TrioAt >= 3 && low.TrioAt >= 3);
+            // Rulers of Kunark (the official FAQ + owner, 27 Nov): you reincarnate at 55, levels are per class and a
+            // loadout stands at its LOWEST class — classes never reincarnated keep a head start, but only together.
+            {
+                Reincarnation.DoneRun Did(string race, params string[] cls) => new() { Race = race, Classes = cls.ToList() };
+                var fifty = new Reincarnation(null).For("f", trio);
+                foreach (string c in Reincarnation.Classes) fifty.Levels[c] = 50;
+                var kfp = Reincarnation.Build(fifty);
+                fifty.Mode = "low";
+                var fl = Reincarnation.Build(fifty);
+                fifty.Mode = "balanced";
+                foreach (string c in Reincarnation.Classes) fifty.Levels[c] = 55;
+                var atCap = Reincarnation.Build(fifty);
+                var kmix = new Reincarnation(null).For("m", trio);
+                foreach (var (c, l) in new[] { ("MNK", 50), ("ROG", 50), ("BRD", 37), ("WAR", 50), ("BER", 50), ("PAL", 50), ("CLR", 99) }) kmix.Levels[c] = l;
+                kmix.Done.Add(Did("HUM", "MNK", "ROG", "BRD"));   // the lowest of the three counts: 37
+                kmix.Done.Add(Did("OGR", "SHM", "WAR", "BER"));   // SHM stands at 1: a level-1 loadout, the two 50s are wasted
+                kmix.Done.Add(Did("TRL", "WAR", "PAL", "CLR"));   // WAR is back at 1 after its run
+                var mp = Reincarnation.Build(kmix);
+                var pips = new Reincarnation(null).For("p", trio);
+                pips.SetCount("WAR", 2);
+                Check($"reincarnation: Kunark rules — the cap is 55; 16 classes at 50 give five head-start runs (50→55, +0%) led by the priority trio, then {kfp.Runs.Count(r => r.From == 1)} full levellings (avg +{kfp.Average:0.0}%, peak +{kfp.Peak}%); at 55 those five are ready; a loadout stands at its lowest class",
+                    Reincarnation.LevelCap == 55 && Reincarnation.SoftcapPerRun == 11
+                    && kfp.Runs.Count == 48 && kfp.Runs.Take(5).All(r => r is { From: 50, Penalty: 0, Ready: false }) && kfp.Runs.Take(5).SelectMany(r => r.Classes).Distinct().Count() == 15
+                    && kfp.Runs[0].Classes.SequenceEqual(trio) && kfp.Runs.Skip(5).All(r => r.From == 1) && fl.Runs.Count(r => r.From == 50) == 5
+                    && Math.Abs(kfp.Average - kfp.Runs.Skip(5).Average(r => (double)r.Penalty)) < 0.001 && kfp.Peak is >= 70 and <= 90
+                    && Reincarnation.Classes.All(c => kfp.Runs.Count(x => x.Classes.Contains(c)) == 9)
+                    && atCap.Runs.Take(5).All(r => r is { Ready: true, Penalty: 0, SetBy.Count: 0 }) && atCap.Runs.Skip(5).All(r => !r.Ready && r.From == 1)
+                    && kmix.LevelOf("CLR") == 55 && kmix.LevelOf("SHM") == 1
+                    && mp.Runs[0] is { Done: true, From: 37 } && mp.Runs[1] is { Done: true, From: 1 } && mp.Runs[2] is { Done: true, From: 1, Penalty: 10 }
+                    && Reincarnation.RunsDone(kmix) == 3 && Reincarnation.RunsDone(fifty) == 0 && Reincarnation.RunsDone(pips) == 1
+                    && bal.Runs.All(r => r.From == 1));
+            }
             // History: two ticked runs and a class finished before tracking; locked races wait for the others.
             var hist = new Reincarnation(null).For("h", trio);
             hist.Done.Add(new Reincarnation.DoneRun { Race = "OGR", Classes = trio.ToList() });
@@ -4736,7 +4768,7 @@ public partial class App : Application
                 && Row(mixed, "Melee damage") is { HaveText: "+1%", MaxText: "+3%" } && Row(mixed, "Dodge chance") is { Have: 2, Max: 6 } && Row(mixed, "Spell & ranged range") is { Have: 0, MaxText: "+30 units" });
             string regenTip = rv.SourcesTextForTest("Hit point regeneration"), stunTip = rv.SourcesTextForTest("Stun resist chance"), compTip = rv.SourcesTextForTest("Melee damage");
             Check($"reincarnation: the page shows the whole sheet — every stat and all 16 abilities, the gained ones with their figure — and a line's mouse-over names its givers ({rv.NowLines.Count} lines)",
-                rv.NowLines.Count == 50 && rv.NowLines.Contains("Lifetap spell damage: +6% of +9%") && rv.NowLines.Contains("Stun resist chance: +20% of +30%")
+                rv.NowLines.Count == 51 && rv.NowLines.Contains("Lifetap spell damage: +6% of +9%") && rv.NowLines.Contains("Stun resist chance: +20% of +30%")
                 && rv.NowLines.Contains("Melee damage taken: −2% of −6%") && rv.NowLines.Contains("Dodge chance: — of +6%") && rv.NowLines.Contains("Hit point regeneration: — of +18")
                 && rv.NowLines.Contains("★ Drain Touch: 2 / 3") && rv.NowLines.Contains("★ Thrash: 1 / 3") && rv.NowLines.Count(l => l.StartsWith("★", StringComparison.Ordinal)) == 16
                 && regenTip.StartsWith("Hit point regeneration: nothing yet of +18", StringComparison.Ordinal) && regenTip.Contains("Froglok", StringComparison.Ordinal) && regenTip.Contains("Iksar", StringComparison.Ordinal) && regenTip.Contains("Troll", StringComparison.Ordinal)
@@ -4747,15 +4779,38 @@ public partial class App : Application
             // the page is wide, the right card's second face when it is not.
             bool narrow = rv.LayoutForTest == "tabs" && rv.RightShownForTest == "progress";
             rv.ShowRightForTest("now");
-            narrow &= rv.RightShownForTest == "now" && rv.NowLines.Count == 50 && rv.RowCountForTest == 48;
+            narrow &= rv.RightShownForTest == "now" && rv.NowLines.Count == 51 && rv.RowCountForTest == 48;
             rv.ShowRightForTest("progress");
             rv.SetWideForTest(true);
-            bool four = rv.LayoutForTest == "four" && rv.RightShownForTest == "both" && rv.NowLines.Count == 50 && rv.RowCountForTest == 48;
+            bool four = rv.LayoutForTest == "four" && rv.RightShownForTest == "both" && rv.NowLines.Count == 51 && rv.RowCountForTest == 48;
             rv.SetWideForTest(false);
             Check("reincarnation: what you have now sits beside the progress — a fourth column from 1380 px of page, a Progress | Have now switch in the right card below that",
                 narrow && four && rv.LayoutForTest == "tabs" && !Views.ReincarnationView.IsWide(1379) && Views.ReincarnationView.IsWide(1380));
-            Check($"reincarnation: the sheet's seven sections are headed in teal, not the card's faintest ink ({string.Join(" · ", rv.GroupHeadsForTest.Select(h => h.Split(' ')[0]))})",
-                rv.GroupHeadsForTest.Count == 7 && rv.GroupHeadsForTest[0] == "OFFENSE #FF4FC3F7" && rv.GroupHeadsForTest.All(h => h.EndsWith("#FF4FC3F7", StringComparison.Ordinal)) && rv.GroupHeadsForTest[6].StartsWith("ACTIVATED ABILITIES", StringComparison.Ordinal));
+            Check($"reincarnation: the sheet's eight sections are headed in teal, not the card's faintest ink ({string.Join(" · ", rv.GroupHeadsForTest.Select(h => h.Split(' ')[0]))})",
+                rv.GroupHeadsForTest.Count == 8 && rv.GroupHeadsForTest[0] == "EVERY REINCARNATION #FF4FC3F7" && rv.GroupHeadsForTest[1] == "OFFENSE #FF4FC3F7"
+                && rv.GroupHeadsForTest.All(h => h.EndsWith("#FF4FC3F7", StringComparison.Ordinal)) && rv.GroupHeadsForTest[7].StartsWith("ACTIVATED ABILITIES", StringComparison.Ordinal));
+            // Levelling, not "XP penalty" (owner, 27 Nov: "i have all the classes at lvl 50 … but the line says 0%"): a row says
+            // where the loadout stands and what the way to 55 costs; three classes at the cap read "ready".
+            {
+                rv.SetModeForTest("balanced");
+                bool plain = rv.LevelsLineForTest == "every class from level 1" && rv.PlanCellsForTest.Count == 48 && rv.PlanCellsForTest.All(c => c.StartsWith("1→55 +", StringComparison.Ordinal));
+                rv.SetLevelsForTest(50);
+                var lp = rv.PlanForTest!;
+                bool cells = rv.PlanCellsForTest.Count == 48 && lp.Runs.Select(r => r.Ready ? "ready" : $"{r.From}→55 +{r.Penalty}%").SequenceEqual(rv.PlanCellsForTest)
+                    && rv.PlanCellsForTest[0] == "50→55 +0%" && rv.PlanCellsForTest[1] == "1→55 +10%" && lp.Runs.Count(r => !r.Done && r.From == 50) == 4
+                    && rv.LevelsLineForTest == "all 16 classes at level 50" && rv.TileLines[3].Contains("from level 50", StringComparison.Ordinal) && rv.TileLines[4].Contains("4 runs start higher", StringComparison.Ordinal) is false;
+                string tip = rv.PlanRowTipForTest(1), tile = rv.TileLines[4], soft = rv.NowLines[0];
+                rv.SetLevelsForTest(55);
+                bool ready = rv.PlanCellsForTest.Count(c => c == "ready") == 5 && rv.TileLines[3].StartsWith("NEXT RUN: Ready", StringComparison.Ordinal) && rv.TileLines[3].EndsWith("nothing to level", StringComparison.Ordinal);
+                rv.SetLevelsForTest(1); rv.SetLevelsForTest(50, "WAR", "BER");
+                string someLine = rv.LevelsLineForTest;
+                rv.SetLevelsForTest(1);
+                rv.SetModeForTest("mine");
+                Check($"reincarnation: a row says what to level before the reincarnation — 50→55 +0% for a trio still at 50, 1→55 +10% once reincarnated, \"ready\" at 55 — and its mouse-over what the four carry afterwards ({tile} · {soft})",
+                    plain && cells && ready && someLine == "2 of 16 classes above level 1" && rv.LevelsLineForTest == "every class from level 1"
+                    && tip.Contains("Before: level 50 → 55 at +0% XP", StringComparison.Ordinal) && tip.Contains("Afterwards: ", StringComparison.Ordinal) && tip.Contains("OGR +10%", StringComparison.Ordinal)
+                    && tile.Contains("5 runs start higher", StringComparison.Ordinal) && soft.StartsWith("Stat soft caps: +", StringComparison.Ordinal) && soft.EndsWith("11 per run", StringComparison.Ordinal));
+            }
             // A stat line lights its givers (owner, 27 Nov: "when i mouse over a stat in the side panel it highlights
             // the class/race pill related to it"): the order chip, the progress row and every run of the road.
             {
@@ -6982,6 +7037,7 @@ public partial class App : Application
             string sub = page.Contains(':') ? page[(page.IndexOf(':') + 1)..] : "";
             if (sub.Equals("reinc:wide", StringComparison.OrdinalIgnoreCase)) { tw.Width = 1720; tw.ShowPage("reinc"); }          // four columns
             else if (sub.Equals("reinc:hover", StringComparison.OrdinalIgnoreCase)) { tw.Width = 1720; tw.ShowPage("reinc"); tw.ReincForTest?.SetWideForTest(true); tw.ReincForTest?.HoverStatForTest("Chance to hit"); } // a stat line lighting its giver
+            else if (sub.Equals("reinc:levels", StringComparison.OrdinalIgnoreCase)) { tw.ShowPage("reinc"); tw.ReincForTest?.SetLevelsForTest(50); tw.ReincForTest?.OpenLevelsForTest(); } // every class at 50, the levels block open
             else if (sub.Equals("reinc:now", StringComparison.OrdinalIgnoreCase)) { tw.ShowPage("reinc"); tw.ReincForTest?.ShowRightForTest("now"); } // the right card's other face
             else if (sub.Length > 0) tw.ShowPage(sub);
             if (Environment.GetEnvironmentVariable("EQL_FOCUS_OPEN") is { Length: > 0 }) tw.FocusForTest?.OpenWantsForTest(); // the marks unfolded

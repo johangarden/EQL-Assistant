@@ -321,12 +321,14 @@ public sealed class ReincarnationView : DockPanel
         PlanForTest = plan;
 
         var note = new TextBlock { Foreground = NoteFg, FontSize = 11.5, TextWrapping = TextWrapping.Wrap };
-        note.Inlines.Add(new Run("Before Kunark (8 Dec): ") { FontWeight = FontWeights.Bold });
-        note.Inlines.Add(new Run("the rule as community planners report it from the Kunark FAQ — each finished reincarnation adds "));
+        note.Inlines.Add(new Run("Rulers of Kunark rules (the official FAQ): ") { FontWeight = FontWeights.Bold });
+        note.Inlines.Add(new Run("you reincarnate at the level cap, "));
+        note.Inlines.Add(new Run(Reincarnation.LevelCap.ToString()) { FontWeight = FontWeights.Bold });
+        note.Inlines.Add(new Run(". Each finished reincarnation adds "));
         note.Inlines.Add(new Run("+10% XP needed") { FontWeight = FontWeights.Bold });
         note.Inlines.Add(new Run(" to that class or race, the "));
-        note.Inlines.Add(new Run("highest of the four") { FontWeight = FontWeights.Bold });
-        note.Inlines.Add(new Run(" sets your rate (cap +300%), AA XP is never touched. Unverified in game; runs are ticked by hand until the log shows a line to read."));
+        note.Inlines.Add(new Run("slowest of the four") { FontWeight = FontWeights.Bold });
+        note.Inlines.Add(new Run(" sets your rate (cap +300%), AA XP is never touched. A loadout stands at its lowest class's level. What the ranks give is eqlwiki's table, partly datamined; runs are ticked by hand until the log shows a line to read."));
         _top.Children.Add(new Border { Background = GoldBg, BorderBrush = GoldEdge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), Padding = new Thickness(10, 6, 10, 7), Margin = new Thickness(0, 0, 0, 10), Child = note });
 
         // ---- tiles ----
@@ -340,8 +342,12 @@ public sealed class ReincarnationView : DockPanel
         tiles.Children.Add(Tile("CLASS RANKS", $"{classRanks}", " / 48", $"{classesDone} of 16 classes finished"));
         tiles.Children.Add(Tile("RACE RANKS", $"{raceRanks}", " / 48", $"{racesDone} of 16 races finished"));
         tiles.Children.Add(next is null ? Tile("NEXT RUN", "Done", "", "Every class and race at rank 3")
-            : Tile("NEXT RUN", $"+{next.Penalty}%", " XP", $"{next.Race} · {string.Join(" / ", next.Classes)}"));
-        tiles.Children.Add(Tile("THIS PLAN", $"+{plan.Average:0}%", " average", $"peak +{plan.Peak}% · the community sheet: +{sheet.Average:0}%, peak +{sheet.Peak}%"));
+            : next.Ready ? Tile("NEXT RUN", "Ready", "", $"{next.Race} · {string.Join(" / ", next.Classes)} — nothing to level")
+            : Tile("NEXT RUN", $"+{next.Penalty}%", " XP", $"{next.Race} · {string.Join(" / ", next.Classes)}" + (next.From > 1 ? $" · from level {next.From}" : "")));
+        int fullRuns = plan.Runs.Count(r => r.From <= 1), headRuns = plan.Runs.Count - fullRuns;
+        tiles.Children.Add(Tile("THIS PLAN", $"+{plan.Average:0}%", " average", headRuns == 0
+            ? $"peak +{plan.Peak}% · the community sheet: +{sheet.Average:0}%, peak +{sheet.Peak}%"
+            : $"over {fullRuns} levellings from level 1 · peak +{plan.Peak}% · {headRuns} run{(headRuns == 1 ? "" : "s")} start higher"));
         _top.Children.Add(tiles);
 
         var left = LeftCard(); Grid.SetColumn(left, 0); _cols.Children.Add(left);
@@ -424,6 +430,8 @@ public sealed class ReincarnationView : DockPanel
             _ => "Balanced: your top picks get their ranks early, unless staying on them costs clearly more than the cheapest run.",
         }));
 
+        sp.Children.Add(LevelsBlock(s));
+
         _trio = new ClassPicker("PRIORITY TRIO", chipWidth: TrioChip) { Margin = new Thickness(0, 0, 0, 10) };
         _trio.Set(s.ClassOrder.Take(3));
         _trio.Hint = _who.Count == 3 && s.ClassOrder.Take(3).All(_who.Contains) ? "Your /who trio leads." : "The first three of the list below.";
@@ -443,6 +451,108 @@ public sealed class ReincarnationView : DockPanel
             sp.Children.Add(red);
         }
         return CardOf(new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = sp }, new Thickness(0, 0, 10, 0));
+    }
+
+    // ---- where the classes stand (owner, 27 Nov: "atm i have all the classes at lvl 50 … but the line
+    // says 0%") — one folded line in the card; open, a level and the sixteen classes to light ----------
+    private static readonly Brush GreenBg = F("#15261B");
+    private bool _levelsOpen;
+    private int _levelPick;
+    /// <summary>Selftest: the folded line's words.</summary>
+    internal string LevelsLineForTest { get; private set; } = "";
+    internal void SetLevelsForTest(int level, params string[] only)
+    {
+        if (_s is null) return;
+        foreach (string c in only.Length > 0 ? only : Reincarnation.Classes) { if (level <= 1) _s.Levels.Remove(c); else _s.Levels[c] = Math.Min(level, Reincarnation.LevelCap); }
+        if (level > 1) _levelPick = Math.Min(level, Reincarnation.LevelCap);
+        Changed();
+    }
+    internal void OpenLevelsForTest() { _levelsOpen = true; Build(); }
+
+    private void SetLevel(string code, int level)
+    {
+        if (_s is null) return;
+        if (level <= 1) _s.Levels.Remove(code); else _s.Levels[code] = Math.Min(level, Reincarnation.LevelCap);
+        Changed();
+    }
+
+    /// <summary>The − / + beside the level: every class lit at the old level follows to the new one.</summary>
+    private void StepLevel(int by)
+    {
+        if (_s is null) return;
+        int old = _levelPick, now = Math.Clamp(old + by, 2, Reincarnation.LevelCap);
+        if (now == old) return;
+        foreach (string c in Reincarnation.Classes) if (_s.LevelOf(c) == old) _s.Levels[c] = now;
+        _levelPick = now;
+        Changed();
+    }
+
+    private UIElement LevelsBlock(Reincarnation.State s)
+    {
+        int cap = Reincarnation.LevelCap;
+        var above = Reincarnation.Classes.Where(c => s.LevelOf(c) > 1).ToList();
+        if (_levelPick < 2) _levelPick = above.Count > 0 ? above.GroupBy(s.LevelOf).OrderByDescending(g => g.Count()).First().Key : 50;
+        string sum = above.Count == 0 ? "every class from level 1"
+            : above.Count == Reincarnation.Classes.Length && above.All(c => s.LevelOf(c) == s.LevelOf(above[0])) ? $"all 16 classes at level {s.LevelOf(above[0])}"
+            : $"{above.Count} of 16 classes above level 1";
+        LevelsLineForTest = sum;
+
+        var sp = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var head = new TextBlock { Margin = new Thickness(0, 0, 0, 5), TextWrapping = TextWrapping.Wrap, Cursor = Cursors.Hand, Background = Brushes.Transparent, ToolTip = "Where your classes stand today — click to set it" };
+        head.Inlines.Add(new Run("YOUR LEVELS NOW") { Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold });
+        head.Inlines.Add(new Run("  " + sum + "  ") { Foreground = above.Count > 0 ? Green : Hint, FontSize = 11 });
+        head.Inlines.Add(new Run(_levelsOpen ? "▾ close" : "▸ set") { Foreground = Teal, FontSize = 11 });
+        head.MouseLeftButtonDown += (_, e) => { e.Handled = true; _levelsOpen = !_levelsOpen; Build(); };
+        sp.Children.Add(head);
+        if (!_levelsOpen) return sp;
+
+        sp.Children.Add(Note($"A class you have not reincarnated yet keeps its level. A loadout stands at its LOWEST class, so three such classes together only need the levels up to {cap} — and nothing at {cap}."));
+        Border Step(string glyph, int by)
+        {
+            var b = new Border
+            {
+                Width = 20, Height = 20, CornerRadius = new CornerRadius(5), BorderBrush = Edge, BorderThickness = new Thickness(1), Background = ChipBg, Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock { Text = glyph, Foreground = Dim, FontSize = 12, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, -2, 0, 0) },
+            };
+            b.MouseLeftButtonDown += (_, e) => { e.Handled = true; StepLevel(by); };
+            return b;
+        }
+        TextBlock Link(string text, string tip, Action act)
+        {
+            var t = new TextBlock { Text = text, Foreground = Teal, FontSize = 11, Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0), ToolTip = tip, Background = Brushes.Transparent };
+            t.MouseLeftButtonDown += (_, e) => { e.Handled = true; act(); };
+            return t;
+        }
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
+        row.Children.Add(new TextBlock { Text = "Lit = level", Foreground = Hint, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
+        row.Children.Add(Step("−", -1));
+        row.Children.Add(new TextBlock { Text = _levelPick.ToString(), Foreground = Green, FontSize = 12.5, FontWeight = FontWeights.SemiBold, Width = 26, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(Step("+", 1));
+        row.Children.Add(Link("all", $"Every class stands at level {_levelPick}", () => { foreach (string c in Reincarnation.Classes) s.Levels[c] = _levelPick; Changed(); }));
+        row.Children.Add(Link("none", "Every class from level 1", () => { s.Levels.Clear(); Changed(); }));
+        sp.Children.Add(row);
+
+        var wrap = new WrapPanel();
+        foreach (string code in Reincarnation.Classes)
+        {
+            string c = code;
+            int lv = s.LevelOf(c);
+            bool lit = lv > 1, spent = s.Done.Any(d => d.Classes.Contains(c, StringComparer.OrdinalIgnoreCase));
+            var tb = new TextBlock { FontSize = 10.5 };
+            tb.Inlines.Add(new Run(c) { Foreground = lit ? Green : Hint, FontWeight = FontWeights.SemiBold });
+            if (lit) tb.Inlines.Add(new Run(" " + lv) { Foreground = Green, FontSize = 9.5 });
+            var chip = new Border
+            {
+                Child = tb, Padding = new Thickness(6, 1, 6, 2), Margin = new Thickness(0, 0, 4, 4), CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1),
+                Background = lit ? GreenBg : ChipBg, BorderBrush = lit ? GreenEdge : Edge, Cursor = Cursors.Hand, Opacity = spent ? 0.5 : 1,
+                ToolTip = spent ? $"{c} was reincarnated in a ticked run: it starts from level 1 now, whatever is set here."
+                    : lit ? $"{c} stands at level {lv} — click to put it back to level 1" : $"Click: {c} stands at level {_levelPick} now",
+            };
+            chip.MouseLeftButtonDown += (_, e) => { e.Handled = true; SetLevel(c, lv == _levelPick ? 1 : _levelPick); };
+            wrap.Children.Add(chip);
+        }
+        sp.Children.Add(wrap);
+        return sp;
     }
 
     private WrapPanel RankChips(List<string> order, bool isRace)
@@ -493,7 +603,25 @@ public sealed class ReincarnationView : DockPanel
     }
 
     // ---- the plan ---------------------------------------------------------------------
-    private static readonly double[] PlanCols = { 22, 26, 52, 158, 62 };
+    private static readonly double[] PlanCols = { 22, 26, 52, 158, 78 };
+    /// <summary>Selftest: the LEVELLING cell of every row — "ready", "50→55 +0%", "1→55 +10%".</summary>
+    internal List<string> PlanCellsForTest { get; } = new();
+    internal string PlanRowTipForTest(int number) => PlanForTest?.Runs.FirstOrDefault(r => r.Number == number) is { } r ? RowTip(r) : "";
+
+    /// <summary>A row's mouse-over: what the run asks before the reincarnation, what it earns, and what its
+    /// four carry afterwards (owner, 27 Nov: "they would all be reincarnate lvl 1 and thereby have 10% penalty").</summary>
+    private static string RowTip(Reincarnation.PlanRun run)
+    {
+        int cap = Reincarnation.LevelCap;
+        string before = run.Ready ? $"Ready: all three classes stand at level {cap} — nothing to level before you reincarnate."
+            : $"Before: level {run.From} → {cap} at +{run.Penalty}% XP" + (run.SetBy.Count > 0 ? $" (set by {string.Join(", ", run.SetBy)})" : "")
+                + (run.From > 1 ? " — the loadout stands at its lowest class's level." : ".");
+        var after = run.Classes.Select((c, i) => $"{c} +{Math.Min(Reincarnation.CapPercent, run.ClassUse[i] * Reincarnation.StepPercent)}%")
+            .Append($"{run.Race} +{Math.Min(Reincarnation.CapPercent, run.RaceUse * Reincarnation.StepPercent)}%");
+        return $"Run {run.Number}: {Reincarnation.RaceName(run.Race)} · {string.Join(" / ", run.Classes)}\n{before}"
+            + (run.Earns.Any() ? $"\nEarns {string.Join(" · ", run.Earns)}" : "\nEarns no new rank")
+            + $"\nAfterwards: {string.Join(" · ", after)} — a loadout levels at the slowest of its four.";
+    }
 
     private static Grid PlanRow()
     {
@@ -519,7 +647,8 @@ public sealed class ReincarnationView : DockPanel
         SetDock(sum, Dock.Top); dp.Children.Add(sum);
 
         var titles = PlanRow();
-        string[] names = { "", "#", "RACE", "TRIO", "XP PENALTY", "SET BY" };
+        string[] names = { "", "#", "RACE", "TRIO", "LEVELLING", "SET BY" };
+        PlanCellsForTest.Clear();
         for (int i = 0; i < names.Length; i++)
             titles.Children.Add(At(new TextBlock { Text = names[i], Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold, Margin = new Thickness(i == 1 ? 0 : 4, 0, 0, 5), TextAlignment = i == 1 ? TextAlignment.Right : TextAlignment.Left }, i));
         var titleBox = new Border { BorderBrush = Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = titles };
@@ -542,7 +671,7 @@ public sealed class ReincarnationView : DockPanel
             };
             box.MouseLeftButtonDown += (_, e) => { e.Handled = true; Toggle(r); };
             g.Children.Add(At(box, 0));
-            g.Children.Add(At(new TextBlock { Text = run.Number.ToString(), Foreground = Faint, FontSize = 11, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center }, 1));
+            g.Children.Add(At(new TextBlock { Text = run.Number.ToString(), Foreground = isNext ? Gold : Faint, FontWeight = isNext ? FontWeights.Bold : FontWeights.Normal, FontSize = 11, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center }, 1));
 
             var race = Chip(run.Race, run.RaceUse <= Reincarnation.Ranks ? run.RaceUse.ToString() : "×" + run.RaceUse, run.Locked ? 3 : run.RaceUse <= Reincarnation.Ranks ? 1 : 0);
             Gains(race, run.Race, () => r.RaceUse <= Reincarnation.Ranks ? $"Run {r.Number} earns its rank {r.RaceUse}." : $"Run {r.Number} is a repeat: use {r.RaceUse}, no new rank.");
@@ -560,25 +689,38 @@ public sealed class ReincarnationView : DockPanel
             }
             g.Children.Add(At(trio, 3));
 
-            var (penFg, penEdge) = run.Penalty == 0 ? (Green, GreenEdge) : run.Penalty <= 30 ? (Gold, GoldEdge) : run.Penalty <= 60 ? (Amber, AmberEdge) : (Red, RedEdge);
-            g.Children.Add(At(new Border
+            // LEVELLING (owner, 27 Nov — the old "XP PENALTY +0%" read as what comes AFTER the reincarnation): what
+            // the run asks BEFORE it. The loadout stands at its lowest class's level and levels to the cap at the rate
+            // of the slowest of its four; three classes at the cap ask nothing and read "ready".
+            var (penFg, penEdge) = run.Ready || run.Penalty == 0 ? (Green, GreenEdge) : run.Penalty <= 30 ? (Gold, GoldEdge) : run.Penalty <= 60 ? (Amber, AmberEdge) : (Red, RedEdge);
+            PlanCellsForTest.Add(run.Ready ? "ready" : $"{run.From}→{Reincarnation.LevelCap} +{run.Penalty}%");
+            var lvl = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            if (!run.Ready)
+                lvl.Children.Add(new TextBlock { Text = $"{run.From}→{Reincarnation.LevelCap}", Foreground = run.From > 1 ? Green : Faint, FontSize = 10, Width = 31, VerticalAlignment = VerticalAlignment.Center });
+            lvl.Children.Add(new Border
             {
-                MinWidth = 46, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0), CornerRadius = new CornerRadius(9),
-                BorderBrush = penEdge, BorderThickness = new Thickness(1), Padding = new Thickness(6, 1, 6, 2),
-                Child = new TextBlock { Text = $"+{run.Penalty}%", Foreground = penFg, FontSize = 10.5, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center },
-            }, 4));
+                MinWidth = run.Ready ? 73 : 42, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, CornerRadius = new CornerRadius(9),
+                BorderBrush = penEdge, BorderThickness = new Thickness(1), Padding = new Thickness(6, 1, 6, 2), Background = run.Ready ? GreenBg : Brushes.Transparent,
+                Child = new TextBlock { Text = run.Ready ? "ready" : $"+{run.Penalty}%", Foreground = penFg, FontSize = 10.5, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center },
+            });
+            g.Children.Add(At(lvl, 4));
 
             string why = run.Locked ? $"Unlock {Reincarnation.RaceName(run.Race)} first" : run.SetBy.Count > 0 ? string.Join(" · ", run.SetBy) : "—";
             var last = new DockPanel { Margin = new Thickness(4, 0, 4, 0) };
-            if (isNext) { var tag = Tag("NEXT", Gold, GoldEdge); SetDock(tag, Dock.Right); last.Children.Add(tag); }
+            if (isNext)
+            {
+                // the next run's number is gold whatever the width; the tag joins it when the last column has the room (a narrow
+                // page leaves it some 20 px — half a tag under the scrollbar, 27 Nov)
+                var tag = Tag("NEXT", Gold, GoldEdge); SetDock(tag, Dock.Right); last.Children.Add(tag);
+                last.SizeChanged += (_, e) => tag.Visibility = e.NewSize.Width >= 40 ? Visibility.Visible : Visibility.Collapsed;
+            }
             last.Children.Add(new TextBlock { Text = why, Foreground = run.Locked ? Red : Faint, FontSize = 10.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
             g.Children.Add(At(last, 5));
 
             var line = new Border
             {
                 Child = g, Padding = new Thickness(0, 4, 0, 4), BorderBrush = RowLine, BorderThickness = new Thickness(0, 0, 0, 1), Background = isNext ? NextBg : Brushes.Transparent, Opacity = run.Done ? 0.5 : 1,
-                ToolTip = $"Run {run.Number}: {Reincarnation.RaceName(run.Race)} · {string.Join(" / ", run.Classes)} — +{run.Penalty}% XP"
-                    + (run.SetBy.Count > 0 ? $" (set by {string.Join(", ", run.SetBy)})" : "") + (run.Earns.Any() ? $"\nEarns {string.Join(" · ", run.Earns)}" : "\nEarns no new rank"),
+                ToolTip = RowTip(run),
             };
             rows.Children.Add(line);
             RowCountForTest++;
@@ -650,6 +792,27 @@ public sealed class ReincarnationView : DockPanel
         int abilities = st.ClassOrder.Count(c => st.Count(c) >= Reincarnation.Ranks);
         _nowCount = gained + abilities;
         sp.Children.Add(Head("WHAT YOU HAVE NOW", $"{gained} of {rows.Count} bonuses · {abilities} of {Reincarnation.Classes.Length} abilities"));
+
+        // EVERY REINCARNATION (the Kunark FAQ, 27 Nov): stat soft caps rise by a fifth of the levels given up —
+        // 11 points at level 55. Counted per reincarnation; the FAQ leaves open whether per class, and which stats.
+        {
+            int runsDone = Reincarnation.RunsDone(st), soft = runsDone * Reincarnation.SoftcapPerRun;
+            sp.Children.Add(GroupHead("EVERY REINCARNATION"));
+            NowLines.Add($"Stat soft caps: {(soft > 0 ? "+" + soft : "—")} · {Reincarnation.SoftcapPerRun} per run");
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MinWidth = 44 });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(74) });
+            g.Children.Add(At(new TextBlock { Text = "Stat soft caps", Foreground = soft > 0 ? Text : Hint, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }, 0));
+            g.Children.Add(At(new TextBlock { Text = soft > 0 ? "+" + soft : "—", Foreground = soft > 0 ? Gold : Faint, FontSize = 11.5, FontWeight = soft > 0 ? FontWeights.SemiBold : FontWeights.Normal, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center }, 1));
+            g.Children.Add(At(new TextBlock { Text = $"{Reincarnation.SoftcapPerRun} per run", Foreground = Faint, FontSize = 10, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center }, 2));
+            sp.Children.Add(new Border
+            {
+                Child = g, Background = Brushes.Transparent, Padding = new Thickness(0, 2, 0, 3), BorderBrush = RowLine, BorderThickness = new Thickness(0, 0, 0, 1),
+                ToolTip = $"The Kunark FAQ: stat soft caps rise by a fifth of the levels a reincarnation gives up — {Reincarnation.SoftcapPerRun} points at level {Reincarnation.LevelCap}.\n"
+                    + $"Counted here per reincarnation ({runsDone} done). The FAQ does not say whether it counts per reincarnation or per class, nor which stats it lifts.",
+            });
+        }
 
         // A STAT SHEET (owner, 26 Nov): every bonus there is, one line per stat, its givers added up —
         // gold once gained, quiet until then. Where a line comes from is on the mouse-over.
