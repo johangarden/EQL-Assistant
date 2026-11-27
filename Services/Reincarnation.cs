@@ -23,6 +23,11 @@ namespace EQLOverlay.Services;
 /// favourite classes on repeats and toward even use. No class runs past the even share (the ceiling of
 /// all class slots over 16) unless nothing else fits. Races not unlocked yet wait until the unlocked
 /// ones are finished. Progress is ticked by hand — no log line for a finished reincarnation is known.
+///
+/// Rulers of Kunark (the official FAQ, 27 Nov): you reincarnate at the level cap, 55. Levels are per class
+/// and a loadout stands at its lowest class, so a class not yet reincarnated keeps a head start
+/// (<see cref="State.Levels"/>) that only counts when all three of a run's classes have one — the plan
+/// takes those trios whole (a run's <see cref="PlanRun.From"/>), and three classes at the cap are ready.
 /// </summary>
 public sealed class Reincarnation
 {
@@ -38,6 +43,10 @@ public sealed class Reincarnation
     public static readonly string[] Races = RaceTable.Select(r => r.Code).ToArray();
 
     public const int Ranks = 3, StepPercent = 10, CapPercent = 300;
+    /// <summary>Rulers of Kunark (the official FAQ, 27 Nov): you reincarnate at the level cap, and the cap is 55.</summary>
+    public const int LevelCap = 55;
+    /// <summary>The FAQ: stat soft caps rise by a fifth of the levels a reincarnation gives up — 11 at 55.</summary>
+    public const int SoftcapPerRun = LevelCap / 5;
     public const string RulesUrl = "https://witty-waypoint.pages.dev/reincarnation/";
 
     public static string RaceName(string code) => RaceTable.FirstOrDefault(r => r.Code.Equals(code, StringComparison.OrdinalIgnoreCase)).Name ?? code;
@@ -59,6 +68,12 @@ public sealed class Reincarnation
         public List<DoneRun> Done { get; set; } = new();
         /// <summary>Finished reincarnations from before the tracking began, by class or race code.</summary>
         public Dictionary<string, int> Base { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        /// <summary>The level each CLASS stands at now, for as long as no ticked run has reincarnated it
+        /// (owner, 27 Nov: "i have all the classes at lvl 50"). Levels are per class and a loadout stands
+        /// at its LOWEST class, so this head start only counts when all three of a run's classes have one.
+        /// A ticked run puts its classes back at 1 — unticking it gives the head start back.</summary>
+        public Dictionary<string, int> Levels { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public int LevelOf(string code) => Math.Clamp(Levels.GetValueOrDefault(code, 1), 1, LevelCap);
 
         /// <summary>Finished reincarnations of a class or race: before tracking + ticked runs.</summary>
         public int Count(string code) =>
@@ -77,6 +92,10 @@ public sealed class Reincarnation
     public sealed record PlanRun(int Number, string Race, IReadOnlyList<string> Classes, int Penalty, IReadOnlyList<string> SetBy,
         IReadOnlyList<int> ClassUse, int RaceUse, bool Done, bool Locked)
     {
+        /// <summary>The level the loadout stands at before this run: its lowest class. 1 = a full levelling.</summary>
+        public int From { get; init; } = 1;
+        /// <summary>All three classes at the cap: nothing to level, the reincarnation can be taken as it is.</summary>
+        public bool Ready => From >= LevelCap;
         /// <summary>"OGR 3 · SHD 1": the ranks this run earns (a use past the third earns none).</summary>
         public IEnumerable<string> Earns =>
             Classes.Select((c, i) => (c, n: ClassUse[i])).Where(x => x.n <= Ranks).Select(x => $"{x.c} {x.n}")
@@ -338,6 +357,7 @@ public sealed class Reincarnation
         if (!_all.TryGetValue(charKey, out var s)) _all[charKey] = s = new State();
         s.Base = new Dictionary<string, int>(s.Base ?? new(), StringComparer.OrdinalIgnoreCase);
         s.Done ??= new();
+        s.Levels = new Dictionary<string, int>((s.Levels ?? new()).Where(kv => kv.Value > 1 && Classes.Contains(kv.Key, StringComparer.OrdinalIgnoreCase)), StringComparer.OrdinalIgnoreCase);
         // A ticked run is one race and three different classes — anything else never happened.
         s.Done.RemoveAll(d => d is null || !Races.Contains(d.Race, StringComparer.OrdinalIgnoreCase)
             || d.Classes is null || d.Classes.Where(c => Classes.Contains(c, StringComparer.OrdinalIgnoreCase)).Distinct(StringComparer.OrdinalIgnoreCase).Count() != 3 || d.Classes.Count != 3);
@@ -379,6 +399,10 @@ public sealed class Reincarnation
     /// component — the highest of the four, never their sum — capped at +300%.</summary>
     public static int Penalty(params int[] finished) => Math.Min(CapPercent, StepPercent * Math.Max(0, finished.Max()));
 
+    /// <summary>Reincarnations done so far: every run has exactly one race, so the races' counts add up to
+    /// it — unless ranks were set by hand on classes only, where three class ranks make at least one run.</summary>
+    public static int RunsDone(State s) => Math.Max(Races.Sum(s.Count), (int)Math.Ceiling(Classes.Sum(s.Count) / 3.0));
+
     /// <summary>Move an entry of a priority list to a new place (a drag): everything else keeps its order.</summary>
     public static void Move(List<string> order, string code, int toIndex)
     {
@@ -409,12 +433,16 @@ public sealed class Reincarnation
         for (int i = 0; i < nC; i++) { int at = s.ClassOrder.IndexOf(Classes[i]); wC[i] = nC - (at < 0 ? nC : at); }
         for (int i = 0; i < nR; i++) { int at = s.RaceOrder.IndexOf(Races[i]); wR[i] = nR - (at < 0 ? nR : at); }
         double beta = s.Mode switch { "low" => 100, "mine" => 0.05, _ => 1.2 };
+        // Where each class stands: its head start until a run reincarnates it, level 1 from then on.
+        var lv = new int[nC];
+        for (int i = 0; i < nC; i++) lv[i] = s.LevelOf(Classes[i]);
 
         var runs = new List<PlanRun>();
         var rankThree = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         void Add(int r, int[] t, bool done)
         {
-            int pen = Penalty(cc[t[0]], cc[t[1]], cc[t[2]], rc[r]);
+            int from = Math.Min(lv[t[0]], Math.Min(lv[t[1]], lv[t[2]]));
+            int pen = from >= LevelCap ? 0 : Penalty(cc[t[0]], cc[t[1]], cc[t[2]], rc[r]); // a loadout at the cap levels nothing
             var by = new List<string>();
             if (pen > 0)
             {
@@ -425,7 +453,8 @@ public sealed class Reincarnation
             for (int i = 0; i < 3; i++) { use[i] = ++cc[t[i]]; if (use[i] == Ranks) rankThree[Classes[t[i]]] = runs.Count + 1; }
             int raceUse = ++rc[r];
             if (raceUse == Ranks) rankThree[Races[r]] = runs.Count + 1;
-            runs.Add(new PlanRun(runs.Count + 1, Races[r], t.Select(c => Classes[c]).ToList(), pen, by, use, raceUse, done, !done && lockedRaces.Contains(Races[r])));
+            foreach (int c in t) lv[c] = 1;
+            runs.Add(new PlanRun(runs.Count + 1, Races[r], t.Select(c => Classes[c]).ToList(), pen, by, use, raceUse, done, !done && lockedRaces.Contains(Races[r])) { From = from });
         }
 
         foreach (var d in s.Done)
@@ -461,9 +490,12 @@ public sealed class Reincarnation
                         for (int k = j + 1; k < nC; k++)
                         {
                             if (cc[k] >= share) continue;
-                            int pen = Penalty(cc[i], cc[j], cc[k], rc[r]);
+                            int from = Math.Min(lv[i], Math.Min(lv[j], lv[k]));
+                            int pen = from >= LevelCap ? 0 : Penalty(cc[i], cc[j], cc[k], rc[r]);
                             double gain = (rc[r] < Ranks ? wR[r] : 0) + (cc[i] < Ranks ? wC[i] : 0) + (cc[j] < Ranks ? wC[j] : 0) + (cc[k] < Ranks ? wC[k] : 0);
-                            double score = gain - beta * pen + 0.02 * (wC[i] + wC[j] + wC[k]) - 0.4 * (cc[i] + cc[j] + cc[k]);
+                            // the levels a head start skips, on the penalty's own scale: a whole levelling saved = 100 points
+                            double score = gain - beta * pen + 0.02 * (wC[i] + wC[j] + wC[k]) - 0.4 * (cc[i] + cc[j] + cc[k])
+                                + beta * 100.0 * (from - 1) / (LevelCap - 1);
                             if (score > bestScore) { bestScore = score; best = (r, new[] { i, j, k }); }
                         }
                     }
@@ -475,7 +507,11 @@ public sealed class Reincarnation
         int allAt = Classes.All(rankThree.ContainsKey) ? Classes.Max(c => rankThree[c]) : 0;
         var trio = s.ClassOrder.Take(3).ToList();
         int trioAt = trio.Count == 3 && trio.All(rankThree.ContainsKey) ? trio.Max(c => rankThree[c]) : 0;
-        return new Plan(runs, runs.Count == 0 ? 0 : runs.Average(x => (double)x.Penalty), runs.Count == 0 ? 0 : runs.Max(x => x.Penalty), rankThree, allAt, trioAt);
+        // The average is over the FULL levellings (from level 1); a ready run levels nothing and sets no peak.
+        var full = runs.Where(x => x.From <= 1).ToList();
+        var paid = runs.Where(x => !x.Ready).ToList();
+        double average = full.Count > 0 ? full.Average(x => (double)x.Penalty) : paid.Count > 0 ? paid.Average(x => (double)x.Penalty) : 0;
+        return new Plan(runs, average, paid.Count == 0 ? 0 : paid.Max(x => x.Penalty), rankThree, allAt, trioAt);
     }
 
     /// <summary>The community's 48-run sheet from scratch (three cycles of four trios run three times

@@ -72,7 +72,7 @@ Selftest suites are gated exe arguments; results land in `%TEMP%`:
 | `--bench <log>` | `eql_bench.txt` — µs/line per live consumer on a real log with the real loadout, headroom vs the log's peak rate (65 lines/s observed) |
 | `--sky-audit <log> [item filter]` | `eql_sky_audit.txt` — replays a log through the loot ledger + Sky tracker on scratch files (`SkyAudit`): every quest item's looted / offered / destroyed / held with the lines behind them. The Data page's "Audit quest ledger" runs the same replay on the followed log + merged copies, shows the drift against the live ledger and offers to realign it (`SkyQuests.AdoptFrom`) |
 | `--render-glyphs [png]` | raid-badge contact sheet (iterate vectors visually) |
-| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` / `toolbar:playing` / `toolbar:open` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys; labels with every state key neutral — sound on, shown, locked; labels with all three red — muted, hidden, unlocked), `quests:lines` / `quests:sky` / `quests:sky:all` / `quests:house` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges) / the same with every card shown (reward links) / quest item housekeeping unfolded (item icons), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `faction` / `faction:maxed` / `faction:bad` / `faction:standing` the faction helper card (a hit · the cap · the wrong way · between hits), `character:races` the Races tab on demo dumps (the Character window no longer lists it — see Tools), `tools` / `tools:<page>` the Tools window on demo data (home · eff · inv · bis · slots · focus · stats · races · reinc · fx · charms · res · ts — and `tools:reinc:tip` the reincarnation page's mouse-over cards side by side, `tools:reinc:wide` the page at 1720 px with its fourth column, `tools:reinc:now` the narrow page's right card on "Have now"; a real inventory dump in env EQL_TOOLS_DUMP replaces the demo one — the fx board reads it from a temp copy, a real log in EQL_STATS_LOG feeds the statistics, EQL_FOCUS_OPEN=1 unfolds the focus marks), `meter:incoming` / `meter:incoming:quiet` / `meter:ending` the DPS meter with that chart docked as its cap (mid-fight / folded / a fight gone quiet 3 s ago — the subline's "ends in 7s"), `charm` / `charm:broke` the charm card, `mez` the mez panel, `library:<search>` the spell library window searched as typed (EFFECT column), `library:eff` / `library:eff:heal` / `library:eff:fire` its Efficiency tab on a demo yield (damage · healing · a Wizard's fire nukes), `library:inv` its Invocations tab on a synthetic stretch (`library:invfile` on the log in env EQL_INV_LOG, 60 min to EQL_INV_END "yyyy-MM-dd HH:mm", regen EQL_INV_REGEN, max mana EQL_INV_POOL, combo EQL_INV_CLASSES), `levelup` / `levelup:15` the level-up card (SHD/SHM/ENC at 44 / DRU/BRD/WIZ at 15), `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `quests:epics` / `quests:epics:open` / `quests:epics:bst` the Epics pack mid-quest on a scratch progress file (the shadow knight's current part / the last two parts unfolded / a WAR/BST on the Beastlord epic), `session` / `session:armed` / `session:afk` the session stats panel on its demo evening (the running clock + RESET / after the first click, "RESET?" / paused by an A.F.K. line six minutes ago), `Data:reparse` the Data page with the reparse progress card mid-run |
+| `--render-manager <page> <png> [--bottom]` | screenshot one Manager page off-screen (compare a build against a design mock); `character:<tab>` renders the Character window, `toolbar` / `toolbar:hidden` / `toolbar:catchup` / `toolbar:working` / `toolbar:labels` / `toolbar:playing` / `toolbar:open` the toolbar (eye struck; catch-up progress card; locked + muted + anvil lit + badges; the same with labels under the keys; labels with every state key neutral — sound on, shown, locked; labels with all three red — muted, hidden, unlocked), `quests:lines` / `quests:sky` / `quests:sky:all` / `quests:house` the Quests window on the Notable quests pack / the Plane of Sky pack (class badges) / the same with every card shown (reward links) / quest item housekeeping unfolded (item icons), `recap` a synthetic death recap, `incoming` the incoming-damage panel, `faction` / `faction:maxed` / `faction:bad` / `faction:standing` the faction helper card (a hit · the cap · the wrong way · between hits), `character:races` the Races tab on demo dumps (the Character window no longer lists it — see Tools), `tools` / `tools:<page>` the Tools window on demo data (home · eff · inv · bis · slots · focus · stats · races · reinc · fx · charms · res · ts — and `tools:reinc:tip` the reincarnation page's mouse-over cards side by side, `tools:reinc:wide` the page at 1720 px with its fourth column, `tools:reinc:now` the narrow page's right card on "Have now", `tools:reinc:levels` the page with every class at 50 and the levels block open, `tools:reinc:hover` the wide page with the mouse on "Chance to hit" (the Ranger's pills lit); a real inventory dump in env EQL_TOOLS_DUMP replaces the demo one — the fx board reads it from a temp copy, a real log in EQL_STATS_LOG feeds the statistics, EQL_FOCUS_OPEN=1 unfolds the focus marks), `meter:incoming` / `meter:incoming:quiet` / `meter:ending` the DPS meter with that chart docked as its cap (mid-fight / folded / a fight gone quiet 3 s ago — the subline's "ends in 7s"), `charm` / `charm:broke` the charm card, `mez` the mez panel, `library:<search>` the spell library window searched as typed (EFFECT column), `library:eff` / `library:eff:heal` / `library:eff:fire` its Efficiency tab on a demo yield (damage · healing · a Wizard's fire nukes), `library:inv` its Invocations tab on a synthetic stretch (`library:invfile` on the log in env EQL_INV_LOG, 60 min to EQL_INV_END "yyyy-MM-dd HH:mm", regen EQL_INV_REGEN, max mana EQL_INV_POOL, combo EQL_INV_CLASSES), `levelup` / `levelup:15` the level-up card (SHD/SHM/ENC at 44 / DRU/BRD/WIZ at 15), `tradeskill` / `tradeskill:ladder` / `tradeskill:trivial` the tradeskill helper card (Brewing mid-step / the whole ladder / Blacksmithing gone trivial), `sct` a combat-text lane with a crit frozen mid-flight, `quests:epics` / `quests:epics:open` / `quests:epics:bst` the Epics pack mid-quest on a scratch progress file (the shadow knight's current part / the last two parts unfolded / a WAR/BST on the Beastlord epic), `session` / `session:armed` / `session:afk` the session stats panel on its demo evening (the running clock + RESET / after the first click, "RESET?" / paused by an A.F.K. line six minutes ago), `Data:reparse` the Data page with the reparse progress card mid-run |
 
 **CRITICAL: the exe is a GUI-subsystem app — PowerShell `&` does NOT wait for
 it.** Reading the result file immediately returns a STALE pass from a previous
@@ -327,8 +327,8 @@ progress); `stats.json`; the page: All · 30 · 7 · Today, six tiles, ten
 cards, every number from `Summarize(since)`),
 REINCARNATION (26 Nov, ahead of Kunark — `Reincarnation` + `ReincarnationView`, rail id `reinc`): every
 class and race has three reincarnation ranks, a run reincarnates ONE race and THREE classes, so all 96
-ranks take 48 runs. THE RULE (the Kunark FAQ as Witty Waypoint's community planner reports it —
-UNVERIFIED in game, eqlwiki has no rules page yet): each finished reincarnation adds +10% XP needed to
+ranks take 48 runs. THE RULE (the official Rulers of Kunark FAQ, pasted by the owner 27 Nov — it confirmed what Witty
+Waypoint's community planner had reported): each finished reincarnation adds +10% XP needed to
 that class or race, the HIGHEST of the run's four sets the rate (never the sum), cap +300%, AA XP
 untouched; a fourth run earns no rank but still counts. What follows: 144 class slots over 16 classes
 = nine uses each, so every balanced order averages ~+41% and peaks at +80% (the community 48-run
@@ -341,13 +341,33 @@ three of the class order) + both orders as DRAGGABLE chips (a drop takes the tar
 road, one row per run (race, trio with the rank each use earns, penalty pill, what sets it; the box
 TICKS a run done — no log line for a finished reincarnation is known yet) · pips per class and race
 (click = finished before the tracking began, `State.Base`). `reincarnation.json`, per character key.
+LEVELLING, NOT "XP PENALTY" (owner, 27 Nov: "i have all the classes at lvl 50 … the line says 0%"): the FAQ
+says you reincarnate AT THE LEVEL CAP (`Reincarnation.LevelCap` = 55 from the Kunark release; tokens — 5 of 8
+dungeons per reincarnation — are left out on the owner's word), nothing is tracked per loadout, and the modifier
+applies only to levels the class held before a reincarnation (not modelled: every run here is at 55). The owner:
+levels are PER CLASS and a loadout stands at its LOWEST class. So `State.Levels` holds where each class stands
+until a ticked run reincarnates it (then 1; unticking gives it back) — the left card's folded "YOUR LEVELS NOW"
+line opens a − level + stepper, all / none and sixteen chips. A run's `From` = the lowest of its trio; the plan's
+row has ONE PILL and it is what the run LEAVES (owner, 27 Nov — a "+0%" before the reincarnation read as wrong,
+"it still gives me 10% penalty right?"; two figures side by side were "too crowded"): the tick = reincarnated,
+that loadout now levels at the pill's rate (`AfterOf`: the highest of its four after the run, a first run reads
++10%; SET BY = `AfterSetBy`, who of the four sets it — a third Ogre run reads +30%, set by OGR). A run READY as
+it stands (all three classes at the cap) is a GREEN ROW; what a row asks first ("First: level 1 → 55 at +10%")
+is its mouse-over and the NEXT RUN tile ("1→55 at +10%" / "Ready"), never a second column. The planner scores a head start as β × 100 × levels skipped
+/ 54, so in Lowest XP and Balanced the trios still whole go first (16 classes at 50 = five 50→55 runs, the 16th
+class's head start is wasted whichever it is); `Plan.Average` is over the full levellings (From 1) only. The next
+run's number is gold; its NEXT tag yields when the last column is under 40 px. The stat sheet opens with EVERY
+REINCARNATION → "Stat soft caps +N · 11 per run" (the FAQ: a fifth of the levels given up; `RunsDone` = the races'
+counts, or a third of the class ranks set by hand — per reincarnation is OUR reading, the FAQ leaves it open).
 THE GAINS (owner, 26 Nov: "mouse over information for each class and race"): every class and race chip
 on the page opens a card — the passive, its value at rank I / II / III with the earned ones gold, and
 for a class the ACTIVATED ability its third rank grants (races have none); all activated abilities
 share one 90 s timer. Data: embedded `data/reincarnation.json`, built by
 `tools/data-sweeps/build-reincarnation.py` from eqlwiki's Alternate Advancement → Special AAs table
 ("Class Reincarnation: <name>" rows, the races too); cells kept as the wiki writes them; partly
-datamined, re-run it after Kunark. The card is built on `ToolTipOpening`, not per chip per rebuild.
+datamined, re-run it after Kunark. The card is built on `ToolTipOpening`, not per chip per rebuild. It LEADS WITH WHO it is about (owner,
+27 Nov: "highlight the race/class name more"): a teal band, the name at 15 bold, "CLASS · RNG" beside
+it — on a stat line's card the bands of the stacked givers are the section heads.
 WHAT YOU HAVE NOW (owner, 26 Nov: "the sum of bonus for the completed reincarnations") sits BESIDE the
 progress, never on top of it (it grows to ~50 rows and pushed the pips out of sight — owner, same day):
 a FOURTH COLUMN when the page is ≥ 1380 px wide (`ReincarnationView.WideAt`, a Tools window of about
@@ -360,7 +380,12 @@ costs · regen & stats · utility), one line per STAT with every giver added up 
 until then, "max" at the top; then all 16 activated abilities ("yours" or how far the class is). The
 labels are ours, the figures never typed: `RankNumbers(code, index)` reads the index-th number of each
 of the wiki's rank values ("+4 HP Gen +10 AC" → 4, 10). No class pill — a line's mouse-over stacks the
-gains card of each giver (`SourcesCard`). The earlier sentence form still exists as
+gains card of each giver (`SourcesCard`). A LINE LIGHTS ITS GIVERS (owner, 27 Nov): every class and race
+pill is registered as it is built (`Pill`: the order chip, the progress row's chip, each run's chips in the
+plan — not the priority trio picker, which owns its own lit state); the mouse on a stat or ability line
+turns the givers' pills teal-filled with white ink at once (`Light` / `Unlight`, Completionist = all 16
+classes) and leaving puts back exactly what was there. Teal, never gold — gold says gained. The sheet's section heads
+(OFFENSE, DEFENSE…) are teal 10.5 bold over a hairline (owner, 27 Nov: the faint ink was hard to read). The earlier sentence form still exists as
 `Reincarnation.Summarize`: every finished line at its rank (`EffectAt`: the wiki words
 a passive for rank I, so a bare figure takes the place of the sentence's ONE number — "by 3%" → "by
 6%" — and a value that says what it is, "+4 HP Gen +10 AC", stands alone), the activated abilities of
