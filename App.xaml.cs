@@ -4691,7 +4691,7 @@ public partial class App : Application
             var p0 = rv.PlanForTest!;
             bool page = tw.PageShown == "reinc" && p0.Runs.Count == 48 && rv.RowCountForTest == 48 && p0.Runs.Count(r => r.Done) == 2
                 && rv.TileLines.Count == 5 && rv.TileLines[0].StartsWith("RUNS DONE: 2 / 48", StringComparison.Ordinal) && rv.TileLines[1].StartsWith("CLASS RANKS: 6 / 48", StringComparison.Ordinal)
-                && rv.TileLines[3].StartsWith("NEXT RUN: +0% XP", StringComparison.Ordinal);
+                && rv.TileLines[3].StartsWith("NEXT RUN: 1→55 at +0%", StringComparison.Ordinal);
             var lockedRuns = p0.Runs.Where(r => r.Locked).ToList();
             bool waits = lockedRuns.Count > 0 && lockedRuns.Min(r => r.Number) > p0.Runs.Where(r => !r.Done && !r.Locked).Max(r => r.Number);
             rv.ClickRunForTest(p0.Next!.Number);
@@ -4798,7 +4798,7 @@ public partial class App : Application
                 var lp = rv.PlanForTest!;
                 bool cells = rv.PlanCellsForTest.Count == 48 && lp.Runs.Select(r => r.Ready ? "ready" : $"{r.From}→55 +{r.Penalty}%").SequenceEqual(rv.PlanCellsForTest)
                     && rv.PlanCellsForTest[0] == "50→55 +0%" && rv.PlanCellsForTest[1] == "1→55 +10%" && lp.Runs.Count(r => !r.Done && r.From == 50) == 4
-                    && rv.LevelsLineForTest == "all 16 classes at level 50" && rv.TileLines[3].Contains("from level 50", StringComparison.Ordinal) && rv.TileLines[4].Contains("4 runs start higher", StringComparison.Ordinal) is false;
+                    && rv.LevelsLineForTest == "all 16 classes at level 50" && rv.TileLines[3].StartsWith("NEXT RUN: 50→55 at +0%", StringComparison.Ordinal) && rv.TileLines[4].Contains("4 runs start higher", StringComparison.Ordinal) is false;
                 string tip = rv.PlanRowTipForTest(1), tile = rv.TileLines[4], soft = rv.NowLines[0];
                 rv.SetLevelsForTest(55);
                 bool ready = rv.PlanCellsForTest.Count(c => c == "ready") == 5 && rv.TileLines[3].StartsWith("NEXT RUN: Ready", StringComparison.Ordinal) && rv.TileLines[3].EndsWith("nothing to level", StringComparison.Ordinal);
@@ -4808,14 +4808,16 @@ public partial class App : Application
                 bool afterPills = rv.PlanAfterForTest.Count == 48 && rv.GreenRowsForTest == 5 && rv.PlanAfterForTest[0] == "+10%" && rv.PlanAfterForTest[1] == "+20%"
                     && rp.Runs.Select(r => "+" + Views.ReincarnationView.AfterOf(r) + "%").SequenceEqual(rv.PlanAfterForTest)
                     && rp.Runs.Where(r => r.Ready).All(r => Views.ReincarnationView.AfterOf(r) >= 10)
-                    && rp.Runs.Where(r => !r.Ready).All(r => Views.ReincarnationView.AfterOf(r) == r.Penalty + 10);
+                    && rp.Runs.Where(r => !r.Ready).All(r => Views.ReincarnationView.AfterOf(r) == r.Penalty + 10)
+                    && Views.ReincarnationView.AfterSetBy(rp.Runs[0]).SequenceEqual(new[] { "SHD", "SHM", "ENC", "OGR" })
+                    && rp.Runs.All(r => Views.ReincarnationView.AfterSetBy(r).Count >= 1);
                 rv.SetLevelsForTest(1); rv.SetLevelsForTest(50, "WAR", "BER");
                 string someLine = rv.LevelsLineForTest;
                 rv.SetLevelsForTest(1);
                 rv.SetModeForTest("mine");
                 Check($"reincarnation: a row says what to level before the reincarnation — 50→55 +0% for a trio still at 50, 1→55 +10% once reincarnated, \"ready\" at 55 — and its mouse-over what the four carry afterwards ({tile} · {soft})",
                     plain && cells && ready && afterPills && someLine == "2 of 16 classes above level 1" && rv.LevelsLineForTest == "every class from level 1"
-                    && tip.Contains("Before: level 50 → 55 at +0% XP", StringComparison.Ordinal) && tip.Contains("Afterwards: ", StringComparison.Ordinal) && tip.Contains("OGR +10%", StringComparison.Ordinal)
+                    && tip.Contains("First: level 50 → 55 at +0% XP", StringComparison.Ordinal) && tip.Contains("Then (the pill): ", StringComparison.Ordinal) && tip.Contains("OGR +10%", StringComparison.Ordinal)
                     && tile.Contains("5 runs start higher", StringComparison.Ordinal) && soft.StartsWith("Stat soft caps: +", StringComparison.Ordinal) && soft.EndsWith("11 per run", StringComparison.Ordinal));
             }
             // A stat line lights its givers (owner, 27 Nov: "when i mouse over a stat in the side panel it highlights

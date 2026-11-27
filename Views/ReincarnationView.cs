@@ -343,7 +343,7 @@ public sealed class ReincarnationView : DockPanel
         tiles.Children.Add(Tile("RACE RANKS", $"{raceRanks}", " / 48", $"{racesDone} of 16 races finished"));
         tiles.Children.Add(next is null ? Tile("NEXT RUN", "Done", "", "Every class and race at rank 3")
             : next.Ready ? Tile("NEXT RUN", "Ready", "", $"{next.Race} · {string.Join(" / ", next.Classes)} — nothing to level")
-            : Tile("NEXT RUN", $"+{next.Penalty}%", " XP", $"{next.Race} · {string.Join(" / ", next.Classes)}" + (next.From > 1 ? $" · from level {next.From}" : "")));
+            : Tile("NEXT RUN", $"{next.From}→{Reincarnation.LevelCap}", $" at +{next.Penalty}%", $"{next.Race} · {string.Join(" / ", next.Classes)} — level it, then reincarnate"));
         int fullRuns = plan.Runs.Count(r => r.From <= 1), headRuns = plan.Runs.Count - fullRuns;
         tiles.Children.Add(Tile("THIS PLAN", $"+{plan.Average:0}%", " average", headRuns == 0
             ? $"peak +{plan.Peak}% · the community sheet: +{sheet.Average:0}%, peak +{sheet.Peak}%"
@@ -603,9 +603,9 @@ public sealed class ReincarnationView : DockPanel
     }
 
     // ---- the plan ---------------------------------------------------------------------
-    private static readonly double[] PlanCols = { 20, 22, 52, 158, 56, 44 };
-    /// <summary>Selftest: the LEVEL FIRST cell of every row — "ready", "50→55 +0%", "1→55 +10%" — the AFTER
-    /// pill beside it ("+10%"), and how many rows are green.</summary>
+    private static readonly double[] PlanCols = { 22, 26, 52, 158, 62 };
+    /// <summary>Selftest: what every row asks first, as its mouse-over has it — "ready", "50→55 +0%",
+    /// "1→55 +10%" — the row's pill ("+10%", what the run leaves), and how many rows are green.</summary>
     internal List<string> PlanCellsForTest { get; } = new();
     internal List<string> PlanAfterForTest { get; } = new();
     internal int GreenRowsForTest { get; private set; }
@@ -613,6 +613,15 @@ public sealed class ReincarnationView : DockPanel
     /// <summary>What a run's four carry once it is done: the highest of them, as the next loadout would feel it.</summary>
     internal static int AfterOf(Reincarnation.PlanRun run) =>
         Math.Min(Reincarnation.CapPercent, Reincarnation.StepPercent * Math.Max(run.RaceUse, run.ClassUse.Count > 0 ? run.ClassUse.Max() : 0));
+
+    /// <summary>Who of the four sets that figure — the SET BY column (a third Ogre run reads +30%, set by OGR).</summary>
+    internal static IReadOnlyList<string> AfterSetBy(Reincarnation.PlanRun run)
+    {
+        int after = AfterOf(run);
+        var by = run.Classes.Where((_, i) => Math.Min(Reincarnation.CapPercent, run.ClassUse[i] * Reincarnation.StepPercent) == after).ToList();
+        if (Math.Min(Reincarnation.CapPercent, run.RaceUse * Reincarnation.StepPercent) == after) by.Add(run.Race);
+        return by;
+    }
     internal string PlanRowTipForTest(int number) => PlanForTest?.Runs.FirstOrDefault(r => r.Number == number) is { } r ? RowTip(r) : "";
 
     /// <summary>A row's mouse-over: what the run asks before the reincarnation, what it earns, and what its
@@ -620,14 +629,14 @@ public sealed class ReincarnationView : DockPanel
     private static string RowTip(Reincarnation.PlanRun run)
     {
         int cap = Reincarnation.LevelCap;
-        string before = run.Ready ? $"Ready: all three classes stand at level {cap} — nothing to level before you reincarnate."
-            : $"Before: level {run.From} → {cap} at +{run.Penalty}% XP" + (run.SetBy.Count > 0 ? $" (set by {string.Join(", ", run.SetBy)})" : "")
+        string before = run.Ready ? $"First: nothing — all three classes stand at level {cap}, reincarnate as it stands."
+            : $"First: level {run.From} → {cap} at +{run.Penalty}% XP" + (run.SetBy.Count > 0 ? $" (set by {string.Join(", ", run.SetBy)})" : "")
                 + (run.From > 1 ? " — the loadout stands at its lowest class's level." : ".");
         var after = run.Classes.Select((c, i) => $"{c} +{Math.Min(Reincarnation.CapPercent, run.ClassUse[i] * Reincarnation.StepPercent)}%")
             .Append($"{run.Race} +{Math.Min(Reincarnation.CapPercent, run.RaceUse * Reincarnation.StepPercent)}%");
         return $"Run {run.Number}: {Reincarnation.RaceName(run.Race)} · {string.Join(" / ", run.Classes)}\n{before}"
             + (run.Earns.Any() ? $"\nEarns {string.Join(" · ", run.Earns)}" : "\nEarns no new rank")
-            + $"\nAfterwards: {string.Join(" · ", after)} — a loadout levels at the slowest of its four.";
+            + $"\nThen (the pill): {string.Join(" · ", after)} — a loadout levels at the slowest of its four.";
     }
 
     private static Grid PlanRow()
@@ -643,7 +652,7 @@ public sealed class ReincarnationView : DockPanel
     private UIElement PlanCard(Reincarnation.Plan plan)
     {
         var dp = new DockPanel();
-        var head = Head("THE PLAN", "tick a run when it is done · ★ = third rank, the class's activated ability");
+        var head = Head("THE PLAN", "tick a run once you have reincarnated it · the pill = the XP penalty it leaves on that loadout · green row = ready as it stands · ★ = third rank, the class's activated ability");
         SetDock(head, Dock.Top); dp.Children.Add(head);
 
         var sum = new TextBlock { FontSize = 11, Foreground = Hint, Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
@@ -654,17 +663,7 @@ public sealed class ReincarnationView : DockPanel
         SetDock(sum, Dock.Top); dp.Children.Add(sum);
 
         var titles = PlanRow();
-        // What the two figures are, in words (owner, 27 Nov: "i still dont get the interface").
-        var legend = new TextBlock { FontSize = 10.5, Foreground = Faint, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, -3, 0, 8) };
-        legend.Inlines.Add(new Run("LEVEL FIRST") { Foreground = Hint, FontWeight = FontWeights.SemiBold });
-        legend.Inlines.Add(new Run(" = what to level before you can reincarnate that row; a "));
-        legend.Inlines.Add(new Run("green row") { Foreground = Green, FontWeight = FontWeights.SemiBold });
-        legend.Inlines.Add(new Run(" is ready as it stands. "));
-        legend.Inlines.Add(new Run("AFTER") { Foreground = Hint, FontWeight = FontWeights.SemiBold });
-        legend.Inlines.Add(new Run(" = the XP penalty its classes and race carry once you have."));
-        SetDock(legend, Dock.Top); dp.Children.Add(legend);
-
-        string[] names = { "", "#", "RACE", "TRIO", "LEVEL FIRST", "AFTER", "SET BY" };
+        string[] names = { "", "#", "RACE", "TRIO", "XP PENALTY", "SET BY" };
         PlanCellsForTest.Clear(); PlanAfterForTest.Clear(); GreenRowsForTest = 0;
         for (int i = 0; i < names.Length; i++)
             titles.Children.Add(At(new TextBlock { Text = names[i], Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold, Margin = new Thickness(i == 1 ? 0 : 4, 0, 0, 5), TextAlignment = i == 1 ? TextAlignment.Right : TextAlignment.Left }, i));
@@ -709,33 +708,24 @@ public sealed class ReincarnationView : DockPanel
             }
             g.Children.Add(At(trio, 3));
 
-            // TWO FIGURES, EACH NAMED (owner, 27 Nov — one "XP PENALTY +0%" read as what comes after the reincarnation,
-            // and a "ready" pill hid the +10% it earns). LEVEL FIRST, in words: what the run asks BEFORE it — the
-            // loadout stands at its lowest class's level and levels to the cap at the rate of the slowest of its four;
-            // three classes at the cap ask nothing, and the whole row is green. AFTER, the pill: what its four carry
-            // once it is done — the penalty the reincarnation EARNS.
-            static (Brush Fg, Brush Edge) Heat(int pct) => pct == 0 ? (Green, GreenEdge) : pct <= 30 ? (Gold, GoldEdge) : pct <= 60 ? (Amber, AmberEdge) : (Red, RedEdge);
+            // ONE PILL, AND IT IS WHAT THE RUN LEAVES (owner, 27 Nov — a "+0%" before the reincarnation read as wrong,
+            // "it still gives me 10% penalty right?"; two figures side by side were "too crowded"): the tick says the
+            // reincarnation is done and the levelling of that loadout has begun — at the pill's rate. What had to be
+            // levelled BEFORE the run is the row's mouse-over; a run ready as it stands is a green row.
+            static (Brush Fg, Brush Edge) Heat(int pct) => pct <= 30 ? (Gold, GoldEdge) : pct <= 60 ? (Amber, AmberEdge) : (Red, RedEdge);
             PlanCellsForTest.Add(run.Ready ? "ready" : $"{run.From}→{Reincarnation.LevelCap} +{run.Penalty}%");
-            var first = new TextBlock { FontSize = 10, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            if (run.Ready) first.Inlines.Add(new Run("ready") { Foreground = Green, FontWeight = FontWeights.SemiBold });
-            else
-            {
-                first.Inlines.Add(new Run($"{run.From}→{Reincarnation.LevelCap} ") { Foreground = run.From > 1 ? Green : Faint });
-                first.Inlines.Add(new Run($"+{run.Penalty}%") { Foreground = Heat(run.Penalty).Fg, FontWeight = FontWeights.SemiBold });
-            }
-            g.Children.Add(At(first, 4));
             int after = AfterOf(run);
             PlanAfterForTest.Add($"+{after}%");
             var (aftFg, aftEdge) = Heat(after);
             g.Children.Add(At(new Border
             {
-                MinWidth = 40, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0), CornerRadius = new CornerRadius(9),
-                BorderBrush = aftEdge, BorderThickness = new Thickness(1), Padding = new Thickness(5, 1, 5, 2),
+                MinWidth = 46, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0), CornerRadius = new CornerRadius(9),
+                BorderBrush = aftEdge, BorderThickness = new Thickness(1), Padding = new Thickness(6, 1, 6, 2),
                 Child = new TextBlock { Text = $"+{after}%", Foreground = aftFg, FontSize = 10.5, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center },
-            }, 5));
+            }, 4));
             if (run.Ready) GreenRowsForTest++;
 
-            string why = run.Locked ? $"Unlock {Reincarnation.RaceName(run.Race)} first" : run.SetBy.Count > 0 ? string.Join(" · ", run.SetBy) : "—";
+            string why = run.Locked ? $"Unlock {Reincarnation.RaceName(run.Race)} first" : string.Join(" · ", AfterSetBy(run));
             var last = new DockPanel { Margin = new Thickness(4, 0, 4, 0) };
             if (isNext)
             {
@@ -745,7 +735,7 @@ public sealed class ReincarnationView : DockPanel
                 last.SizeChanged += (_, e) => tag.Visibility = e.NewSize.Width >= 40 ? Visibility.Visible : Visibility.Collapsed;
             }
             last.Children.Add(new TextBlock { Text = why, Foreground = run.Locked ? Red : Faint, FontSize = 10.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
-            g.Children.Add(At(last, 6));
+            g.Children.Add(At(last, 5));
 
             var line = new Border
             {
