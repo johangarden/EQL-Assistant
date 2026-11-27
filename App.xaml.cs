@@ -4754,6 +4754,8 @@ public partial class App : Application
             rv.SetWideForTest(false);
             Check("reincarnation: what you have now sits beside the progress — a fourth column from 1380 px of page, a Progress | Have now switch in the right card below that",
                 narrow && four && rv.LayoutForTest == "tabs" && !Views.ReincarnationView.IsWide(1379) && Views.ReincarnationView.IsWide(1380));
+            Check($"reincarnation: the sheet's seven sections are headed in teal, not the card's faintest ink ({string.Join(" · ", rv.GroupHeadsForTest.Select(h => h.Split(' ')[0]))})",
+                rv.GroupHeadsForTest.Count == 7 && rv.GroupHeadsForTest[0] == "OFFENSE #FF4FC3F7" && rv.GroupHeadsForTest.All(h => h.EndsWith("#FF4FC3F7", StringComparison.Ordinal)) && rv.GroupHeadsForTest[6].StartsWith("ACTIVATED ABILITIES", StringComparison.Ordinal));
             // A stat line lights its givers (owner, 27 Nov: "when i mouse over a stat in the side panel it highlights
             // the class/race pill related to it"): the order chip, the progress row and every run of the road.
             {

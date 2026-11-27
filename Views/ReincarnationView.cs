@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
@@ -643,7 +643,7 @@ public sealed class ReincarnationView : DockPanel
     /// Its own column on a wide page, the right card's second face on a narrow one.</summary>
     private void NowBlock(StackPanel sp)
     {
-        NowLines.Clear();
+        NowLines.Clear(); GroupHeadsForTest.Clear();
         var st = _s!;
         var rows = Reincarnation.Sheet(st);
         int gained = rows.Count(r => r.Have > 0);
@@ -698,8 +698,20 @@ public sealed class ReincarnationView : DockPanel
         sp.Children.Add(new TextBlock { Text = "Gold = gained. Hover a line: its classes and races light up on the page, the card says what each gives.", Foreground = Faint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
     }
 
-    private static TextBlock GroupHead(string caps) =>
-        new() { Text = caps, Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 9, 0, 3) };
+    /// <summary>Selftest: the sheet's section heads with their ink.</summary>
+    internal List<string> GroupHeadsForTest { get; } = new();
+
+    /// <summary>A section of the sheet (OFFENSE, DEFENSE…). Teal, a size up and ruled off (owner, 27 Nov:
+    /// "should be clearer / other colour, easier to read" — it was the faintest ink on the card).</summary>
+    private Border GroupHead(string caps)
+    {
+        GroupHeadsForTest.Add($"{caps} {((SolidColorBrush)Teal).Color}");
+        return new Border
+        {
+            Child = new TextBlock { Text = caps, Foreground = Teal, FontSize = 10.5, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis },
+            BorderBrush = TealEdge, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 0, 0, 3), Margin = new Thickness(0, 12, 0, 2),
+        };
+    }
 
     /// <summary>Hang a card on anything, built when it opens.</summary>
     private static void Hang(FrameworkElement el, Func<object> card)

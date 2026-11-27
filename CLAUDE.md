@@ -366,7 +366,8 @@ gains card of each giver (`SourcesCard`). A LINE LIGHTS ITS GIVERS (owner, 27 No
 pill is registered as it is built (`Pill`: the order chip, the progress row's chip, each run's chips in the
 plan — not the priority trio picker, which owns its own lit state); the mouse on a stat or ability line
 turns the givers' pills teal-filled with white ink at once (`Light` / `Unlight`, Completionist = all 16
-classes) and leaving puts back exactly what was there. Teal, never gold — gold says gained. The earlier sentence form still exists as
+classes) and leaving puts back exactly what was there. Teal, never gold — gold says gained. The sheet's section heads
+(OFFENSE, DEFENSE…) are teal 10.5 bold over a hairline (owner, 27 Nov: the faint ink was hard to read). The earlier sentence form still exists as
 `Reincarnation.Summarize`: every finished line at its rank (`EffectAt`: the wiki words
 a passive for rank I, so a bare figure takes the place of the sentence's ONE number — "by 3%" → "by
 6%" — and a value that says what it is, "+4 HP Gen +10 AC", stands alone), the activated abilities of
