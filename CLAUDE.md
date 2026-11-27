@@ -347,7 +347,9 @@ for a class the ACTIVATED ability its third rank grants (races have none); all a
 share one 90 s timer. Data: embedded `data/reincarnation.json`, built by
 `tools/data-sweeps/build-reincarnation.py` from eqlwiki's Alternate Advancement → Special AAs table
 ("Class Reincarnation: <name>" rows, the races too); cells kept as the wiki writes them; partly
-datamined, re-run it after Kunark. The card is built on `ToolTipOpening`, not per chip per rebuild.
+datamined, re-run it after Kunark. The card is built on `ToolTipOpening`, not per chip per rebuild. It LEADS WITH WHO it is about (owner,
+27 Nov: "highlight the race/class name more"): a teal band, the name at 15 bold, "CLASS · RNG" beside
+it — on a stat line's card the bands of the stacked givers are the section heads.
 WHAT YOU HAVE NOW (owner, 26 Nov: "the sum of bonus for the completed reincarnations") sits BESIDE the
 progress, never on top of it (it grows to ~50 rows and pushed the pips out of sight — owner, same day):
 a FOURTH COLUMN when the page is ≥ 1380 px wide (`ReincarnationView.WideAt`, a Tools window of about

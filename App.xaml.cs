@@ -4693,6 +4693,8 @@ public partial class App : Application
                 && shdTip.Contains("★ Drain Touch", StringComparison.Ordinal) && shdTip.Contains("share one 90 s timer", StringComparison.Ordinal) && shdTip.Contains("You have 2 of its 3 ranks.", StringComparison.Ordinal)
                 && ogrTip.StartsWith("Ogre", StringComparison.Ordinal) && ogrTip.Contains("Rank II: 20% (earned)", StringComparison.Ordinal) && ogrTip.Contains("no activated ability", StringComparison.Ordinal) && !ogrTip.Contains("★", StringComparison.Ordinal)
                 && hieTip.Contains("Not unlocked yet", StringComparison.Ordinal) && hieTip.Contains("magic damage", StringComparison.Ordinal));
+            Check($"reincarnation: a gains card leads with WHO it is about — a band with the name at 15 and class or race + code ({rv.NameBandForTest("RNG")} · {rv.NameBandForTest("ERU")})",
+                rv.NameBandForTest("RNG") == "CLASS · RNG 9.5 | Ranger 15" && rv.NameBandForTest("ERU") == "RACE · ERU 9.5 | Erudite 15");
             // What you have now (owner, 26 Nov: "the sum of bonus for the completed reincarnations").
             string At(string code, int rank) => Reincarnation.EffectAt(Reincarnation.AbilityOf(code)!, rank);
             Check($"reincarnation: a passive at its rank reads as one sentence — the wiki's rank-I figure swapped for yours; a value that says what it is stands alone (WEF II: {At("WEF", 2)})",
@@ -6926,6 +6928,12 @@ public partial class App : Application
                     Background = B("#232B3D"), BorderBrush = B("#3A4560"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(9, 7, 9, 8), Margin = new Thickness(6),
                     VerticalAlignment = VerticalAlignment.Top, Child = twT.ReincForTest!.GainsCardForTest(code, lead),
                 });
+            // … and a stat line's card: three givers stacked, each under its own name band
+            cards.Children.Add(new System.Windows.Controls.Border
+            {
+                Background = B("#232B3D"), BorderBrush = B("#3A4560"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(9, 7, 9, 8), Margin = new Thickness(6),
+                VerticalAlignment = VerticalAlignment.Top, Child = twT.ReincForTest!.SourcesCardForTest("Hit point regeneration"),
+            });
             var tipWin = new Window
             {
                 Content = new System.Windows.Controls.Border { Background = B("#10151E"), Padding = new Thickness(10), Child = cards },

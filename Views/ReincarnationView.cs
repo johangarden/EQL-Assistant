@@ -112,6 +112,13 @@ public sealed class ReincarnationView : DockPanel
     internal string TipTextForTest(string code, string lead = "") { GainsCard(code, lead, out string text); return text; }
     internal UIElement GainsCardForTest(string code, string lead = "") => GainsCard(code, lead, out _);
     private const double CardWidth = 340;
+    /// <summary>Selftest: the band that leads a gains card — its tag and its name with their sizes.</summary>
+    internal string NameBandForTest(string code)
+    {
+        if (GainsCard(code, "", out _) is not StackPanel card || card.Children.Count == 0) return "";
+        return card.Children[0] is Border { Child: DockPanel d } ? string.Join(" | ", d.Children.OfType<TextBlock>().Select(t => t.Text + " " + t.FontSize.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))) : "";
+    }
+    internal UIElement SourcesCardForTest(string label) => SourcesCard(Reincarnation.Sheet(_s!).First(r => r.Def.Label == label));
 
     /// <summary>Selftest: laid out at the card's width, nothing on the card is wider than the card —
     /// every line wraps and every rank cell sits whole on a row of its own if it must.</summary>
@@ -140,7 +147,16 @@ public sealed class ReincarnationView : DockPanel
         var a = Reincarnation.AbilityOf(code);
         bool isRace = Reincarnation.Races.Contains(code, StringComparer.OrdinalIgnoreCase);
         int have = _s?.Count(code) ?? 0;
-        Line(a?.Name ?? (isRace ? Reincarnation.RaceName(code) : code), Text, 13, bold: true);
+        // WHO the card is about leads it as a band (owner, 27 Nov: "highlight the race/class name more") —
+        // on a stat line's card, where several givers stack, the bands are what the eye finds first.
+        string name = a?.Name ?? (isRace ? Reincarnation.RaceName(code) : code);
+        said.AppendLine(name);
+        var band = new DockPanel();
+        var kind = new TextBlock { Text = (isRace ? "RACE" : "CLASS") + " · " + code.ToUpperInvariant(), Foreground = Teal, FontSize = 9.5, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 1, 0, 0) };
+        SetDock(kind, Dock.Right);
+        band.Children.Add(kind);
+        band.Children.Add(new TextBlock { Text = name, Foreground = Brushes.White, FontSize = 15, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
+        sp.Children.Add(new Border { Child = band, Background = TealBg, BorderBrush = TealEdge, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(5), Padding = new Thickness(8, 3, 8, 4), Margin = new Thickness(0, 0, 0, 3) });
         if (lead.Length > 0) Line(lead, Dim, 11.5, top: 1);
         if (isRace && _locked.Contains(code)) Line("Not unlocked yet — see Race unlocks.", Red, 11, top: 1);
         if (a is null)
