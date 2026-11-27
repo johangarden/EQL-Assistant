@@ -4754,6 +4754,33 @@ public partial class App : Application
             rv.SetWideForTest(false);
             Check("reincarnation: what you have now sits beside the progress — a fourth column from 1380 px of page, a Progress | Have now switch in the right card below that",
                 narrow && four && rv.LayoutForTest == "tabs" && !Views.ReincarnationView.IsWide(1379) && Views.ReincarnationView.IsWide(1380));
+            // A stat line lights its givers (owner, 27 Nov: "when i mouse over a stat in the side panel it highlights
+            // the class/race pill related to it"): the order chip, the progress row and every run of the road.
+            {
+                int Runs(string code) => rv.PlanForTest!.Runs.Count(r => r.Race == code || r.Classes.Contains(code));
+                rv.SetWideForTest(true);
+                string rest = rv.PillLookForTest("RNG");
+                rv.HoverStatForTest("Chance to hit");
+                var one = rv.LitForTest; string hot = rv.PillLookForTest("RNG");
+                rv.HoverStatForTest("Hit point regeneration");   // the next line takes over without a leave
+                var three = rv.LitForTest;
+                rv.HoverStatForTest("Melee damage");             // Completionist stands for every class
+                var litAll = rv.LitForTest;
+                rv.HoverStatForTest("★ Drain Touch");
+                var ability = rv.LitForTest;
+                rv.LeaveStatForTest();
+                bool litBack = rv.LitForTest.Count == 0 && rv.PillLookForTest("RNG") == rest;
+                rv.SetWideForTest(false); rv.ShowRightForTest("now");   // the narrow page's Have now face: no progress rows to light
+                rv.HoverStatForTest("Chance to hit");
+                var narrowLit = rv.LitForTest;
+                rv.LeaveStatForTest(); rv.ShowRightForTest("progress");
+                Check($"reincarnation: a stat line lights its givers' pills — order chip, progress row and every run ({string.Join(" ", one.Select(kv => kv.Key + "×" + kv.Value))} · {string.Join(" ", three.Select(kv => kv.Key + "×" + kv.Value))} · {litAll.Count} classes · {rest} → {hot}); leaving puts them back",
+                    Runs("RNG") >= 3 && one.Count == 1 && one["RNG"] == Runs("RNG") + 2 && hot != rest && hot.EndsWith("#FFFFFFFF", StringComparison.Ordinal)
+                    && three.Count == 3 && new[] { "FRG", "IKS", "TRL" }.All(c => three.TryGetValue(c, out int n) && n == Runs(c) + 2)
+                    && litAll.Count == 16 && Reincarnation.Classes.All(c => litAll.TryGetValue(c, out int n) && n == Runs(c) + 2)
+                    && ability.Count == 1 && ability["SHD"] == Runs("SHD") + 2
+                    && litBack && narrowLit.Count == 1 && narrowLit["RNG"] == Runs("RNG") + 1 && rv.LitForTest.Count == 0);
+            }
             var spill = Reincarnation.Classes.Concat(Reincarnation.Races).Where(c => !rv.GainsFitForTest(c)).ToList();
             Check($"reincarnation: no mouse-over runs off its card — long rank values (Iksar, Kerran, Froglok) wrap onto rows of their own{(spill.Count > 0 ? " — spilling: " + string.Join(", ", spill) : "")}",
                 spill.Count == 0);
@@ -6952,6 +6979,7 @@ public partial class App : Application
             tw.Show();
             string sub = page.Contains(':') ? page[(page.IndexOf(':') + 1)..] : "";
             if (sub.Equals("reinc:wide", StringComparison.OrdinalIgnoreCase)) { tw.Width = 1720; tw.ShowPage("reinc"); }          // four columns
+            else if (sub.Equals("reinc:hover", StringComparison.OrdinalIgnoreCase)) { tw.Width = 1720; tw.ShowPage("reinc"); tw.ReincForTest?.SetWideForTest(true); tw.ReincForTest?.HoverStatForTest("Chance to hit"); } // a stat line lighting its giver
             else if (sub.Equals("reinc:now", StringComparison.OrdinalIgnoreCase)) { tw.ShowPage("reinc"); tw.ReincForTest?.ShowRightForTest("now"); } // the right card's other face
             else if (sub.Length > 0) tw.ShowPage(sub);
             if (Environment.GetEnvironmentVariable("EQL_FOCUS_OPEN") is { Length: > 0 }) tw.FocusForTest?.OpenWantsForTest(); // the marks unfolded

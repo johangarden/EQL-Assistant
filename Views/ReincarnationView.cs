@@ -196,6 +196,97 @@ public sealed class ReincarnationView : DockPanel
         return sp;
     }
 
+    // ---- a stat line lights its givers (owner, 27 Nov: "when i mouse over a stat in the side panel
+    // it highlights the class/race pill related to it") -------------------------------------------
+    // Every pill of a class or race on the page — its place in the order, its progress row, each run
+    // of the road that holds it — is registered as it is built; a line of the sheet lights the pills
+    // of everyone behind it the moment the mouse is on it (no waiting for the card) and lets go as it
+    // leaves. Teal, never gold: gold says GAINED here.
+    private static readonly Brush LitBg = F("#1F4E73");
+    private readonly Dictionary<string, List<Border>> _pills = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<(string Code, Border Pill, Brush Edge, Brush Bg, List<(DependencyObject El, DependencyProperty Prop, object Was)> Inks)> _lit = new();
+    private readonly Dictionary<string, Border> _statLines = new(StringComparer.Ordinal);
+    private Border? _hot;
+
+    private Border Pill(string code, Border chip)
+    {
+        if (!_pills.TryGetValue(code, out var list)) _pills[code] = list = new List<Border>();
+        list.Add(chip);
+        return chip;
+    }
+
+    private void Glow(Border line, string key, IReadOnlyList<string> codes)
+    {
+        _statLines[key] = line;
+        line.MouseEnter += (_, _) => Light(line, codes);
+        line.MouseLeave += (_, _) => Unlight();
+    }
+
+    private static IEnumerable<TextBlock> TextsOf(Border pill) => pill.Child switch
+    {
+        TextBlock tb => new[] { tb },
+        Panel p => p.Children.OfType<TextBlock>(),
+        _ => Array.Empty<TextBlock>(),
+    };
+
+    private void Light(Border line, IReadOnlyList<string> codes)
+    {
+        Unlight();
+        _hot = line;
+        line.Background = NextBg;
+        // the Completionist part stands for every class
+        foreach (string code in codes.SelectMany(c => c == Reincarnation.EveryClass ? Reincarnation.Classes : new[] { c }).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!_pills.TryGetValue(code, out var pills)) continue;
+            foreach (var pill in pills)
+            {
+                var inks = new List<(DependencyObject, DependencyProperty, object)>();
+                void Ink(DependencyObject el, DependencyProperty prop) { inks.Add((el, prop, el.ReadLocalValue(prop))); el.SetValue(prop, Brushes.White); }
+                foreach (var tb in TextsOf(pill))
+                {
+                    Ink(tb, TextBlock.ForegroundProperty);
+                    // a run with its own colour (the code in the order chips) goes white with it; small
+                    // print with its own size (the place number) keeps its quiet ink
+                    foreach (var run in tb.Inlines.OfType<Run>())
+                        if (run.ReadLocalValue(TextElement.ForegroundProperty) != DependencyProperty.UnsetValue && run.ReadLocalValue(TextElement.FontSizeProperty) == DependencyProperty.UnsetValue)
+                            Ink(run, TextElement.ForegroundProperty);
+                }
+                _lit.Add((code, pill, pill.BorderBrush, pill.Background, inks));
+                pill.BorderBrush = Teal;
+                pill.Background = LitBg;
+            }
+        }
+    }
+
+    private void Unlight()
+    {
+        foreach (var l in _lit)
+        {
+            l.Pill.BorderBrush = l.Edge;
+            l.Pill.Background = l.Bg;
+            foreach (var (el, prop, was) in l.Inks)
+                if (was == DependencyProperty.UnsetValue) el.ClearValue(prop); else el.SetValue(prop, was);
+        }
+        _lit.Clear();
+        if (_hot is not null) { _hot.Background = Brushes.Transparent; _hot = null; }
+    }
+
+    /// <summary>Selftest / render: put the mouse on a line of the sheet (its label, or "★ " + an ability) and take it off.</summary>
+    internal void HoverStatForTest(string key) { if (_statLines.TryGetValue(key, out var line)) line.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseEnterEvent }); }
+    internal void LeaveStatForTest() { if (_hot is { } line) line.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseLeaveEvent }); }
+    /// <summary>Selftest: the lit pills, counted per class or race.</summary>
+    internal Dictionary<string, int> LitForTest => _lit.GroupBy(l => l.Code, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+    /// <summary>Selftest: how the first pill of a code looks — edge, fill and the ink of its code.</summary>
+    internal string PillLookForTest(string code)
+    {
+        if (!_pills.TryGetValue(code, out var list) || list.Count == 0) return "";
+        var pill = list[0];
+        string C(Brush? b) => b is SolidColorBrush sc ? sc.Color.ToString() : "-";
+        var tb = TextsOf(pill).FirstOrDefault();
+        var ink = tb?.Inlines.OfType<Run>().LastOrDefault()?.Foreground ?? tb?.Foreground;
+        return $"{C(pill.BorderBrush)} {C(pill.Background)} {C(ink)}";
+    }
+
     private void Toggle(Reincarnation.PlanRun run)
     {
         if (_s is null) return;
@@ -224,6 +315,7 @@ public sealed class ReincarnationView : DockPanel
     {
         double keep = _planScroll?.VerticalOffset ?? 0;
         _top.Children.Clear(); _cols.Children.Clear(); TileLines.Clear(); RowCountForTest = 0;
+        _pills.Clear(); _lit.Clear(); _statLines.Clear(); _hot = null;
         if (_s is null) return;
         var plan = Reincarnation.Build(_s, _locked);
         PlanForTest = plan;
@@ -395,7 +487,7 @@ public sealed class ReincarnationView : DockPanel
                 // the page is rebuilt once the drag's own loop has let go of the chips
                 Dispatcher.BeginInvoke(new Action(() => MoveRank(src, to)));
             };
-            wrap.Children.Add(chip);
+            wrap.Children.Add(Pill(code, chip));
         }
         return wrap;
     }
@@ -455,7 +547,7 @@ public sealed class ReincarnationView : DockPanel
             var race = Chip(run.Race, run.RaceUse <= Reincarnation.Ranks ? run.RaceUse.ToString() : "×" + run.RaceUse, run.Locked ? 3 : run.RaceUse <= Reincarnation.Ranks ? 1 : 0);
             Gains(race, run.Race, () => r.RaceUse <= Reincarnation.Ranks ? $"Run {r.Number} earns its rank {r.RaceUse}." : $"Run {r.Number} is a repeat: use {r.RaceUse}, no new rank.");
             race.Margin = new Thickness(4, 0, 0, 0);
-            g.Children.Add(At(race, 2));
+            g.Children.Add(At(Pill(run.Race, race), 2));
 
             var trio = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             for (int i = 0; i < run.Classes.Count; i++)
@@ -464,7 +556,7 @@ public sealed class ReincarnationView : DockPanel
                 var c = Chip(run.Classes[i], n < Reincarnation.Ranks ? n.ToString() : n == Reincarnation.Ranks ? "★" : "×" + n, n <= Reincarnation.Ranks ? 1 : 0);
                 Gains(c, run.Classes[i], () => n < Reincarnation.Ranks ? $"Run {r.Number} earns its rank {n}." : n == Reincarnation.Ranks ? $"Run {r.Number} earns its rank 3 — the activated ability." : $"Run {r.Number} is a repeat: use {n}, no new rank.");
                 c.Margin = new Thickness(0, 0, 4, 0);
-                trio.Children.Add(c);
+                trio.Children.Add(Pill(run.Classes[i], c));
             }
             g.Children.Add(At(trio, 3));
 
@@ -577,6 +669,7 @@ public sealed class ReincarnationView : DockPanel
             var line = new Border { Child = g, Background = Brushes.Transparent, Padding = new Thickness(0, 2, 0, 3), BorderBrush = RowLine, BorderThickness = new Thickness(0, 0, 0, 1) };
             var row = r;
             Hang(line, () => SourcesCard(row));
+            Glow(line, r.Def.Label, row.Parts.Select(p => p.Code).ToList());
             sp.Children.Add(line);
         }
 
@@ -599,9 +692,10 @@ public sealed class ReincarnationView : DockPanel
             g.Children.Add(At(new TextBlock { Text = yours ? "yours" : $"{have} / {Reincarnation.Ranks}", Foreground = yours ? Gold : Faint, FontSize = yours ? 11 : 10, FontWeight = yours ? FontWeights.SemiBold : FontWeights.Normal, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center }, 1));
             var line = new Border { Child = g, Background = Brushes.Transparent, Padding = new Thickness(0, 2, 0, 3), BorderBrush = RowLine, BorderThickness = new Thickness(0, 0, 0, 1) };
             Gains(line, code);
+            Glow(line, "★ " + a.Active, new[] { code });
             sp.Children.Add(line);
         }
-        sp.Children.Add(new TextBlock { Text = "Gold = gained. Hover a line for who gives it.", Foreground = Faint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
+        sp.Children.Add(new TextBlock { Text = "Gold = gained. Hover a line: its classes and races light up on the page, the card says what each gives.", Foreground = Faint, FontSize = 10.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
     }
 
     private static TextBlock GroupHead(string caps) =>
@@ -664,7 +758,7 @@ public sealed class ReincarnationView : DockPanel
         var chip = Chip(code, "", locked ? 3 : 2);
         chip.Width = 42; chip.Padding = new Thickness(0, 1, 0, 2);
         Gains(chip, code, () => plan.RankThreeAt.TryGetValue(code, out int at) && have < Reincarnation.Ranks ? $"Rank 3 comes with run {at} of this plan." : "");
-        dp.Children.Add(chip);
+        dp.Children.Add(Pill(code, chip));
 
         var pips = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         for (int n = 1; n <= Reincarnation.Ranks; n++)
