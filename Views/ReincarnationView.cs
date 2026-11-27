@@ -603,9 +603,16 @@ public sealed class ReincarnationView : DockPanel
     }
 
     // ---- the plan ---------------------------------------------------------------------
-    private static readonly double[] PlanCols = { 22, 26, 52, 158, 78 };
-    /// <summary>Selftest: the LEVELLING cell of every row — "ready", "50→55 +0%", "1→55 +10%".</summary>
+    private static readonly double[] PlanCols = { 20, 22, 52, 158, 56, 44 };
+    /// <summary>Selftest: the LEVEL FIRST cell of every row — "ready", "50→55 +0%", "1→55 +10%" — the AFTER
+    /// pill beside it ("+10%"), and how many rows are green.</summary>
     internal List<string> PlanCellsForTest { get; } = new();
+    internal List<string> PlanAfterForTest { get; } = new();
+    internal int GreenRowsForTest { get; private set; }
+
+    /// <summary>What a run's four carry once it is done: the highest of them, as the next loadout would feel it.</summary>
+    internal static int AfterOf(Reincarnation.PlanRun run) =>
+        Math.Min(Reincarnation.CapPercent, Reincarnation.StepPercent * Math.Max(run.RaceUse, run.ClassUse.Count > 0 ? run.ClassUse.Max() : 0));
     internal string PlanRowTipForTest(int number) => PlanForTest?.Runs.FirstOrDefault(r => r.Number == number) is { } r ? RowTip(r) : "";
 
     /// <summary>A row's mouse-over: what the run asks before the reincarnation, what it earns, and what its
@@ -647,10 +654,23 @@ public sealed class ReincarnationView : DockPanel
         SetDock(sum, Dock.Top); dp.Children.Add(sum);
 
         var titles = PlanRow();
-        string[] names = { "", "#", "RACE", "TRIO", "LEVELLING", "SET BY" };
-        PlanCellsForTest.Clear();
+        // What the two figures are, in words (owner, 27 Nov: "i still dont get the interface").
+        var legend = new TextBlock { FontSize = 10.5, Foreground = Faint, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, -3, 0, 8) };
+        legend.Inlines.Add(new Run("LEVEL FIRST") { Foreground = Hint, FontWeight = FontWeights.SemiBold });
+        legend.Inlines.Add(new Run(" = what to level before you can reincarnate that row; a "));
+        legend.Inlines.Add(new Run("green row") { Foreground = Green, FontWeight = FontWeights.SemiBold });
+        legend.Inlines.Add(new Run(" is ready as it stands. "));
+        legend.Inlines.Add(new Run("AFTER") { Foreground = Hint, FontWeight = FontWeights.SemiBold });
+        legend.Inlines.Add(new Run(" = the XP penalty its classes and race carry once you have."));
+        SetDock(legend, Dock.Top); dp.Children.Add(legend);
+
+        string[] names = { "", "#", "RACE", "TRIO", "LEVEL FIRST", "AFTER", "SET BY" };
+        PlanCellsForTest.Clear(); PlanAfterForTest.Clear(); GreenRowsForTest = 0;
         for (int i = 0; i < names.Length; i++)
             titles.Children.Add(At(new TextBlock { Text = names[i], Foreground = Faint, FontSize = 9.5, FontWeight = FontWeights.Bold, Margin = new Thickness(i == 1 ? 0 : 4, 0, 0, 5), TextAlignment = i == 1 ? TextAlignment.Right : TextAlignment.Left }, i));
+        // a narrow page leaves the last column some 20 px: half a title reads as a fault, so it steps aside (its words are on the row's mouse-over)
+        if (titles.Children[titles.Children.Count - 1] is TextBlock setBy)
+            titles.SizeChanged += (_, e) => setBy.Visibility = e.NewSize.Width - PlanCols.Sum() >= 44 ? Visibility.Visible : Visibility.Collapsed;
         var titleBox = new Border { BorderBrush = Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = titles };
         SetDock(titleBox, Dock.Top); dp.Children.Add(titleBox);
 
@@ -689,21 +709,31 @@ public sealed class ReincarnationView : DockPanel
             }
             g.Children.Add(At(trio, 3));
 
-            // LEVELLING (owner, 27 Nov — the old "XP PENALTY +0%" read as what comes AFTER the reincarnation): what
-            // the run asks BEFORE it. The loadout stands at its lowest class's level and levels to the cap at the rate
-            // of the slowest of its four; three classes at the cap ask nothing and read "ready".
-            var (penFg, penEdge) = run.Ready || run.Penalty == 0 ? (Green, GreenEdge) : run.Penalty <= 30 ? (Gold, GoldEdge) : run.Penalty <= 60 ? (Amber, AmberEdge) : (Red, RedEdge);
+            // TWO FIGURES, EACH NAMED (owner, 27 Nov — one "XP PENALTY +0%" read as what comes after the reincarnation,
+            // and a "ready" pill hid the +10% it earns). LEVEL FIRST, in words: what the run asks BEFORE it — the
+            // loadout stands at its lowest class's level and levels to the cap at the rate of the slowest of its four;
+            // three classes at the cap ask nothing, and the whole row is green. AFTER, the pill: what its four carry
+            // once it is done — the penalty the reincarnation EARNS.
+            static (Brush Fg, Brush Edge) Heat(int pct) => pct == 0 ? (Green, GreenEdge) : pct <= 30 ? (Gold, GoldEdge) : pct <= 60 ? (Amber, AmberEdge) : (Red, RedEdge);
             PlanCellsForTest.Add(run.Ready ? "ready" : $"{run.From}→{Reincarnation.LevelCap} +{run.Penalty}%");
-            var lvl = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            if (!run.Ready)
-                lvl.Children.Add(new TextBlock { Text = $"{run.From}→{Reincarnation.LevelCap}", Foreground = run.From > 1 ? Green : Faint, FontSize = 10, Width = 31, VerticalAlignment = VerticalAlignment.Center });
-            lvl.Children.Add(new Border
+            var first = new TextBlock { FontSize = 10, Margin = new Thickness(4, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            if (run.Ready) first.Inlines.Add(new Run("ready") { Foreground = Green, FontWeight = FontWeights.SemiBold });
+            else
             {
-                MinWidth = run.Ready ? 73 : 42, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, CornerRadius = new CornerRadius(9),
-                BorderBrush = penEdge, BorderThickness = new Thickness(1), Padding = new Thickness(6, 1, 6, 2), Background = run.Ready ? GreenBg : Brushes.Transparent,
-                Child = new TextBlock { Text = run.Ready ? "ready" : $"+{run.Penalty}%", Foreground = penFg, FontSize = 10.5, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center },
-            });
-            g.Children.Add(At(lvl, 4));
+                first.Inlines.Add(new Run($"{run.From}→{Reincarnation.LevelCap} ") { Foreground = run.From > 1 ? Green : Faint });
+                first.Inlines.Add(new Run($"+{run.Penalty}%") { Foreground = Heat(run.Penalty).Fg, FontWeight = FontWeights.SemiBold });
+            }
+            g.Children.Add(At(first, 4));
+            int after = AfterOf(run);
+            PlanAfterForTest.Add($"+{after}%");
+            var (aftFg, aftEdge) = Heat(after);
+            g.Children.Add(At(new Border
+            {
+                MinWidth = 40, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0), CornerRadius = new CornerRadius(9),
+                BorderBrush = aftEdge, BorderThickness = new Thickness(1), Padding = new Thickness(5, 1, 5, 2),
+                Child = new TextBlock { Text = $"+{after}%", Foreground = aftFg, FontSize = 10.5, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center },
+            }, 5));
+            if (run.Ready) GreenRowsForTest++;
 
             string why = run.Locked ? $"Unlock {Reincarnation.RaceName(run.Race)} first" : run.SetBy.Count > 0 ? string.Join(" · ", run.SetBy) : "—";
             var last = new DockPanel { Margin = new Thickness(4, 0, 4, 0) };
@@ -715,11 +745,11 @@ public sealed class ReincarnationView : DockPanel
                 last.SizeChanged += (_, e) => tag.Visibility = e.NewSize.Width >= 40 ? Visibility.Visible : Visibility.Collapsed;
             }
             last.Children.Add(new TextBlock { Text = why, Foreground = run.Locked ? Red : Faint, FontSize = 10.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
-            g.Children.Add(At(last, 5));
+            g.Children.Add(At(last, 6));
 
             var line = new Border
             {
-                Child = g, Padding = new Thickness(0, 4, 0, 4), BorderBrush = RowLine, BorderThickness = new Thickness(0, 0, 0, 1), Background = isNext ? NextBg : Brushes.Transparent, Opacity = run.Done ? 0.5 : 1,
+                Child = g, Padding = new Thickness(0, 4, 0, 4), BorderBrush = RowLine, BorderThickness = new Thickness(0, 0, 0, 1), Background = run.Ready ? GreenBg : isNext ? NextBg : Brushes.Transparent, Opacity = run.Done ? 0.5 : 1,
                 ToolTip = RowTip(run),
             };
             rows.Children.Add(line);

@@ -4802,12 +4802,19 @@ public partial class App : Application
                 string tip = rv.PlanRowTipForTest(1), tile = rv.TileLines[4], soft = rv.NowLines[0];
                 rv.SetLevelsForTest(55);
                 bool ready = rv.PlanCellsForTest.Count(c => c == "ready") == 5 && rv.TileLines[3].StartsWith("NEXT RUN: Ready", StringComparison.Ordinal) && rv.TileLines[3].EndsWith("nothing to level", StringComparison.Ordinal);
+                // … and the pill beside it is what the run EARNS (owner, 27 Nov: "it still gives me 10% penalty right? that was
+                // replaced with the ready pill" — so ready is the ROW, green, and the pill stays): +10% on a first run.
+                var rp = rv.PlanForTest!;
+                bool afterPills = rv.PlanAfterForTest.Count == 48 && rv.GreenRowsForTest == 5 && rv.PlanAfterForTest[0] == "+10%" && rv.PlanAfterForTest[1] == "+20%"
+                    && rp.Runs.Select(r => "+" + Views.ReincarnationView.AfterOf(r) + "%").SequenceEqual(rv.PlanAfterForTest)
+                    && rp.Runs.Where(r => r.Ready).All(r => Views.ReincarnationView.AfterOf(r) >= 10)
+                    && rp.Runs.Where(r => !r.Ready).All(r => Views.ReincarnationView.AfterOf(r) == r.Penalty + 10);
                 rv.SetLevelsForTest(1); rv.SetLevelsForTest(50, "WAR", "BER");
                 string someLine = rv.LevelsLineForTest;
                 rv.SetLevelsForTest(1);
                 rv.SetModeForTest("mine");
                 Check($"reincarnation: a row says what to level before the reincarnation — 50→55 +0% for a trio still at 50, 1→55 +10% once reincarnated, \"ready\" at 55 — and its mouse-over what the four carry afterwards ({tile} · {soft})",
-                    plain && cells && ready && someLine == "2 of 16 classes above level 1" && rv.LevelsLineForTest == "every class from level 1"
+                    plain && cells && ready && afterPills && someLine == "2 of 16 classes above level 1" && rv.LevelsLineForTest == "every class from level 1"
                     && tip.Contains("Before: level 50 → 55 at +0% XP", StringComparison.Ordinal) && tip.Contains("Afterwards: ", StringComparison.Ordinal) && tip.Contains("OGR +10%", StringComparison.Ordinal)
                     && tile.Contains("5 runs start higher", StringComparison.Ordinal) && soft.StartsWith("Stat soft caps: +", StringComparison.Ordinal) && soft.EndsWith("11 per run", StringComparison.Ordinal));
             }
@@ -7038,6 +7045,7 @@ public partial class App : Application
             if (sub.Equals("reinc:wide", StringComparison.OrdinalIgnoreCase)) { tw.Width = 1720; tw.ShowPage("reinc"); }          // four columns
             else if (sub.Equals("reinc:hover", StringComparison.OrdinalIgnoreCase)) { tw.Width = 1720; tw.ShowPage("reinc"); tw.ReincForTest?.SetWideForTest(true); tw.ReincForTest?.HoverStatForTest("Chance to hit"); } // a stat line lighting its giver
             else if (sub.Equals("reinc:levels", StringComparison.OrdinalIgnoreCase)) { tw.ShowPage("reinc"); tw.ReincForTest?.SetLevelsForTest(50); tw.ReincForTest?.OpenLevelsForTest(); } // every class at 50, the levels block open
+            else if (sub.Equals("reinc:ready", StringComparison.OrdinalIgnoreCase)) { tw.ShowPage("reinc"); tw.ReincForTest?.SetLevelsForTest(Reincarnation.LevelCap); } // every class at the cap: the trios still whole are green rows
             else if (sub.Equals("reinc:now", StringComparison.OrdinalIgnoreCase)) { tw.ShowPage("reinc"); tw.ReincForTest?.ShowRightForTest("now"); } // the right card's other face
             else if (sub.Length > 0) tw.ShowPage(sub);
             if (Environment.GetEnvironmentVariable("EQL_FOCUS_OPEN") is { Length: > 0 }) tw.FocusForTest?.OpenWantsForTest(); // the marks unfolded

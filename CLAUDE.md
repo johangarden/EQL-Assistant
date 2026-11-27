@@ -348,8 +348,10 @@ applies only to levels the class held before a reincarnation (not modelled: ever
 levels are PER CLASS and a loadout stands at its LOWEST class. So `State.Levels` holds where each class stands
 until a ticked run reincarnates it (then 1; unticking gives it back) — the left card's folded "YOUR LEVELS NOW"
 line opens a − level + stepper, all / none and sixteen chips. A run's `From` = the lowest of its trio; the plan's
-LEVELLING cell reads "50→55 +0%" / "1→55 +10%" / "ready" (all three at the cap: no levelling, no penalty), the
-row's mouse-over adds what its four carry AFTERWARDS. The planner scores a head start as β × 100 × levels skipped
+row shows TWO figures, each named (owner, 27 Nov: one pill read as the other, "it still gives me 10% penalty
+right?"): LEVEL FIRST in words — "50→55 +0%" / "1→55 +10%" / "ready" (all three at the cap: no levelling, and the
+whole ROW is green) — and the AFTER pill, what its four carry once it is done (`AfterOf`: a first run earns +10%);
+a legend line above the table says so, the row's mouse-over lists the four one by one. The planner scores a head start as β × 100 × levels skipped
 / 54, so in Lowest XP and Balanced the trios still whole go first (16 classes at 50 = five 50→55 runs, the 16th
 class's head start is wasted whichever it is); `Plan.Average` is over the full levellings (From 1) only. The next
 run's number is gold; its NEXT tag yields when the last column is under 40 px. The stat sheet opens with EVERY
