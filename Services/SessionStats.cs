@@ -59,8 +59,10 @@ public sealed class SessionStats
     // "You gain experience! (1.670%)" / "You gain party experience! (1.373%)"
     // and the percent-less variants of both (the level cap states no number).
     // Anchored at both ends: chat lines containing "experience" must not count.
+    // During a bonus the game writes "You gain experience (with a bonus)! (1.670%)" — the opening
+    // is CombatParser.XpHead, the one spelling (27 Nov: the bonus form had counted for nothing).
     private static readonly Regex ExpRx = new(
-        @"^You gain (?<party>party )?experience!(?: \((?<pct>[\d.]+)%\))?$",
+        CombatParser.XpHead + @"(?: \((?<pct>[\d.]+)%\))?$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     // "You have gained a level! Welcome to level 33!"
