@@ -1216,6 +1216,33 @@ public partial class App : Application
                     && onPet.First(r => r.Name == "thorns") is { Total: 4 });
             }
 
+            // Bonus experience (owner, 27 Nov: "xp gain are no longer recorded — not in combat text nor the session
+            // panel; AA point gains are showing up"): while a bonus runs the game words it "You gain experience
+            // (with a bonus)!" — a shape the rig logs already held, and neither reader knew.
+            {
+                var xp = new CombatParser { SelfName = "Johan" };
+                var xpSct = new List<CombatParser.SctHit>();
+                xp.SctEvent += h => xpSct.Add(h);
+                xp.Replay($"[{FT(3000)}] You gain experience (with a bonus)! (2.250%)");
+                xp.Replay($"[{FT(3001)}] You gain party experience (with a bonus)! (1.000%)");
+                xp.Replay($"[{FT(3002)}] You gain experience (with a bonus)!");   // the level cap states no figure: nothing to float
+                xp.Replay($"[{FT(3003)}] You gain experience! (0.500%)");
+                xp.Replay($"[{FT(3004)}] You gain experience (with a penalty)! (0.250%)"); // a wording not seen yet reads the same way
+                xp.Replay($"[{FT(3005)}] Tolo says, 'You gain experience (with a bonus)! (9.000%)'"); // chat is no gain
+                var floats = xpSct.Where(h => h is { Kind: CombatParser.SctKind.Progress, Ability: "xp" }).Select(h => h.Amount).ToList();
+                Check($"xp: a bonus gain floats as combat text like any other — 2.25, 1, 0.5 and 0.25 ({string.Join(" · ", floats)})",
+                    floats.SequenceEqual(new[] { 2.25, 1.0, 0.5, 0.25 }) && xpSct.First(h => h.Ability == "xp").Text!.StartsWith('+'));
+                var xs = new SessionStats();
+                xs.ProcessLine($"[{FT(4000)}] Welcome to EverQuest Legends!");
+                xs.ProcessLine($"[{FT(4005)}] You have entered Befallen 3 (Fused).");
+                for (int i = 0; i < 18; i++)   // 30 min of bonus kills, 1.5% each, solo and grouped by turns = 27%
+                    xs.ProcessLine($"[{FT(4060 + i * 100)}] You gain {(i % 2 == 0 ? "" : "party ")}experience (with a bonus)! (1.500%)");
+                xs.ProcessLine($"[{FT(4700)}] this is a retro experience (with a bonus)!"); // chat must not count
+                var xv = xs.Snapshot(fb.AddSeconds(4000 + 1800), SessionStats.Slice.ZoneSession, exactTier: true, SessionStats.Basis.Elapsed);
+                Check("xp: the session panel counts bonus gains — 27% over half an hour reads 0.54 lvl/hr",
+                    xv.Rows.FirstOrDefault(r => r.Label == "XP") is { Value: "0.54", Unit: "lvl/hr" });
+            }
+
             // Allies vs bystanders: "group" means someone joined YOUR fight —
             // a neighbour farming their own camp in logging range is scenery.
             var al = new CombatParser { SelfName = "Johan" };

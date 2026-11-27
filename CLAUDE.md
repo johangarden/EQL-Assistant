@@ -576,6 +576,10 @@ Timestamps: `[ddd MMM d(d) HH:mm:ss yyyy] `. Key bodies (see
 - Damage shields (ONE regex, `ShieldRx`, 26 Nov — frost and fire shields and every pet/groupmate
   shield had been unread): `<tgt> is pierced|burned|tormented by YOUR|<att>'s thorns|flames|frost for
   N points of non-melee damage.` and `YOU are … by <att>'s … damage!`; the kind is the ability name.
+- Experience: `You gain [party ]experience! (N%)`, percent-less at the level cap — and WHILE A BONUS
+  RUNS `You gain experience (with a bonus)! (N%)` (27 Nov: unread by both the combat text and the
+  session panel, so XP "stopped" when a bonus began). One opening for both readers,
+  `CombatParser.XpHead`; any bracketed note before the "!" is let through.
 - Casts: `You begin casting <Spell> <rank>.` · deaths: `You have slain <mob>!`
   / `<mob> has been slain by <who>!` · zone: `You have entered <zone>.` ·
   crits: ` (Critical)` suffix · loot: `You looted a <item> from <mob>'s corpse...`

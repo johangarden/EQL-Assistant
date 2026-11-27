@@ -1164,8 +1164,15 @@ public sealed class CombatParser
     // "Your faction standing with Burning Dead has been adjusted by -2.",
     // "You have gained an ability point!  You now have 2 ability points."
     private static readonly Regex XpRx = new(
-        @"^You gain (?:party |group )?experience! \((?<pct>\d+(?:\.\d+)?)%\)",
+        XpHead + @" \((?<pct>\d+(?:\.\d+)?)%\)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    /// <summary>How every experience line opens — the ONE spelling, read by the combat text here and
+    /// by the session panel. The game puts a note between the word and the "!" while a bonus runs:
+    /// "You gain experience (with a bonus)!" (rig logs: 544 such lines over a September weekend, and
+    /// every gain during the late-November bonus — owner, 27 Nov: "xp gain are no longer recorded").
+    /// Any bracketed note is let through, so the next wording ("with a penalty"…) is read too.</summary>
+    public const string XpHead = @"^You gain (?<party>party |group |raid )?experience(?: \((?<note>[^)]*)\))?!";
 
     private static readonly Regex FactionRx = new(
         @"^Your faction standing with (?<fac>.+?) has been adjusted by (?<amt>-?\d+)\.",
